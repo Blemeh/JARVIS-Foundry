@@ -690,6 +690,271 @@ def _objective_for_mission(db, mission_id: str) -> str:
     return f"mission:{mission_id}"
 
 
+_PROVIDER_WAIT_CAMPAIGN_KEYS = (
+    "objective_id",
+    "campaign_id",
+    "child_id",
+    "builder_run_id",
+    "routing_identity",
+    "campaign_isolation_key",
+    "stop_path",
+)
+_PROVIDER_WAIT_EFFECT_REQUIREMENT_KEYS = (
+    "effect_requirement_id",
+    "effect_requirement_event_id",
+    "effect_requirement_sequence",
+    "effect_requirement_source_id",
+)
+
+
+def _provider_wait_identity_material(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    material: dict[str, Any] = {
+        "mission_id": str(payload.get("mission_id") or ""),
+        "step_id": str(payload.get("step_id") or ""),
+        "run_id": str(payload.get("run_id") or ""),
+        "provider_ids": list(payload.get("provider_ids") or ()),
+        "effect_action_key": payload.get("effect_action_key"),
+        "error_class": payload.get("error_class"),
+    }
+    if any(key in payload for key in _PROVIDER_WAIT_CAMPAIGN_KEYS[1:]):
+        material.update({
+            key: payload.get(key)
+            for key in _PROVIDER_WAIT_CAMPAIGN_KEYS
+        })
+    if any(
+        key in payload
+        for key in _PROVIDER_WAIT_EFFECT_REQUIREMENT_KEYS
+    ):
+        material.update({
+            key: payload.get(key)
+            for key in _PROVIDER_WAIT_EFFECT_REQUIREMENT_KEYS
+        })
+    return material
+
+
+def _provider_wait_family_id(material: Mapping[str, Any]) -> str:
+    return "provider-wait-family-" + hashlib.sha256(
+        canonical_json(dict(material)).encode("utf-8")
+    ).hexdigest()[:24]
+
+
+def _provider_wait_id(
+    material: Mapping[str, Any],
+    *,
+    family_id: str,
+    generation: int,
+) -> str:
+    return "provider-wait-" + hashlib.sha256(
+        canonical_json({
+            **dict(material),
+            "wait_family_id": family_id,
+            "wait_generation": generation,
+        }).encode("utf-8")
+    ).hexdigest()[:24]
+
+
+def _provider_wait_generation(payload: Mapping[str, Any]) -> int:
+    value = payload.get("wait_generation")
+    if value is None and "wait_family_id" not in payload:
+        return 1
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise EventConflict("provider wait generation is invalid")
+    return value
+
+
+def _latest_effect_requirement(
+    db: FoundryDatabase,
+    *,
+    mission_id: str,
+    step_id: str,
+    run_id: str,
+    effect_action_key: str,
+) -> dict[str, Any] | None:
+    candidates = tuple(
+        event
+        for event in db.events(
+            readonly=True,
+            event_types=("provider.effect_reconciliation_required",),
+        )
+        if (
+            str(event.payload.get("run_id") or "") == run_id
+            and str(event.payload.get("mission_id") or "") == mission_id
+            and str(event.payload.get("step_id") or "") == step_id
+            and str(event.payload.get("effect_action_key") or "")
+            == effect_action_key
+        )
+    )
+    if not candidates:
+        return None
+    event_ids = tuple(event.event_id for event in candidates)
+    placeholders = ", ".join("?" for _ in event_ids)
+    with db.connect(readonly=True) as connection:
+        sequences = {
+            str(row["event_id"]): int(row["sequence"])
+            for row in connection.execute(
+                "SELECT event_id, sequence FROM events "
+                f"WHERE event_id IN ({placeholders})",
+                event_ids,
+            ).fetchall()
+        }
+    valid: list[tuple[int, Event, str]] = []
+    for event in candidates:
+        generation = event.payload.get("attempt_generation")
+        ordinal = event.payload.get("attempt_ordinal")
+        requirement_id = str(
+            event.payload.get("effect_requirement_id") or ""
+        )
+        legacy = (
+            generation is None
+            and ordinal is None
+            and not requirement_id
+        )
+        if legacy:
+            requirement_id = f"legacy:{event.event_id}"
+            expected_key = (
+                "provider.effect_reconciliation_required:"
+                f"{run_id}:{effect_action_key}"
+            )
+        else:
+            if (
+                not isinstance(generation, int)
+                or isinstance(generation, bool)
+                or generation < 0
+                or not isinstance(ordinal, int)
+                or isinstance(ordinal, bool)
+                or ordinal < 1
+            ):
+                raise EventConflict(
+                    "effect reconciliation requirement has invalid attempt "
+                    "identity"
+                )
+            expected_requirement_id = (
+                f"{run_id}:{generation}:{ordinal}:{effect_action_key}"
+            )
+            if requirement_id != expected_requirement_id:
+                raise EventConflict(
+                    "effect reconciliation requirement changed its attempt "
+                    "identity"
+                )
+            expected_key = (
+                "provider.effect_reconciliation_required:"
+                f"{requirement_id}"
+            )
+        if (
+            event.source_type != "supervisor"
+            or event.idempotency_key != expected_key
+            or event.event_id not in sequences
+        ):
+            raise EventConflict(
+                "effect reconciliation requirement lacks canonical "
+                f"authority: {requirement_id}"
+            )
+        valid.append((
+            sequences[event.event_id],
+            event,
+            requirement_id,
+        ))
+    sequence, event, requirement_id = max(
+        valid,
+        key=lambda item: item[0],
+    )
+    return {
+        "effect_requirement_id": requirement_id,
+        "effect_requirement_event_id": event.event_id,
+        "effect_requirement_sequence": sequence,
+        "effect_requirement_source_id": event.source_id,
+    }
+
+
+def _effect_requirement_boundary(
+    db: FoundryDatabase,
+    payload: Mapping[str, Any],
+) -> int | None:
+    present = {
+        key
+        for key in _PROVIDER_WAIT_EFFECT_REQUIREMENT_KEYS
+        if key in payload
+    }
+    if not present:
+        return None
+    if present != set(_PROVIDER_WAIT_EFFECT_REQUIREMENT_KEYS):
+        raise EventConflict(
+            "provider effect wait has a partial requirement binding"
+        )
+    requirement_id = str(payload.get("effect_requirement_id") or "")
+    event_id = str(payload.get("effect_requirement_event_id") or "")
+    source_id = str(payload.get("effect_requirement_source_id") or "")
+    sequence = payload.get("effect_requirement_sequence")
+    if (
+        not requirement_id
+        or not event_id
+        or not source_id
+        or not isinstance(sequence, int)
+        or isinstance(sequence, bool)
+        or sequence < 1
+    ):
+        raise EventConflict(
+            "provider effect wait requirement binding is invalid"
+        )
+    with db.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT sequence, event_type, source_type, source_id, "
+            "idempotency_key, payload_json FROM events WHERE event_id = ?",
+            (event_id,),
+        ).fetchone()
+    if row is None:
+        raise EventConflict(
+            "provider effect wait requirement event is missing"
+        )
+    requirement_payload = json.loads(str(row["payload_json"]))
+    action_key = str(payload.get("effect_action_key") or "")
+    run_id = str(payload.get("run_id") or "")
+    legacy = requirement_id == f"legacy:{event_id}"
+    expected_key = (
+        f"provider.effect_reconciliation_required:{run_id}:{action_key}"
+        if legacy
+        else f"provider.effect_reconciliation_required:{requirement_id}"
+    )
+    if (
+        int(row["sequence"]) != sequence
+        or str(row["event_type"])
+        != "provider.effect_reconciliation_required"
+        or str(row["source_type"]) != "supervisor"
+        or str(row["source_id"]) != source_id
+        or str(row["idempotency_key"]) != expected_key
+        or str(requirement_payload.get("run_id") or "") != run_id
+        or str(requirement_payload.get("mission_id") or "")
+        != str(payload.get("mission_id") or "")
+        or str(requirement_payload.get("step_id") or "")
+        != str(payload.get("step_id") or "")
+        or str(requirement_payload.get("effect_action_key") or "")
+        != action_key
+        or (
+            not legacy
+            and str(
+                requirement_payload.get("effect_requirement_id") or ""
+            ) != requirement_id
+        )
+    ):
+        raise EventConflict(
+            "provider effect wait requirement authority is invalid"
+        )
+    return sequence
+
+
+def _event_sequence(db: FoundryDatabase, event_id: str) -> int:
+    with db.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT sequence FROM events WHERE event_id = ?",
+            (event_id,),
+        ).fetchone()
+    if row is None:
+        raise EventConflict(f"event sequence is missing: {event_id}")
+    return int(row["sequence"])
+
+
 def schedule_mission_provider_wait(
     db,
     *,
@@ -721,6 +986,16 @@ def schedule_mission_provider_wait(
         "effect_action_key": effect_action_key,
         "error_class": error_class,
     }
+    if effect_action_key:
+        requirement = _latest_effect_requirement(
+            db,
+            mission_id=mission_id,
+            step_id=step_id,
+            run_id=run_id,
+            effect_action_key=effect_action_key,
+        )
+        if requirement is not None:
+            material.update(requirement)
     campaign_child_id = ""
     if campaign_lineage:
         material.update({
@@ -764,58 +1039,110 @@ def schedule_mission_provider_wait(
             raise CampaignError(
                 "provider wait lineage does not match the bound campaign child"
             )
-    wait_id = "provider-wait-" + hashlib.sha256(
-        canonical_json(material).encode("utf-8")
-    ).hexdigest()[:24]
+    family_id = _provider_wait_family_id(material)
+    prior_starts = canonical_provider_wait_start_events(
+        db,
+        mission_id=mission_id,
+        run_id=run_id,
+    )
+    resumed_wait_ids = {
+        str(event.payload.get("wait_id") or "")
+        for event in canonical_provider_resume_events(
+            db,
+            mission_id=mission_id,
+            step_id=step_id,
+            run_id=run_id,
+        )
+    }
+    family_starts = tuple(
+        event
+        for event in prior_starts
+        if str(
+            event.payload.get("wait_family_id")
+            or _provider_wait_family_id(
+                _provider_wait_identity_material(event.payload)
+            )
+        ) == family_id
+    )
+    open_starts = tuple(
+        event
+        for event in family_starts
+        if str(event.payload.get("wait_id") or "") not in resumed_wait_ids
+    )
+    if len(open_starts) > 1:
+        raise EventConflict(
+            f"provider wait family has multiple open episodes: {family_id}"
+        )
     objective_id = str(material.get("objective_id") or "") or _objective_for_mission(
         db, mission_id
     )
-    wake_ids: list[str] = []
-    for provider_id in material["provider_ids"]:
-        wake = schedule_wait_for_provider(
-            db,
-            objective_id,
-            provider_id=provider_id,
-            reason=reason,
-            controller=controller,
-            episode_id=wait_id,
+    if open_starts:
+        payload = dict(open_starts[0].payload)
+        wait_id = str(payload["wait_id"])
+    else:
+        generation = max(
+            (
+                _provider_wait_generation(event.payload)
+                for event in family_starts
+            ),
+            default=0,
+        ) + 1
+        wait_id = _provider_wait_id(
+            material,
+            family_id=family_id,
+            generation=generation,
         )
-        wake_ids.append(str(wake["wake_id"]))
-    payload = {
-        **material,
-        "wait_id": wait_id,
-        "objective_id": objective_id,
-        "wake_ids": wake_ids,
-        "reason": str(reason)[:1000],
-        "created_at": isoformat(),
-    }
-    try:
-        _append(
-            db,
-            "mission.provider_wait_started",
-            payload,
-            key=f"mission.provider_wait_started:{wait_id}",
-            source_id="provider-resilience",
-            correlation_id=mission_id,
-        )
-    except EventConflict:
-        # A crash after the wait receipt but before mission/child projection
-        # can replay this boundary.  ``created_at`` is observational, so
-        # recover the first immutable receipt only when its identity material
-        # is byte-equivalent; a changed contract remains a hard conflict.
-        prior = next((
-            event.payload
-            for event in reversed(db.events(
-                readonly=True,
-                event_type_prefixes=("mission.provider_wait_started",),
-            ))
-            if str(event.payload.get("wait_id") or "") == wait_id
-        ), None)
-        if prior is None or any(
-            prior.get(key) != value for key, value in material.items()
-        ):
-            raise
-        payload = dict(prior)
+        wake_ids: list[str] = []
+        for provider_id in material["provider_ids"]:
+            wake = schedule_wait_for_provider(
+                db,
+                objective_id,
+                provider_id=provider_id,
+                reason=reason,
+                controller=controller,
+                episode_id=wait_id,
+            )
+            wake_ids.append(str(wake["wake_id"]))
+        payload = {
+            **material,
+            "wait_family_id": family_id,
+            "wait_generation": generation,
+            "wait_id": wait_id,
+            "objective_id": objective_id,
+            "wake_ids": wake_ids,
+            "reason": str(reason)[:1000],
+            "created_at": isoformat(),
+        }
+        try:
+            _append(
+                db,
+                "mission.provider_wait_started",
+                payload,
+                key=f"mission.provider_wait_started:{wait_id}",
+                source_id="provider-resilience",
+                correlation_id=mission_id,
+            )
+        except EventConflict:
+            # A concurrent replay may have admitted this exact generation.
+            prior = next((
+                event.payload
+                for event in reversed(canonical_provider_wait_start_events(
+                    db,
+                    mission_id=mission_id,
+                    run_id=run_id,
+                ))
+                if str(event.payload.get("wait_id") or "") == wait_id
+            ), None)
+            if prior is None or any(
+                prior.get(key) != value
+                for key, value in {
+                    **material,
+                    "wait_family_id": family_id,
+                    "wait_generation": generation,
+                }.items()
+            ):
+                raise
+            payload = dict(prior)
     if campaign_lineage:
         # Project the same durable wait into the campaign aggregate.  This is
         # not a second wake authority: the mission.provider_wait_* receipt
@@ -842,34 +1169,550 @@ def schedule_mission_provider_wait(
     return payload
 
 
-def _effect_has_reconciliation(db, action_key: str) -> bool:
-    return any(
-        event.event_type in {"effect.reconciled", "provider.effect_reconciled"}
-        and str(event.payload.get("action_key")
-                or event.payload.get("effect_action_key") or "") == action_key
+def _effect_has_reconciliation(
+    db: FoundryDatabase,
+    action_key: str,
+    *,
+    after_sequence: int,
+) -> bool:
+    with db.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT sequence, source_type, source_id, idempotency_key, "
+            "payload_json FROM events WHERE event_type = 'effect.reconciled' "
+            "AND sequence > ? ORDER BY sequence",
+            (after_sequence,),
+        ).fetchall()
+    for row in rows:
+        payload = json.loads(str(row["payload_json"]))
+        if (
+            str(row["source_type"]) == "supervisor"
+            and str(row["source_id"]) == "v5-effect-driver"
+            and str(row["idempotency_key"] or "").startswith(
+                f"{action_key}.reconciled."
+            )
+            and str(
+                payload.get("action_key")
+                or payload.get("effect_action_key")
+                or ""
+            ) == action_key
+        ):
+            return True
+    return False
+
+
+def canonical_provider_wait_start_events(
+    db: FoundryDatabase,
+    *,
+    mission_id: str | None = None,
+    run_id: str | None = None,
+    wait_ids: Sequence[str] | None = None,
+) -> tuple[Event, ...]:
+    """Return provider waits after validating their immutable authority."""
+
+    selected_wait_ids = (
+        {str(wait_id) for wait_id in wait_ids if str(wait_id)}
+        if wait_ids is not None
+        else None
+    )
+    canonical: list[Event] = []
+    seen_wait_ids: set[str] = set()
+    wake_events_by_id: dict[str, list[Event]] = {}
+    authority_events = db.events(
+        readonly=True,
+        event_types=(
+            "executive.wake_created",
+            "mission.provider_wait_started",
+        ),
+    )
+    authority_order = {
+        event.event_id: index
+        for index, event in enumerate(authority_events)
+    }
+    for event in authority_events:
+        if event.event_type != "executive.wake_created":
+            continue
+        wake_id = str(event.payload.get("wake_id") or "")
+        if wake_id:
+            wake_events_by_id.setdefault(wake_id, []).append(event)
+    for event in authority_events:
+        if event.event_type != "mission.provider_wait_started":
+            continue
+        payload = event.payload
+        observed_mission = str(payload.get("mission_id") or "")
+        observed_step = str(payload.get("step_id") or "")
+        observed_run = str(payload.get("run_id") or "")
+        wait_id = str(payload.get("wait_id") or "")
+        if mission_id is not None and observed_mission != mission_id:
+            continue
+        if run_id is not None and observed_run != run_id:
+            continue
+        if selected_wait_ids is not None and wait_id not in selected_wait_ids:
+            continue
+        raw_providers = payload.get("provider_ids")
+        raw_wakes = payload.get("wake_ids")
+        providers = (
+            tuple(str(item) for item in raw_providers)
+            if isinstance(raw_providers, list)
+            else ()
+        )
+        providers_are_strings = bool(
+            isinstance(raw_providers, list)
+            and all(
+                isinstance(item, str) and bool(item)
+                for item in raw_providers
+            )
+        )
+        wake_ids = (
+            tuple(str(item) for item in raw_wakes)
+            if isinstance(raw_wakes, list)
+            else ()
+        )
+        wake_ids_are_strings = bool(
+            isinstance(raw_wakes, list)
+            and all(
+                isinstance(item, str) and bool(item)
+                for item in raw_wakes
+            )
+        )
+        effect_action_key = payload.get("effect_action_key")
+        objective_id = str(payload.get("objective_id") or "")
+        try:
+            requirement_boundary = _effect_requirement_boundary(
+                db,
+                payload,
+            )
+        except EventConflict as error:
+            raise EventConflict(
+                "provider wait effect requirement is invalid: "
+                f"{wait_id or observed_run or 'UNKNOWN'}"
+            ) from error
+        start_sequence = _event_sequence(db, event.event_id)
+        material = _provider_wait_identity_material({
+            **payload,
+            "provider_ids": list(providers),
+        })
+        expected_family_id = _provider_wait_family_id(material)
+        try:
+            generation = _provider_wait_generation(payload)
+        except EventConflict as error:
+            raise EventConflict(
+                "provider wait start authority is invalid: "
+                f"{wait_id or observed_run or 'UNKNOWN'}"
+            ) from error
+        legacy_identity = (
+            "wait_family_id" not in payload
+            and "wait_generation" not in payload
+        )
+        expected_wait_id = (
+            "provider-wait-" + hashlib.sha256(
+                canonical_json(material).encode("utf-8")
+            ).hexdigest()[:24]
+            if legacy_identity
+            else _provider_wait_id(
+                material,
+                family_id=expected_family_id,
+                generation=generation,
+            )
+        )
+        expected_wake_ids = tuple(
+            f"wake:{objective_id}:provider:{provider}:{wait_id}"
+            for provider in providers
+        )
+        wake_authority_valid = True
+        for provider, wake_id in zip(providers, wake_ids, strict=False):
+            wake_events = wake_events_by_id.get(wake_id, [])
+            if len(wake_events) != 1:
+                wake_authority_valid = False
+                break
+            wake_event = wake_events[0]
+            wake_payload = wake_event.payload
+            if not (
+                wake_event.source_type == "supervisor"
+                and wake_event.source_id == "v9-continuous"
+                and authority_order[wake_event.event_id]
+                < authority_order[event.event_id]
+                and wake_event.correlation_id == objective_id
+                and wake_event.idempotency_key
+                == f"executive.wake_created:{wake_id}"
+                and str(wake_payload.get("wake_id") or "") == wake_id
+                and str(wake_payload.get("objective_id") or "")
+                == objective_id
+                and str(wake_payload.get("kind") or "")
+                == "WAIT_FOR_PROVIDER"
+                and str(wake_payload.get("provider_id") or "") == provider
+                and str(wake_payload.get("status") or "") == "ACTIVE"
+                and str(wake_payload.get("reason") or "")[:1000]
+                == str(payload.get("reason") or "")
+            ):
+                wake_authority_valid = False
+                break
+        if (
+            not wait_id
+            or not observed_mission
+            or not observed_step
+            or not observed_run
+            or not objective_id
+            or event.source_type != "supervisor"
+            or event.source_id != "provider-resilience"
+            or event.correlation_id != observed_mission
+            or event.idempotency_key
+            != f"mission.provider_wait_started:{wait_id}"
+            or wait_id != expected_wait_id
+            or (
+                not legacy_identity
+                and (
+                    payload.get("wait_family_id") != expected_family_id
+                    or payload.get("wait_generation") != generation
+                )
+            )
+            or not providers_are_strings
+            or providers != tuple(sorted(set(providers)))
+            or not wake_ids_are_strings
+            or len(wake_ids) != len(providers)
+            or wake_ids != expected_wake_ids
+            or not wake_authority_valid
+            or (not providers and not str(effect_action_key or ""))
+            or not isinstance(payload.get("error_class"), str)
+            or not str(payload.get("error_class") or "").strip()
+            or not isinstance(payload.get("reason"), str)
+            or not str(payload.get("reason") or "").strip()
+            or not isinstance(payload.get("created_at"), str)
+            or not str(payload.get("created_at") or "").strip()
+            or (
+                requirement_boundary is not None
+                and (
+                    not effect_action_key
+                    or requirement_boundary >= start_sequence
+                )
+            )
+        ):
+            raise EventConflict(
+                "provider wait start authority is invalid: "
+                f"{wait_id or observed_run or 'UNKNOWN'}"
+            )
+        if wait_id in seen_wait_ids:
+            raise EventConflict(
+                f"provider wait has duplicate start receipts: {wait_id}"
+            )
+        seen_wait_ids.add(wait_id)
+        canonical.append(event)
+    return tuple(canonical)
+
+
+def canonical_provider_resume_events(
+    db: FoundryDatabase,
+    *,
+    mission_id: str | None = None,
+    step_id: str | None = None,
+    run_id: str | None = None,
+) -> tuple[Event, ...]:
+    """Return exact provider-resume receipts after validating their authority."""
+
+    resumes = tuple(
+        event
         for event in db.events(
             readonly=True,
-            event_type_prefixes=("effect.reconciled", "provider.effect_reconciled"),
+            event_types=("mission.provider_wait_resumed",),
+        )
+        if (
+            mission_id is None
+            or str(event.payload.get("mission_id") or "") == mission_id
+        )
+        and (
+            step_id is None
+            or str(event.payload.get("step_id") or "") == step_id
+        )
+        and (
+            run_id is None
+            or str(event.payload.get("run_id") or "") == run_id
         )
     )
+    if not resumes:
+        return ()
+    wait_ids = {
+        str(event.payload.get("wait_id") or "")
+        for event in resumes
+        if str(event.payload.get("wait_id") or "")
+    }
+    started = canonical_provider_wait_start_events(
+        db,
+        wait_ids=tuple(wait_ids),
+    )
+    support_events = tuple(
+        db.events(
+            readonly=True,
+            event_types=(
+                "executive.wake_triggered",
+                "provider.effect_reconciled",
+            ),
+        )
+    )
+    started_by_wait: dict[str, list[tuple[int, Event]]] = {}
+    state_by_key: dict[str, list[Mapping[str, Any]]] = {}
+    event_ids = tuple(
+        event.event_id
+        for event in (*started, *resumes, *support_events)
+    )
+    state_keys = tuple(
+        (
+            "mission.state_changed:"
+            f"{str(event.payload.get('mission_id') or '')}:"
+            "ACTION_SELECTION:provider-resume:"
+            f"{str(event.payload.get('wait_id') or '')}"
+        )
+        for event in resumes
+    )
+    with db.connect(readonly=True) as connection:
+        event_placeholders = ", ".join("?" for _ in event_ids)
+        sequences = {
+            str(row["event_id"]): int(row["sequence"])
+            for row in connection.execute(
+                "SELECT sequence, event_id FROM events "
+                f"WHERE event_id IN ({event_placeholders})",
+                event_ids,
+            ).fetchall()
+        }
+        state_placeholders = ", ".join("?" for _ in state_keys)
+        for row in connection.execute(
+            "SELECT sequence, event_id, event_type, source_type, source_id, "
+            "correlation_id, idempotency_key, payload_json "
+            "FROM events "
+            f"WHERE idempotency_key IN ({state_placeholders})",
+            state_keys,
+        ).fetchall():
+            state_by_key.setdefault(
+                str(row["idempotency_key"]),
+                [],
+            ).append(row)
+    for event in started:
+        sequence = sequences[event.event_id]
+        wait_id = str(event.payload.get("wait_id") or "")
+        if wait_id:
+            started_by_wait.setdefault(wait_id, []).append((sequence, event))
+    wake_triggers_by_id: dict[str, list[tuple[int, Event]]] = {}
+    effect_receipts_by_wait: dict[str, list[tuple[int, Event]]] = {}
+    for event in support_events:
+        sequence = sequences[event.event_id]
+        if event.event_type == "executive.wake_triggered":
+            wake_id = str(event.payload.get("wake_id") or "")
+            if wake_id:
+                wake_triggers_by_id.setdefault(wake_id, []).append(
+                    (sequence, event)
+                )
+        elif event.event_type == "provider.effect_reconciled":
+            support_wait_id = str(event.payload.get("wait_id") or "")
+            if support_wait_id:
+                effect_receipts_by_wait.setdefault(
+                    support_wait_id,
+                    [],
+                ).append((sequence, event))
+
+    resumed: list[Event] = []
+    seen_waits: set[str] = set()
+    for event in resumes:
+        sequence = sequences[event.event_id]
+        payload = event.payload
+        observed_mission = str(payload.get("mission_id") or "")
+        observed_step = str(payload.get("step_id") or "")
+        observed_run = str(payload.get("run_id") or "")
+        wait_id = str(payload.get("wait_id") or "")
+        recovery_provider_id = payload.get("recovery_provider_id")
+        if (
+            not wait_id
+            or not observed_mission
+            or not observed_step
+            or not observed_run
+            or event.source_type != "supervisor"
+            or event.source_id != "provider-resilience"
+            or event.correlation_id != observed_mission
+            or event.idempotency_key
+            != f"mission.provider_wait_resumed:{wait_id}"
+            or not isinstance(payload.get("resumed_at"), str)
+            or not str(payload.get("resumed_at") or "").strip()
+            or "recovery_provider_id" not in payload
+        ):
+            raise EventConflict(
+                "provider wait resume authority is invalid: "
+                f"{wait_id or observed_run or 'UNKNOWN'}"
+            )
+        if wait_id in seen_waits:
+            raise EventConflict(
+                f"provider wait has duplicate resume receipts: {wait_id}"
+            )
+        started = started_by_wait.get(wait_id, [])
+        if len(started) != 1:
+            raise EventConflict(
+                f"provider wait resume lacks one canonical start: {wait_id}"
+            )
+        started_sequence, started_event = started[0]
+        provider_ids = tuple(
+            str(item)
+            for item in started_event.payload.get("provider_ids") or ()
+        )
+        if (
+            started_sequence >= sequence
+            or started_event.source_type != "supervisor"
+            or started_event.source_id != "provider-resilience"
+            or started_event.correlation_id != observed_mission
+            or started_event.idempotency_key
+            != f"mission.provider_wait_started:{wait_id}"
+        ):
+            raise EventConflict(
+                f"provider wait start authority is invalid: {wait_id}"
+            )
+        if (
+            provider_ids
+            and (
+                not isinstance(recovery_provider_id, str)
+                or recovery_provider_id not in provider_ids
+            )
+        ) or (not provider_ids and recovery_provider_id is not None):
+            raise EventConflict(
+                f"provider wait recovery identity is invalid: {wait_id}"
+            )
+        resume_material = dict(payload)
+        resume_material.pop("resumed_at", None)
+        resume_material.pop("recovery_provider_id", None)
+        if canonical_json(resume_material) != canonical_json(
+            started_event.payload
+        ):
+            raise EventConflict(
+                f"provider wait resume changed immutable lineage: {wait_id}"
+            )
+        effect_action_key = str(
+            started_event.payload.get("effect_action_key") or ""
+        )
+        wake_ids = tuple(
+            str(item)
+            for item in started_event.payload.get("wake_ids") or ()
+        )
+        if effect_action_key:
+            receipts = effect_receipts_by_wait.get(wait_id, [])
+            valid_receipts = tuple(
+                receipt
+                for receipt_sequence, receipt in receipts
+                if (
+                    started_sequence < receipt_sequence < sequence
+                    and receipt.source_type == "supervisor"
+                    and receipt.source_id == "provider-resilience"
+                    and receipt.correlation_id == observed_mission
+                    and receipt.idempotency_key
+                    == (
+                        f"provider.effect_reconciled:{observed_run}:"
+                        f"{effect_action_key}:wait:{wait_id}"
+                    )
+                    and str(receipt.payload.get("wait_id") or "") == wait_id
+                    and str(receipt.payload.get("mission_id") or "")
+                    == observed_mission
+                    and str(receipt.payload.get("step_id") or "")
+                    == observed_step
+                    and str(receipt.payload.get("run_id") or "")
+                    == observed_run
+                    and str(
+                        receipt.payload.get("effect_action_key") or ""
+                    ) == effect_action_key
+                )
+            )
+            if len(valid_receipts) != 1:
+                raise EventConflict(
+                    "provider wait resume lacks exact effect reconciliation "
+                    f"authority: {wait_id}"
+                )
+        else:
+            try:
+                recovery_index = provider_ids.index(
+                    str(recovery_provider_id)
+                )
+                recovery_wake_id = wake_ids[recovery_index]
+            except (ValueError, IndexError) as error:
+                raise EventConflict(
+                    f"provider wait recovery wake is invalid: {wait_id}"
+                ) from error
+            valid_trigger = any(
+                (
+                    started_sequence < trigger_sequence < sequence
+                    and trigger.source_type == "supervisor"
+                    and trigger.source_id == "v9-continuous"
+                    and trigger.correlation_id == recovery_wake_id
+                    and str(trigger.payload.get("wake_id") or "")
+                    == recovery_wake_id
+                    and trigger.idempotency_key is not None
+                    and trigger.idempotency_key.startswith(
+                        f"executive.wake_triggered:{recovery_wake_id}:"
+                    )
+                    and isinstance(trigger.payload.get("triggered_at"), str)
+                    and bool(str(trigger.payload.get("triggered_at") or ""))
+                )
+                for trigger_sequence, trigger in wake_triggers_by_id.get(
+                    recovery_wake_id,
+                    (),
+                )
+            )
+            if not valid_trigger:
+                raise EventConflict(
+                    "provider wait resume lacks exact wake trigger authority: "
+                    f"{wait_id}"
+                )
+        state_key = (
+            f"mission.state_changed:{observed_mission}:ACTION_SELECTION:"
+            f"provider-resume:{wait_id}"
+        )
+        state_events = state_by_key.get(state_key, [])
+        if len(state_events) != 1:
+            raise EventConflict(
+                f"provider wait resume lacks one state transition: {wait_id}"
+            )
+        state_event = state_events[0]
+        state_sequence = int(state_event["sequence"])
+        state_payload = json.loads(str(state_event["payload_json"]))
+        if (
+            state_sequence != sequence + 1
+            or str(state_event["event_type"]) != "mission.state_changed"
+            or str(state_event["source_type"]) != "supervisor"
+            or str(state_event["source_id"]) != "provider-resilience"
+            or str(state_event["correlation_id"]) != observed_mission
+            or str(state_payload.get("mission_id") or "")
+            != observed_mission
+            or str(state_payload.get("run_id") or "") != observed_run
+            or str(state_payload.get("state") or "") != "ACTION_SELECTION"
+        ):
+            raise EventConflict(
+                f"provider wait resume state transition is invalid: {wait_id}"
+            )
+        seen_waits.add(wait_id)
+        resumed.append(event)
+    return tuple(resumed)
 
 
 def provider_resume_run_id(db, *, mission_id: str, step_id: str) -> str | None:
     """Recover the exact builder run released by the latest provider wait."""
 
-    for event in db.events(
-        readonly=True,
-        newest_first=True,
-        limit=1000,
-        event_type_prefixes=("mission.provider_wait_resumed",),
-    ):
-        payload = event.payload
-        if (
-            str(payload.get("mission_id") or "") == mission_id
-            and str(payload.get("step_id") or "") == step_id
-        ):
-            return str(payload.get("run_id") or "") or None
-    return None
+    resumed = canonical_provider_resume_events(
+        db,
+        mission_id=mission_id,
+        step_id=step_id,
+    )
+    if not resumed:
+        return None
+    return str(resumed[-1].payload.get("run_id") or "") or None
+
+
+def provider_resume_epoch(
+    db: FoundryDatabase,
+    *,
+    mission_id: str,
+    run_id: str,
+) -> str | None:
+    """Return the latest canonical wait episode that released one run."""
+
+    resumed = canonical_provider_resume_events(
+        db,
+        mission_id=mission_id,
+        run_id=run_id,
+    )
+    if not resumed:
+        return None
+    return str(resumed[-1].payload.get("wait_id") or "") or None
 
 
 def resume_mission_provider_waits(
@@ -883,21 +1726,15 @@ def resume_mission_provider_waits(
 
     if controller != SUPERVISOR_CONTROLLER:
         raise PermissionError("provider wait recovery is Supervisor-owned")
+    events = canonical_provider_wait_start_events(db)
     tick_wakes(db, controller=controller)
     wake_state = rebuild_wake_state(db)
-    events = db.events(
-        readonly=True,
-        event_type_prefixes=("mission.provider_wait_",),
-    )
     resumed_waits = {
         str(event.payload.get("wait_id") or "")
-        for event in events
-        if event.event_type == "mission.provider_wait_resumed"
+        for event in canonical_provider_resume_events(db)
     }
     resumed: list[str] = []
     for event in events:
-        if event.event_type != "mission.provider_wait_started":
-            continue
         payload = dict(event.payload)
         wait_id = str(payload.get("wait_id") or "")
         if not wait_id or wait_id in resumed_waits:
@@ -931,15 +1768,30 @@ def resume_mission_provider_waits(
             continue
         action_key = str(payload.get("effect_action_key") or "")
         if action_key:
-            due = _effect_has_reconciliation(db, action_key)
+            requirement_boundary = _effect_requirement_boundary(
+                db,
+                payload,
+            )
+            due = _effect_has_reconciliation(
+                db,
+                action_key,
+                after_sequence=(
+                    requirement_boundary
+                    if requirement_boundary is not None
+                    else _event_sequence(db, event.event_id)
+                ),
+            )
+            effect_receipt_key = (
+                f"provider.effect_reconciled:{payload.get('run_id')}:"
+                f"{action_key}:wait:{wait_id}"
+            )
             if due and not any(
                 item.event_type == "provider.effect_reconciled"
-                and str(item.payload.get("effect_action_key") or "") == action_key
-                and str(item.payload.get("run_id") or "")
-                    == str(payload.get("run_id") or "")
+                and item.idempotency_key == effect_receipt_key
+                and str(item.payload.get("wait_id") or "") == wait_id
                 for item in db.events(
                     readonly=True,
-                    event_type_prefixes=("provider.effect_reconciled",),
+                    event_types=("provider.effect_reconciled",),
                 )
             ):
                 _append(
@@ -953,16 +1805,32 @@ def resume_mission_provider_waits(
                         "effect_action_key": action_key,
                     },
                     key=(
-                        f"provider.effect_reconciled:"
-                        f"{payload.get('run_id')}:{action_key}"
+                        effect_receipt_key
                     ),
                     source_id="provider-resilience",
                     correlation_id=str(payload.get("mission_id") or ""),
                 )
         else:
-            due = any(
-                wake_state.get(str(wake_id), {}).get("status") == "TRIGGERED"
-                for wake_id in payload.get("wake_ids") or ()
+            provider_wakes = tuple(zip(
+                providers,
+                (
+                    str(wake_id)
+                    for wake_id in payload.get("wake_ids") or ()
+                ),
+                strict=False,
+            ))
+            due = (
+                any(
+                    candidate_provider == provider_id
+                    and wake_state.get(wake_id, {}).get("status")
+                    == "TRIGGERED"
+                    for candidate_provider, wake_id in provider_wakes
+                )
+                if provider_id is not None
+                else any(
+                    wake_state.get(wake_id, {}).get("status") == "TRIGGERED"
+                    for _candidate_provider, wake_id in provider_wakes
+                )
             )
         if not due:
             continue
@@ -1139,4 +2007,4 @@ def escalate_stale_wakes(db, *, stale_after_seconds=3600.0, controller="supervis
             pass
     return escalated
 
-__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "resume_mission_provider_waits", "provider_resume_run_id", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
+__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "canonical_provider_wait_start_events", "canonical_provider_resume_events", "resume_mission_provider_waits", "provider_resume_run_id", "provider_resume_epoch", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]

@@ -52,9 +52,13 @@ class WorkerStepContract:
     task_signals: dict[str, Any] = field(default_factory=dict)
     expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
     verification_criteria: tuple[str, ...] = field(default_factory=tuple)
+    required_tests: tuple[str, ...] = field(default_factory=tuple)
+    package_id: str | None = None
+    package_hash: str | None = None
+    attempt_id: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "run_id": self.run_id,
             "mission_id": self.mission_id,
             "step_id": self.step_id,
@@ -76,6 +80,15 @@ class WorkerStepContract:
             "expected_artifacts": list(self.expected_artifacts),
             "verification_criteria": list(self.verification_criteria),
         }
+        if self.required_tests:
+            payload["required_tests"] = list(self.required_tests)
+        if self.package_id:
+            payload["package_id"] = self.package_id
+        if self.package_hash:
+            payload["package_hash"] = self.package_hash
+        if self.attempt_id:
+            payload["attempt_id"] = self.attempt_id
+        return payload
 
     def content_hash(self) -> str:
         return hashlib.sha256(
@@ -104,4 +117,8 @@ class WorkerStepContract:
             task_signals=dict(payload.get("task_signals") or {}),
             expected_artifacts=tuple(payload.get("expected_artifacts", [])),
             verification_criteria=tuple(payload.get("verification_criteria", [])),
+            required_tests=tuple(payload.get("required_tests", [])),
+            package_id=payload.get("package_id"),
+            package_hash=payload.get("package_hash"),
+            attempt_id=payload.get("attempt_id"),
         )

@@ -9,17 +9,24 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
+from jarvis_foundry.clock import isoformat
 from jarvis_foundry.control.action_envelope import evaluate_and_record
 from jarvis_foundry.control.capabilities import set_capability_state
 from jarvis_foundry.control.policy import ActionPolicy
 from jarvis_foundry.control.registration import inspect_git_resource, registration_event
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.domain import ActionEnvelope
-from jarvis_foundry.events import Event
+from jarvis_foundry.events import Event, EventConflict
+from jarvis_foundry.mission.contracts import (
+    MissionStepContract,
+    record_step_contract,
+)
 from jarvis_foundry.mission.loop import (
     BLOCKED_OUTCOME,
     FAILED,
@@ -31,8 +38,15 @@ from jarvis_foundry.mission.proposal import ProposalError, propose_next_action
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.roles.adapter import FakeHermesAdapter
 from jarvis_foundry.roles.results import COMPLETED, RoleResult
-from jarvis_foundry.roles.router import RoleRouter
+from jarvis_foundry.roles.router import (
+    ProviderRouteCandidate,
+    RoleRouter,
+    RoutingRequest,
+)
 from jarvis_foundry.supervisor.estop import EmergencyStop
+from jarvis_foundry.workforce.contracts import WorkPackage, WorkerSession
+from jarvis_foundry.workforce.state import create_work_package
+from jarvis_foundry.workforce.worktrees import WorktreePreparation
 
 
 def git(*args: str, cwd: Path) -> None:
@@ -45,14 +59,24 @@ def git_out(*args: str, cwd: Path) -> str:
 
 
 def make_repository(tmp_path: Path) -> Path:
+    source = tmp_path / "source-repo"
+    source.mkdir()
+    git("init", cwd=source)
+    git("config", "user.email", "jarvis-test@example.invalid", cwd=source)
+    git("config", "user.name", "JARVIS Test", cwd=source)
+    (source / "README.md").write_text("baseline\n", encoding="utf-8")
+    git("add", "README.md", cwd=source)
+    git("commit", "-m", "baseline", cwd=source)
     repository = tmp_path / "repo"
-    repository.mkdir()
-    git("init", cwd=repository)
-    git("config", "user.email", "jarvis-test@example.invalid", cwd=repository)
-    git("config", "user.name", "JARVIS Test", cwd=repository)
-    (repository / "README.md").write_text("baseline\n", encoding="utf-8")
-    git("add", "README.md", cwd=repository)
-    git("commit", "-m", "baseline", cwd=repository)
+    git(
+        "worktree",
+        "add",
+        "-b",
+        "test-worktree",
+        str(repository),
+        "HEAD",
+        cwd=source,
+    )
     return repository
 
 
@@ -165,6 +189,333 @@ class ScriptedAdapter(FakeHermesAdapter):
             verdict="PASS", evidence=("built",))
 
 
+class LifecycleClock:
+    def __init__(self) -> None:
+        self.elapsed = 0.0
+        self.started_at = datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
+
+    def monotonic(self) -> float:
+        return self.elapsed
+
+    def utc_now(self) -> datetime:
+        return self.started_at + timedelta(seconds=self.elapsed)
+
+    def advance(self, seconds: float) -> None:
+        self.elapsed += float(seconds)
+
+
+class LifecycleBudgetAdapter(FakeHermesAdapter):
+    def __init__(
+        self,
+        worktree: Path,
+        clock: LifecycleClock,
+        *,
+        builder_seconds: float,
+        builder_cost_usd: float,
+        verifier_cost_usd: float,
+    ) -> None:
+        super().__init__(working_root=worktree)
+        self.clock = clock
+        self.builder_seconds = float(builder_seconds)
+        self.builder_cost_usd = float(builder_cost_usd)
+        self.verifier_cost_usd = float(verifier_cost_usd)
+
+    def dispatch(self, manifest, *, heartbeat) -> RoleResult:
+        result = super().dispatch(manifest, heartbeat=heartbeat)
+        if manifest.role != "verifier":
+            self.clock.advance(self.builder_seconds)
+            return replace(result, cost_usd=self.builder_cost_usd)
+        return replace(result, cost_usd=self.verifier_cost_usd)
+
+
+class ProviderFallbackCostAdapter(FakeHermesAdapter):
+    def __init__(self, worktree: Path) -> None:
+        super().__init__(working_root=worktree)
+
+    def dispatch(self, manifest, *, heartbeat) -> RoleResult:
+        self.received.append(manifest)
+        heartbeat()
+        if manifest.role == "builder" and manifest.provider == "opencode_go":
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status="BLOCKED",
+                provider=manifest.provider,
+                model=manifest.model,
+                verdict="BLOCKED",
+                error_class="provider_unavailable",
+                error_detail="preferred provider failed after usage",
+                cost_usd=0.8,
+            )
+        if manifest.role == "builder":
+            (self.working_root / "result.txt").write_text(
+                "fallback delivered\n",
+                encoding="utf-8",
+            )
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=COMPLETED,
+                provider=manifest.provider,
+                model=manifest.model,
+                verdict="PASS",
+                evidence=("fallback delivered result.txt",),
+                cost_usd=0.3,
+            )
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=COMPLETED,
+            provider=manifest.provider,
+            model=manifest.model,
+            verdict="PASS",
+            evidence=("result.txt independently verified",),
+            cost_usd=0.2,
+        )
+
+
+class PackageRestartCostAdapter(FakeHermesAdapter):
+    def __init__(self, worktree: Path) -> None:
+        super().__init__(working_root=worktree)
+
+    def dispatch(self, manifest, *, heartbeat) -> RoleResult:
+        self.received.append(manifest)
+        heartbeat()
+        if manifest.role == "builder":
+            (self.working_root / "result.txt").write_text(
+                "first attempt\n",
+                encoding="utf-8",
+            )
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=COMPLETED,
+                provider=manifest.provider,
+                model=manifest.model,
+                verdict="PASS",
+                evidence=("first attempt produced result.txt",),
+                cost_usd=0.5,
+            )
+        if (
+            manifest.role == "verifier"
+            and manifest.attempt_id.endswith(":a1")
+        ):
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=COMPLETED,
+                provider=manifest.provider,
+                model=manifest.model,
+                verdict="FAIL",
+                evidence=("first attempt requires repair",),
+                cost_usd=0.3,
+            )
+        if manifest.role == "repair":
+            (self.working_root / "result.txt").write_text(
+                "second attempt\n",
+                encoding="utf-8",
+            )
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=COMPLETED,
+                provider=manifest.provider,
+                model=manifest.model,
+                verdict="PASS",
+                evidence=("second attempt repaired result.txt",),
+                cost_usd=0.3,
+            )
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=COMPLETED,
+            provider=manifest.provider,
+            model=manifest.model,
+            verdict="PASS",
+            evidence=("second attempt independently verified",),
+            cost_usd=0.0,
+        )
+
+
+def lifecycle_package(
+    database: FoundryDatabase,
+    repository: Path,
+    *,
+    package_id: str,
+    duration_seconds: int,
+    deadline: str | None,
+    cost_budget_usd: float | None,
+    effect_action_key: str | None = None,
+    owner_constraints: tuple[str, ...] = (),
+    required_tests: tuple[str, ...] = (),
+) -> WorkPackage:
+    source_sha = git_out("rev-parse", "HEAD", cwd=repository)
+    branch_name = git_out("branch", "--show-current", cwd=repository)
+    package = WorkPackage(
+        package_id=package_id,
+        parent_objective_id="objective-1",
+        mission_id="mission-1",
+        step_id="step-1",
+        role="builder",
+        capability="write_registered_worktree_files",
+        bounded_goal="deliver result.txt",
+        acceptance_criteria=("result.txt is verified",),
+        source_sha=source_sha,
+        repository_id="resource-1",
+        branch_name=branch_name,
+        worktree_path=str(repository),
+        allowed_paths=("result.txt",),
+        expected_artifacts=("result.txt",),
+        duration_seconds=duration_seconds,
+        cost_budget_usd=cost_budget_usd,
+        deadline=deadline,
+        effect_action_key=effect_action_key,
+        owner_constraints=owner_constraints,
+        required_tests=required_tests,
+    )
+    create_work_package(database, package)
+    common_dir = Path(
+        git_out("rev-parse", "--git-common-dir", cwd=repository)
+    )
+    if not common_dir.is_absolute():
+        common_dir = (repository / common_dir).resolve()
+    source_repository = common_dir.parent.resolve()
+    source_git_dir = Path(
+        git_out("rev-parse", "--git-dir", cwd=source_repository)
+    )
+    if not source_git_dir.is_absolute():
+        source_git_dir = (source_repository / source_git_dir).resolve()
+    worktree_git_dir = Path(
+        git_out("rev-parse", "--git-dir", cwd=repository)
+    )
+    if not worktree_git_dir.is_absolute():
+        worktree_git_dir = (repository / worktree_git_dir).resolve()
+    prepared = WorktreePreparation(
+        package_id=package.package_id,
+        resource_id=package.repository_id,
+        source_repository=str(source_repository),
+        worktree_path=str(repository.resolve()),
+        branch_name=branch_name,
+        base_sha=source_sha,
+        claim_id=f"claim:{package.package_id}:test",
+        repository_common_dir=str(common_dir),
+        source_git_dir=str(source_git_dir),
+        worktree_git_dir=str(worktree_git_dir),
+    )
+    database.append(Event.create(
+        "workforce.worktree_prepared",
+        prepared.to_payload(),
+        source_type="test",
+        source_id="test-suite",
+        correlation_id=package.package_id,
+        idempotency_key=f"workforce.worktree_prepared:{package.package_id}",
+    ))
+    return package
+
+
+def record_bound_workforce_session(
+    database: FoundryDatabase,
+    package: WorkPackage,
+    *,
+    attempt: int,
+    status: str = "STARTING",
+) -> str:
+    session_id = f"workforce:{package.package_id}:a{attempt}"
+    started = WorkerSession(
+        session_id=session_id,
+        package_id=package.package_id,
+        run_id=session_id,
+        attempt=attempt,
+        framework="PENDING",
+        provider="PENDING",
+        model="PENDING",
+        status="STARTING",
+        result={
+            "package_hash": package.content_hash(),
+            "resource_id": package.repository_id,
+            "claim_id": f"claim:{package.package_id}",
+            "mission_step_contract_id": f"contract:{package.package_id}",
+            "mission_step_contract_hash": "c" * 64,
+        },
+    )
+    database.append(Event.create(
+        "workforce.session_bound",
+        {
+            **started.to_payload(),
+            "expected_session_version": 0,
+            "session_version": 1,
+        },
+        source_type="supervisor",
+        source_id="workforce-gateway",
+        correlation_id=package.package_id,
+        idempotency_key=f"workforce.session_bound:{session_id}",
+    ))
+    if status != "STARTING":
+        finished = replace(
+            started,
+            status=status,
+            finished_at=isoformat(),
+        )
+        database.append(Event.create(
+            "workforce.session_state_changed",
+            {
+                **finished.to_payload(),
+                "expected_session_version": 1,
+                "session_version": 2,
+            },
+            source_type="supervisor",
+            source_id="workforce-gateway",
+            correlation_id=package.package_id,
+            idempotency_key=(
+                f"workforce.session_state_changed:{session_id}:{status}"
+            ),
+        ))
+    return session_id
+
+
+def record_result_contract(database: FoundryDatabase) -> MissionStepContract:
+    contract = MissionStepContract(
+        mission_id="mission-1",
+        step_id="step-1",
+        version=1,
+        resource_id="resource-1",
+        capability="write_registered_worktree_files",
+        target_relative_path="result.txt",
+        instructions="build result.txt for the fake mission",
+        expected_effects=("create result.txt",),
+        rollback={"kind": "delete_created_file"},
+        verification_criteria=("result.txt is independently verified",),
+        expected_artifacts=("result.txt",),
+    )
+    record_step_contract(database, contract)
+    return contract
+
+
+def priced_candidate(
+    provider: str = "opencode_go",
+    *,
+    cost_usd: float = 0.1,
+) -> ProviderRouteCandidate:
+    return ProviderRouteCandidate(
+        provider=provider,
+        model="muse-spark-1.2-contributor",
+        capabilities=(
+            "code",
+            "tools",
+            "artifact_inspection",
+            "adversarial_verification",
+            "tests",
+        ),
+        task_classes=("*",),
+        readiness="READY",
+        health="READY",
+        auth_state="READY",
+        availability="AVAILABLE",
+        noninteractive_allowed=True,
+        cost_usd=cost_usd,
+    )
+
+
 def step_kwargs(**overrides):
     values = {
         "mission_id": "mission-1",
@@ -193,6 +544,1333 @@ def test_unknown_capability_rejected_before_dispatch(tmp_path):
         loop.run_step(**step_kwargs(capability="teleport_into_canonical_db"))
 
     assert len(adapter.received) == 0  # nothing was dispatched
+
+
+def test_workforce_effect_identity_reaches_canonical_dispatch(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    adapter = FakeHermesAdapter(working_root=repository)
+    effect_action_key = "effect:workforce:package-1"
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-1",
+        duration_seconds=300,
+        deadline=None,
+        cost_budget_usd=None,
+        effect_action_key=effect_action_key,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+    ).run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-1:a1",
+            "allowed_paths": ["result.txt"],
+            "effect_action_key": effect_action_key,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    builder = next(
+        manifest for manifest in adapter.received
+        if manifest.role == "builder"
+    )
+    assert builder.effect_action_key == effect_action_key
+
+
+def test_workforce_uses_durable_deadline_and_owner_constraints_when_omitted(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    deadline = isoformat(clock.utc_now() + timedelta(minutes=5))
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-durable-authority",
+        duration_seconds=300,
+        deadline=deadline,
+        cost_budget_usd=None,
+        owner_constraints=(
+            "preserve README.md",
+            "do not expand beyond result.txt",
+        ),
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        lambda *_args, **_kwargs: repository,
+    )
+    adapter = FakeHermesAdapter(working_root=repository)
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-durable-authority:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    builder = next(
+        manifest for manifest in adapter.received
+        if manifest.role == "builder"
+    )
+    assert deadline in builder.instructions
+    assert "preserve README.md" in builder.instructions
+    assert "do not expand beyond result.txt" in builder.instructions
+
+
+def test_workforce_rejects_caller_deadline_and_constraint_drift(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-authority-drift",
+        duration_seconds=300,
+        deadline=isoformat(clock.utc_now() + timedelta(minutes=5)),
+        cost_budget_usd=None,
+        owner_constraints=("preserve README.md",),
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        lambda *_args, **_kwargs: repository,
+    )
+    adapter = FakeHermesAdapter(working_root=repository)
+    loop = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    )
+    context = {
+        "package_id": package.package_id,
+        "package_hash": package.content_hash(),
+        "attempt_id": "workforce:package-authority-drift:a1",
+        "allowed_paths": ["result.txt"],
+        "duration_seconds": package.duration_seconds,
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="deadline does not match the immutable WorkPackage",
+    ):
+        loop.run_step(
+            **step_kwargs(expected_artifacts=("result.txt",)),
+            workforce_context={
+                **context,
+                "deadline": isoformat(
+                    clock.utc_now() + timedelta(minutes=10)
+                ),
+            },
+        )
+    with pytest.raises(
+        ValueError,
+        match="owner_constraints do not match the immutable WorkPackage",
+    ):
+        loop.run_step(
+            **step_kwargs(expected_artifacts=("result.txt",)),
+            workforce_context={
+                **context,
+                "owner_constraints": [
+                    "preserve README.md",
+                    "caller-added authority",
+                ],
+            },
+        )
+
+    assert adapter.received == []
+    assert database.row("missions", "mission_id", "mission-1")["state"] == (
+        "ACTION_SELECTION"
+    )
+    assert not [
+        event
+        for event in database.events()
+        if event.event_type == "agent_run.started"
+    ]
+
+
+def test_accepted_workforce_replay_preflights_every_package_fence(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    contract = record_result_contract(database)
+    clock = LifecycleClock()
+    deadline = isoformat(clock.utc_now() + timedelta(minutes=1))
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-accepted-replay",
+        duration_seconds=300,
+        deadline=deadline,
+        cost_budget_usd=None,
+        owner_constraints=("preserve README.md",),
+    )
+    alternate_package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-accepted-replay-alternate",
+        duration_seconds=300,
+        deadline=deadline,
+        cost_budget_usd=None,
+        owner_constraints=("different package authority",),
+    )
+    from jarvis_foundry.mission import loop as loop_module
+    from jarvis_foundry.workforce import worktrees
+
+    reject_worktree = {"value": False}
+    worktree_phases = []
+
+    def validate_worktree(*_args, **_kwargs):
+        worktree_phases.append(_kwargs.get("phase"))
+        if reject_worktree["value"]:
+            raise ValueError("accepted replay worktree contamination")
+        return repository
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        validate_worktree,
+    )
+    adapter = FakeHermesAdapter(working_root=repository)
+    loop = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    )
+    run_id = "workforce:package-accepted-replay:a1"
+    context = {
+        "package_id": package.package_id,
+        "package_hash": package.content_hash(),
+        "attempt_id": run_id,
+        "allowed_paths": ["result.txt"],
+        "duration_seconds": package.duration_seconds,
+    }
+    kwargs = step_kwargs(
+        run_id=run_id,
+        expected_artifacts=contract.expected_artifacts,
+        verification_criteria=list(contract.verification_criteria),
+    )
+
+    first = loop.run_step(**kwargs, workforce_context=context)
+    assert first.outcome == PASSED
+    assert database.row("missions", "mission_id", "mission-1")["state"] == (
+        "COMPLETE"
+    )
+    assert worktree_phases[:2] == [
+        "builder_admission",
+        "builder_admission",
+    ]
+    assert worktree_phases[-1] == "job_delta"
+    event_count = len(database.events())
+    replay_effects: list[str] = []
+
+    def unexpected_effect(name):
+        def fail(*_args, **_kwargs):
+            replay_effects.append(name)
+            raise AssertionError(
+                f"{name} ran before accepted replay preflight completed"
+            )
+
+        return fail
+
+    monkeypatch.setattr(
+        loop_module,
+        "commit_after_pass",
+        unexpected_effect("commit"),
+    )
+    monkeypatch.setattr(
+        loop_module,
+        "record_verification_acceptance",
+        unexpected_effect("acceptance"),
+    )
+    monkeypatch.setattr(
+        loop_module.AcceptanceGate,
+        "evaluate",
+        unexpected_effect("acceptance_gate"),
+    )
+    monkeypatch.setattr(
+        loop,
+        "_record_evidence",
+        unexpected_effect("evidence"),
+    )
+    monkeypatch.setattr(
+        loop,
+        "_continue_after_pass",
+        unexpected_effect("mission_advance"),
+    )
+
+    with pytest.raises(ValueError, match="package hash does not match"):
+        loop.run_step(
+            **kwargs,
+            commit_envelope=commit_envelope(repository),
+            workforce_context={**context, "package_hash": "0" * 64},
+        )
+    with pytest.raises(ValueError, match="step does not match"):
+        loop.run_step(
+            **{**kwargs, "step_id": "step-other"},
+            commit_envelope=commit_envelope(repository),
+            workforce_context=context,
+        )
+    with pytest.raises(ValueError, match="deadline does not match"):
+        loop.run_step(
+            **kwargs,
+            commit_envelope=commit_envelope(repository),
+            workforce_context={
+                **context,
+                "deadline": isoformat(
+                    clock.utc_now() + timedelta(minutes=10)
+                ),
+            },
+        )
+    with pytest.raises(ValueError, match="owner_constraints do not match"):
+        loop.run_step(
+            **kwargs,
+            commit_envelope=commit_envelope(repository),
+            workforce_context={
+                **context,
+                "owner_constraints": ["caller replacement"],
+            },
+        )
+    with pytest.raises(
+        ValueError,
+        match="lineage does not match the completed builder run",
+    ):
+        loop.run_step(
+            **kwargs,
+            commit_envelope=commit_envelope(repository),
+            workforce_context={
+                **context,
+                "package_id": alternate_package.package_id,
+                "package_hash": alternate_package.content_hash(),
+                "attempt_id": (
+                    "workforce:package-accepted-replay-alternate:a1"
+                ),
+            },
+        )
+    with pytest.raises(
+        ValueError,
+        match="requires complete package lineage",
+    ):
+        loop.run_step(
+            **kwargs,
+            commit_envelope=commit_envelope(repository),
+        )
+    worktree_phases.clear()
+    reject_worktree["value"] = True
+    with pytest.raises(ValueError, match="worktree contamination"):
+        loop.run_step(
+            **kwargs,
+            commit_envelope=commit_envelope(repository),
+            workforce_context=context,
+        )
+    assert worktree_phases == ["job_delta"]
+    reject_worktree["value"] = False
+    clock.advance(61)
+    expired = loop.run_step(
+        **kwargs,
+        commit_envelope=commit_envelope(repository),
+        workforce_context=context,
+    )
+
+    assert expired.outcome == BLOCKED_OUTCOME
+    assert "exhausted before accepted-run replay" in str(expired.reason)
+    assert replay_effects == []
+    assert len(database.events()) == event_count
+    assert database.row("missions", "mission_id", "mission-1")["state"] == (
+        "COMPLETE"
+    )
+
+
+def test_new_workforce_builder_preflights_strictly_before_state_transition(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-strict-builder-preflight",
+        duration_seconds=300,
+        deadline=None,
+        cost_budget_usd=None,
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    phases = []
+
+    def reject_worktree(*_args, **kwargs):
+        phases.append(kwargs.get("phase"))
+        raise worktrees.WorkforceResourceError(
+            "strict builder preflight rejected the checkout"
+        )
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        reject_worktree,
+    )
+    before_state = database.row("missions", "mission_id", "mission-1")[
+        "state"
+    ]
+    run_id = "workforce:package-strict-builder-preflight:a1"
+
+    with pytest.raises(
+        worktrees.WorkforceResourceError,
+        match="strict builder preflight",
+    ):
+        MissionLoop(
+            database,
+            router,
+            FakeHermesAdapter(working_root=repository),
+            policy=policy,
+        ).run_step(
+            **step_kwargs(
+                run_id=run_id,
+                expected_artifacts=("result.txt",),
+            ),
+            workforce_context={
+                "package_id": package.package_id,
+                "package_hash": package.content_hash(),
+                "attempt_id": run_id,
+                "allowed_paths": list(package.allowed_paths),
+                "duration_seconds": package.duration_seconds,
+            },
+        )
+
+    assert phases == ["builder_admission"]
+    assert database.row("missions", "mission_id", "mission-1")["state"] == (
+        before_state
+    )
+    assert not [
+        event
+        for event in database.events()
+        if event.event_type == "agent_run.started"
+        and event.payload.get("run_id") == run_id
+    ]
+
+
+def test_workforce_session_loss_recovery_preserves_job_delta_phase(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    contract = record_result_contract(database)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-session-loss-recovery",
+        duration_seconds=300,
+        deadline=None,
+        cost_budget_usd=None,
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    phases = []
+
+    def validate_worktree(*_args, **kwargs):
+        phases.append(kwargs.get("phase"))
+        return repository
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        validate_worktree,
+    )
+    prior_run_id = f"workforce:{package.package_id}:a1"
+    database.append(Event.create(
+        "agent_run.started",
+        {
+            "run_id": prior_run_id,
+            "mission_id": "mission-1",
+            "step_id": "step-1",
+            "role": "builder",
+            "provider": "opencode_go",
+            "model": "test-model",
+            "context_manifest_hash": "a" * 64,
+            "tool_policy": [],
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": prior_run_id,
+            "worktree_phase": "builder_admission",
+        },
+        source_type="supervisor",
+        source_id="role-dispatcher",
+        idempotency_key=f"agent_run.started:{prior_run_id}:opencode_go",
+    ))
+    database.append(Event.create(
+        "agent_run.failed",
+        {
+            "run_id": prior_run_id,
+            "failure_class": "heartbeat_timeout",
+        },
+        source_type="supervisor",
+        source_id="role-reaper",
+        idempotency_key=(
+            f"agent_run.failed:{prior_run_id}:heartbeat_timeout"
+        ),
+    ))
+    database.append_events([
+        Event.create(
+            "mission.state_changed",
+            {
+                "mission_id": "mission-1",
+                "state": "BLOCKED",
+                "next_action": "deliver feature X",
+                "reason": "session_lost",
+            },
+            source_type="supervisor",
+            source_id="role-reaper",
+            idempotency_key=(
+                "mission.state_changed:mission-1:BLOCKED:"
+                "session-loss-recovery-test"
+            ),
+        ),
+        Event.create(
+            "mission.state_changed",
+            {
+                "mission_id": "mission-1",
+                "state": "ACTION_SELECTION",
+                "next_action": "deliver feature X",
+                "reason": "resume_after_session_loss",
+            },
+            source_type="supervisor",
+            source_id="role-reaper",
+            idempotency_key=(
+                "mission.state_changed:mission-1:ACTION_SELECTION:"
+                "session-loss-recovery-test"
+            ),
+        ),
+    ])
+    adapter = FakeHermesAdapter(working_root=repository)
+    record_bound_workforce_session(
+        database,
+        package,
+        attempt=1,
+        status="FAILED",
+    )
+    fresh_run_id = record_bound_workforce_session(
+        database,
+        package,
+        attempt=2,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+    ).run_step(
+        **step_kwargs(
+            run_id=fresh_run_id,
+            expected_artifacts=contract.expected_artifacts,
+            verification_criteria=list(contract.verification_criteria),
+        ),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": fresh_run_id,
+            "allowed_paths": list(package.allowed_paths),
+            "duration_seconds": package.duration_seconds,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    assert phases[:2] == ["job_delta", "job_delta"]
+    assert adapter.received[0].role == "builder"
+    assert adapter.received[0].worktree_phase == "job_delta"
+
+
+def test_unbound_replacement_attempt_cannot_relax_builder_admission(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-unbound-replacement",
+        duration_seconds=300,
+        deadline=None,
+        cost_budget_usd=None,
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    phases = []
+
+    def reject_worktree(*_args, **kwargs):
+        phases.append(kwargs.get("phase"))
+        raise worktrees.WorkforceResourceError(
+            "replacement lacks canonical session binding"
+        )
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        reject_worktree,
+    )
+    run_id = f"workforce:{package.package_id}:a2"
+
+    with pytest.raises(
+        EventConflict,
+        match="no canonical session binding",
+    ):
+        MissionLoop(
+            database,
+            router,
+            FakeHermesAdapter(working_root=repository),
+            policy=policy,
+        ).run_step(
+            **step_kwargs(run_id=run_id),
+            workforce_context={
+                "package_id": package.package_id,
+                "package_hash": package.content_hash(),
+                "attempt_id": run_id,
+                "allowed_paths": list(package.allowed_paths),
+                "duration_seconds": package.duration_seconds,
+            },
+        )
+
+    assert phases == []
+
+
+def test_bound_reassignment_attempt_preserves_job_delta_without_reaper_reason(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-bound-reassignment",
+        duration_seconds=300,
+        deadline=None,
+        cost_budget_usd=None,
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    phases = []
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        lambda *_args, **kwargs: (
+            phases.append(kwargs.get("phase")) or repository
+        ),
+    )
+    record_bound_workforce_session(
+        database,
+        package,
+        attempt=1,
+        status="TERMINATED",
+    )
+    run_id = record_bound_workforce_session(
+        database,
+        package,
+        attempt=2,
+    )
+    adapter = FakeHermesAdapter(working_root=repository)
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+    ).run_step(
+        **step_kwargs(
+            run_id=run_id,
+            expected_artifacts=("result.txt",),
+        ),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": run_id,
+            "allowed_paths": list(package.allowed_paths),
+            "duration_seconds": package.duration_seconds,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    assert phases[:2] == ["job_delta", "job_delta"]
+    assert adapter.received[0].worktree_phase == "job_delta"
+
+
+def test_workforce_lineage_rejects_zero_attempt_ordinal(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    loop = MissionLoop(
+        database,
+        router,
+        FakeHermesAdapter(working_root=repository),
+        policy=policy,
+    )
+    run_id = "run-zero-attempt-ordinal"
+    provider = "opencode_go"
+    model = "test-model"
+    database.append(Event.create(
+        "provider.dispatch_attempted",
+        {
+            "run_id": run_id,
+            "mission_id": "mission-1",
+            "step_id": "step-1",
+            "role": "builder",
+            "package_id": "package-zero-attempt-ordinal",
+            "package_hash": "a" * 64,
+            "attempt_id": "workforce:package-zero-attempt-ordinal:a1",
+            "provider_id": provider,
+            "provider": provider,
+            "model_id": model,
+            "model": model,
+            "attempt_generation": 0,
+            "attempt_ordinal": 0,
+            "estimate_state": "UNAVAILABLE",
+            "estimated_cost_micros": None,
+            "estimated_cost_usd": None,
+        },
+        source_type=loop.dispatcher.source_type,
+        source_id=loop.dispatcher.source_id,
+        idempotency_key=(
+            f"provider.dispatch_attempted:{run_id}:0:0:{provider}:{model}"
+        ),
+    ))
+
+    with pytest.raises(ValueError, match="identity is not canonical"):
+        loop._workforce_lineage_for_run(run_id)
+
+
+@pytest.mark.parametrize(
+    ("error_class", "expect_wait"),
+    [
+        ("provider_effect_identity_mismatch", True),
+        ("provider_effect_reconciliation_required", True),
+        ("provider_unavailable", False),
+    ],
+)
+def test_effect_identity_mismatch_uses_effect_reconciliation_wait_only(
+    tmp_path,
+    monkeypatch,
+    error_class,
+    expect_wait,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    from jarvis_foundry.executive import continuous
+
+    scheduled = []
+    monkeypatch.setattr(
+        continuous,
+        "schedule_mission_provider_wait",
+        lambda *_args, **kwargs: scheduled.append(kwargs),
+    )
+    loop = MissionLoop(
+        database,
+        router,
+        FakeHermesAdapter(working_root=repository),
+        policy=policy,
+    )
+    effect_action_key = "effect:mission-loop:identity"
+    monkeypatch.setattr(
+        loop,
+        "_dispatch_with_lifecycle_deadline",
+        lambda **kwargs: RoleResult(
+            run_id=str(kwargs["run_id"]),
+            role=str(kwargs["role"]),
+            status="BLOCKED",
+            provider="opencode_go",
+            model="test-model",
+            verdict="BLOCKED",
+            error_class=error_class,
+            error_detail="provider effect identity requires reconciliation",
+            effect_action_key=effect_action_key,
+        ),
+    )
+
+    outcome = loop.run_step(
+        **step_kwargs(run_id=f"run-{error_class}"),
+    )
+
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert bool(scheduled) is expect_wait
+    if expect_wait:
+        assert scheduled[0]["error_class"] == error_class
+        assert scheduled[0]["effect_action_key"] == effect_action_key
+        assert scheduled[0]["provider_ids"] == ()
+
+
+def test_workforce_duration_and_cost_are_shared_with_verifier(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    adapter = LifecycleBudgetAdapter(
+        repository,
+        clock,
+        builder_seconds=4,
+        builder_cost_usd=0.4,
+        verifier_cost_usd=0.2,
+    )
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-budget",
+        duration_seconds=6,
+        deadline=isoformat(clock.utc_now() + timedelta(seconds=30)),
+        cost_budget_usd=1.0,
+    )
+    loop = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(priced_candidate(),),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    )
+
+    outcome = loop.run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-budget:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    builder, verifier = adapter.received
+    assert builder.duration_seconds == 6
+    assert verifier.duration_seconds == 2
+    assert verifier.budget_usd == pytest.approx(0.6)
+    assert "Absolute UTC deadline" in builder.instructions
+    assert package.deadline in builder.instructions
+
+
+def test_workforce_verifier_preserves_immutable_required_test_identity(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    from jarvis_foundry.workforce import worktrees
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        lambda *_args, **_kwargs: repository,
+    )
+    required_tests = ("jarvis-required-test",)
+    adapter = FakeHermesAdapter(
+        evidence=("[jarvis-test] jarvis-required-test exit=0",),
+        working_root=repository,
+    )
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-verifier-required-tests",
+        duration_seconds=30,
+        deadline=None,
+        cost_budget_usd=None,
+        required_tests=required_tests,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+    ).run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-verifier-required-tests:a1",
+            "allowed_paths": ["result.txt"],
+            "required_tests": list(required_tests),
+            "duration_seconds": package.duration_seconds,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    builder, verifier = adapter.received
+    assert builder.required_tests == required_tests
+    assert verifier.required_tests == required_tests
+
+
+def test_workforce_exact_decimal_cost_budget_reaches_verifier_pass(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    adapter = LifecycleBudgetAdapter(
+        repository,
+        clock,
+        builder_seconds=1,
+        builder_cost_usd=0.1,
+        verifier_cost_usd=0.2,
+    )
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-decimal-budget",
+        duration_seconds=10,
+        deadline=isoformat(clock.utc_now() + timedelta(seconds=30)),
+        cost_budget_usd=0.3,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(priced_candidate(),),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-decimal-budget:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+        },
+    )
+
+    assert outcome.outcome == PASSED
+    builder, verifier = adapter.received
+    assert verifier.budget_usd == pytest.approx(0.2)
+    cost_events = [
+        event.payload["cost_usd"]
+        for event in database.events()
+        if event.event_type == "provider.dispatch_cost_recorded"
+        and event.payload.get("package_id") == package.package_id
+    ]
+    assert cost_events == pytest.approx([0.1, 0.2])
+
+
+def test_workforce_context_deadline_blocks_verifier_after_builder(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    adapter = LifecycleBudgetAdapter(
+        repository,
+        clock,
+        builder_seconds=3,
+        builder_cost_usd=0.1,
+        verifier_cost_usd=0.0,
+    )
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-deadline",
+        duration_seconds=10,
+        deadline=isoformat(clock.utc_now() + timedelta(seconds=3)),
+        cost_budget_usd=1.0,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(priced_candidate(),),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-deadline:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+            "deadline": package.deadline,
+        },
+    )
+
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "exhausted before independent verification" in str(outcome.reason)
+    assert [manifest.role for manifest in adapter.received] == ["builder"]
+    assert package.deadline in adapter.received[0].instructions
+
+
+def test_observed_verifier_cost_cannot_exceed_package_budget(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    adapter = LifecycleBudgetAdapter(
+        repository,
+        clock,
+        builder_seconds=1,
+        builder_cost_usd=0.8,
+        verifier_cost_usd=0.3,
+    )
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-cost-overrun",
+        duration_seconds=10,
+        deadline=isoformat(clock.utc_now() + timedelta(seconds=30)),
+        cost_budget_usd=1.0,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(priced_candidate(),),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-cost-overrun:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+        },
+    )
+
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "observed cost exceeded" in str(outcome.reason)
+    verifier = next(
+        manifest for manifest in adapter.received
+        if manifest.role == "verifier"
+    )
+    assert verifier.budget_usd == pytest.approx(0.2)
+
+
+def test_provider_fallback_spend_is_included_in_builder_and_verifier_budget(
+    tmp_path,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    router = router.clone_with({
+        "builder": {
+            "preferred_provider": "opencode_go",
+            "fallbacks": ("vertex_ai",),
+        },
+    })
+    clock = LifecycleClock()
+    adapter = ProviderFallbackCostAdapter(repository)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-fallback-cost",
+        duration_seconds=30,
+        deadline=isoformat(clock.utc_now() + timedelta(minutes=5)),
+        cost_budget_usd=1.2,
+    )
+
+    outcome = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(
+            priced_candidate("opencode_go"),
+            priced_candidate("vertex_ai"),
+        ),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(
+            run_id="run-fallback-cost",
+            expected_artifacts=("result.txt",),
+        ),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-fallback-cost:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+        },
+    )
+
+    assert outcome.outcome == BLOCKED_OUTCOME
+    assert "observed cost exceeded" in str(outcome.reason)
+    builder_manifests = [
+        manifest for manifest in adapter.received
+        if manifest.role == "builder"
+    ]
+    assert [manifest.provider for manifest in builder_manifests] == [
+        "opencode_go",
+        "vertex_ai",
+    ]
+    verifier_manifest = next(
+        manifest for manifest in adapter.received
+        if manifest.role == "verifier"
+    )
+    assert verifier_manifest.budget_usd == pytest.approx(0.1)
+    builder_row = database.row("agent_runs", "run_id", "run-fallback-cost")
+    assert json.loads(builder_row["result_json"])["cost_usd"] == pytest.approx(1.1)
+
+
+def test_package_restart_carries_prior_builder_and_verifier_cost(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    clock = LifecycleClock()
+    adapter = PackageRestartCostAdapter(repository)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-restart-lifetime-cost",
+        duration_seconds=30,
+        deadline=isoformat(clock.utc_now() + timedelta(minutes=5)),
+        cost_budget_usd=1.0,
+    )
+    from jarvis_foundry.workforce import worktrees
+
+    monkeypatch.setattr(
+        worktrees,
+        "validate_execution_worktree",
+        lambda *_args, **_kwargs: repository,
+    )
+
+    first = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(priced_candidate(),),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(
+            run_id="workforce:package-restart-lifetime-cost:a1",
+            expected_artifacts=("result.txt",),
+        ),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-restart-lifetime-cost:a1",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+        },
+    )
+
+    assert first.outcome == FAILED
+    assert [manifest.role for manifest in adapter.received] == [
+        "builder",
+        "verifier",
+    ]
+    record_bound_workforce_session(
+        database,
+        package,
+        attempt=1,
+        status="FAILED",
+    )
+    record_bound_workforce_session(
+        database,
+        package,
+        attempt=2,
+    )
+
+    second = MissionLoop(
+        database,
+        router,
+        adapter,
+        policy=policy,
+        provider_candidates=(priced_candidate(),),
+        monotonic_clock=clock.monotonic,
+        utc_clock=clock.utc_now,
+    ).run_step(
+        **step_kwargs(
+            run_id="workforce:package-restart-lifetime-cost:a2",
+            expected_artifacts=("result.txt",),
+        ),
+        workforce_context={
+            "package_id": package.package_id,
+            "package_hash": package.content_hash(),
+            "attempt_id": "workforce:package-restart-lifetime-cost:a2",
+            "allowed_paths": ["result.txt"],
+            "duration_seconds": package.duration_seconds,
+            "cost_budget_usd": package.cost_budget_usd,
+        },
+    )
+
+    assert second.outcome == BLOCKED_OUTCOME
+    assert "workforce_cost_budget_exhausted" in str(second.reason)
+    assert [manifest.role for manifest in adapter.received] == [
+        "builder",
+        "verifier",
+        "repair",
+    ]
+    cost_events = [
+        event
+        for event in database.events()
+        if event.event_type == "provider.dispatch_cost_recorded"
+        and event.payload.get("package_id") == package.package_id
+    ]
+    assert [event.payload["cost_usd"] for event in cost_events] == [0.5, 0.3, 0.3]
+    repair_row = database.row(
+        "agent_runs",
+        "run_id",
+        "workforce:package-restart-lifetime-cost:a2",
+    )
+    assert repair_row["status"] == "FAILED"
+    assert repair_row["failure_class"] == "workforce_cost_budget_exhausted"
+
+
+def test_conflicting_campaign_and_workforce_effect_identities_fail_closed(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    database.append(Event.create(
+        "campaign.created",
+        {
+            "campaign_id": "campaign-1",
+            "objective_id": "objective-1",
+        },
+        source_type="test",
+        source_id="test-suite",
+        idempotency_key="campaign.created:campaign-1",
+    ))
+    from jarvis_foundry.executive import campaigns
+
+    monkeypatch.setattr(
+        campaigns,
+        "campaign_dispatch_context",
+        lambda *_args, **_kwargs: {
+            "objective_id": "objective-1",
+            "campaign_id": "campaign-1",
+            "child_id": "child-1",
+            "child_status": "RUNNING",
+            "routing_request": None,
+            "isolation_key": "campaign-1:child-1",
+            "effect_action_key": "effect:campaign:child-1",
+        },
+    )
+    adapter = FakeHermesAdapter(working_root=repository)
+
+    with pytest.raises(
+        ValueError,
+        match="campaign and workforce effect identities disagree",
+    ):
+        MissionLoop(
+            database,
+            router,
+            adapter,
+            policy=policy,
+        ).run_step(
+            **step_kwargs(),
+            workforce_context={
+                "package_id": "package-1",
+                "package_hash": "1" * 64,
+                "attempt_id": "workforce:package-1:a1",
+                "allowed_paths": ["result.txt"],
+                "effect_action_key": "effect:workforce:package-1",
+            },
+        )
+
+    assert adapter.received == []
+
+
+def test_invalid_workforce_package_is_rejected_before_durable_admission(
+    tmp_path,
+    monkeypatch,
+):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    package = lifecycle_package(
+        database,
+        repository,
+        package_id="package-preflight",
+        duration_seconds=300,
+        deadline=None,
+        cost_budget_usd=1.0,
+    )
+    from jarvis_foundry.executive import campaigns
+
+    campaign_transitions = []
+    monkeypatch.setattr(
+        campaigns,
+        "campaign_dispatch_context",
+        lambda *_args, **_kwargs: {
+            "objective_id": "objective-preflight",
+            "campaign_id": "campaign-preflight",
+            "child_id": "child-preflight",
+            "child_status": "READY",
+            "routing_request": RoutingRequest(task_type="builder"),
+            "isolation_key": "campaign-preflight:child-preflight",
+            "effect_action_key": None,
+        },
+    )
+    monkeypatch.setattr(
+        campaigns,
+        "record_child_state",
+        lambda *_args, **kwargs: campaign_transitions.append(kwargs),
+    )
+    adapter = FakeHermesAdapter(working_root=repository)
+    before_state = database.row("missions", "mission_id", "mission-1")["state"]
+
+    with pytest.raises(
+        ValueError,
+        match="workforce package hash does not match",
+    ):
+        MissionLoop(
+            database,
+            router,
+            adapter,
+            policy=policy,
+            provider_candidates=(priced_candidate(),),
+        ).run_step(
+            **step_kwargs(),
+            run_id="workforce:package-preflight:a1",
+            workforce_context={
+                "package_id": package.package_id,
+                "package_hash": "1" * 64,
+                "attempt_id": "workforce:package-preflight:a1",
+                "allowed_paths": list(package.allowed_paths),
+                "duration_seconds": package.duration_seconds,
+                "cost_budget_usd": package.cost_budget_usd,
+            },
+        )
+
+    assert database.row("missions", "mission_id", "mission-1")["state"] == (
+        before_state
+    )
+    assert campaign_transitions == []
+    assert adapter.received == []
+    assert not [
+        event
+        for event in database.events()
+        if event.event_type == "agent_run.started"
+        and event.payload.get("run_id") == "workforce:package-preflight:a1"
+    ]
 
 
 def test_authenticated_redirect_reaches_mission_loop_dispatch(tmp_path):

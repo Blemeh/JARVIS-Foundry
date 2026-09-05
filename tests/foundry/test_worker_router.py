@@ -54,6 +54,46 @@ def test_ambiguous_task_routes_to_hermes(tmp_path):
     assert decision.task_classification == "ambiguous_diagnosis"
 
 
+def test_eligible_evidence_backed_preference_is_honored(tmp_path):
+    router = ready_router(tmp_path)
+    step = contract(
+        tmp_path,
+        bounded=True,
+        explicit_acceptance=True,
+        tests_available=True,
+        narrow_scope=True,
+        preferred_worker=WORKER_HERMES,
+        worker_preference_evidence=("suitability:builder:python",),
+    )
+
+    decision = router.route(step)
+
+    assert decision.selected_worker == WORKER_HERMES
+    assert "preference accepted" in decision.reason
+    assert "preferred_worker=hermes" in decision.evidence_considered
+
+
+def test_preference_cannot_override_task_safety_or_readiness(tmp_path):
+    ready = ready_router(tmp_path)
+    ambiguous = contract(
+        tmp_path,
+        ambiguous=True,
+        preferred_worker=WORKER_OPENHANDS,
+        worker_preference_evidence=("suitability:ambiguous",),
+    )
+    unready = WorkerRouter()
+    bounded = contract(
+        tmp_path,
+        bounded=True,
+        explicit_acceptance=True,
+        preferred_worker=WORKER_OPENHANDS,
+        worker_preference_evidence=("suitability:bounded",),
+    )
+
+    assert ready.route(ambiguous).selected_worker == WORKER_HERMES
+    assert unready.route(bounded).selected_worker == WORKER_HERMES
+
+
 def test_bounded_task_routes_to_hermes_when_openhands_not_ready(tmp_path):
     router = WorkerRouter()  # OpenHands NOT_READY by default
     step = contract(tmp_path, bounded=True, explicit_acceptance=True,
@@ -96,7 +136,35 @@ def test_deterministic_repeated_decision(tmp_path):
     assert first.selected_worker == second.selected_worker
     assert first.reason == second.reason
     assert first.evidence_considered == second.evidence_considered
-    assert first.route_decision_id != second.route_decision_id
+    assert first.route_decision_id == second.route_decision_id
+
+
+def test_decision_id_changes_with_readiness_or_policy_input(tmp_path):
+    step = contract(tmp_path, bounded=True, explicit_acceptance=True,
+                    tests_available=True, narrow_scope=True)
+    baseline = ready_router(tmp_path).route(step)
+
+    changed_readiness = WorkerRouter()
+    changed_readiness.mark_ready(
+        WORKER_OPENHANDS,
+        state=READY,
+        note="different containment proof",
+        evidence=("different-proof",),
+    )
+    changed_policy = WorkerRouter(policy_version="hybrid-worker-routing-v2")
+    changed_policy.mark_ready(
+        WORKER_OPENHANDS,
+        state=READY,
+        note="containment proven in test",
+        evidence=("test-containment-proof",),
+    )
+
+    assert baseline.route_decision_id != changed_readiness.route(
+        step
+    ).route_decision_id
+    assert baseline.route_decision_id != changed_policy.route(
+        step
+    ).route_decision_id
 
 
 def test_route_decision_is_fully_auditable(tmp_path):

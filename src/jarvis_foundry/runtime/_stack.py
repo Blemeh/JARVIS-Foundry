@@ -7,6 +7,7 @@ the config carries positive containment evidence — never by default.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -172,9 +173,39 @@ def _resolve_root(raw: str | None, run_id: str, *, kind: str, home: Path) -> Pat
         resolved_home = home.resolve()
         if resolved_home == live_hermes or live_hermes in resolved_home.parents:
             base = install_root() / "runtime" / "worker-runtime"
-    root = base / f"{kind}-{run_id}"
+    root = base / f"{kind}-{_filesystem_component(run_id)}"
     root.mkdir(parents=True, exist_ok=True)
     return root.resolve()
+
+
+def _filesystem_component(value: str) -> str:
+    """Map a durable identity to one portable, collision-resistant name."""
+
+    text = str(value)
+    sanitized = "".join(
+        character
+        if character.isalnum() or character in {"-", "_", "."}
+        else "-"
+        for character in text
+    ).strip(" .-_")
+    reserved = {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{index}" for index in range(1, 10)),
+        *(f"LPT{index}" for index in range(1, 10)),
+    }
+    unchanged = (
+        sanitized == text
+        and len(sanitized) <= 96
+        and sanitized.split(".", 1)[0].upper() not in reserved
+    )
+    if unchanged:
+        return sanitized
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    prefix = (sanitized or "identity")[:72].rstrip(" .-_") or "identity"
+    return f"{prefix}-{digest}"
 
 
 def _prepare_hermes_home(home: Path, hermes: dict[str, Any]) -> None:
@@ -205,6 +236,7 @@ def build_worker_stack(
     config: WorkerRuntimeConfig,
     *,
     run_id: str,
+    pid_table: str | Path | None = None,
 ) -> WorkerStack:
     """Construct router + registry + bridge from ``config`` (run-scoped).
 
@@ -213,8 +245,12 @@ def build_worker_stack(
     """
     run_root = _resolve_root(config.runtime_state_root, run_id, kind="run", home=paths.home)
     stop_path = config.resolve_stop_path(paths.home)
-    pid_table = paths.home / "adapter_worker_pids.json"
-    workers = WorkerController(database)
+    pid_table_path = (
+        Path(pid_table).expanduser().resolve()
+        if pid_table is not None
+        else (paths.home / "adapter_worker_pids.json").resolve()
+    )
+    workers = WorkerController(database, pid_table=pid_table_path)
     provider_candidates = _provider_candidates(database, config)
     provider_settings_by_id = {
         item.provider: item for item in config.provider_settings_pool
@@ -272,7 +308,7 @@ def build_worker_stack(
                 timeout_seconds=int(hermes.get("timeout_seconds", 900)),
                 python_exe=str(python_exe),
                 stop_path=stop_path,
-                pid_table=pid_table,
+                pid_table=pid_table_path,
                 workers=workers,
                 provider_settings=config.provider_settings,
                 provider_settings_by_id=provider_settings_by_id,
@@ -293,7 +329,7 @@ def build_worker_stack(
                 enabled=True,
                 timeout_seconds=int(openhands.get("timeout_seconds", 900)),
                 stop_path=stop_path,
-                pid_table=pid_table,
+                pid_table=pid_table_path,
                 workers=workers,
                 provider_settings=config.provider_settings,
                 provider_settings_by_id=provider_settings_by_id,
@@ -346,7 +382,7 @@ def build_worker_stack(
     return WorkerStack(
         bridge=bridge, router=router, registry=registry,
         disposable_root=run_root, enabled_frameworks=tuple(enabled),
-        stop_path=stop_path, pid_table=pid_table, workers=workers,
+        stop_path=stop_path, pid_table=pid_table_path, workers=workers,
         provider_candidates=provider_candidates,
         mcp_backend=mcp_backend,
     )

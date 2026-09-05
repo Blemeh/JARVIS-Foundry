@@ -389,15 +389,26 @@ def unregister_adapter_pid(path: Path, run_id: str) -> None:
 class WorkerController:
     """Spawn, track, heartbeat, and terminate bounded worker subprocesses."""
 
-    def __init__(self, database: FoundryDatabase, *, lease_seconds: int = 900) -> None:
+    def __init__(
+        self,
+        database: FoundryDatabase,
+        *,
+        lease_seconds: int = 900,
+        pid_table: str | Path | None = None,
+    ) -> None:
         self.database = database
         self.leases = LeaseManager(database)
         self.lease_seconds = lease_seconds
+        self._pid_table = (
+            Path(pid_table).expanduser().resolve()
+            if pid_table is not None
+            else None
+        )
         self._processes: dict[str, subprocess.Popen] = {}
         self._leased: set[str] = set()
 
     def pid_table_path(self) -> Path:
-        return adapter_pid_table_path(self.database)
+        return self._pid_table or adapter_pid_table_path(self.database)
 
     def spawn(
         self,

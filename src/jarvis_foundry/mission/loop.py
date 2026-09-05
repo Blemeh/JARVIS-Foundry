@@ -21,12 +21,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
 
+from ..clock import parse, utc_now
 from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
@@ -70,6 +75,18 @@ PASSED = "PASSED"
 FAILED = "FAILED"  # outcome constant; distinct from roles.results.FAILED status
 BLOCKED_OUTCOME = "BLOCKED"
 WAITING_OUTCOME = "WAITING"
+_COST_QUANTUM = Decimal("0.000001")
+_COST_MICROS_PER_USD = 1_000_000
+
+
+def _cost_micros(value: float) -> int:
+    observed = Decimal(str(value))
+    quantized = observed.quantize(_COST_QUANTUM, rounding=ROUND_HALF_UP)
+    return int(quantized * _COST_MICROS_PER_USD)
+
+
+def _cost_usd(value: int) -> float:
+    return float(Decimal(int(value)) / Decimal(_COST_MICROS_PER_USD))
 
 
 def _hash_target(target: Path, *, limit: int = 50) -> dict[str, str]:
@@ -131,6 +148,8 @@ class MissionLoop:
         denied_providers: tuple[str, ...] = (),
         provider_budget_usd: float = 0.0,
         provider_routing_constraints: dict[str, Any] | None = None,
+        monotonic_clock: Callable[[], float] | None = None,
+        utc_clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.database = database
         self.router = router
@@ -153,6 +172,8 @@ class MissionLoop:
         self.policy = policy
         self.max_repairs = max_repairs
         self.fault_hook = fault_hook
+        self._monotonic = monotonic_clock or time.monotonic
+        self._utc_now = utc_clock or utc_now
         if stop_path is not None:
             self.stop_path = Path(stop_path)
         elif policy is not None:
@@ -160,6 +181,24 @@ class MissionLoop:
         else:
             # Same identity as jarvis stop / Supervisor: {foundry_home}/EMERGENCY_STOP
             self.stop_path = Path(database.path).resolve().parent / "EMERGENCY_STOP"
+
+    def _dispatch_with_lifecycle_deadline(
+        self,
+        *,
+        deadline_monotonic: float | None,
+        **dispatch_kwargs: Any,
+    ) -> RoleResult:
+        adapter = self.dispatcher.adapter
+        run_id = str(dispatch_kwargs["run_id"])
+        setter = getattr(adapter, "set_lifecycle_deadline", None)
+        clearer = getattr(adapter, "clear_lifecycle_deadline", None)
+        if deadline_monotonic is not None and callable(setter):
+            setter(run_id, deadline_monotonic)
+        try:
+            return self.dispatcher.dispatch(**dispatch_kwargs)
+        finally:
+            if deadline_monotonic is not None and callable(clearer):
+                clearer(run_id)
 
     def _stop_reason(self, mission_id: str | None = None) -> str | None:
         identities = None
@@ -245,6 +284,57 @@ class MissionLoop:
             mission_id, "ACTION_SELECTION",
             next_action=mission.get("next_action"),
             run_id=f"resume-stop-{mission_id}",
+        )
+
+    def _resuming_workforce_delta_after_session_loss(
+        self,
+        *,
+        mission_id: str,
+        step_id: str,
+        package_id: str,
+        package_hash: str,
+    ) -> bool:
+        latest_transition = next(
+            (
+                event
+                for event in reversed(self.database.events(
+                    event_types=("mission.state_changed",),
+                    readonly=True,
+                ))
+                if str(event.payload.get("mission_id") or "") == mission_id
+            ),
+            None,
+        )
+        if not (
+            latest_transition is not None
+            and latest_transition.source_type == "supervisor"
+            and latest_transition.source_id == "role-reaper"
+            and str(latest_transition.payload.get("state") or "")
+            == "ACTION_SELECTION"
+            and str(latest_transition.payload.get("reason") or "")
+            == "resume_after_session_loss"
+        ):
+            return False
+        with self.database.connect(readonly=True) as connection:
+            failed_rows = connection.execute(
+                "SELECT run_id FROM agent_runs "
+                "WHERE mission_id = ? AND step_id = ? "
+                "AND role IN ('builder', 'repair') AND status = 'FAILED'",
+                (mission_id, step_id),
+            ).fetchall()
+        failed_run_ids = {str(row["run_id"]) for row in failed_rows}
+        if not failed_run_ids:
+            return False
+        return any(
+            event.source_type == "supervisor"
+            and event.source_id == "role-dispatcher"
+            and str(event.payload.get("run_id") or "") in failed_run_ids
+            and str(event.payload.get("package_id") or "") == package_id
+            and str(event.payload.get("package_hash") or "") == package_hash
+            for event in self.database.events(
+                event_types=("agent_run.started",),
+                readonly=True,
+            )
         )
 
     @staticmethod
@@ -468,19 +558,76 @@ class MissionLoop:
         without an old idempotency key suppressing the projection update.
         """
 
+        from ..executive.continuous import provider_resume_epoch
+
+        return provider_resume_epoch(
+            self.database,
+            mission_id=mission_id,
+            run_id=run_id,
+        )
+
+    def _workforce_lineage_for_run(
+        self,
+        run_id: str,
+    ) -> tuple[str, str, str] | None:
+        """Recover one canonical workforce lineage from provider attempts."""
+
+        observed: tuple[str, str, str] | None = None
         for event in self.database.events(
             readonly=True,
-            newest_first=True,
-            limit=1000,
-            event_type_prefixes=("mission.provider_wait_resumed",),
+            event_types=("provider.dispatch_attempted",),
         ):
             payload = event.payload
+            if str(payload.get("run_id") or "") != run_id:
+                continue
+            lineage = (
+                str(payload.get("package_id") or ""),
+                str(payload.get("package_hash") or ""),
+                str(payload.get("attempt_id") or ""),
+            )
+            if not any(lineage):
+                continue
+            if not all(lineage):
+                raise ValueError(
+                    "accepted replay provider attempt has incomplete "
+                    "workforce lineage"
+                )
+            provider = str(
+                payload.get("provider") or payload.get("provider_id") or ""
+            )
+            model = str(
+                payload.get("model") or payload.get("model_id") or ""
+            )
+            generation = payload.get("attempt_generation")
+            ordinal = payload.get("attempt_ordinal")
             if (
-                str(payload.get("mission_id") or "") == mission_id
-                and str(payload.get("run_id") or "") == run_id
+                event.source_type != self.dispatcher.source_type
+                or event.source_id != self.dispatcher.source_id
+                or not isinstance(generation, int)
+                or isinstance(generation, bool)
+                or not isinstance(ordinal, int)
+                or isinstance(ordinal, bool)
+                or generation < 0
+                or ordinal < 1
+                or not provider
+                or not model
+                or event.idempotency_key
+                != (
+                    f"provider.dispatch_attempted:{run_id}:{generation}:"
+                    f"{ordinal}:{provider}:{model}"
+                )
             ):
-                return str(payload.get("wait_id") or "") or None
-        return None
+                raise ValueError(
+                    "accepted replay provider attempt identity is not "
+                    "canonical"
+                )
+            if observed is not None and observed != lineage:
+                raise ValueError(
+                    "accepted replay provider attempts changed workforce "
+                    "lineage"
+                )
+            observed = lineage
+        return observed
 
     def _record_evidence(
         self,
@@ -553,6 +700,7 @@ class MissionLoop:
         verification_criteria: list[str] | None = None,
         expected_artifacts: tuple[str, ...] = (),
         forbidden_paths: tuple[str, ...] = (),
+        workforce_context: Mapping[str, Any] | None = None,
     ) -> StepOutcome:
         """One dispatch + verify cycle for a mission step.
 
@@ -560,6 +708,167 @@ class MissionLoop:
         repair budget remains — the caller continues with
         ``run_step(..., run_id=<repair>)`` or calls ``run_until_settled``.
         """
+        workforce = dict(workforce_context or {})
+        unknown_workforce_fields = set(workforce) - {
+            "package_id",
+            "package_hash",
+            "attempt_id",
+            "allowed_paths",
+            "required_tests",
+            "duration_seconds",
+            "cost_budget_usd",
+            "deadline",
+            "owner_constraints",
+            "effect_action_key",
+            "worker_preference",
+            "worker_preference_evidence",
+        }
+        if unknown_workforce_fields:
+            raise ValueError(
+                "unsupported workforce context fields: "
+                + ", ".join(sorted(unknown_workforce_fields))
+            )
+        package_id = str(workforce.get("package_id") or "") or None
+        package_hash = str(workforce.get("package_hash") or "") or None
+        attempt_id = str(workforce.get("attempt_id") or "") or None
+        workforce_lineage = (package_id, package_hash, attempt_id)
+        if any(workforce_lineage) and not all(workforce_lineage):
+            raise ValueError(
+                "workforce context requires package_id, package_hash, and attempt_id"
+            )
+        workforce_active = all(workforce_lineage)
+        requested_workforce_deadline_text = (
+            str(workforce.get("deadline") or "").strip() or None
+        )
+        if requested_workforce_deadline_text is not None and not workforce_active:
+            raise ValueError(
+                "workforce deadline requires complete package lineage"
+            )
+        try:
+            requested_workforce_deadline = (
+                parse(requested_workforce_deadline_text)
+                if requested_workforce_deadline_text is not None
+                else None
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "workforce deadline must be an ISO-8601 timestamp"
+            ) from error
+        workforce_deadline_text = requested_workforce_deadline_text
+        workforce_deadline = requested_workforce_deadline
+        workforce_entry_utc = (
+            self._utc_now() if workforce_active else None
+        )
+        workforce_entry_monotonic = (
+            self._monotonic() if workforce_active else None
+        )
+        raw_allowed_paths = workforce.get("allowed_paths") or ()
+        if not isinstance(raw_allowed_paths, (tuple, list)):
+            raise ValueError("workforce allowed_paths must be a sequence")
+        workforce_allowed_paths = tuple(
+            str(value).strip() for value in raw_allowed_paths
+        )
+        if any(not value for value in workforce_allowed_paths):
+            raise ValueError("workforce allowed_paths contains an empty path")
+        raw_required_tests = workforce.get("required_tests") or ()
+        if not isinstance(raw_required_tests, (tuple, list)):
+            raise ValueError("workforce required_tests must be a sequence")
+        workforce_required_tests = tuple(
+            str(value).strip() for value in raw_required_tests
+        )
+        if any(not value for value in workforce_required_tests):
+            raise ValueError("workforce required_tests contains an empty command")
+        owner_constraints_echoed = (
+            workforce.get("owner_constraints") is not None
+        )
+        raw_owner_constraints = workforce.get("owner_constraints") or ()
+        if not isinstance(raw_owner_constraints, (tuple, list)):
+            raise ValueError("workforce owner_constraints must be a sequence")
+        workforce_owner_constraints = tuple(
+            str(value).strip() for value in raw_owner_constraints
+        )
+        if any(not value for value in workforce_owner_constraints):
+            raise ValueError(
+                "workforce owner_constraints contains an empty constraint"
+            )
+        if owner_constraints_echoed and not workforce_active:
+            raise ValueError(
+                "workforce owner_constraints require complete package lineage"
+            )
+        workforce_duration_seconds = int(
+            workforce["duration_seconds"]
+            if "duration_seconds" in workforce
+            else 300
+        )
+        if not 1 <= workforce_duration_seconds <= 86_400:
+            raise ValueError(
+                "workforce duration_seconds is outside [1, 86400]"
+            )
+        raw_cost_budget = workforce.get("cost_budget_usd")
+        workforce_package_budget_usd = (
+            None
+            if raw_cost_budget is None
+            else float(raw_cost_budget)
+        )
+        if (
+            workforce_package_budget_usd is not None
+            and (
+                not math.isfinite(workforce_package_budget_usd)
+                or workforce_package_budget_usd <= 0
+            )
+        ):
+            raise ValueError(
+                "workforce cost_budget_usd must be finite and positive"
+            )
+        bounded_budgets = [
+            value
+            for value in (
+                float(self.provider_budget_usd),
+                workforce_package_budget_usd,
+            )
+            if value is not None and value > 0
+        ]
+        workforce_budget_usd = (
+            min(bounded_budgets) if bounded_budgets else 0.0
+        )
+        workforce_cost_limit_usd = (
+            workforce_budget_usd
+            if workforce_active and workforce_budget_usd > 0
+            else None
+        )
+        workforce_cost_limit_micros = (
+            _cost_micros(workforce_cost_limit_usd)
+            if workforce_cost_limit_usd is not None
+            else None
+        )
+        workforce_effect_action_key = (
+            str(workforce.get("effect_action_key") or "").strip() or None
+        )
+        worker_preference = (
+            str(workforce.get("worker_preference") or "").strip() or None
+        )
+        raw_preference_evidence = (
+            workforce.get("worker_preference_evidence") or ()
+        )
+        if not isinstance(raw_preference_evidence, (tuple, list)):
+            raise ValueError(
+                "worker_preference_evidence must be a sequence"
+            )
+        worker_preference_evidence = tuple(
+            str(value).strip() for value in raw_preference_evidence
+        )
+        if worker_preference and (
+            not worker_preference_evidence
+            or any(not value for value in worker_preference_evidence)
+        ):
+            raise ValueError(
+                "worker preference requires non-empty evidence references"
+            )
+        if not worker_preference and worker_preference_evidence:
+            raise ValueError(
+                "worker preference evidence requires a worker preference"
+            )
+
         stop_reason = self._scoped_stop_reason(mission_id)
         if stop_reason:
             return StepOutcome(outcome=BLOCKED_OUTCOME, reason=stop_reason)
@@ -601,24 +910,25 @@ class MissionLoop:
             campaign_effect_action_key = campaign_context.get(
                 "effect_action_key"
             )
-            if campaign_context.get("child_status") == "READY":
-                try:
-                    from ..executive.campaigns import record_child_state
-
-                    record_child_state(
-                        self.database,
-                        str(campaign_context["child_id"]),
-                        "RUNNING",
-                        reason="canonical MissionLoop admitted exact campaign child",
-                        stop_path=self.stop_path,
-                    )
-                except CampaignError as error:
-                    return StepOutcome(
-                        outcome=BLOCKED_OUTCOME,
-                        step_id=step_id,
-                        run_id=run_id,
-                        reason=f"campaign dispatch admission blocked: {error}",
-                    )
+        if (
+            campaign_effect_action_key
+            and workforce_effect_action_key
+            and str(campaign_effect_action_key)
+            != workforce_effect_action_key
+        ):
+            raise ValueError(
+                "campaign and workforce effect identities disagree"
+            )
+        effective_effect_action_key = (
+            workforce_effect_action_key or campaign_effect_action_key
+        )
+        role = "repair" if state == "REPAIRING" else "builder"
+        # Validate the caller's executable step and the immutable workforce
+        # package before replay can commit, accept, emit evidence, or advance.
+        target = self._validate_step(
+            mission, step_id=step_id, capability=capability, target=target,
+            expected_effects=expected_effects, rollback=rollback,
+        )
         if run_id is None and state in {"ACTION_SELECTION", "READY"}:
             from ..executive.continuous import provider_resume_run_id
             run_id = provider_resume_run_id(
@@ -656,19 +966,241 @@ class MissionLoop:
             ):
                 run_id = str(prior.get("builder_run_id") or "") or None
         run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
+        existing_builder = self.database.row(
+            "agent_runs",
+            "run_id",
+            run_id,
+        )
+        replay_prior = None
+        if contract_driven and state in {
+            "ACTION_SELECTION", "VERIFYING", "ACCEPTING", "COMPLETE",
+        }:
+            replay_prior = latest_verdict_for_step(
+                self.database,
+                mission_id,
+                step_id,
+            )
+        accepted_replay_candidate = bool(
+            replay_prior is not None
+            and replay_prior.get("status") == "PASS"
+            and str(replay_prior.get("builder_run_id") or "") == run_id
+            and existing_builder is not None
+            and existing_builder.get("status") == "COMPLETED"
+            and str(existing_builder.get("mission_id") or "") == mission_id
+            and str(existing_builder.get("step_id") or "") == step_id
+        )
+        if workforce_active:
+            self.dispatcher.durable_workforce_package(
+                str(package_id),
+                str(package_hash),
+            )
+        if accepted_replay_candidate:
+            replay_workforce_lineage = self._workforce_lineage_for_run(run_id)
+            expected_workforce_lineage = (
+                str(package_id or ""),
+                str(package_hash or ""),
+                str(attempt_id or ""),
+            )
+            if (
+                workforce_active
+                and replay_workforce_lineage != expected_workforce_lineage
+            ):
+                raise ValueError(
+                    "accepted replay workforce lineage does not match "
+                    "the completed builder run"
+                )
+            if not workforce_active and replay_workforce_lineage is not None:
+                raise ValueError(
+                    "accepted workforce replay requires complete package "
+                    "lineage"
+                )
+        canonical_session_attempt = (
+            self.dispatcher.workforce_session_attempt(
+                package_id=str(package_id),
+                package_hash=str(package_hash),
+                attempt_id=str(attempt_id),
+            )
+            if workforce_active
+            else None
+        )
+        replacement_session = bool(
+            canonical_session_attempt is not None
+            and canonical_session_attempt > 1
+        )
+        session_loss_recovery = bool(
+            workforce_active
+            and state == "ACTION_SELECTION"
+            and replacement_session
+            and self._resuming_workforce_delta_after_session_loss(
+                mission_id=mission_id,
+                step_id=step_id,
+                package_id=str(package_id),
+                package_hash=str(package_hash),
+            )
+        )
+        execution_worktree_phase = (
+            (
+                "job_delta"
+                if (
+                    role == "repair"
+                    or state in {"EXECUTING", "VERIFYING"}
+                    or accepted_replay_candidate
+                    or replacement_session
+                    or session_loss_recovery
+                )
+                else "builder_admission"
+            )
+            if workforce_active
+            else None
+        )
+        if workforce_active:
+            durable_package = self.dispatcher.validate_workforce_dispatch(
+                package_id=package_id,
+                package_hash=package_hash,
+                attempt_id=attempt_id,
+                mission_id=mission_id,
+                step_id=step_id,
+                role=role,
+                resource_id=str(mission["resource_id"]),
+                capability=capability,
+                duration_seconds=workforce_duration_seconds,
+                allowed_paths=workforce_allowed_paths,
+                forbidden_paths=forbidden_paths,
+                expected_artifacts=expected_artifacts,
+                required_tests=workforce_required_tests,
+                effect_action_key=effective_effect_action_key,
+                worktree_phase=execution_worktree_phase,
+            )
+            assert durable_package is not None
+            durable_deadline_text = (
+                str(durable_package.deadline or "").strip() or None
+            )
+            try:
+                durable_deadline = (
+                    parse(durable_deadline_text)
+                    if durable_deadline_text is not None
+                    else None
+                )
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    "immutable WorkPackage deadline must be an ISO-8601 "
+                    "timestamp"
+                ) from error
+            if (
+                requested_workforce_deadline is not None
+                and requested_workforce_deadline != durable_deadline
+            ):
+                raise ValueError(
+                    "workforce deadline does not match the immutable "
+                    "WorkPackage"
+                )
+            durable_owner_constraints = tuple(
+                durable_package.owner_constraints
+            )
+            if (
+                owner_constraints_echoed
+                and workforce_owner_constraints
+                != durable_owner_constraints
+            ):
+                raise ValueError(
+                    "workforce owner_constraints do not match the immutable "
+                    "WorkPackage"
+                )
+            workforce_deadline_text = durable_deadline_text
+            workforce_deadline = durable_deadline
+            workforce_owner_constraints = durable_owner_constraints
+        workforce_deadline_monotonic: float | None = None
+        if workforce_active:
+            assert workforce_entry_utc is not None
+            assert workforce_entry_monotonic is not None
+            remaining_at_entry = float(workforce_duration_seconds)
+            if existing_builder is not None and existing_builder.get("started_at"):
+                try:
+                    durable_started_at = parse(
+                        str(existing_builder["started_at"])
+                    )
+                except (TypeError, ValueError) as error:
+                    raise ValueError(
+                        "durable workforce builder start time is invalid"
+                    ) from error
+                elapsed = max(
+                    0.0,
+                    (
+                        workforce_entry_utc - durable_started_at
+                    ).total_seconds(),
+                )
+                remaining_at_entry = min(
+                    remaining_at_entry,
+                    float(workforce_duration_seconds) - elapsed,
+                )
+            if workforce_deadline is not None:
+                remaining_at_entry = min(
+                    remaining_at_entry,
+                    (
+                        workforce_deadline - workforce_entry_utc
+                    ).total_seconds(),
+                )
+            workforce_deadline_monotonic = (
+                workforce_entry_monotonic + max(0.0, remaining_at_entry)
+            )
+
+        def _remaining_workforce_seconds() -> float | None:
+            if workforce_deadline_monotonic is None:
+                return None
+            return max(
+                0.0,
+                workforce_deadline_monotonic - self._monotonic(),
+            )
+
         # A duplicate delivery after a durable PASS is a replay, not a new
         # mission attempt.  This guard is intentionally scoped to the exact
         # builder run and step; a later repair run or a different step must
         # still execute and produce a new verifier binding.
         if contract_driven and state in {
-            "ACTION_SELECTION", "ACCEPTING", "COMPLETE",
+            "ACTION_SELECTION", "VERIFYING", "ACCEPTING", "COMPLETE",
         }:
             prior = latest_verdict_for_step(self.database, mission_id, step_id)
             builder_row = self.database.row("agent_runs", "run_id", run_id)
             if (prior is not None and prior.get("status") == "PASS"
                     and str(prior.get("builder_run_id") or "") == run_id
                     and builder_row is not None
-                    and builder_row.get("status") == "COMPLETED"):
+                    and builder_row.get("status") == "COMPLETED"
+                    and str(builder_row.get("mission_id") or "") == mission_id
+                    and str(builder_row.get("step_id") or "") == step_id):
+                replay_workforce_lineage = self._workforce_lineage_for_run(
+                    run_id
+                )
+                expected_workforce_lineage = (
+                    str(package_id or ""),
+                    str(package_hash or ""),
+                    str(attempt_id or ""),
+                )
+                if workforce_active:
+                    if (
+                        replay_workforce_lineage
+                        != expected_workforce_lineage
+                    ):
+                        raise ValueError(
+                            "accepted replay workforce lineage does not match "
+                            "the completed builder run"
+                        )
+                elif replay_workforce_lineage is not None:
+                    raise ValueError(
+                        "accepted workforce replay requires complete package "
+                        "lineage"
+                    )
+                remaining_seconds = _remaining_workforce_seconds()
+                if remaining_seconds is not None and remaining_seconds < 1:
+                    return StepOutcome(
+                        outcome=BLOCKED_OUTCOME,
+                        step_id=step_id,
+                        run_id=run_id,
+                        verdict_id=str(prior.get("verdict_id") or ""),
+                        reason=(
+                            "workforce package duration/deadline budget was "
+                            "exhausted before accepted-run replay"
+                        ),
+                    )
                 # A duplicate delivery is a replay only while the frozen
                 # acceptance seal still matches the live tree.  Re-check the
                 # canonical gate here; otherwise a post-PASS mutation could
@@ -730,6 +1262,12 @@ class MissionLoop:
                     )
                     if stopped is not None:
                         return stopped
+                    if state == "VERIFYING":
+                        self._advance(
+                            mission_id,
+                            "ACCEPTING",
+                            run_id=run_id,
+                        )
                     self._record_evidence(
                         mission_id=mission_id,
                         step_id=step_id,
@@ -775,17 +1313,9 @@ class MissionLoop:
         )
         criteria = verification_criteria or ["step result is verified by an independent verifier"]
 
-        role = "repair" if state == "REPAIRING" else "builder"
         attempt = failed_verdict_count(self.database, mission_id, step_id) + 1
         repair_context_text = ""
 
-        # D2: envelope contract validated BEFORE any dispatch — unknown step/
-        # capability/rollback and out-of-root targets are rejected here, never
-        # dispatched (verifier finding F3).
-        target = self._validate_step(
-            mission, step_id=step_id, capability=capability, target=target,
-            expected_effects=expected_effects, rollback=rollback,
-        )
         # F6: the repair role is only reachable through a durable FAIL verdict
         # for this step (a hand-crafted REPAIRING state must not invent one).
         if role == "repair":
@@ -811,6 +1341,28 @@ class MissionLoop:
                 repair_context.append("Repair requirements:")
                 repair_context.extend(f"- {value}" for value in requirements)
             repair_context_text = "\n".join(repair_context)
+
+        if (
+            campaign_context is not None
+            and campaign_context.get("child_status") == "READY"
+        ):
+            try:
+                from ..executive.campaigns import record_child_state
+
+                record_child_state(
+                    self.database,
+                    str(campaign_context["child_id"]),
+                    "RUNNING",
+                    reason="canonical MissionLoop admitted exact campaign child",
+                    stop_path=self.stop_path,
+                )
+            except CampaignError as error:
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME,
+                    step_id=step_id,
+                    run_id=run_id,
+                    reason=f"campaign dispatch admission blocked: {error}",
+                )
 
         if state not in {"EXECUTING", "VERIFYING"}:
             self._advance(mission_id, "READY", run_id=run_id)
@@ -844,6 +1396,26 @@ class MissionLoop:
                     "do not infer an additional rule from ambiguous text.")
             dispatch_instructions = (
                 "\n".join(constraint_lines) + "\n\n" + dispatch_instructions)
+        if workforce_owner_constraints:
+            package_constraints = [
+                "Immutable workforce package owner constraints:",
+                *(
+                    f"- {constraint}"
+                    for constraint in workforce_owner_constraints
+                ),
+            ]
+            dispatch_instructions = (
+                "\n".join(package_constraints)
+                + "\n\n"
+                + dispatch_instructions
+            )
+        if workforce_deadline_text is not None:
+            dispatch_instructions = (
+                "Immutable workforce package execution deadline:\n"
+                f"- Absolute UTC deadline: {workforce_deadline_text}"
+                + "\n\n"
+                + dispatch_instructions
+            )
         if repair_context_text:
             dispatch_instructions = (
                 repair_context_text + "\n\n" + dispatch_instructions)
@@ -860,7 +1432,20 @@ class MissionLoop:
                     reason=f"cannot resume VERIFYING run: {error}",
                 )
         else:
-            result = self.dispatcher.dispatch(
+            remaining_seconds = _remaining_workforce_seconds()
+            if remaining_seconds is not None and remaining_seconds < 1:
+                self._advance(mission_id, "BLOCKED", run_id=run_id)
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME,
+                    step_id=step_id,
+                    run_id=run_id,
+                    reason=(
+                        "workforce package duration/deadline budget was "
+                        "exhausted before builder dispatch"
+                    ),
+                )
+            result = self._dispatch_with_lifecycle_deadline(
+                deadline_monotonic=workforce_deadline_monotonic,
                 role=role,
                 mission_id=mission_id,
                 resource_id=str(mission["resource_id"]),
@@ -875,19 +1460,30 @@ class MissionLoop:
                 verification_criteria=(
                     tuple(verification_criteria)
                     if verification_criteria is not None else ()),
+                allowed_paths=workforce_allowed_paths,
                 forbidden_paths=forbidden_paths,
+                required_tests=workforce_required_tests,
                 attempt=attempt,
-                budget_usd=self.provider_budget_usd,
+                duration_seconds=workforce_duration_seconds,
+                budget_usd=workforce_budget_usd,
                 routing_request=campaign_routing_request,
                 campaign_lineage=campaign_lineage,
                 campaign_isolation_key=campaign_isolation_key,
-                effect_action_key=campaign_effect_action_key,
+                effect_action_key=effective_effect_action_key,
+                package_id=package_id,
+                package_hash=package_hash,
+                attempt_id=attempt_id,
+                worktree_phase=execution_worktree_phase,
+                worker_preference=worker_preference,
+                worker_preference_evidence=worker_preference_evidence,
             )
         if result.status == BLOCKED:
             effect_wait_key = (
                 result.effect_action_key
-                if result.error_class
-                == "provider_effect_reconciliation_required"
+                if result.error_class in {
+                    "provider_effect_identity_mismatch",
+                    "provider_effect_reconciliation_required",
+                }
                 else None
             )
             if (
@@ -963,6 +1559,92 @@ class MissionLoop:
                 reason=f"{role} session did not complete: {result.error_class or result.status}",
             )
 
+        remaining_seconds = _remaining_workforce_seconds()
+        if remaining_seconds is not None and remaining_seconds < 1:
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME,
+                step_id=step_id,
+                run_id=run_id,
+                reason=(
+                    "workforce package duration/deadline budget was "
+                    "exhausted before independent verification"
+                ),
+            )
+        if (
+            workforce_cost_limit_micros is not None
+            and _cost_micros(max(0.0, float(result.cost_usd)))
+            >= workforce_cost_limit_micros
+        ):
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME,
+                step_id=step_id,
+                run_id=run_id,
+                reason=(
+                    "workforce cost budget was exhausted before "
+                    "independent verification"
+                ),
+            )
+
+        required_test_receipts = tuple(
+            f"[jarvis-test] {command} exit=0"
+            for command in workforce_required_tests
+        )
+        missing_test_receipts = tuple(
+            receipt
+            for receipt in required_test_receipts
+            if receipt not in result.evidence
+        )
+        if missing_test_receipts:
+            test_verifier_run_id = f"{run_id}-crash"
+            start_verification(
+                self.database,
+                verdict_id=verdict_id,
+                mission_id=mission_id,
+                step_id=step_id,
+                builder_run_id=run_id,
+                verifier_run_id=test_verifier_run_id,
+                independence={
+                    "builder_provider": result.provider,
+                    "verifier_provider": "jarvis",
+                    "provider_diverse": True,
+                    "session_independent": True,
+                    "provider_independent": True,
+                    "same_provider_limitation": "",
+                },
+                criteria=list(criteria),
+            )
+            findings = [
+                "mandatory JARVIS-side test receipt is missing: "
+                + receipt
+                for receipt in missing_test_receipts
+            ]
+            record_verification_outcome(
+                self.database,
+                verdict_id=verdict_id,
+                outcome="FAIL",
+                findings=findings,
+                evidence={
+                    "builder_run_id": run_id,
+                    "required_test_receipts": list(required_test_receipts),
+                    "observed_evidence": list(result.evidence),
+                },
+                repair_requirements=[
+                    "run every mandatory package test through JARVIS evidence "
+                    "reconciliation"
+                ],
+                reason="mandatory workforce tests were not proven",
+            )
+            return self._repair_or_block(
+                mission_id=mission_id,
+                step_id=step_id,
+                run_id=run_id,
+                verdict_id=verdict_id,
+                findings=findings,
+                reason="mandatory workforce tests were not proven",
+            )
+
         stopped = self._stop_blocked(mission_id, step_id=step_id,
                                      run_id=run_id)
         if stopped is not None:
@@ -977,6 +1659,12 @@ class MissionLoop:
         # builder claims.  The immutable target, criteria and forbidden-path
         # fields live in the manifest and are independently re-hashed at the
         # acceptance gate.
+        verifier_test_context = (
+            "\n\nJARVIS-observed mandatory test receipts:\n"
+            + "\n".join(f"- {receipt}" for receipt in required_test_receipts)
+            if required_test_receipts
+            else ""
+        )
         verifier_instructions = (
             f"independently verify step {step_id} of {mission_id}: "
             f"verifier contract {VERIFIER_CONTRACT_VERSION}; "
@@ -986,17 +1674,67 @@ class MissionLoop:
             "only; do not treat its claims as independent proof. "
             "End your response with a line: "
             "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
-            "(NOT_TESTED when you cannot determine a verdict).")
+            "(NOT_TESTED when you cannot determine a verdict)."
+            f"{verifier_test_context}")
+        remaining_seconds = _remaining_workforce_seconds()
+        if remaining_seconds is not None:
+            if remaining_seconds < 1:
+                self._advance(mission_id, "BLOCKED", run_id=run_id)
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME,
+                    step_id=step_id,
+                    run_id=run_id,
+                    reason=(
+                        "workforce package duration/deadline budget was "
+                        "exhausted before independent verification"
+                    ),
+                )
+            verifier_duration_seconds = min(
+                300,
+                int(math.floor(remaining_seconds)),
+            )
+        else:
+            verifier_duration_seconds = min(
+                300,
+                workforce_duration_seconds,
+            )
+        verifier_budget_usd = workforce_budget_usd
+        if workforce_cost_limit_micros is not None:
+            remaining_budget_micros = (
+                workforce_cost_limit_micros
+                - _cost_micros(max(0.0, float(result.cost_usd)))
+            )
+            if remaining_budget_micros <= 0:
+                self._advance(mission_id, "BLOCKED", run_id=run_id)
+                return StepOutcome(
+                    outcome=BLOCKED_OUTCOME,
+                    step_id=step_id,
+                    run_id=run_id,
+                    reason=(
+                        "workforce cost budget was exhausted before "
+                        "independent verification"
+                    ),
+                )
+            verifier_budget_usd = _cost_usd(remaining_budget_micros)
         verifier_config = self.router.config("verifier")
         base_manifest = self.dispatcher.manifest_for(
             base_verifier_run_id, "verifier", mission_id, step_id,
             str(mission["resource_id"]), "verification",
-            verifier_instructions, 300, self.provider_budget_usd, verifier_provider,
+            verifier_instructions,
+            verifier_duration_seconds,
+            verifier_budget_usd,
+            verifier_provider,
             verifier_config,
             expected_artifacts=expected_artifacts,
             verification_criteria=verifier_criteria,
+            allowed_paths=workforce_allowed_paths,
             forbidden_paths=forbidden_paths,
+            required_tests=workforce_required_tests,
             attempt=attempt,
+            effect_action_key=effective_effect_action_key,
+            package_id=package_id,
+            package_hash=package_hash,
+            attempt_id=attempt_id,
         )
         verifier_context = {
             "mission_id": mission_id,
@@ -1008,10 +1746,22 @@ class MissionLoop:
             "instructions": verifier_instructions,
             "expected_artifacts": list(expected_artifacts),
             "verification_criteria": list(verifier_criteria),
+            "allowed_paths": list(workforce_allowed_paths),
             "forbidden_paths": list(forbidden_paths),
+            "required_tests": list(workforce_required_tests),
             "attempt": attempt,
+            "effect_action_key": effective_effect_action_key,
+            "package_id": package_id,
+            "package_hash": package_hash,
+            "attempt_id": attempt_id,
             "verifier_contract_version": VERIFIER_CONTRACT_VERSION,
         }
+        if workforce_active:
+            verifier_context["required_test_receipts"] = list(
+                required_test_receipts
+            )
+        if workforce_deadline_text is not None:
+            verifier_context["deadline"] = workforce_deadline_text
 
         # Select the legacy verifier id only when the persisted manifest is
         # byte-for-byte compatible.  Any changed instruction, provider,
@@ -1090,15 +1840,27 @@ class MissionLoop:
                 ).fetchall()
             for row in rows:
                 row_dict = dict(row)
+                candidate_budget_usd = (
+                    verifier_budget_usd if workforce_active else 0.0
+                )
                 candidate_manifest = self.dispatcher.manifest_for(
                     str(row_dict["run_id"]), "verifier", mission_id, step_id,
                     str(mission["resource_id"]), "verification",
-                    verifier_instructions, 300, 0.0, verifier_provider,
+                    verifier_instructions,
+                    verifier_duration_seconds,
+                    candidate_budget_usd,
+                    verifier_provider,
                     verifier_config,
                     expected_artifacts=expected_artifacts,
                     verification_criteria=verifier_criteria,
+                    allowed_paths=workforce_allowed_paths,
                     forbidden_paths=forbidden_paths,
+                    required_tests=workforce_required_tests,
                     attempt=attempt,
+                    effect_action_key=effective_effect_action_key,
+                    package_id=package_id,
+                    package_hash=package_hash,
+                    attempt_id=attempt_id,
                 )
                 if (row_dict.get("status") == "COMPLETED"
                         and str(row_dict.get("context_manifest_hash") or "")
@@ -1127,12 +1889,21 @@ class MissionLoop:
         verifier_manifest = self.dispatcher.manifest_for(
             verifier_run_id, "verifier", mission_id, step_id,
             str(mission["resource_id"]), "verification",
-            verifier_instructions, 300, self.provider_budget_usd, verifier_provider,
+            verifier_instructions,
+            verifier_duration_seconds,
+            verifier_budget_usd,
+            verifier_provider,
             verifier_config,
             expected_artifacts=expected_artifacts,
             verification_criteria=verifier_criteria,
+            allowed_paths=workforce_allowed_paths,
             forbidden_paths=forbidden_paths,
+            required_tests=workforce_required_tests,
             attempt=attempt,
+            effect_action_key=effective_effect_action_key,
+            package_id=package_id,
+            package_hash=package_hash,
+            attempt_id=attempt_id,
         )
         # If a legacy/random release already recorded a verdict for this
         # exact verifier session, retain its immutable verdict identity on an
@@ -1188,7 +1959,8 @@ class MissionLoop:
                                      run_id=run_id)
         if stopped is not None:
             return stopped
-        verifier = self.dispatcher.dispatch(
+        verifier = self._dispatch_with_lifecycle_deadline(
+            deadline_monotonic=workforce_deadline_monotonic,
             role="verifier",
             mission_id=mission_id,
             resource_id=str(mission["resource_id"]),
@@ -1199,14 +1971,88 @@ class MissionLoop:
             instructions=verifier_instructions,
             expected_artifacts=expected_artifacts,
             verification_criteria=verifier_criteria,
+            allowed_paths=workforce_allowed_paths,
             forbidden_paths=forbidden_paths,
+            required_tests=workforce_required_tests,
             attempt=attempt,
-            budget_usd=self.provider_budget_usd,
+            duration_seconds=verifier_duration_seconds,
+            budget_usd=verifier_budget_usd,
+            effect_action_key=effective_effect_action_key,
+            package_id=package_id,
+            package_hash=package_hash,
+            attempt_id=attempt_id,
         )
         stopped = self._stop_blocked(mission_id, step_id=step_id,
                                      run_id=run_id)
         if stopped is not None:
             return stopped
+        remaining_seconds = _remaining_workforce_seconds()
+        if remaining_seconds is not None and remaining_seconds <= 0:
+            reason = (
+                "workforce package duration/deadline budget was exhausted "
+                "during independent verification"
+            )
+            record_verification_outcome(
+                self.database,
+                verdict_id=verdict_id,
+                outcome="BLOCKED",
+                findings=[],
+                evidence=build_terminal_evidence(
+                    capture=capture,
+                    verifier_session_id=verifier_run_id,
+                    extra={"lifecycle_budget_exhausted": True},
+                ),
+                reason=reason,
+                blocking_dependency="lifecycle_budget_exhausted",
+            )
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME,
+                step_id=step_id,
+                run_id=run_id,
+                verdict_id=verdict_id,
+                reason=reason,
+            )
+        observed_cost_micros = (
+            _cost_micros(max(0.0, float(result.cost_usd)))
+            + _cost_micros(max(0.0, float(verifier.cost_usd)))
+        )
+        if (
+            workforce_cost_limit_micros is not None
+            and observed_cost_micros > workforce_cost_limit_micros
+        ):
+            observed_cost = _cost_usd(observed_cost_micros)
+            cost_limit_usd = _cost_usd(workforce_cost_limit_micros)
+            reason = (
+                "workforce observed cost exceeded the package budget "
+                f"({observed_cost:.6f} > "
+                f"{cost_limit_usd:.6f} USD)"
+            )
+            record_verification_outcome(
+                self.database,
+                verdict_id=verdict_id,
+                outcome="BLOCKED",
+                findings=[],
+                evidence=build_terminal_evidence(
+                    capture=capture,
+                    verifier_session_id=verifier_run_id,
+                    extra={
+                        "builder_cost_usd": result.cost_usd,
+                        "verifier_cost_usd": verifier.cost_usd,
+                        "cost_limit_usd": cost_limit_usd,
+                    },
+                ),
+                reason=reason,
+                blocking_dependency="cost_budget_exhausted",
+            )
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME,
+                step_id=step_id,
+                run_id=run_id,
+                verdict_id=verdict_id,
+                reason=reason,
+            )
         if verifier.status != COMPLETED:
             if (verifier.error_class == "evidence_mismatch"
                     or verifier.verdict == "FAIL"):

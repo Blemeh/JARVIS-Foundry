@@ -41,7 +41,6 @@ from ..database import FoundryDatabase
 from ..clock import parse, utc_now
 from ..events import Event, EventConflict, canonical_json
 from ..paths import FoundryPaths
-from ..roles.router import RoleRouter
 from ..supervisor.estop import EmergencyStop
 from ..supervisor.leases import LeaseManager
 from ..supervisor.worker import pid_alive, process_creation_identity
@@ -55,13 +54,13 @@ from ..mission.contracts import (
 )
 from ..mission.directives import select_dispatchable_mission
 from ..mission.loop import MissionLoop, ProposalError
-from ..control.policy import ActionPolicy
 from ..domain import ActionEnvelope
 from ..workers.contracts import WORKER_OPENHANDS
 from ..workers.router import NOT_READY, READY
 from ..v3_fault import invoke_fault_hook
 from ._stack import build_worker_stack
 from .config import WorkerRuntimeConfig
+from .mission_session import build_canonical_mission_loop
 from .provider_config import ProviderConfigError
 
 LOOP_LEASE_KEY = "worker-loop:singleton"
@@ -1593,53 +1592,18 @@ def run_cycle(
                 mission_id=mission_id, reason=f"invalid executable contract: {error}",
             )
 
-        role_router = RoleRouter(provider_settings=config.provider_settings)
-        pool_providers = tuple(
-            item.provider for item in config.provider_settings_pool)
-        fallback_providers = tuple(
-            provider for provider in pool_providers
-            if provider != config.provider_settings.provider)
-        if config.provider_resilience_enabled and fallback_providers:
-            role_router = role_router.clone_with({
-                role: {"fallbacks": fallback_providers}
-                for role in (
-                    "executive", "builder", "verifier", "critic", "repair",
-                    "researcher", "premium_reviewer",
-                )
-            })
-        role_router.enforce_directive_routing(
-            allow_safe_fallbacks=config.provider_resilience_enabled,
-            allowed_providers=pool_providers,
-        )
         stack = build_worker_stack(
             database, paths, config, run_id=f"loop-{loop_id}")
         _pin_routing_to_hermes(stack, config)
-        stop_path = _default_stop_path(paths, config)
-        resilience = dict(config.provider_resilience or {})
-        retry = dict(resilience.get("retry") or {})
-        policy = dict(resilience.get("policy") or {})
-        loop = MissionLoop(
-            database, router=role_router, adapter=stack.bridge,
-            leases=leases, max_repairs=config.max_repairs,
+        loop = build_canonical_mission_loop(
+            database,
+            paths,
+            config,
+            stack=stack,
+            leases=leases,
             source_id=f"worker-loop:{instance_id}",
-            stop_path=stop_path,
-            policy=ActionPolicy(database, stop_path),
             fault_hook=fault_hook,
-            provider_candidates=tuple(
-                getattr(stack, "provider_candidates", ()) or ()),
-            max_provider_attempts=int(retry.get("max_total_attempts", 4)),
-            max_provider_retries=int(
-                retry.get("max_retries_per_provider", 0)),
-            allowed_data_use=tuple(
-                str(item) for item in policy.get("allowed_data_use") or ()),
-            allowed_providers=tuple(
-                str(item) for item in resilience.get("allowed_providers") or ()),
-            denied_providers=tuple(
-                str(item) for item in resilience.get("denied_providers") or ()),
-            provider_budget_usd=float(
-                resilience.get("max_cost_usd") or 0.0),
-            provider_routing_constraints=dict(
-                resilience.get("constraints") or {}),
+            mission_loop_cls=MissionLoop,
         )
         try:
             with _adapter_runtime_environment(paths, config):

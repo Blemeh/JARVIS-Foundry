@@ -2567,23 +2567,25 @@ def _open_mission_provider_wait(
 ) -> tuple[str, ...] | None:
     if not child.mission_id:
         return None
-    events = database.events(
-        readonly=True,
-        event_type_prefixes=("mission.provider_wait_",),
+    from .continuous import (
+        canonical_provider_resume_events,
+        canonical_provider_wait_start_events,
     )
+
     resumed = {
         str(event.payload.get("wait_id") or "")
-        for event in events
-        if event.event_type == "mission.provider_wait_resumed"
+        for event in canonical_provider_resume_events(
+            database,
+            mission_id=child.mission_id,
+        )
     }
-    for event in reversed(events):
-        if event.event_type != "mission.provider_wait_started":
-            continue
+    starts = canonical_provider_wait_start_events(
+        database,
+        mission_id=child.mission_id,
+    )
+    for event in reversed(starts):
         payload = event.payload
-        if (
-            str(payload.get("mission_id") or "") == child.mission_id
-            and str(payload.get("wait_id") or "") not in resumed
-        ):
+        if str(payload.get("wait_id") or "") not in resumed:
             return tuple(dict.fromkeys(
                 str(item) for item in payload.get("provider_ids") or ()
                 if str(item)

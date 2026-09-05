@@ -14,9 +14,10 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ..clock import isoformat
 from .contracts import WorkerStepContract
@@ -28,7 +29,12 @@ class EvidenceError(RuntimeError):
     pass
 
 
-def _run(cmd: list[str], *, cwd: Path, timeout: int = 30) -> subprocess.CompletedProcess:
+def _run(
+    cmd: list[str],
+    *,
+    cwd: Path,
+    timeout: float = 30,
+) -> subprocess.CompletedProcess:
     from ..platform.windows_subprocess import headless_run_kwargs
 
     return subprocess.run(
@@ -154,8 +160,14 @@ class EvidenceReport:
 class EvidenceReconciler:
     """Independently captures and reconciles observable worker state."""
 
-    def __init__(self, *, test_timeout_seconds: int = 120) -> None:
+    def __init__(
+        self,
+        *,
+        test_timeout_seconds: int = 120,
+        monotonic: Callable[[], float] | None = None,
+    ) -> None:
         self.test_timeout_seconds = test_timeout_seconds
+        self._monotonic = monotonic or time.monotonic
 
     def capture_before(self, contract: WorkerStepContract) -> BeforeState:
         root = contract.working_root.resolve()
@@ -187,6 +199,7 @@ class EvidenceReconciler:
         expected_artifact_hashes: dict[str, str] | None = None,
         persistence_scan_roots: tuple[Path, ...] = (),
         delta_baseline: tuple[str, ...] | None = None,
+        test_deadline_monotonic: float | None = None,
     ) -> EvidenceReport:
         root = contract.working_root.resolve()
         mismatches: list[str] = []
@@ -217,8 +230,14 @@ class EvidenceReconciler:
 
         # Scope: every observed change must stay inside allowed paths and
         # never inside forbidden paths.
-        allowed_roots = [p.resolve() for p in (contract.allowed_paths or (root,))]
-        forbidden_roots = [p.resolve() for p in contract.forbidden_paths]
+        allowed_roots = [
+            self._resolve_scope_path(root, path)
+            for path in (contract.allowed_paths or (root,))
+        ]
+        forbidden_roots = [
+            self._resolve_scope_path(root, path)
+            for path in contract.forbidden_paths
+        ]
         for rel in observed_changed:
             path = (root / rel).resolve()
             if not any(self._is_within(path, base) for base in allowed_roots):
@@ -311,16 +330,49 @@ class EvidenceReconciler:
         # acceptable result; failures are mismatches that forbid PASS.
         test_results: list[dict[str, Any]] = []
         for command in test_commands:
-            try:
-                result = _run(command.split(), cwd=root, timeout=self.test_timeout_seconds)
-            except subprocess.TimeoutExpired:
-                result = subprocess.CompletedProcess(command.split(), 124, "", "timeout")
-            test_results.append({
+            argv = command.split()
+            timeout = float(self.test_timeout_seconds)
+            lifecycle_limited = False
+            lifecycle_exhausted = False
+            if test_deadline_monotonic is not None:
+                remaining = (
+                    float(test_deadline_monotonic) - self._monotonic()
+                )
+                if remaining <= 0:
+                    lifecycle_exhausted = True
+                    result = subprocess.CompletedProcess(
+                        argv,
+                        124,
+                        "",
+                        "package lifecycle budget exhausted",
+                    )
+                else:
+                    lifecycle_limited = remaining <= timeout
+                    timeout = min(timeout, remaining)
+            if not lifecycle_exhausted:
+                try:
+                    result = _run(argv, cwd=root, timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    lifecycle_exhausted = lifecycle_limited
+                    result = subprocess.CompletedProcess(
+                        argv,
+                        124,
+                        "",
+                        (
+                            "package lifecycle budget exhausted"
+                            if lifecycle_exhausted
+                            else "timeout"
+                        ),
+                    )
+            test_result = {
                 "command": command,
                 "exit": result.returncode,
                 "stdout_tail": result.stdout[-400:],
                 "stderr_tail": result.stderr[-400:],
-            })
+            }
+            if lifecycle_exhausted:
+                test_result["lifecycle_budget_exhausted"] = True
+            test_results.append(test_result)
             if result.returncode != 0:
                 mismatches.append(f"test command failed (exit {result.returncode}): {command}")
 
@@ -364,3 +416,10 @@ class EvidenceReconciler:
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    def _resolve_scope_path(root: Path, path: Path) -> Path:
+        candidate = Path(path)
+        if not candidate.is_absolute():
+            candidate = root / candidate
+        return candidate.resolve(strict=False)

@@ -94,6 +94,9 @@ class ResultEnvelope:
     # JARVIS-side worker status + verdict
     worker_status: str = COMPLETED
     verdict: str | None = None
+    package_id: str | None = None
+    package_hash: str | None = None
+    attempt_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.worker_status not in VALID_STATUSES:
@@ -148,10 +151,16 @@ class ResultEnvelope:
             "observed_touched_paths": list(observed_touched_paths),
             **overrides,
         }
+        if contract.package_id:
+            payload["package_id"] = contract.package_id
+        if contract.package_hash:
+            payload["package_hash"] = contract.package_hash
+        if contract.attempt_id:
+            payload["attempt_id"] = contract.attempt_id
         return cls.from_payload(payload)
 
     def to_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "run_id": self.run_id,
             "mission_id": self.mission_id,
             "step_id": self.step_id,
@@ -195,6 +204,13 @@ class ResultEnvelope:
             "worker_status": self.worker_status,
             "verdict": self.verdict,
         }
+        if self.package_id:
+            payload["package_id"] = self.package_id
+        if self.package_hash:
+            payload["package_hash"] = self.package_hash
+        if self.attempt_id:
+            payload["attempt_id"] = self.attempt_id
+        return payload
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "ResultEnvelope":
@@ -217,6 +233,9 @@ class ResultEnvelope:
             model_actual=payload.get("model_actual", payload.get("model_requested", DIRECTIVE_MODEL)),
             manifest_id=payload.get("manifest_id"),
             manifest_hash=payload.get("manifest_hash"),
+            package_id=payload.get("package_id"),
+            package_hash=payload.get("package_hash"),
+            attempt_id=payload.get("attempt_id"),
             registered_resource_id=payload.get("registered_resource_id", ""),
             working_root=payload.get("working_root", ""),
             allowed_paths=tuple(payload.get("allowed_paths", [])),

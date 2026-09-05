@@ -5,6 +5,7 @@ import hashlib
 import subprocess
 from pathlib import Path
 
+import jarvis_foundry.workers.evidence as evidence_module
 from jarvis_foundry.workers.contracts import WorkerStepContract
 from jarvis_foundry.workers.envelope import COMPLETED, ResultEnvelope
 from jarvis_foundry.workers.evidence import EvidenceReconciler
@@ -111,6 +112,40 @@ def test_forbidden_path_touch_detected(tmp_path):
     assert any("forbidden" in v for v in report.containment_violations)
 
 
+def test_relative_forbidden_path_resolves_from_working_root(tmp_path):
+    repository = make_repo(tmp_path)
+    step = WorkerStepContract(
+        run_id="run-relative-forbidden",
+        mission_id="m",
+        step_id="s",
+        attempt=1,
+        role="builder",
+        objective="o",
+        instructions="i",
+        working_root=repository,
+        allowed_paths=(repository,),
+        forbidden_paths=(Path("secrets"),),
+    )
+    reconciler = EvidenceReconciler()
+    before = reconciler.capture_before(step)
+    secret = repository / "secrets" / "key.txt"
+    secret.parent.mkdir()
+    secret.write_text("do not touch\n", encoding="utf-8")
+    envelope = ResultEnvelope.from_contract(
+        step,
+        framework="openhands",
+        claimed_outcome="changed a forbidden file",
+        files_changed=("secrets/key.txt",),
+    )
+
+    report = reconciler.reconcile(step, envelope, before=before)
+
+    assert report.agree is False
+    assert report.containment_violations == (
+        f"secrets/key.txt touches forbidden path {secret.parent.resolve()}",
+    )
+
+
 def test_diff_hash_mismatch_detected(tmp_path):
     repository = make_repo(tmp_path)
     (repository / "feature.py").write_text("x = 1\n", encoding="utf-8")
@@ -169,6 +204,54 @@ def test_failed_test_forbids_pass(tmp_path):
         test_commands=("python -m pytest test_feature.py -q",))
     assert report.agree is False
     assert any("test command failed" in m for m in report.mismatches)
+
+
+def test_required_tests_share_one_remaining_lifecycle_budget(
+    tmp_path,
+    monkeypatch,
+):
+    repository = make_repo(tmp_path)
+    clock = [0.0]
+    reconciler = EvidenceReconciler(
+        test_timeout_seconds=10,
+        monotonic=lambda: clock[0],
+    )
+    step = contract(repository)
+    before = reconciler.capture_before(step)
+    (repository / "feature.py").write_text("x = 1\n", encoding="utf-8")
+    envelope = success_envelope(
+        repository,
+        files_changed=("feature.py",),
+    )
+    original_run = evidence_module._run
+    observed_timeouts: list[float] = []
+
+    def bounded_run(cmd, *, cwd, timeout=30):
+        if cmd and cmd[0] == "git":
+            return original_run(cmd, cwd=cwd, timeout=timeout)
+        observed_timeouts.append(float(timeout))
+        if len(observed_timeouts) == 1:
+            clock[0] += 3.0
+            return subprocess.CompletedProcess(cmd, 0, "first passed", "")
+        clock[0] += float(timeout)
+        raise subprocess.TimeoutExpired(cmd, timeout)
+
+    monkeypatch.setattr(evidence_module, "_run", bounded_run)
+
+    report = reconciler.reconcile(
+        step,
+        envelope,
+        before=before,
+        test_commands=("check-one", "check-two", "check-three"),
+        test_deadline_monotonic=5.0,
+    )
+
+    assert observed_timeouts == [5.0, 2.0]
+    assert [item["exit"] for item in report.test_results] == [0, 124, 124]
+    assert "lifecycle_budget_exhausted" not in report.test_results[0]
+    assert report.test_results[1]["lifecycle_budget_exhausted"] is True
+    assert report.test_results[2]["lifecycle_budget_exhausted"] is True
+    assert report.agree is False
 
 
 def test_machine_cache_artifacts_do_not_condemn_work(tmp_path):

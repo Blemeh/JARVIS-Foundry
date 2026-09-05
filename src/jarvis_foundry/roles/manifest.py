@@ -42,7 +42,9 @@ class ContextManifest:
     # semantics unchanged for historical rows).
     expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
     verification_criteria: tuple[str, ...] = field(default_factory=tuple)
+    allowed_paths: tuple[str, ...] = field(default_factory=tuple)
     forbidden_paths: tuple[str, ...] = field(default_factory=tuple)
+    required_tests: tuple[str, ...] = field(default_factory=tuple)
     attempt: int = 1
     # V12 campaign lineage.  These fields are optional for historical and
     # non-campaign runs, but a campaign child supplies the complete set.  The
@@ -55,6 +57,12 @@ class ContextManifest:
     routing_requirements: dict[str, Any] = field(default_factory=dict)
     routing_identity: str | None = None
     effect_action_key: str | None = None
+    package_id: str | None = None
+    package_hash: str | None = None
+    attempt_id: str | None = None
+    worktree_phase: str | None = None
+    worker_preference: str | None = None
+    worker_preference_evidence: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         """Reject unbounded or malformed worker context at the boundary."""
@@ -86,9 +94,13 @@ class ContextManifest:
             raise ValueError("manifest duration_seconds is outside [1, 86400]")
         if len(self.instructions) > 12_000:
             raise ValueError("manifest instructions exceed 12000 characters")
-        for name, values in (("expected_artifacts", self.expected_artifacts),
-                             ("verification_criteria", self.verification_criteria),
-                             ("forbidden_paths", self.forbidden_paths)):
+        for name, values in (
+            ("expected_artifacts", self.expected_artifacts),
+            ("verification_criteria", self.verification_criteria),
+            ("allowed_paths", self.allowed_paths),
+            ("forbidden_paths", self.forbidden_paths),
+            ("required_tests", self.required_tests),
+        ):
             if not isinstance(values, (tuple, list)) or len(values) > 128:
                 raise ValueError(f"manifest {name} is too large")
             if any(not isinstance(item, str) or len(item) > 512 for item in values):
@@ -102,6 +114,11 @@ class ContextManifest:
             "campaign_isolation_key": (self.campaign_isolation_key, 512),
             "routing_identity": (self.routing_identity, 128),
             "effect_action_key": (self.effect_action_key, 512),
+            "package_id": (self.package_id, 256),
+            "package_hash": (self.package_hash, 256),
+            "attempt_id": (self.attempt_id, 256),
+            "worktree_phase": (self.worktree_phase, 64),
+            "worker_preference": (self.worker_preference, 128),
         }
         for name, (value, limit) in optional_text.items():
             if value is not None and (
@@ -113,6 +130,42 @@ class ContextManifest:
             raise ValueError(
                 "manifest campaign lineage requires objective_id, campaign_id, and child_id"
             )
+        package_lineage = (self.package_id, self.package_hash, self.attempt_id)
+        if any(package_lineage) and not all(package_lineage):
+            raise ValueError(
+                "manifest workforce lineage requires package_id, package_hash, "
+                "and attempt_id"
+            )
+        if self.worktree_phase is not None and self.worktree_phase not in {
+            "builder_admission",
+            "job_delta",
+        }:
+            raise ValueError("manifest worktree_phase is invalid")
+        if self.worktree_phase is not None and not all(package_lineage):
+            raise ValueError(
+                "manifest worktree_phase requires complete workforce lineage"
+            )
+        if self.package_hash is not None and (
+            len(self.package_hash) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.package_hash.lower()
+            )
+        ):
+            raise ValueError("manifest package_hash must be a sha256 hex digest")
+        if self.worker_preference is None and self.worker_preference_evidence:
+            raise ValueError(
+                "manifest worker preference evidence requires a preference"
+            )
+        if self.worker_preference is not None and not self.worker_preference_evidence:
+            raise ValueError(
+                "manifest worker preference requires evidence"
+            )
+        if any(
+            not isinstance(item, str) or not item.strip() or len(item) > 512
+            for item in self.worker_preference_evidence
+        ):
+            raise ValueError("manifest worker preference evidence is invalid")
         if not isinstance(self.routing_requirements, dict):
             raise ValueError("manifest routing_requirements must be a mapping")
         if len(canonical_json(self.routing_requirements)) > 16_000:
@@ -150,8 +203,12 @@ class ContextManifest:
             payload["expected_artifacts"] = list(self.expected_artifacts)
         if self.verification_criteria:
             payload["verification_criteria"] = list(self.verification_criteria)
+        if self.allowed_paths:
+            payload["allowed_paths"] = list(self.allowed_paths)
         if self.forbidden_paths:
             payload["forbidden_paths"] = list(self.forbidden_paths)
+        if self.required_tests:
+            payload["required_tests"] = list(self.required_tests)
         if self.attempt != 1:
             payload["attempt"] = self.attempt
         if self.objective_id:
@@ -167,6 +224,19 @@ class ContextManifest:
             payload["routing_identity"] = self.routing_identity
         if self.effect_action_key:
             payload["effect_action_key"] = self.effect_action_key
+        if self.package_id:
+            payload["package_id"] = self.package_id
+        if self.package_hash:
+            payload["package_hash"] = self.package_hash
+        if self.attempt_id:
+            payload["attempt_id"] = self.attempt_id
+        if self.worktree_phase:
+            payload["worktree_phase"] = self.worktree_phase
+        if self.worker_preference:
+            payload["worker_preference"] = self.worker_preference
+            payload["worker_preference_evidence"] = list(
+                self.worker_preference_evidence
+            )
         return payload
 
     def content_hash(self) -> str:
@@ -193,7 +263,9 @@ class ContextManifest:
             instructions=payload.get("instructions", ""),
             expected_artifacts=tuple(payload.get("expected_artifacts", [])),
             verification_criteria=tuple(payload.get("verification_criteria", [])),
+            allowed_paths=tuple(payload.get("allowed_paths", [])),
             forbidden_paths=tuple(payload.get("forbidden_paths", [])),
+            required_tests=tuple(payload.get("required_tests", [])),
             attempt=int(payload.get("attempt", 1)),
             objective_id=(
                 str(payload["objective_id"]) if payload.get("objective_id") else None
@@ -214,6 +286,28 @@ class ContextManifest:
             effect_action_key=(
                 str(payload["effect_action_key"])
                 if payload.get("effect_action_key") else None
+            ),
+            package_id=(
+                str(payload["package_id"]) if payload.get("package_id") else None
+            ),
+            package_hash=(
+                str(payload["package_hash"]) if payload.get("package_hash") else None
+            ),
+            attempt_id=(
+                str(payload["attempt_id"]) if payload.get("attempt_id") else None
+            ),
+            worktree_phase=(
+                str(payload["worktree_phase"])
+                if payload.get("worktree_phase")
+                else None
+            ),
+            worker_preference=(
+                str(payload["worker_preference"])
+                if payload.get("worker_preference")
+                else None
+            ),
+            worker_preference_evidence=tuple(
+                payload.get("worker_preference_evidence", [])
             ),
         )
 

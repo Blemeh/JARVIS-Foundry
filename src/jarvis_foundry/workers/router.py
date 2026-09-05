@@ -23,10 +23,11 @@ decision (pure function over the contract + registry snapshot).
 """
 from __future__ import annotations
 
-import uuid
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..events import canonical_json
 from .contracts import WORKER_HERMES, WORKER_OPENHANDS, WorkerStepContract
 
 #: Routing policy version — every decision records which policy produced it.
@@ -236,8 +237,11 @@ class WorkerRouter:
         blocker (the caller records an honest BLOCKED/wait state).
         """
         classification = classify_task(contract)
-        decision_id = f"route-{uuid.uuid4().hex[:12]}"
+        decision_id = self._decision_id(contract, classification)
         eligible = self.eligible_workers()
+        preferred = str(
+            classification.signals.get("preferred_worker") or ""
+        ).strip()
         evidence: list[str] = [
             f"task_signals={sorted((contract.task_signals or {}).keys())}",
             f"classification={classification.classification}",
@@ -245,6 +249,15 @@ class WorkerRouter:
         for framework in (WORKER_HERMES, WORKER_OPENHANDS):
             state = self.readiness[framework].state
             evidence.append(f"{framework}_readiness={state}")
+        if preferred:
+            preference_evidence = classification.signals.get(
+                "worker_preference_evidence"
+            ) or ()
+            evidence.append(f"preferred_worker={preferred}")
+            evidence.extend(
+                f"worker_preference_evidence={item}"
+                for item in preference_evidence
+            )
 
         if not eligible:
             return RouteDecision(
@@ -265,7 +278,20 @@ class WorkerRouter:
 
         selected: str
         reason: str
-        if classification.classification == "bounded_implementation":
+        preference_allowed = (
+            preferred in eligible
+            and (
+                classification.classification == "bounded_implementation"
+                or preferred == WORKER_HERMES
+            )
+        )
+        if preference_allowed:
+            selected = preferred
+            reason = (
+                "eligible evidence-backed worker preference accepted by "
+                "canonical routing policy"
+            )
+        elif classification.classification == "bounded_implementation":
             if WORKER_OPENHANDS in eligible:
                 selected = WORKER_OPENHANDS
                 reason = "bounded implementation with explicit acceptance; OpenHands fast-path eligible"
@@ -300,6 +326,36 @@ class WorkerRouter:
             fallback=fallback,
             policy_version=self.policy_version,
         )
+
+    def _decision_id(
+        self,
+        contract: WorkerStepContract,
+        classification: TaskClassification,
+    ) -> str:
+        readiness = []
+        for framework in (WORKER_HERMES, WORKER_OPENHANDS):
+            snapshot = self.readiness[framework]
+            readiness.append({
+                "framework": framework,
+                "state": snapshot.state,
+                "note": snapshot.note,
+                "evidence_considered": list(snapshot.evidence_considered),
+            })
+        identity = {
+            "contract": contract.to_payload(),
+            "classification": {
+                "classification": classification.classification,
+                "reason": classification.reason,
+                "signals": classification.signals,
+            },
+            "readiness": readiness,
+            "fallback_triggers": list(self.fallback_triggers),
+            "policy_version": self.policy_version,
+        }
+        digest = hashlib.sha256(
+            canonical_json(identity).encode("utf-8")
+        ).hexdigest()
+        return f"route-{digest}"
 
     def requires_fallback(self, trigger: str) -> bool:
         """Mandatory OpenHands -> Hermes escalation check."""

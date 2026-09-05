@@ -21,6 +21,7 @@ and re-hashes the live tree itself.
 from __future__ import annotations
 
 import hashlib
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -115,6 +116,42 @@ def test_capture_binding_freezes_full_tuple(tmp_path):
     assert payload["binding"]["schema"] == BINDING_SCHEMA
     # distinct identities: verifier never derives from builder
     assert verifier_run_id != builder_run
+
+
+def test_capture_binding_file_target_freezes_ancestor_repository_head(
+    tmp_path,
+):
+    repository = make_repository(tmp_path)
+    target = repository / "artifact.txt"
+    target.write_text("bound artifact\n", encoding="utf-8")
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repository,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    verdict_id, verifier_run_id = fresh_verifier_identity("run-builder-file")
+
+    capture = capture_binding(
+        database,
+        verdict_id=verdict_id,
+        mission_id="m-file",
+        step_id="s-file",
+        target=target,
+        builder_run_id="run-builder-file",
+        verifier_run_id=verifier_run_id,
+        independence={"session_isolation": "fresh-session"},
+        criteria=["artifact is bound to its repository head"],
+    )
+
+    assert capture.target == str(target.resolve())
+    assert capture.head == head
+    assert capture.artifact_hashes == {
+        target.name: sha256_bytes(target.read_bytes()),
+    }
 
 
 def test_verdict_vocabulary_is_exact():

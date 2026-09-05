@@ -479,13 +479,19 @@ def test_provider_identity_switch_is_blocked_without_alternate_replay(tmp_path):
         (candidate("provider-a"), candidate("provider-b")),
         run_id="run-identity-switch",
     )
-    assert result.error_class == "provider_incompatible"
+    assert result.error_class == "provider_effect_reconciliation_required"
+    assert result.provider == "provider-a"
+    assert result.model == "provider-a-model"
     assert [item.provider for item in adapter.received] == ["provider-a"]
     mismatches = [event.payload for event in db.events()
                   if event.event_type == "provider.identity_mismatch"]
     assert len(mismatches) == 1
     assert mismatches[0]["requested_provider"] == "provider-a"
     assert mismatches[0]["observed_provider"] == "provider-z"
+    requirements = [event.payload for event in db.events()
+                    if event.event_type == "provider.effect_reconciliation_required"]
+    assert len(requirements) == 1
+    assert requirements[0]["effect_action_key"] == result.effect_action_key
 
 
 def test_all_down_wait_then_positive_recovery_resumes_same_mission_and_run(tmp_path):

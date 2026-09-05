@@ -91,6 +91,26 @@ def test_relative_runtime_root_moves_outside_live_hermes_profile(tmp_path, monke
     assert not root.is_relative_to(local / "hermes")
 
 
+def test_runtime_root_safely_materializes_workforce_run_identity(tmp_path):
+    first = _resolve_root(
+        str(tmp_path / "runtime"),
+        "workforce:package-a:a1",
+        kind="run",
+        home=tmp_path,
+    )
+    second = _resolve_root(
+        str(tmp_path / "runtime"),
+        "workforce/package-a/a1",
+        kind="run",
+        home=tmp_path,
+    )
+
+    assert first.is_dir()
+    assert ":" not in first.name
+    assert "/" not in first.name
+    assert first != second
+
+
 def test_contributor_acknowledgement_is_materialized_in_isolated_home(tmp_path):
     database = FoundryDatabase(tmp_path / "db.sqlite")
     database.initialize()
@@ -338,7 +358,7 @@ def test_mission_contract_carries_durable_truth(tmp_path):
     assert builder_contract.expected_artifacts == ("feature.py",)
     assert builder_contract.verification_criteria == (
         "feature.py exists and is correct",)
-    assert any(p == Path("tests/private")
+    assert any(p == (repository / "tests/private").resolve()
                for p in builder_contract.forbidden_paths)
 
     second = loop.run_step(**kwargs)  # state REPAIRING -> role repair

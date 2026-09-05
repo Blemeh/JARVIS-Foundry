@@ -1,0 +1,133 @@
+"""Bounded AI workforce management under the existing JARVIS authority spine."""
+
+from .contracts import (
+    CONVERGENCE_CLASSIFICATIONS,
+    INTERVENTION_ACTIONS,
+    OBSERVATION_KINDS,
+    PACKAGE_STATUSES,
+    SESSION_STATUSES,
+    ConvergenceDecision,
+    InterventionRecord,
+    ResourceClaim,
+    SuitabilitySample,
+    WorkPackage,
+    WorkerObservation,
+    WorkerSession,
+)
+from .commander import (
+    PackageAdmission,
+    WorkforceCommander,
+    WorkforceLaunchReport,
+)
+from .convergence import (
+    ConvergenceAnalysisError,
+    PackageConvergenceEvidence,
+    analyze_convergence,
+    record_convergence_decision,
+)
+from .gateway import (
+    GatewayBinding,
+    GatewayLaunch,
+    GatewayResult,
+    WorkforceGateway,
+    WorkforceGatewayError,
+)
+from .observation import (
+    WorkforceObservationReport,
+    WorkforceObservationSnapshot,
+    WorkforceObserver,
+)
+from .recovery import (
+    ProcessReconciliation,
+    RecoveryIssue,
+    WorkforceReconciliationReport,
+    WorkforceRecovery,
+    WorkforceRecoveryReport,
+)
+from .state import (
+    WorkPackageState,
+    WorkforceState,
+    create_work_package,
+    rebuild_workforce_state,
+    transition_work_package,
+    workforce_snapshot,
+)
+from .steering import (
+    InterventionExecution,
+    WorkforceSteering,
+    WorkforceSteeringError,
+)
+from .suitability import (
+    CandidateSuitability,
+    SuitabilityCandidate,
+    SuitabilityError,
+    SuitabilityMetricPolicy,
+    SuitabilityRecommendation,
+    SuitabilityRecommendationPolicy,
+    aggregate_suitability,
+    recommend_suitable_candidates,
+    record_suitability_sample,
+)
+from .worktrees import (
+    WorkforceResourceError,
+    WorktreeManager,
+    WorktreePreparation,
+    scopes_overlap,
+)
+
+__all__ = [
+    "CONVERGENCE_CLASSIFICATIONS",
+    "CandidateSuitability",
+    "ConvergenceAnalysisError",
+    "GatewayBinding",
+    "GatewayLaunch",
+    "GatewayResult",
+    "INTERVENTION_ACTIONS",
+    "InterventionExecution",
+    "OBSERVATION_KINDS",
+    "PACKAGE_STATUSES",
+    "PackageAdmission",
+    "PackageConvergenceEvidence",
+    "ProcessReconciliation",
+    "RecoveryIssue",
+    "SESSION_STATUSES",
+    "ConvergenceDecision",
+    "InterventionRecord",
+    "ResourceClaim",
+    "SuitabilitySample",
+    "SuitabilityCandidate",
+    "SuitabilityError",
+    "SuitabilityMetricPolicy",
+    "SuitabilityRecommendation",
+    "SuitabilityRecommendationPolicy",
+    "WorkPackage",
+    "WorkPackageState",
+    "WorkerObservation",
+    "WorkerSession",
+    "WorkforceCommander",
+    "WorkforceGateway",
+    "WorkforceGatewayError",
+    "WorkforceLaunchReport",
+    "WorkforceObservationReport",
+    "WorkforceObservationSnapshot",
+    "WorkforceObserver",
+    "WorkforceReconciliationReport",
+    "WorkforceRecovery",
+    "WorkforceRecoveryReport",
+    "WorkforceState",
+    "WorkforceSteering",
+    "WorkforceSteeringError",
+    "WorkforceResourceError",
+    "WorktreeManager",
+    "WorktreePreparation",
+    "aggregate_suitability",
+    "analyze_convergence",
+    "create_work_package",
+    "record_convergence_decision",
+    "record_suitability_sample",
+    "recommend_suitable_candidates",
+    "rebuild_workforce_state",
+    "scopes_overlap",
+    "transition_work_package",
+    "workforce_snapshot",
+]

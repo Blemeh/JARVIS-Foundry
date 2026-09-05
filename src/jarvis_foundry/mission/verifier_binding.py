@@ -154,7 +154,7 @@ def _working_root_for(target: Path) -> Path:
     """Nearest existing ancestor directory of the target (the worktree root
     when target does not exist yet)."""
     current = target.resolve()
-    while not current.exists():
+    while not current.is_dir():
         parent = current.parent
         if parent == current:
             return current
