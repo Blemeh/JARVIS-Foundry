@@ -1,0 +1,4117 @@
+{
+  "artifact_receipts": {
+    "invalid_json": {
+      "error": "JSON parser rejected inputs/invalid.json: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+      "error_type": "ArtifactParseError",
+      "status": "BLOCKED"
+    },
+    "json_export": {
+      "format": "json",
+      "idempotency_key": "proof:export:transformed-json",
+      "output_sha256": "b40b91ac3cc1b4507ba16c0e66449410e919ba9ef8e06a6bcefdb2af751bcdd9",
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\data\\transformed.json",
+      "readback": {
+        "column_count": 3,
+        "headers": [
+          "Name",
+          "Total",
+          "Label"
+        ],
+        "row_count": 2,
+        "sha256": "b40b91ac3cc1b4507ba16c0e66449410e919ba9ef8e06a6bcefdb2af751bcdd9",
+        "verified": true
+      },
+      "readback_verified": true,
+      "reconciled": false,
+      "replayed": false,
+      "sha256": "b40b91ac3cc1b4507ba16c0e66449410e919ba9ef8e06a6bcefdb2af751bcdd9",
+      "size_bytes": 192,
+      "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+      "target_ref": "data/transformed.json"
+    },
+    "json_parse": {
+      "details": {
+        "container_keys": [
+          "batch",
+          "records"
+        ],
+        "json_type": "records",
+        "records_path": "$.records",
+        "schema": [
+          "Name",
+          "Owner",
+          "Priority"
+        ]
+      },
+      "kind": "table",
+      "source": {
+        "captured_at": "2026-09-05T15:47:56.973512Z",
+        "format": "json",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\context.json",
+        "sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+        "size_bytes": 222,
+        "source_ref": "inputs/context.json",
+        "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2"
+      },
+      "table": {
+        "column_count": 3,
+        "headers": [
+          "Name",
+          "Owner",
+          "Priority"
+        ],
+        "preview_rows": [
+          {
+            "Name": "Alpha",
+            "Owner": "Operator Team",
+            "Priority": 1
+          },
+          {
+            "Name": "Gamma",
+            "Owner": "Operator Team",
+            "Priority": 2
+          }
+        ],
+        "row_count": 2
+      }
+    },
+    "partial_pdf": {
+      "error": "injected failure after PDF creation before verification",
+      "error_code": "partial_failure",
+      "status": "UNKNOWN"
+    },
+    "recovered_pdf": {
+      "format": "pdf",
+      "idempotency_key": "proof:pdf:report",
+      "output_sha256": "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\report.pdf",
+      "readback": {
+        "expected_page_count": 1,
+        "missing_text": [],
+        "page_count": 1,
+        "sha256": "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+        "source_ref": "docx/report-final.docx",
+        "source_sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "target_ref": "pdf/report.pdf",
+        "text_chars": 1161,
+        "text_sha256": "e15d128d7d41f4fee59b398be9246e98802816f1b466ded837da3b3ce90deff6",
+        "verified": true
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "replayed": true,
+      "sha256": "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+      "size_bytes": 2461,
+      "source_sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+      "target_ref": "pdf/report.pdf"
+    }
+  },
+  "assertions": {
+    "command_verified": true,
+    "desktop_closed": true,
+    "docx_source_preserved": true,
+    "no_unexplained_tmp_files": true,
+    "organized_hashes_match": true,
+    "path_escape_blocked": true,
+    "pdf_reconciled": true,
+    "safe_edit_reconciled": true,
+    "source_csv_preserved": true,
+    "source_json_preserved": true,
+    "unrelated_cleanup_complete": true,
+    "unrelated_process_untouched": true,
+    "xlsx_source_preserved": true
+  },
+  "base_sha": "afddb8d5ca3d5c3459a4f5394e84affb92d13738",
+  "branch": "candidate/v13-final-personal-executive-convergence-20260905",
+  "data": {
+    "json_export": "data/transformed.json",
+    "rows_in": 3,
+    "rows_out": 2,
+    "sum_total": "40"
+  },
+  "desktop": {
+    "application": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+    "closed": true,
+    "focused": true,
+    "opened_pid": 42852
+  },
+  "docx": {
+    "created": "docx/report.docx",
+    "edited": "docx/report-final.docx",
+    "extracted_text_sha256": "56d1ab6a9ebe20bd7b255394c65d6cc0d8050fe550b01af60041fd882e186829"
+  },
+  "evidence_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator",
+  "excluded_formats": {
+    "pptx": "SKIPPED_BY_OWNER"
+  },
+  "fabric_actions": [
+    {
+      "action_kind": "artifact.table.transform",
+      "capability_id": "cap.artifact.table.transform",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:83e1a7da234351e207df44e52cdc53543bc3ca18c0c234166cf389ac8437999c",
+        "action_kind": "artifact.table.transform",
+        "claimed": "COMPLETED",
+        "column_count": 3,
+        "format": "csv",
+        "journal_state": "COMPLETED",
+        "performed": true,
+        "preview_rows": [
+          {
+            "Label": "Alpha / open",
+            "Name": "Alpha",
+            "Total": 20
+          },
+          {
+            "Label": "Gamma / open",
+            "Name": "Gamma",
+            "Total": 20
+          }
+        ],
+        "replayed": false,
+        "row_count": 2,
+        "schema": [
+          "Name",
+          "Total",
+          "Label"
+        ],
+        "source": {
+          "captured_at": "2026-09-05T15:47:57.205691Z",
+          "format": "csv",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+          "sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "size_bytes": 80,
+          "source_ref": "inputs/source.csv",
+          "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162"
+        },
+        "source_ref": "inputs/source.csv",
+        "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "summary": {
+          "column_count": 3,
+          "format": "csv",
+          "group_by": "Name",
+          "group_counts": {
+            "Alpha": 1,
+            "Gamma": 1
+          },
+          "headers": [
+            "Name",
+            "Total",
+            "Label"
+          ],
+          "missing_by_column": {
+            "Label": 0,
+            "Name": 0,
+            "Total": 0
+          },
+          "row_count": 2,
+          "source_ref": "inputs/source.csv",
+          "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "sum_column": "Total",
+          "sum_value": "40",
+          "sum_value_count": 2
+        },
+        "table_sha256": "dfee26121281882ae6eea2cd7e27dc4cc785e5619db19154cd9bd15945bbc61d"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:83e1a7da234351e207df44e52cdc53543bc3ca18c0c234166cf389ac8437999c",
+        "action_kind": "artifact.table.transform",
+        "claimed": "COMPLETED",
+        "column_count": 3,
+        "format": "csv",
+        "journal_state": "COMPLETED",
+        "performed": true,
+        "preview_rows": [
+          {
+            "Label": "Alpha / open",
+            "Name": "Alpha",
+            "Total": 20
+          },
+          {
+            "Label": "Gamma / open",
+            "Name": "Gamma",
+            "Total": 20
+          }
+        ],
+        "replayed": false,
+        "row_count": 2,
+        "schema": [
+          "Name",
+          "Total",
+          "Label"
+        ],
+        "source": {
+          "captured_at": "2026-09-05T15:47:57.205691Z",
+          "format": "csv",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+          "sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "size_bytes": 80,
+          "source_ref": "inputs/source.csv",
+          "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162"
+        },
+        "source_ref": "inputs/source.csv",
+        "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "summary": {
+          "column_count": 3,
+          "format": "csv",
+          "group_by": "Name",
+          "group_counts": {
+            "Alpha": 1,
+            "Gamma": 1
+          },
+          "headers": [
+            "Name",
+            "Total",
+            "Label"
+          ],
+          "missing_by_column": {
+            "Label": 0,
+            "Name": 0,
+            "Total": 0
+          },
+          "row_count": 2,
+          "source_ref": "inputs/source.csv",
+          "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "sum_column": "Total",
+          "sum_value": "40",
+          "sum_value_count": 2
+        },
+        "table_sha256": "dfee26121281882ae6eea2cd7e27dc4cc785e5619db19154cd9bd15945bbc61d",
+        "verified_at": "2026-09-05T15:47:57.254051Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.table.transform",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.table.transform",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:83e1a7da234351e207df44e52cdc53543bc3ca18c0c234166cf389ac8437999c",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.table.transform",
+          "effect:effect:83e1a7da234351e207df44e52cdc53543bc3ca18c0c234166cf389ac8437999c"
+        ],
+        "idempotency_key": "idempotency:7a888114c0c46c07469a85843c281b3e950b32ff06a811f0ffbc7af962a42a84",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.table.transform",
+          "claimed": "COMPLETED",
+          "column_count": 3,
+          "format": "csv",
+          "preview_rows": [
+            {
+              "Label": "Alpha / open",
+              "Name": "Alpha",
+              "Total": 20
+            },
+            {
+              "Label": "Gamma / open",
+              "Name": "Gamma",
+              "Total": 20
+            }
+          ],
+          "row_count": 2,
+          "schema": [
+            "Name",
+            "Total",
+            "Label"
+          ],
+          "source": {
+            "captured_at": "2026-09-05T15:47:57.205691Z",
+            "format": "csv",
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+            "sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+            "size_bytes": 80,
+            "source_ref": "inputs/source.csv",
+            "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162"
+          },
+          "source_ref": "inputs/source.csv",
+          "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "summary": {
+            "column_count": 3,
+            "format": "csv",
+            "group_by": "Name",
+            "group_counts": {
+              "Alpha": 1,
+              "Gamma": 1
+            },
+            "headers": [
+              "Name",
+              "Total",
+              "Label"
+            ],
+            "missing_by_column": {
+              "Label": 0,
+              "Name": 0,
+              "Total": 0
+            },
+            "row_count": 2,
+            "source_ref": "inputs/source.csv",
+            "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+            "sum_column": "Total",
+            "sum_value": "40",
+            "sum_value_count": 2
+          },
+          "table_sha256": "dfee26121281882ae6eea2cd7e27dc4cc785e5619db19154cd9bd15945bbc61d"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:83e1a7da234351e207df44e52cdc53543bc3ca18c0c234166cf389ac8437999c:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.table.transform",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.xlsx.create",
+      "capability_id": "cap.artifact.xlsx.create",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:b54bb3fdf20b7d2d6e4a78c59b437920efaec33afcaf049286ac8f608b3067c2",
+        "action_kind": "artifact.xlsx.create",
+        "claimed": "COMPLETED",
+        "format": "xlsx",
+        "idempotency_key": "proof:xlsx:create",
+        "journal_state": "COMPLETED",
+        "output_sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis.xlsx",
+        "performed": true,
+        "readback": {
+          "auto_filter": "A1:C3",
+          "formula_count": 0,
+          "freeze_panes": "A2",
+          "max_column": 3,
+          "max_row": 3,
+          "mismatches": {},
+          "sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+          "sheet_count": 1,
+          "sheet_name": "Work",
+          "styled_header": true,
+          "target_ref": "xlsx/analysis.xlsx",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+        "size_bytes": 5265,
+        "source_ref": "inputs/source.csv",
+        "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "table_sha256": "dfee26121281882ae6eea2cd7e27dc4cc785e5619db19154cd9bd15945bbc61d",
+        "target_ref": "xlsx/analysis.xlsx"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:b54bb3fdf20b7d2d6e4a78c59b437920efaec33afcaf049286ac8f608b3067c2",
+        "action_kind": "artifact.xlsx.create",
+        "claimed": "COMPLETED",
+        "format": "xlsx",
+        "idempotency_key": "proof:xlsx:create",
+        "journal_state": "COMPLETED",
+        "output_sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis.xlsx",
+        "performed": true,
+        "readback": {
+          "auto_filter": "A1:C3",
+          "formula_count": 0,
+          "freeze_panes": "A2",
+          "max_column": 3,
+          "max_row": 3,
+          "mismatches": {},
+          "sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+          "sheet_count": 1,
+          "sheet_name": "Work",
+          "styled_header": true,
+          "target_ref": "xlsx/analysis.xlsx",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+        "size_bytes": 5265,
+        "source_ref": "inputs/source.csv",
+        "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "table_sha256": "dfee26121281882ae6eea2cd7e27dc4cc785e5619db19154cd9bd15945bbc61d",
+        "target_ref": "xlsx/analysis.xlsx",
+        "verified_at": "2026-09-05T15:47:58.070615Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.xlsx.create",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.xlsx.create",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:b54bb3fdf20b7d2d6e4a78c59b437920efaec33afcaf049286ac8f608b3067c2",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.xlsx.create",
+          "effect:effect:b54bb3fdf20b7d2d6e4a78c59b437920efaec33afcaf049286ac8f608b3067c2"
+        ],
+        "idempotency_key": "proof:xlsx:create",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.xlsx.create",
+          "claimed": "COMPLETED",
+          "format": "xlsx",
+          "idempotency_key": "proof:xlsx:create",
+          "output_sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis.xlsx",
+          "readback": {
+            "auto_filter": "A1:C3",
+            "formula_count": 0,
+            "freeze_panes": "A2",
+            "max_column": 3,
+            "max_row": 3,
+            "mismatches": {},
+            "sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+            "sheet_count": 1,
+            "sheet_name": "Work",
+            "styled_header": true,
+            "target_ref": "xlsx/analysis.xlsx",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+          "size_bytes": 5265,
+          "source_ref": "inputs/source.csv",
+          "source_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "table_sha256": "dfee26121281882ae6eea2cd7e27dc4cc785e5619db19154cd9bd15945bbc61d",
+          "target_ref": "xlsx/analysis.xlsx"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:b54bb3fdf20b7d2d6e4a78c59b437920efaec33afcaf049286ac8f608b3067c2:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.xlsx.create",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.xlsx.update",
+      "capability_id": "cap.artifact.xlsx.update",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:51f721c2978f7cefa42437c9c1c4fdc170b5dee0dcf35fca3627ea3ace4eb50b",
+        "action_kind": "artifact.xlsx.update",
+        "claimed": "COMPLETED",
+        "format": "xlsx",
+        "idempotency_key": "proof:xlsx:update",
+        "journal_state": "COMPLETED",
+        "output_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+        "performed": true,
+        "readback": {
+          "auto_filter": "A1:D3",
+          "formula_count": 2,
+          "freeze_panes": "A2",
+          "max_column": 4,
+          "max_row": 3,
+          "mismatches": {},
+          "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "sheet_count": 1,
+          "sheet_name": "Work",
+          "styled_header": true,
+          "target_ref": "xlsx/analysis-formulas.xlsx",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "size_bytes": 5309,
+        "source_ref": "xlsx/analysis.xlsx",
+        "source_sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+        "target_ref": "xlsx/analysis-formulas.xlsx"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:51f721c2978f7cefa42437c9c1c4fdc170b5dee0dcf35fca3627ea3ace4eb50b",
+        "action_kind": "artifact.xlsx.update",
+        "claimed": "COMPLETED",
+        "format": "xlsx",
+        "idempotency_key": "proof:xlsx:update",
+        "journal_state": "COMPLETED",
+        "output_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+        "performed": true,
+        "readback": {
+          "auto_filter": "A1:D3",
+          "formula_count": 2,
+          "freeze_panes": "A2",
+          "max_column": 4,
+          "max_row": 3,
+          "mismatches": {},
+          "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "sheet_count": 1,
+          "sheet_name": "Work",
+          "styled_header": true,
+          "target_ref": "xlsx/analysis-formulas.xlsx",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "size_bytes": 5309,
+        "source_ref": "xlsx/analysis.xlsx",
+        "source_sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+        "target_ref": "xlsx/analysis-formulas.xlsx",
+        "verified_at": "2026-09-05T15:47:58.584538Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.xlsx.update",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.xlsx.update",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:51f721c2978f7cefa42437c9c1c4fdc170b5dee0dcf35fca3627ea3ace4eb50b",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.xlsx.update",
+          "effect:effect:51f721c2978f7cefa42437c9c1c4fdc170b5dee0dcf35fca3627ea3ace4eb50b"
+        ],
+        "idempotency_key": "proof:xlsx:update",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.xlsx.update",
+          "claimed": "COMPLETED",
+          "format": "xlsx",
+          "idempotency_key": "proof:xlsx:update",
+          "output_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+          "readback": {
+            "auto_filter": "A1:D3",
+            "formula_count": 2,
+            "freeze_panes": "A2",
+            "max_column": 4,
+            "max_row": 3,
+            "mismatches": {},
+            "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+            "sheet_count": 1,
+            "sheet_name": "Work",
+            "styled_header": true,
+            "target_ref": "xlsx/analysis-formulas.xlsx",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "size_bytes": 5309,
+          "source_ref": "xlsx/analysis.xlsx",
+          "source_sha256": "8d2d92071152b6d5e898f2e70b5dbc7a662f425511064ee0433c04cb84454ebd",
+          "target_ref": "xlsx/analysis-formulas.xlsx"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:51f721c2978f7cefa42437c9c1c4fdc170b5dee0dcf35fca3627ea3ace4eb50b:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.xlsx.update",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.docx.create",
+      "capability_id": "cap.artifact.docx.create",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:97e1361f5aba579a1303901765944768947465dccd9ec42abfb3027dc3364d6e",
+        "claimed": "COMPLETED",
+        "format": "docx",
+        "idempotency_key": "proof:docx:create",
+        "journal_state": "COMPLETED",
+        "output_sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report.docx",
+        "performed": true,
+        "readback": {
+          "missing_values": [],
+          "paragraph_count": 7,
+          "required_values": [
+            "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+            "2"
+          ],
+          "sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+          "table_count": 4,
+          "target_ref": "docx/report.docx",
+          "text_sha256": "e87bde7fb5aedc9704cfdf810590ebe31a4435c41b6b5c41ca405b9175792d9a",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+        "size_bytes": 36179,
+        "source": {
+          "captured_at": "2026-09-05T15:47:58.937012Z",
+          "format": "xlsx",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+          "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "size_bytes": 5309,
+          "source_ref": "xlsx/analysis-formulas.xlsx",
+          "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70"
+        },
+        "source_ref": "xlsx/analysis-formulas.xlsx",
+        "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "summary": {
+          "column_count": 4,
+          "format": "xlsx",
+          "group_by": "Name",
+          "group_counts": {
+            "Alpha": 1,
+            "Gamma": 1
+          },
+          "headers": [
+            "Name",
+            "Total",
+            "Label",
+            "DoubleTotal"
+          ],
+          "missing_by_column": {
+            "DoubleTotal": 2,
+            "Label": 0,
+            "Name": 0,
+            "Total": 0
+          },
+          "row_count": 2,
+          "sheet_name": "Work",
+          "source_ref": "xlsx/analysis-formulas.xlsx",
+          "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "sum_column": "Total",
+          "sum_value": "40",
+          "sum_value_count": 2
+        },
+        "target_ref": "docx/report.docx"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:97e1361f5aba579a1303901765944768947465dccd9ec42abfb3027dc3364d6e",
+        "claimed": "COMPLETED",
+        "format": "docx",
+        "idempotency_key": "proof:docx:create",
+        "journal_state": "COMPLETED",
+        "output_sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report.docx",
+        "performed": true,
+        "readback": {
+          "missing_values": [],
+          "paragraph_count": 7,
+          "required_values": [
+            "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+            "2"
+          ],
+          "sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+          "table_count": 4,
+          "target_ref": "docx/report.docx",
+          "text_sha256": "e87bde7fb5aedc9704cfdf810590ebe31a4435c41b6b5c41ca405b9175792d9a",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+        "size_bytes": 36179,
+        "source": {
+          "captured_at": "2026-09-05T15:47:58.937012Z",
+          "format": "xlsx",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+          "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "size_bytes": 5309,
+          "source_ref": "xlsx/analysis-formulas.xlsx",
+          "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70"
+        },
+        "source_ref": "xlsx/analysis-formulas.xlsx",
+        "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "summary": {
+          "column_count": 4,
+          "format": "xlsx",
+          "group_by": "Name",
+          "group_counts": {
+            "Alpha": 1,
+            "Gamma": 1
+          },
+          "headers": [
+            "Name",
+            "Total",
+            "Label",
+            "DoubleTotal"
+          ],
+          "missing_by_column": {
+            "DoubleTotal": 2,
+            "Label": 0,
+            "Name": 0,
+            "Total": 0
+          },
+          "row_count": 2,
+          "sheet_name": "Work",
+          "source_ref": "xlsx/analysis-formulas.xlsx",
+          "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "sum_column": "Total",
+          "sum_value": "40",
+          "sum_value_count": 2
+        },
+        "target_ref": "docx/report.docx",
+        "verified_at": "2026-09-05T15:47:59.187512Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.docx.create",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.docx.create",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:97e1361f5aba579a1303901765944768947465dccd9ec42abfb3027dc3364d6e",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.docx.create",
+          "effect:effect:97e1361f5aba579a1303901765944768947465dccd9ec42abfb3027dc3364d6e"
+        ],
+        "idempotency_key": "proof:docx:create",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "claimed": "COMPLETED",
+          "format": "docx",
+          "idempotency_key": "proof:docx:create",
+          "output_sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report.docx",
+          "readback": {
+            "missing_values": [],
+            "paragraph_count": 7,
+            "required_values": [
+              "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+              "2"
+            ],
+            "sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+            "table_count": 4,
+            "target_ref": "docx/report.docx",
+            "text_sha256": "e87bde7fb5aedc9704cfdf810590ebe31a4435c41b6b5c41ca405b9175792d9a",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+          "size_bytes": 36179,
+          "source": {
+            "captured_at": "2026-09-05T15:47:58.937012Z",
+            "format": "xlsx",
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+            "sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+            "size_bytes": 5309,
+            "source_ref": "xlsx/analysis-formulas.xlsx",
+            "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70"
+          },
+          "source_ref": "xlsx/analysis-formulas.xlsx",
+          "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "summary": {
+            "column_count": 4,
+            "format": "xlsx",
+            "group_by": "Name",
+            "group_counts": {
+              "Alpha": 1,
+              "Gamma": 1
+            },
+            "headers": [
+              "Name",
+              "Total",
+              "Label",
+              "DoubleTotal"
+            ],
+            "missing_by_column": {
+              "DoubleTotal": 2,
+              "Label": 0,
+              "Name": 0,
+              "Total": 0
+            },
+            "row_count": 2,
+            "sheet_name": "Work",
+            "source_ref": "xlsx/analysis-formulas.xlsx",
+            "source_sha256": "4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+            "sum_column": "Total",
+            "sum_value": "40",
+            "sum_value_count": 2
+          },
+          "target_ref": "docx/report.docx"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:97e1361f5aba579a1303901765944768947465dccd9ec42abfb3027dc3364d6e:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.docx.create",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.docx.edit",
+      "capability_id": "cap.artifact.docx.edit",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:b1e0edd3f7129432a227a120955baf0e07a5a87f02548ee2033591822b66be1f",
+        "action_kind": "artifact.docx.edit",
+        "claimed": "COMPLETED",
+        "format": "docx",
+        "idempotency_key": "proof:docx:edit",
+        "journal_state": "COMPLETED",
+        "output_sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report-final.docx",
+        "performed": true,
+        "readback": {
+          "missing_values": [],
+          "paragraph_count": 8,
+          "replacements_applied": {
+            "V13 Personal Operator Report": 1
+          },
+          "required_values": [
+            "V13 Personal Operator Verified Report",
+            "Independent readback is required before acceptance."
+          ],
+          "sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+          "table_count": 4,
+          "target_ref": "docx/report-final.docx",
+          "text_sha256": "56d1ab6a9ebe20bd7b255394c65d6cc0d8050fe550b01af60041fd882e186829",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "size_bytes": 36223,
+        "source_ref": "docx/report.docx",
+        "source_sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+        "target_ref": "docx/report-final.docx"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:b1e0edd3f7129432a227a120955baf0e07a5a87f02548ee2033591822b66be1f",
+        "action_kind": "artifact.docx.edit",
+        "claimed": "COMPLETED",
+        "format": "docx",
+        "idempotency_key": "proof:docx:edit",
+        "journal_state": "COMPLETED",
+        "output_sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report-final.docx",
+        "performed": true,
+        "readback": {
+          "missing_values": [],
+          "paragraph_count": 8,
+          "replacements_applied": {
+            "V13 Personal Operator Report": 1
+          },
+          "required_values": [
+            "V13 Personal Operator Verified Report",
+            "Independent readback is required before acceptance."
+          ],
+          "sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+          "table_count": 4,
+          "target_ref": "docx/report-final.docx",
+          "text_sha256": "56d1ab6a9ebe20bd7b255394c65d6cc0d8050fe550b01af60041fd882e186829",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "size_bytes": 36223,
+        "source_ref": "docx/report.docx",
+        "source_sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+        "target_ref": "docx/report-final.docx",
+        "verified_at": "2026-09-05T15:47:59.753697Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.docx.edit",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.docx.edit",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:b1e0edd3f7129432a227a120955baf0e07a5a87f02548ee2033591822b66be1f",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.docx.edit",
+          "effect:effect:b1e0edd3f7129432a227a120955baf0e07a5a87f02548ee2033591822b66be1f"
+        ],
+        "idempotency_key": "proof:docx:edit",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.docx.edit",
+          "claimed": "COMPLETED",
+          "format": "docx",
+          "idempotency_key": "proof:docx:edit",
+          "output_sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report-final.docx",
+          "readback": {
+            "missing_values": [],
+            "paragraph_count": 8,
+            "replacements_applied": {
+              "V13 Personal Operator Report": 1
+            },
+            "required_values": [
+              "V13 Personal Operator Verified Report",
+              "Independent readback is required before acceptance."
+            ],
+            "sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+            "table_count": 4,
+            "target_ref": "docx/report-final.docx",
+            "text_sha256": "56d1ab6a9ebe20bd7b255394c65d6cc0d8050fe550b01af60041fd882e186829",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+          "size_bytes": 36223,
+          "source_ref": "docx/report.docx",
+          "source_sha256": "368c36f07ca16728eca4e1a8ae13b5ba8809497e228ab546deb7c711f7b5cd59",
+          "target_ref": "docx/report-final.docx"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:b1e0edd3f7129432a227a120955baf0e07a5a87f02548ee2033591822b66be1f:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.docx.edit",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.pdf.create",
+      "capability_id": "cap.artifact.pdf.create",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:83985f16c116511d9bcc2e2afbe3175860ff37f35dc247f48849c48c142bbba5",
+        "action_kind": "artifact.pdf.create",
+        "claimed": "COMPLETED",
+        "format": "pdf",
+        "idempotency_key": "proof:pdf:appendix",
+        "journal_state": "COMPLETED",
+        "output_sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\appendix.pdf",
+        "performed": true,
+        "readback": {
+          "expected_page_count": 1,
+          "missing_text": [],
+          "page_count": 1,
+          "sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+          "source_ref": "inputs/context.json",
+          "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+          "target_ref": "pdf/appendix.pdf",
+          "text_chars": 166,
+          "text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+        "size_bytes": 1808,
+        "source_ref": "inputs/context.json",
+        "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+        "target_ref": "pdf/appendix.pdf"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:83985f16c116511d9bcc2e2afbe3175860ff37f35dc247f48849c48c142bbba5",
+        "action_kind": "artifact.pdf.create",
+        "claimed": "COMPLETED",
+        "format": "pdf",
+        "idempotency_key": "proof:pdf:appendix",
+        "journal_state": "COMPLETED",
+        "output_sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\appendix.pdf",
+        "performed": true,
+        "readback": {
+          "expected_page_count": 1,
+          "missing_text": [],
+          "page_count": 1,
+          "sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+          "source_ref": "inputs/context.json",
+          "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+          "target_ref": "pdf/appendix.pdf",
+          "text_chars": 166,
+          "text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+        "size_bytes": 1808,
+        "source_ref": "inputs/context.json",
+        "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+        "target_ref": "pdf/appendix.pdf",
+        "verified_at": "2026-09-05T15:48:00.494657Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.pdf.create",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.pdf.create",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:83985f16c116511d9bcc2e2afbe3175860ff37f35dc247f48849c48c142bbba5",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.pdf.create",
+          "effect:effect:83985f16c116511d9bcc2e2afbe3175860ff37f35dc247f48849c48c142bbba5"
+        ],
+        "idempotency_key": "proof:pdf:appendix",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.pdf.create",
+          "claimed": "COMPLETED",
+          "format": "pdf",
+          "idempotency_key": "proof:pdf:appendix",
+          "output_sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\appendix.pdf",
+          "readback": {
+            "expected_page_count": 1,
+            "missing_text": [],
+            "page_count": 1,
+            "sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+            "source_ref": "inputs/context.json",
+            "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+            "target_ref": "pdf/appendix.pdf",
+            "text_chars": 166,
+            "text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c",
+          "size_bytes": 1808,
+          "source_ref": "inputs/context.json",
+          "source_sha256": "0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+          "target_ref": "pdf/appendix.pdf"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:83985f16c116511d9bcc2e2afbe3175860ff37f35dc247f48849c48c142bbba5:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.pdf.create",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.pdf.combine",
+      "capability_id": "cap.artifact.pdf.combine",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:19519c30d9a1336044965158877905c08cb6ab4799e7a24814d289fa9fbce1d9",
+        "action_kind": "artifact.pdf.combine",
+        "claimed": "COMPLETED",
+        "format": "pdf",
+        "idempotency_key": "proof:pdf:combine",
+        "journal_state": "COMPLETED",
+        "output_sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\combined.pdf",
+        "performed": true,
+        "readback": {
+          "expected_page_count": 2,
+          "missing_text": [],
+          "page_count": 2,
+          "sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "source_sha256s": [
+            "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+            "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c"
+          ],
+          "source_text_sha256": "74bc2ce162cfcd91396a79345ae033a74069307fe49cea5603ab24ea6cb8253e",
+          "target_ref": "pdf/combined.pdf",
+          "text_chars": 1328,
+          "text_sha256": "74bc2ce162cfcd91396a79345ae033a74069307fe49cea5603ab24ea6cb8253e",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "size_bytes": 2981,
+        "source_refs": [
+          "pdf/report.pdf",
+          "pdf/appendix.pdf"
+        ],
+        "source_sha256": "4790d58ca03f35114faba468a9606b9b3ff82c20d6788840d1ecfba4c74f70d7",
+        "source_sha256s": [
+          "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+          "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c"
+        ],
+        "target_ref": "pdf/combined.pdf"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:19519c30d9a1336044965158877905c08cb6ab4799e7a24814d289fa9fbce1d9",
+        "action_kind": "artifact.pdf.combine",
+        "claimed": "COMPLETED",
+        "format": "pdf",
+        "idempotency_key": "proof:pdf:combine",
+        "journal_state": "COMPLETED",
+        "output_sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\combined.pdf",
+        "performed": true,
+        "readback": {
+          "expected_page_count": 2,
+          "missing_text": [],
+          "page_count": 2,
+          "sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "source_sha256s": [
+            "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+            "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c"
+          ],
+          "source_text_sha256": "74bc2ce162cfcd91396a79345ae033a74069307fe49cea5603ab24ea6cb8253e",
+          "target_ref": "pdf/combined.pdf",
+          "text_chars": 1328,
+          "text_sha256": "74bc2ce162cfcd91396a79345ae033a74069307fe49cea5603ab24ea6cb8253e",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "size_bytes": 2981,
+        "source_refs": [
+          "pdf/report.pdf",
+          "pdf/appendix.pdf"
+        ],
+        "source_sha256": "4790d58ca03f35114faba468a9606b9b3ff82c20d6788840d1ecfba4c74f70d7",
+        "source_sha256s": [
+          "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+          "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c"
+        ],
+        "target_ref": "pdf/combined.pdf",
+        "verified_at": "2026-09-05T15:48:01.320300Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.pdf.combine",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.pdf.combine",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:19519c30d9a1336044965158877905c08cb6ab4799e7a24814d289fa9fbce1d9",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.pdf.combine",
+          "effect:effect:19519c30d9a1336044965158877905c08cb6ab4799e7a24814d289fa9fbce1d9"
+        ],
+        "idempotency_key": "proof:pdf:combine",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.pdf.combine",
+          "claimed": "COMPLETED",
+          "format": "pdf",
+          "idempotency_key": "proof:pdf:combine",
+          "output_sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\combined.pdf",
+          "readback": {
+            "expected_page_count": 2,
+            "missing_text": [],
+            "page_count": 2,
+            "sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+            "source_sha256s": [
+              "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+              "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c"
+            ],
+            "source_text_sha256": "74bc2ce162cfcd91396a79345ae033a74069307fe49cea5603ab24ea6cb8253e",
+            "target_ref": "pdf/combined.pdf",
+            "text_chars": 1328,
+            "text_sha256": "74bc2ce162cfcd91396a79345ae033a74069307fe49cea5603ab24ea6cb8253e",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "size_bytes": 2981,
+          "source_refs": [
+            "pdf/report.pdf",
+            "pdf/appendix.pdf"
+          ],
+          "source_sha256": "4790d58ca03f35114faba468a9606b9b3ff82c20d6788840d1ecfba4c74f70d7",
+          "source_sha256s": [
+            "2444affb6b644d34550689c92a3e7bd5f8d035a76c32fae3d536fb7a57d14c31",
+            "6732e12f2598cd8697dc64a9e4a0d298c0674ae59bd357ba38958bc09c52269c"
+          ],
+          "target_ref": "pdf/combined.pdf"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:19519c30d9a1336044965158877905c08cb6ab4799e7a24814d289fa9fbce1d9:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.pdf.combine",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "artifact.pdf.split",
+      "capability_id": "cap.artifact.pdf.split",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:03ee9e66936869aae06a3564e52f6fd5f4f1f1e08c4b319a0414d78850af187e",
+        "action_kind": "artifact.pdf.split",
+        "claimed": "COMPLETED",
+        "format": "pdf",
+        "idempotency_key": "proof:pdf:split",
+        "journal_state": "COMPLETED",
+        "output_sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\split-appendix.pdf",
+        "performed": true,
+        "readback": {
+          "expected_page_count": 1,
+          "missing_text": [],
+          "page_count": 1,
+          "sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+          "source_page_range": [
+            2,
+            2
+          ],
+          "source_text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+          "target_ref": "pdf/split-appendix.pdf",
+          "text_chars": 166,
+          "text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+        "size_bytes": 1339,
+        "source_ref": "pdf/combined.pdf",
+        "source_sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "target_ref": "pdf/split-appendix.pdf"
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:03ee9e66936869aae06a3564e52f6fd5f4f1f1e08c4b319a0414d78850af187e",
+        "action_kind": "artifact.pdf.split",
+        "claimed": "COMPLETED",
+        "format": "pdf",
+        "idempotency_key": "proof:pdf:split",
+        "journal_state": "COMPLETED",
+        "output_sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\split-appendix.pdf",
+        "performed": true,
+        "readback": {
+          "expected_page_count": 1,
+          "missing_text": [],
+          "page_count": 1,
+          "sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+          "source_page_range": [
+            2,
+            2
+          ],
+          "source_text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+          "target_ref": "pdf/split-appendix.pdf",
+          "text_chars": 166,
+          "text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+          "verified": true
+        },
+        "readback_verified": true,
+        "reconciled": false,
+        "replayed": false,
+        "sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+        "size_bytes": 1339,
+        "source_ref": "pdf/combined.pdf",
+        "source_sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "target_ref": "pdf/split-appendix.pdf",
+        "verified_at": "2026-09-05T15:48:01.745213Z"
+      },
+      "receipt": {
+        "action_kind": "artifact.pdf.split",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.artifact.pdf.split",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:03ee9e66936869aae06a3564e52f6fd5f4f1f1e08c4b319a0414d78850af187e",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.artifact.pdf.split",
+          "effect:effect:03ee9e66936869aae06a3564e52f6fd5f4f1f1e08c4b319a0414d78850af187e"
+        ],
+        "idempotency_key": "proof:pdf:split",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "artifact.pdf.split",
+          "claimed": "COMPLETED",
+          "format": "pdf",
+          "idempotency_key": "proof:pdf:split",
+          "output_sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\split-appendix.pdf",
+          "readback": {
+            "expected_page_count": 1,
+            "missing_text": [],
+            "page_count": 1,
+            "sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+            "source_page_range": [
+              2,
+              2
+            ],
+            "source_text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+            "target_ref": "pdf/split-appendix.pdf",
+            "text_chars": 166,
+            "text_sha256": "1be847ec6bcb64e1b5bbbd770f7a1ff2040b2604f020c1d511495119ced3e435",
+            "verified": true
+          },
+          "readback_verified": true,
+          "reconciled": false,
+          "sha256": "e1088abb9aafa4bbc2557385a150f69d22ae6f1bb46654b582e37b9a8ba4caea",
+          "size_bytes": 1339,
+          "source_ref": "pdf/combined.pdf",
+          "source_sha256": "fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "target_ref": "pdf/split-appendix.pdf"
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:03ee9e66936869aae06a3564e52f6fd5f4f1f1e08c4b319a0414d78850af187e:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "artifact.pdf.split",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "local.process.launch",
+      "capability_id": "cap.local.process.launch",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:b67bebb0973bc2af7f7f0bac7c91c86062d2e7a43db3537a0edca040a02e98bb",
+        "action_kind": "local.process.launch",
+        "before": {
+          "process_id": "proof-owned-sleeper",
+          "registered": false
+        },
+        "claimed": "COMPLETED",
+        "error": null,
+        "journal_state": "COMPLETED",
+        "operation": "process.launch",
+        "performed": true,
+        "readback": {
+          "alive": true,
+          "observed_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          }
+        },
+        "reconciled": false,
+        "replayed": false,
+        "request_id": "proof:process:launch",
+        "result": {
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "state": "running"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        }
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:b67bebb0973bc2af7f7f0bac7c91c86062d2e7a43db3537a0edca040a02e98bb",
+        "action_kind": "local.process.launch",
+        "before": {
+          "process_id": "proof-owned-sleeper",
+          "registered": false
+        },
+        "claimed": "COMPLETED",
+        "error": null,
+        "journal_state": "COMPLETED",
+        "operation": "process.launch",
+        "performed": true,
+        "readback": {
+          "alive": true,
+          "observed_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          }
+        },
+        "reconciled": false,
+        "replayed": false,
+        "request_id": "proof:process:launch",
+        "result": {
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "state": "running"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        },
+        "verified_at": "2026-09-05T15:48:02.669020Z"
+      },
+      "receipt": {
+        "action_kind": "local.process.launch",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.local.process.launch",
+        "capability_version": "1.1.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:b67bebb0973bc2af7f7f0bac7c91c86062d2e7a43db3537a0edca040a02e98bb",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.local.process.launch",
+          "effect:effect:b67bebb0973bc2af7f7f0bac7c91c86062d2e7a43db3537a0edca040a02e98bb"
+        ],
+        "idempotency_key": "proof:process:launch",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "local.process.launch",
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "claimed": "COMPLETED",
+          "error": null,
+          "operation": "process.launch",
+          "readback": {
+            "alive": true,
+            "observed_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            }
+          },
+          "reconciled": false,
+          "request_id": "proof:process:launch",
+          "result": {
+            "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+            "pid": 31460,
+            "process_id": "proof-owned-sleeper",
+            "state": "running"
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "args": [
+              "-c",
+              "import time; time.sleep(120)"
+            ],
+            "before": {
+              "process_id": "proof-owned-sleeper",
+              "registered": false
+            },
+            "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+            "creation_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            },
+            "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "idempotency_key": "proof:process:launch",
+            "launched_at": "2026-09-05T15:48:02.616381Z",
+            "opened_identity": null,
+            "operation": "process.launch",
+            "owned_descendants": [
+              31460,
+              28716
+            ],
+            "pid": 31460,
+            "process_id": "proof-owned-sleeper",
+            "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+            "show_window": false,
+            "state": "running"
+          }
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:b67bebb0973bc2af7f7f0bac7c91c86062d2e7a43db3537a0edca040a02e98bb:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "local.process.launch",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "local.process.inspect",
+      "capability_id": "cap.local.process.inspect",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_kind": "local.process.inspect",
+        "before": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        },
+        "claimed": "COMPLETED",
+        "error": null,
+        "operation": "process.inspect",
+        "readback": {
+          "alive": true,
+          "observed_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          }
+        },
+        "reconciled": true,
+        "replayed": false,
+        "request_id": "operator-c1ef4c92310a4fb7ae8642a20d882a6c",
+        "result": {
+          "matches": true,
+          "process_id": "proof-owned-sleeper",
+          "state": "running"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        }
+      },
+      "note": "",
+      "observed": {
+        "action_kind": "local.process.inspect",
+        "before": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        },
+        "claimed": "COMPLETED",
+        "error": null,
+        "operation": "process.inspect",
+        "readback": {
+          "alive": true,
+          "observed_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          }
+        },
+        "reconciled": true,
+        "replayed": false,
+        "request_id": "operator-c1ef4c92310a4fb7ae8642a20d882a6c",
+        "result": {
+          "matches": true,
+          "process_id": "proof-owned-sleeper",
+          "state": "running"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        },
+        "verified_at": "2026-09-05T15:48:02.883594Z"
+      },
+      "receipt": {
+        "action_kind": "local.process.inspect",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.local.process.inspect",
+        "capability_version": "1.1.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "READ_ONLY",
+        "effect_id": "effect:ef827e129bc69c24fe71ed9f0a183f6e8890faa127ddf2b3ed60d94f83f59762",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.local.process.inspect",
+          "effect:effect:ef827e129bc69c24fe71ed9f0a183f6e8890faa127ddf2b3ed60d94f83f59762"
+        ],
+        "idempotency_key": "idempotency:080be4e40b40d9e0e6653c673000def80c606791a605791ae758d53e3a504622",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "local.process.inspect",
+          "before": {
+            "args": [
+              "-c",
+              "import time; time.sleep(120)"
+            ],
+            "before": {
+              "process_id": "proof-owned-sleeper",
+              "registered": false
+            },
+            "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+            "creation_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            },
+            "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "idempotency_key": "proof:process:launch",
+            "launched_at": "2026-09-05T15:48:02.616381Z",
+            "opened_identity": null,
+            "operation": "process.launch",
+            "owned_descendants": [
+              31460,
+              28716
+            ],
+            "pid": 31460,
+            "process_id": "proof-owned-sleeper",
+            "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+            "show_window": false,
+            "state": "running"
+          },
+          "claimed": "COMPLETED",
+          "error": null,
+          "operation": "process.inspect",
+          "readback": {
+            "alive": true,
+            "observed_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            }
+          },
+          "reconciled": true,
+          "request_id": "operator-c1ef4c92310a4fb7ae8642a20d882a6c",
+          "result": {
+            "matches": true,
+            "process_id": "proof-owned-sleeper",
+            "state": "running"
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "args": [
+              "-c",
+              "import time; time.sleep(120)"
+            ],
+            "before": {
+              "process_id": "proof-owned-sleeper",
+              "registered": false
+            },
+            "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+            "creation_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            },
+            "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "idempotency_key": "proof:process:launch",
+            "launched_at": "2026-09-05T15:48:02.616381Z",
+            "opened_identity": null,
+            "operation": "process.launch",
+            "owned_descendants": [
+              31460,
+              28716
+            ],
+            "pid": 31460,
+            "process_id": "proof-owned-sleeper",
+            "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+            "show_window": false,
+            "state": "running"
+          }
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:ef827e129bc69c24fe71ed9f0a183f6e8890faa127ddf2b3ed60d94f83f59762:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "local.process.inspect",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "local.process.close",
+      "capability_id": "cap.local.process.close",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_key": "effect:462d26be42e10d548ed834193d7177459bf2d338d902166f536fc04f9e78d294",
+        "action_kind": "local.process.close",
+        "before": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        },
+        "claimed": "COMPLETED",
+        "error": null,
+        "journal_state": "COMPLETED",
+        "operation": "process.close",
+        "performed": true,
+        "readback": {
+          "alive": false,
+          "observed_identity": {
+            "exit_code": 1,
+            "live": false,
+            "pid": 31460,
+            "via": "popen_handle"
+          },
+          "targeted_pids": [
+            31460
+          ],
+          "termination_via": "popen_handle"
+        },
+        "reconciled": false,
+        "replayed": false,
+        "request_id": "proof:process:close",
+        "result": {
+          "process_id": "proof-owned-sleeper",
+          "state": "exited"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "close_idempotency_key": "proof:process:close",
+          "close_started_at": "2026-09-05T15:48:03.169982Z",
+          "closed_at": "2026-09-05T15:48:03.176453Z",
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "exited"
+        }
+      },
+      "note": "",
+      "observed": {
+        "action_key": "effect:462d26be42e10d548ed834193d7177459bf2d338d902166f536fc04f9e78d294",
+        "action_kind": "local.process.close",
+        "before": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460,
+            28716
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "running"
+        },
+        "claimed": "COMPLETED",
+        "error": null,
+        "journal_state": "COMPLETED",
+        "operation": "process.close",
+        "performed": true,
+        "readback": {
+          "alive": false,
+          "observed_identity": {
+            "exit_code": 1,
+            "live": false,
+            "pid": 31460,
+            "via": "popen_handle"
+          },
+          "targeted_pids": [
+            31460
+          ],
+          "termination_via": "popen_handle"
+        },
+        "reconciled": false,
+        "replayed": false,
+        "request_id": "proof:process:close",
+        "result": {
+          "process_id": "proof-owned-sleeper",
+          "state": "exited"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "-c",
+            "import time; time.sleep(120)"
+          ],
+          "before": {
+            "process_id": "proof-owned-sleeper",
+            "registered": false
+          },
+          "close_idempotency_key": "proof:process:close",
+          "close_started_at": "2026-09-05T15:48:03.169982Z",
+          "closed_at": "2026-09-05T15:48:03.176453Z",
+          "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+          "creation_identity": {
+            "create_time": 134330968826018058,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "pid": 31460
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+          "idempotency_key": "proof:process:launch",
+          "launched_at": "2026-09-05T15:48:02.616381Z",
+          "opened_identity": null,
+          "operation": "process.launch",
+          "owned_descendants": [
+            31460
+          ],
+          "pid": 31460,
+          "process_id": "proof-owned-sleeper",
+          "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+          "show_window": false,
+          "state": "exited"
+        },
+        "verified_at": "2026-09-05T15:48:03.213253Z"
+      },
+      "receipt": {
+        "action_kind": "local.process.close",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.local.process.close",
+        "capability_version": "1.1.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "REVERSIBLE_LOCAL",
+        "effect_id": "effect:462d26be42e10d548ed834193d7177459bf2d338d902166f536fc04f9e78d294",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.local.process.close",
+          "effect:effect:462d26be42e10d548ed834193d7177459bf2d338d902166f536fc04f9e78d294"
+        ],
+        "idempotency_key": "proof:process:close",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "local.process.close",
+          "before": {
+            "args": [
+              "-c",
+              "import time; time.sleep(120)"
+            ],
+            "before": {
+              "process_id": "proof-owned-sleeper",
+              "registered": false
+            },
+            "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+            "creation_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            },
+            "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "idempotency_key": "proof:process:launch",
+            "launched_at": "2026-09-05T15:48:02.616381Z",
+            "opened_identity": null,
+            "operation": "process.launch",
+            "owned_descendants": [
+              31460,
+              28716
+            ],
+            "pid": 31460,
+            "process_id": "proof-owned-sleeper",
+            "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+            "show_window": false,
+            "state": "running"
+          },
+          "claimed": "COMPLETED",
+          "error": null,
+          "operation": "process.close",
+          "readback": {
+            "alive": false,
+            "observed_identity": {
+              "exit_code": 1,
+              "live": false,
+              "pid": 31460,
+              "via": "popen_handle"
+            },
+            "targeted_pids": [
+              31460
+            ],
+            "termination_via": "popen_handle"
+          },
+          "reconciled": false,
+          "request_id": "proof:process:close",
+          "result": {
+            "process_id": "proof-owned-sleeper",
+            "state": "exited"
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "args": [
+              "-c",
+              "import time; time.sleep(120)"
+            ],
+            "before": {
+              "process_id": "proof-owned-sleeper",
+              "registered": false
+            },
+            "close_idempotency_key": "proof:process:close",
+            "close_started_at": "2026-09-05T15:48:03.169982Z",
+            "closed_at": "2026-09-05T15:48:03.176453Z",
+            "command_identity": "sha256:1e370a392b1a84d1e89fb2479dcb6d9472a8f4e1d9e442cb419bcf3059788c63",
+            "creation_identity": {
+              "create_time": 134330968826018058,
+              "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "pid": 31460
+            },
+            "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "idempotency_key": "proof:process:launch",
+            "launched_at": "2026-09-05T15:48:02.616381Z",
+            "opened_identity": null,
+            "operation": "process.launch",
+            "owned_descendants": [
+              31460
+            ],
+            "pid": 31460,
+            "process_id": "proof-owned-sleeper",
+            "request_fingerprint": "sha256:affb14e09031044711e3154f707915db80c85a66d461169050327d9daa6e57ce",
+            "show_window": false,
+            "state": "exited"
+          }
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:462d26be42e10d548ed834193d7177459bf2d338d902166f536fc04f9e78d294:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "local.process.close",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    },
+    {
+      "action_kind": "local.system.inspect",
+      "capability_id": "cap.local.system.inspect",
+      "claimed": "COMPLETED",
+      "claimed_effect": {
+        "action_kind": "local.system.inspect",
+        "applications": {
+          "before": null,
+          "error": null,
+          "operation": "system.applications",
+          "readback": {
+            "applications": [
+              {
+                "modified_ns": 1788604571402378200,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "size_bytes": 45568
+              },
+              {
+                "modified_ns": 1779026560362196900,
+                "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                "size_bytes": 90112
+              }
+            ]
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-129d2e3d67154ab4a1cbdcb0c788b9e3",
+          "result": {
+            "applications": [
+              {
+                "modified_ns": 1788604571402378200,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "size_bytes": 45568
+              },
+              {
+                "modified_ns": 1779026560362196900,
+                "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                "size_bytes": 90112
+              }
+            ]
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "applications": [
+              {
+                "modified_ns": 1788604571402378200,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "size_bytes": 45568
+              },
+              {
+                "modified_ns": 1779026560362196900,
+                "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                "size_bytes": 90112
+              }
+            ]
+          }
+        },
+        "claimed": "COMPLETED",
+        "environment": {
+          "before": null,
+          "error": null,
+          "operation": "system.environment",
+          "readback": {
+            "names_read": [
+              "V13_OPERATOR_PROOF_VALUE"
+            ]
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-0b937ea848b842f097b8fd1b421add5b",
+          "result": {
+            "values": {
+              "V13_OPERATOR_PROOF_VALUE": "bounded-visible"
+            }
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "allowlisted_names": [
+              "V13_OPERATOR_PROOF_VALUE"
+            ]
+          }
+        },
+        "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "processes": {
+          "before": null,
+          "error": null,
+          "operation": "system.processes",
+          "readback": {
+            "processes": [
+              {
+                "alive": true,
+                "create_time": 134330968710452970,
+                "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\python.exe",
+                "pid": 40736
+              },
+              {
+                "alive": true,
+                "create_time": 134330968822206725,
+                "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "pid": 53804
+              }
+            ]
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-05ef3ee334ee4a81b3c3e5a09e1d40b3",
+          "result": {
+            "processes": [
+              {
+                "alive": true,
+                "create_time": 134330968710452970,
+                "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\python.exe",
+                "pid": 40736
+              },
+              {
+                "alive": true,
+                "create_time": 134330968822206725,
+                "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "pid": 53804
+              }
+            ]
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "process_ids": [
+              40736,
+              53804
+            ]
+          }
+        },
+        "readback_verified": true,
+        "system": {
+          "before": {
+            "exists": true,
+            "kind": "directory",
+            "mtime_ns": 1788623283286618700,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "ref": ".",
+            "sha256": null,
+            "size_bytes": 0
+          },
+          "error": null,
+          "operation": "system.info",
+          "readback": {
+            "architecture": "AMD64",
+            "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "platform": "Windows",
+            "platform_release": "11",
+            "platform_version": "10.0.26200",
+            "process_id": 40736,
+            "python_executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "python_version": "3.14.5"
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-c3d9013118104b85b4e760a8224f4e1c",
+          "result": {
+            "architecture": "AMD64",
+            "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "platform": "Windows",
+            "platform_release": "11",
+            "platform_version": "10.0.26200",
+            "process_id": 40736,
+            "python_executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "python_version": "3.14.5"
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "exists": true,
+            "kind": "directory",
+            "mtime_ns": 1788623283286618700,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "ref": ".",
+            "sha256": null,
+            "size_bytes": 0
+          }
+        }
+      },
+      "note": "",
+      "observed": {
+        "action_kind": "local.system.inspect",
+        "applications": {
+          "before": null,
+          "error": null,
+          "operation": "system.applications",
+          "readback": {
+            "applications": [
+              {
+                "modified_ns": 1788604571402378200,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "size_bytes": 45568
+              },
+              {
+                "modified_ns": 1779026560362196900,
+                "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                "size_bytes": 90112
+              }
+            ]
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-129d2e3d67154ab4a1cbdcb0c788b9e3",
+          "result": {
+            "applications": [
+              {
+                "modified_ns": 1788604571402378200,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "size_bytes": 45568
+              },
+              {
+                "modified_ns": 1779026560362196900,
+                "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                "size_bytes": 90112
+              }
+            ]
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "applications": [
+              {
+                "modified_ns": 1788604571402378200,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "size_bytes": 45568
+              },
+              {
+                "modified_ns": 1779026560362196900,
+                "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                "size_bytes": 90112
+              }
+            ]
+          }
+        },
+        "claimed": "COMPLETED",
+        "environment": {
+          "before": null,
+          "error": null,
+          "operation": "system.environment",
+          "readback": {
+            "names_read": [
+              "V13_OPERATOR_PROOF_VALUE"
+            ]
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-0b937ea848b842f097b8fd1b421add5b",
+          "result": {
+            "values": {
+              "V13_OPERATOR_PROOF_VALUE": "bounded-visible"
+            }
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "allowlisted_names": [
+              "V13_OPERATOR_PROOF_VALUE"
+            ]
+          }
+        },
+        "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "processes": {
+          "before": null,
+          "error": null,
+          "operation": "system.processes",
+          "readback": {
+            "processes": [
+              {
+                "alive": true,
+                "create_time": 134330968710452970,
+                "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\python.exe",
+                "pid": 40736
+              },
+              {
+                "alive": true,
+                "create_time": 134330968822206725,
+                "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "pid": 53804
+              }
+            ]
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-05ef3ee334ee4a81b3c3e5a09e1d40b3",
+          "result": {
+            "processes": [
+              {
+                "alive": true,
+                "create_time": 134330968710452970,
+                "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\python.exe",
+                "pid": 40736
+              },
+              {
+                "alive": true,
+                "create_time": 134330968822206725,
+                "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                "pid": 53804
+              }
+            ]
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "process_ids": [
+              40736,
+              53804
+            ]
+          }
+        },
+        "readback_verified": true,
+        "system": {
+          "before": {
+            "exists": true,
+            "kind": "directory",
+            "mtime_ns": 1788623283286618700,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "ref": ".",
+            "sha256": null,
+            "size_bytes": 0
+          },
+          "error": null,
+          "operation": "system.info",
+          "readback": {
+            "architecture": "AMD64",
+            "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "platform": "Windows",
+            "platform_release": "11",
+            "platform_version": "10.0.26200",
+            "process_id": 40736,
+            "python_executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "python_version": "3.14.5"
+          },
+          "reconciled": true,
+          "replayed": false,
+          "request_id": "operator-c3d9013118104b85b4e760a8224f4e1c",
+          "result": {
+            "architecture": "AMD64",
+            "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "platform": "Windows",
+            "platform_release": "11",
+            "platform_version": "10.0.26200",
+            "process_id": 40736,
+            "python_executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+            "python_version": "3.14.5"
+          },
+          "schema": "jarvis.personal_operator.receipt.v1",
+          "source_identity": null,
+          "status": "COMPLETED",
+          "target_identity": {
+            "exists": true,
+            "kind": "directory",
+            "mtime_ns": 1788623283286618700,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+            "ref": ".",
+            "sha256": null,
+            "size_bytes": 0
+          }
+        },
+        "verified_at": "2026-09-05T15:48:04.122522Z"
+      },
+      "receipt": {
+        "action_kind": "local.system.inspect",
+        "after_state_ref": null,
+        "attempt": 1,
+        "before_state_ref": null,
+        "capability_id": "cap.local.system.inspect",
+        "capability_version": "1.0.0",
+        "claimed_outcome": "COMPLETED",
+        "contract_version": "jarvis.v10.adapter.v1",
+        "cost": {},
+        "effect_class": "READ_ONLY",
+        "effect_id": "effect:57eb9206606912a26525a7b9b3171e905873df49abd3c3d126e9aeb553a61ad1",
+        "error": null,
+        "evidence_refs": [
+          "capability:cap.local.system.inspect",
+          "effect:effect:57eb9206606912a26525a7b9b3171e905873df49abd3c3d126e9aeb553a61ad1"
+        ],
+        "idempotency_key": "idempotency:a00b4a995ca041d892161228bf7e093b7c9b57295c13a95cfad705d0b2a0b770",
+        "mission_id": "v13-personal-operator-product-proof",
+        "observed": {
+          "action_kind": "local.system.inspect",
+          "applications": {
+            "before": null,
+            "error": null,
+            "operation": "system.applications",
+            "readback": {
+              "applications": [
+                {
+                  "modified_ns": 1788604571402378200,
+                  "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                  "size_bytes": 45568
+                },
+                {
+                  "modified_ns": 1779026560362196900,
+                  "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                  "size_bytes": 90112
+                }
+              ]
+            },
+            "reconciled": true,
+            "replayed": false,
+            "request_id": "operator-129d2e3d67154ab4a1cbdcb0c788b9e3",
+            "result": {
+              "applications": [
+                {
+                  "modified_ns": 1788604571402378200,
+                  "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                  "size_bytes": 45568
+                },
+                {
+                  "modified_ns": 1779026560362196900,
+                  "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                  "size_bytes": 90112
+                }
+              ]
+            },
+            "schema": "jarvis.personal_operator.receipt.v1",
+            "source_identity": null,
+            "status": "COMPLETED",
+            "target_identity": {
+              "applications": [
+                {
+                  "modified_ns": 1788604571402378200,
+                  "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                  "size_bytes": 45568
+                },
+                {
+                  "modified_ns": 1779026560362196900,
+                  "path": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+                  "size_bytes": 90112
+                }
+              ]
+            }
+          },
+          "claimed": "COMPLETED",
+          "environment": {
+            "before": null,
+            "error": null,
+            "operation": "system.environment",
+            "readback": {
+              "names_read": [
+                "V13_OPERATOR_PROOF_VALUE"
+              ]
+            },
+            "reconciled": true,
+            "replayed": false,
+            "request_id": "operator-0b937ea848b842f097b8fd1b421add5b",
+            "result": {
+              "values": {
+                "V13_OPERATOR_PROOF_VALUE": "bounded-visible"
+              }
+            },
+            "schema": "jarvis.personal_operator.receipt.v1",
+            "source_identity": null,
+            "status": "COMPLETED",
+            "target_identity": {
+              "allowlisted_names": [
+                "V13_OPERATOR_PROOF_VALUE"
+              ]
+            }
+          },
+          "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+          "processes": {
+            "before": null,
+            "error": null,
+            "operation": "system.processes",
+            "readback": {
+              "processes": [
+                {
+                  "alive": true,
+                  "create_time": 134330968710452970,
+                  "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\python.exe",
+                  "pid": 40736
+                },
+                {
+                  "alive": true,
+                  "create_time": 134330968822206725,
+                  "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                  "pid": 53804
+                }
+              ]
+            },
+            "reconciled": true,
+            "replayed": false,
+            "request_id": "operator-05ef3ee334ee4a81b3c3e5a09e1d40b3",
+            "result": {
+              "processes": [
+                {
+                  "alive": true,
+                  "create_time": 134330968710452970,
+                  "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\python.exe",
+                  "pid": 40736
+                },
+                {
+                  "alive": true,
+                  "create_time": 134330968822206725,
+                  "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+                  "pid": 53804
+                }
+              ]
+            },
+            "schema": "jarvis.personal_operator.receipt.v1",
+            "source_identity": null,
+            "status": "COMPLETED",
+            "target_identity": {
+              "process_ids": [
+                40736,
+                53804
+              ]
+            }
+          },
+          "readback_verified": true,
+          "system": {
+            "before": {
+              "exists": true,
+              "kind": "directory",
+              "mtime_ns": 1788623283286618700,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+              "ref": ".",
+              "sha256": null,
+              "size_bytes": 0
+            },
+            "error": null,
+            "operation": "system.info",
+            "readback": {
+              "architecture": "AMD64",
+              "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+              "platform": "Windows",
+              "platform_release": "11",
+              "platform_version": "10.0.26200",
+              "process_id": 40736,
+              "python_executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "python_version": "3.14.5"
+            },
+            "reconciled": true,
+            "replayed": false,
+            "request_id": "operator-c3d9013118104b85b4e760a8224f4e1c",
+            "result": {
+              "architecture": "AMD64",
+              "owned_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+              "platform": "Windows",
+              "platform_release": "11",
+              "platform_version": "10.0.26200",
+              "process_id": 40736,
+              "python_executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+              "python_version": "3.14.5"
+            },
+            "schema": "jarvis.personal_operator.receipt.v1",
+            "source_identity": null,
+            "status": "COMPLETED",
+            "target_identity": {
+              "exists": true,
+              "kind": "directory",
+              "mtime_ns": 1788623283286618700,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+              "ref": ".",
+              "sha256": null,
+              "size_bytes": 0
+            }
+          }
+        },
+        "observed_outcome": "VERIFIED",
+        "postcondition_results": [],
+        "provider_ref": null,
+        "receipt_id": "receipt:effect:57eb9206606912a26525a7b9b3171e905873df49abd3c3d126e9aeb553a61ad1:attempt:1",
+        "state": "VERIFIED",
+        "step_id": "local.system.inspect",
+        "workflow_id": "workflow:v13-personal-operator-product-proof",
+        "world_model_refs": []
+      },
+      "verified": "MATCH"
+    }
+  ],
+  "files": {
+    "copy_move_rename_verified": true,
+    "organized_outputs": [
+      "organized/analysis.xlsx",
+      "organized/report.docx",
+      "organized/report.pdf"
+    ],
+    "recovery_backup_ref": ".jarvis-personal-operator/backups/eeaf4116bc9531f5986f9906/notes/recovery.txt.original",
+    "safe_backup_ref": ".jarvis-personal-operator/backups/691b542805e3b2dfa9dd642a/notes/operator.txt.original",
+    "source_count": 2
+  },
+  "final_status": "V13_PERSONAL_OPERATOR_READY_CANDIDATE",
+  "finished_at": "2026-09-05T15:48:06.188326Z",
+  "independent_verifier": {
+    "artifact": {
+      "checks_passed": 22,
+      "checks_total": 22,
+      "verdict": "PASS"
+    },
+    "runtime": {
+      "checks_passed": 3,
+      "checks_total": 3,
+      "time_bound": true,
+      "verdict": "PASS",
+      "verified_at": "2026-09-05T15:48:05.668443Z"
+    },
+    "runtime_cleanup": {
+      "checks_passed": 3,
+      "checks_total": 3,
+      "verdict": "PASS",
+      "verified_at": "2026-09-05T15:48:05.966143Z"
+    }
+  },
+  "independent_verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b",
+  "input_sha256": "828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+  "library_versions": {
+    "Pillow": "12.3.0",
+    "openpyxl": "3.1.5",
+    "pypdf": "6.16.2",
+    "python-docx": "1.2.0",
+    "python-pptx": "1.0.2",
+    "reportlab": "4.5.1"
+  },
+  "local_system": {
+    "bounded_command": "bounded-system-action",
+    "owned_pid": 31460,
+    "unrelated_pid": 53804,
+    "unrelated_untouched": true
+  },
+  "operator_receipts": {
+    "command": {
+      "before": {
+        "exists": true,
+        "kind": "directory",
+        "mtime_ns": 1788623281678951500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "ref": ".",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "system.command",
+      "readback": {
+        "alive": false,
+        "exit_code": 0,
+        "process_tree": [
+          35720
+        ]
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "operator-ce8b581a6c7348c58b57029c2c7a0ec6",
+      "result": {
+        "args": [
+          "-c",
+          "print('bounded-system-action')"
+        ],
+        "captured_output_bytes": 23,
+        "command_identity": "sha256:516e5187f04bd58bcc827dbcd1d3ce7ebe9c35feeb07faa31ce311ec4236d0b3",
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "duration_seconds": 0.13373,
+        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe",
+        "exit_code": 0,
+        "observed_output_bytes": 23,
+        "output_truncated": false,
+        "pid": 35720,
+        "stderr": "",
+        "stdout": "bounded-system-action\r\n"
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\.venv\\Scripts\\python.exe"
+      }
+    },
+    "copy_note": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\staging\\operator-copy.txt",
+        "ref": "staging/operator-copy.txt",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.copy",
+      "readback": {
+        "source": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276731262900,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+          "ref": "notes/operator.txt",
+          "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+          "size_bytes": 15
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276781901000,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\staging\\operator-copy.txt",
+          "ref": "staging/operator-copy.txt",
+          "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+          "size_bytes": 15
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:copy:operator-note",
+      "result": {
+        "copied": true,
+        "moved": false
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276731262900,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+        "ref": "notes/operator.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276781901000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\staging\\operator-copy.txt",
+        "ref": "staging/operator-copy.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      }
+    },
+    "create_csv": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+        "ref": "inputs/source.csv",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.create",
+      "readback": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276610822000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+        "ref": "inputs/source.csv",
+        "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "size_bytes": 80
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:create:source-csv",
+      "result": {
+        "created": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276610822000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+        "ref": "inputs/source.csv",
+        "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "size_bytes": 80
+      }
+    },
+    "create_json": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\context.json",
+        "ref": "inputs/context.json",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.create",
+      "readback": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276636141200,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\context.json",
+        "ref": "inputs/context.json",
+        "sha256": "sha256:0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+        "size_bytes": 222
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:create:context-json",
+      "result": {
+        "created": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276636141200,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\context.json",
+        "ref": "inputs/context.json",
+        "sha256": "sha256:0e35f8608d0a6721b49d091d89eed4228eaa08077b6aa4dbb7dbd31bc38bc0b2",
+        "size_bytes": 222
+      }
+    },
+    "create_note": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+        "ref": "notes/operator.txt",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.create",
+      "readback": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276680770300,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+        "ref": "notes/operator.txt",
+        "sha256": "sha256:95676c6c9cade5d14a4c9aba288b55b3018e0d86d2fca5fb589364eab07a1787",
+        "size_bytes": 13
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:create:operator-note",
+      "result": {
+        "created": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276680770300,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+        "ref": "notes/operator.txt",
+        "sha256": "sha256:95676c6c9cade5d14a4c9aba288b55b3018e0d86d2fca5fb589364eab07a1787",
+        "size_bytes": 13
+      }
+    },
+    "create_recovery": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+        "ref": "notes/recovery.txt",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.create",
+      "readback": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276889358500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+        "ref": "notes/recovery.txt",
+        "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "size_bytes": 16
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:create:recovery-note",
+      "result": {
+        "created": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276889358500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+        "ref": "notes/recovery.txt",
+        "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "size_bytes": 16
+      }
+    },
+    "create_viewer": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+        "ref": "tools/owned_viewer.py",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.create",
+      "readback": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623283286618700,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+        "ref": "tools/owned_viewer.py",
+        "sha256": "sha256:061dc700b29bd640876274232eafffbc5893efad5fbf062daf6b9f489a9b234a",
+        "size_bytes": 497
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:create:viewer",
+      "result": {
+        "created": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623283286618700,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+        "ref": "tools/owned_viewer.py",
+        "sha256": "sha256:061dc700b29bd640876274232eafffbc5893efad5fbf062daf6b9f489a9b234a",
+        "size_bytes": 497
+      }
+    },
+    "desktop_close": {
+      "before": {
+        "args": [
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized"
+        ],
+        "before": {
+          "process_id": "proof-owned-viewer",
+          "registered": false
+        },
+        "command_identity": "sha256:c83e3bc9cba6f5d3ac16d3d042e8a897445bdf5c2342d11e3f9c3455378e7d9f",
+        "creation_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        },
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "executable": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+        "idempotency_key": "proof:desktop:open",
+        "launched_at": "2026-09-05T15:48:03.342358Z",
+        "opened_identity": {
+          "exists": true,
+          "kind": "directory",
+          "mtime_ns": 1788623281912805500,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized",
+          "ref": "organized",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "operation": "desktop.open",
+        "owned_descendants": [
+          42852
+        ],
+        "pid": 42852,
+        "process_id": "proof-owned-viewer",
+        "request_fingerprint": "sha256:f2aa835e7f623b607f03ff1f7077727737a7c9a5a28b6af46ba4f6329ca9b0ba",
+        "show_window": true,
+        "state": "running"
+      },
+      "error": null,
+      "operation": "process.close",
+      "readback": {
+        "alive": false,
+        "observed_identity": {
+          "exit_code": 1,
+          "live": false,
+          "pid": 42852,
+          "via": "popen_handle"
+        },
+        "targeted_pids": [
+          42852
+        ],
+        "termination_via": "popen_handle"
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:desktop:close",
+      "result": {
+        "process_id": "proof-owned-viewer",
+        "state": "exited"
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "args": [
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized"
+        ],
+        "before": {
+          "process_id": "proof-owned-viewer",
+          "registered": false
+        },
+        "close_idempotency_key": "proof:desktop:close",
+        "close_started_at": "2026-09-05T15:48:03.825805Z",
+        "closed_at": "2026-09-05T15:48:03.841229Z",
+        "command_identity": "sha256:c83e3bc9cba6f5d3ac16d3d042e8a897445bdf5c2342d11e3f9c3455378e7d9f",
+        "creation_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        },
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "executable": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+        "idempotency_key": "proof:desktop:open",
+        "launched_at": "2026-09-05T15:48:03.342358Z",
+        "opened_identity": {
+          "exists": true,
+          "kind": "directory",
+          "mtime_ns": 1788623281912805500,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized",
+          "ref": "organized",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "operation": "desktop.open",
+        "owned_descendants": [
+          42852
+        ],
+        "pid": 42852,
+        "process_id": "proof-owned-viewer",
+        "request_fingerprint": "sha256:f2aa835e7f623b607f03ff1f7077727737a7c9a5a28b6af46ba4f6329ca9b0ba",
+        "show_window": true,
+        "state": "exited"
+      }
+    },
+    "desktop_focus": {
+      "before": {
+        "args": [
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized"
+        ],
+        "before": {
+          "process_id": "proof-owned-viewer",
+          "registered": false
+        },
+        "command_identity": "sha256:c83e3bc9cba6f5d3ac16d3d042e8a897445bdf5c2342d11e3f9c3455378e7d9f",
+        "creation_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        },
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "executable": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+        "idempotency_key": "proof:desktop:open",
+        "launched_at": "2026-09-05T15:48:03.342358Z",
+        "opened_identity": {
+          "exists": true,
+          "kind": "directory",
+          "mtime_ns": 1788623281912805500,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized",
+          "ref": "organized",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "operation": "desktop.open",
+        "owned_descendants": [
+          42852
+        ],
+        "pid": 42852,
+        "process_id": "proof-owned-viewer",
+        "request_fingerprint": "sha256:f2aa835e7f623b607f03ff1f7077727737a7c9a5a28b6af46ba4f6329ca9b0ba",
+        "show_window": true,
+        "state": "running"
+      },
+      "error": null,
+      "operation": "desktop.focus",
+      "readback": {
+        "alive": true,
+        "attached_threads": [
+          31176,
+          38208
+        ],
+        "brought_to_top": true,
+        "current_thread": 59336,
+        "foreground_before": 15795856,
+        "foreground_thread": 31176,
+        "foreground_window": 16384346,
+        "observed_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        },
+        "set_foreground_returned": true,
+        "target_thread": 38208,
+        "visible_window_count": 1,
+        "window_handle": 16384346
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "operator-646c989a390d4552b14614f07c09ea1d",
+      "result": {
+        "focused": true,
+        "process_id": "proof-owned-viewer"
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "args": [
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized"
+        ],
+        "before": {
+          "process_id": "proof-owned-viewer",
+          "registered": false
+        },
+        "command_identity": "sha256:c83e3bc9cba6f5d3ac16d3d042e8a897445bdf5c2342d11e3f9c3455378e7d9f",
+        "creation_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        },
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "executable": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+        "idempotency_key": "proof:desktop:open",
+        "launched_at": "2026-09-05T15:48:03.342358Z",
+        "opened_identity": {
+          "exists": true,
+          "kind": "directory",
+          "mtime_ns": 1788623281912805500,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized",
+          "ref": "organized",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "operation": "desktop.open",
+        "owned_descendants": [
+          42852
+        ],
+        "pid": 42852,
+        "process_id": "proof-owned-viewer",
+        "request_fingerprint": "sha256:f2aa835e7f623b607f03ff1f7077727737a7c9a5a28b6af46ba4f6329ca9b0ba",
+        "show_window": true,
+        "state": "running"
+      }
+    },
+    "desktop_open": {
+      "before": {
+        "process_id": "proof-owned-viewer",
+        "registered": false
+      },
+      "error": null,
+      "operation": "desktop.open",
+      "readback": {
+        "alive": true,
+        "observed_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:desktop:open",
+      "result": {
+        "command_identity": "sha256:c83e3bc9cba6f5d3ac16d3d042e8a897445bdf5c2342d11e3f9c3455378e7d9f",
+        "pid": 42852,
+        "process_id": "proof-owned-viewer",
+        "state": "running"
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "directory",
+        "mtime_ns": 1788623281912805500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized",
+        "ref": "organized",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "args": [
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\tools\\owned_viewer.py",
+          "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized"
+        ],
+        "before": {
+          "process_id": "proof-owned-viewer",
+          "registered": false
+        },
+        "command_identity": "sha256:c83e3bc9cba6f5d3ac16d3d042e8a897445bdf5c2342d11e3f9c3455378e7d9f",
+        "creation_identity": {
+          "create_time": 134330968833212286,
+          "exe": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+          "pid": 42852
+        },
+        "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned",
+        "executable": "C:\\Users\\b\\AppData\\Roaming\\uv\\python\\cpython-3.14.5-windows-x86_64-none\\pythonw.exe",
+        "idempotency_key": "proof:desktop:open",
+        "launched_at": "2026-09-05T15:48:03.342358Z",
+        "opened_identity": {
+          "exists": true,
+          "kind": "directory",
+          "mtime_ns": 1788623281912805500,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized",
+          "ref": "organized",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "operation": "desktop.open",
+        "owned_descendants": [
+          42852
+        ],
+        "pid": 42852,
+        "process_id": "proof-owned-viewer",
+        "request_fingerprint": "sha256:f2aa835e7f623b607f03ff1f7077727737a7c9a5a28b6af46ba4f6329ca9b0ba",
+        "show_window": true,
+        "state": "running"
+      }
+    },
+    "environment": {
+      "before": null,
+      "error": null,
+      "operation": "system.environment",
+      "readback": {
+        "names_read": [
+          "V13_OPERATOR_PROOF_VALUE"
+        ]
+      },
+      "reconciled": true,
+      "replayed": false,
+      "request_id": "operator-389d2066c1794d8bb31e7b1d0ddc8d74",
+      "result": {
+        "values": {
+          "V13_OPERATOR_PROOF_VALUE": "bounded-visible"
+        }
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "allowlisted_names": [
+          "V13_OPERATOR_PROOF_VALUE"
+        ]
+      }
+    },
+    "inspect_csv": {
+      "before": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276610822000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+        "ref": "inputs/source.csv",
+        "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "size_bytes": 80
+      },
+      "error": null,
+      "operation": "file.inspect",
+      "readback": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276610822000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+        "ref": "inputs/source.csv",
+        "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "size_bytes": 80
+      },
+      "reconciled": true,
+      "replayed": false,
+      "request_id": "operator-f13d2b96861c4ff989cb7a441fb3bb35",
+      "result": {
+        "identity": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276610822000,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+          "ref": "inputs/source.csv",
+          "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+          "size_bytes": 80
+        },
+        "preview": "Name,Status,Quantity,UnitPrice\nAlpha,open,2,10\nBeta,closed,3,7.5\nGamma,open,4,5\n",
+        "preview_bytes": 80
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276610822000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+        "ref": "inputs/source.csv",
+        "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+        "size_bytes": 80
+      }
+    },
+    "invalid_path": {
+      "before": null,
+      "error": {
+        "classification": "path_outside_root",
+        "message": "path traversal is refused"
+      },
+      "operation": "file.inspect",
+      "readback": null,
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "operator-50e36576264b4b9096ce2be8154ad79d",
+      "result": null,
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "FAILED",
+      "target_identity": null
+    },
+    "move_note": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-moved.txt",
+        "ref": "organized/operator-moved.txt",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.move",
+      "readback": {
+        "source": {
+          "exists": false,
+          "kind": "missing",
+          "mtime_ns": null,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\staging\\operator-copy.txt",
+          "ref": "staging/operator-copy.txt",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276781901000,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-moved.txt",
+          "ref": "organized/operator-moved.txt",
+          "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+          "size_bytes": 15
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:move:operator-note",
+      "result": {
+        "copied": false,
+        "moved": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276781901000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\staging\\operator-copy.txt",
+        "ref": "staging/operator-copy.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276781901000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-moved.txt",
+        "ref": "organized/operator-moved.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      }
+    },
+    "organize:organized/analysis.xlsx": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\analysis.xlsx",
+        "ref": "organized/analysis.xlsx",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.copy",
+      "readback": {
+        "source": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623278490514100,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+          "ref": "xlsx/analysis-formulas.xlsx",
+          "sha256": "sha256:4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "size_bytes": 5309
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623281845642100,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\analysis.xlsx",
+          "ref": "organized/analysis.xlsx",
+          "sha256": "sha256:4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+          "size_bytes": 5309
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:organize:organized/analysis.xlsx",
+      "result": {
+        "copied": true,
+        "moved": false
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623278490514100,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\xlsx\\analysis-formulas.xlsx",
+        "ref": "xlsx/analysis-formulas.xlsx",
+        "sha256": "sha256:4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "size_bytes": 5309
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623281845642100,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\analysis.xlsx",
+        "ref": "organized/analysis.xlsx",
+        "sha256": "sha256:4deb5e95a7a156536d0696a8a5e2bf4c170d02454f134288b82186b86dbc9d70",
+        "size_bytes": 5309
+      }
+    },
+    "organize:organized/report.docx": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\report.docx",
+        "ref": "organized/report.docx",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.copy",
+      "readback": {
+        "source": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623279616274600,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report-final.docx",
+          "ref": "docx/report-final.docx",
+          "sha256": "sha256:fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+          "size_bytes": 36223
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623281873969800,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\report.docx",
+          "ref": "organized/report.docx",
+          "sha256": "sha256:fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+          "size_bytes": 36223
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:organize:organized/report.docx",
+      "result": {
+        "copied": true,
+        "moved": false
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623279616274600,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\docx\\report-final.docx",
+        "ref": "docx/report-final.docx",
+        "sha256": "sha256:fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "size_bytes": 36223
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623281873969800,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\report.docx",
+        "ref": "organized/report.docx",
+        "sha256": "sha256:fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+        "size_bytes": 36223
+      }
+    },
+    "organize:organized/report.pdf": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\report.pdf",
+        "ref": "organized/report.pdf",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.copy",
+      "readback": {
+        "source": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623281207973900,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\combined.pdf",
+          "ref": "pdf/combined.pdf",
+          "sha256": "sha256:fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "size_bytes": 2981
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623281912805500,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\report.pdf",
+          "ref": "organized/report.pdf",
+          "sha256": "sha256:fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+          "size_bytes": 2981
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:organize:organized/report.pdf",
+      "result": {
+        "copied": true,
+        "moved": false
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623281207973900,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\pdf\\combined.pdf",
+        "ref": "pdf/combined.pdf",
+        "sha256": "sha256:fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "size_bytes": 2981
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623281912805500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\report.pdf",
+        "ref": "organized/report.pdf",
+        "sha256": "sha256:fb0ebc48b54726b3f3990d0ce8efbda41d7c632c974605d248611cbee7b46487",
+        "size_bytes": 2981
+      }
+    },
+    "partial_safe_edit": {
+      "before": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276889358500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+        "ref": "notes/recovery.txt",
+        "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "size_bytes": 16
+      },
+      "error": {
+        "classification": "partial_failure",
+        "message": "proof crash after atomic replacement"
+      },
+      "operation": "file.safe_text_edit",
+      "readback": null,
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:edit:recovery-note",
+      "result": null,
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276925552100,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\.jarvis-personal-operator\\backups\\eeaf4116bc9531f5986f9906\\notes\\recovery.txt.original",
+        "ref": ".jarvis-personal-operator/backups/eeaf4116bc9531f5986f9906/notes/recovery.txt.original",
+        "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "size_bytes": 16
+      },
+      "status": "UNKNOWN",
+      "target_identity": null
+    },
+    "recovered_safe_edit": {
+      "before": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276889358500,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+        "ref": "notes/recovery.txt",
+        "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "size_bytes": 16
+      },
+      "error": null,
+      "operation": "file.safe_text_edit",
+      "readback": {
+        "backup": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276925552100,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\.jarvis-personal-operator\\backups\\eeaf4116bc9531f5986f9906\\notes\\recovery.txt.original",
+          "ref": ".jarvis-personal-operator/backups/eeaf4116bc9531f5986f9906/notes/recovery.txt.original",
+          "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+          "size_bytes": 16
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276934882000,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+          "ref": "notes/recovery.txt",
+          "sha256": "sha256:6256662cec420b30235f89f0ee9b074cf44352c52e4a3e233e980ab1da01268a",
+          "size_bytes": 15
+        }
+      },
+      "reconciled": true,
+      "replayed": true,
+      "request_id": "proof:edit:recovery-note",
+      "result": {
+        "backup_ref": ".jarvis-personal-operator/backups/eeaf4116bc9531f5986f9906/notes/recovery.txt.original",
+        "backup_sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "edited": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276925552100,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\.jarvis-personal-operator\\backups\\eeaf4116bc9531f5986f9906\\notes\\recovery.txt.original",
+        "ref": ".jarvis-personal-operator/backups/eeaf4116bc9531f5986f9906/notes/recovery.txt.original",
+        "sha256": "sha256:ce4465be0d84b945efc02b8c60d2ab8f55379436e321cf81e6f4e1b74bec6b4b",
+        "size_bytes": 16
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276934882000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\recovery.txt",
+        "ref": "notes/recovery.txt",
+        "sha256": "sha256:6256662cec420b30235f89f0ee9b074cf44352c52e4a3e233e980ab1da01268a",
+        "size_bytes": 15
+      }
+    },
+    "rename_note": {
+      "before": {
+        "exists": false,
+        "kind": "missing",
+        "mtime_ns": null,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-status.txt",
+        "ref": "organized/operator-status.txt",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.rename",
+      "readback": {
+        "source": {
+          "exists": false,
+          "kind": "missing",
+          "mtime_ns": null,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-moved.txt",
+          "ref": "organized/operator-moved.txt",
+          "sha256": null,
+          "size_bytes": 0
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276781901000,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-status.txt",
+          "ref": "organized/operator-status.txt",
+          "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+          "size_bytes": 15
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:rename:operator-note",
+      "result": {
+        "copied": false,
+        "moved": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276781901000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-moved.txt",
+        "ref": "organized/operator-moved.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276781901000,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\organized\\operator-status.txt",
+        "ref": "organized/operator-status.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      }
+    },
+    "safe_edit": {
+      "before": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276680770300,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+        "ref": "notes/operator.txt",
+        "sha256": "sha256:95676c6c9cade5d14a4c9aba288b55b3018e0d86d2fca5fb589364eab07a1787",
+        "size_bytes": 13
+      },
+      "error": null,
+      "operation": "file.safe_text_edit",
+      "readback": {
+        "backup": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276720124400,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\.jarvis-personal-operator\\backups\\691b542805e3b2dfa9dd642a\\notes\\operator.txt.original",
+          "ref": ".jarvis-personal-operator/backups/691b542805e3b2dfa9dd642a/notes/operator.txt.original",
+          "sha256": "sha256:95676c6c9cade5d14a4c9aba288b55b3018e0d86d2fca5fb589364eab07a1787",
+          "size_bytes": 13
+        },
+        "target": {
+          "exists": true,
+          "kind": "file",
+          "mtime_ns": 1788623276731262900,
+          "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+          "ref": "notes/operator.txt",
+          "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+          "size_bytes": 15
+        }
+      },
+      "reconciled": false,
+      "replayed": false,
+      "request_id": "proof:edit:operator-note",
+      "result": {
+        "backup_ref": ".jarvis-personal-operator/backups/691b542805e3b2dfa9dd642a/notes/operator.txt.original",
+        "backup_sha256": "sha256:95676c6c9cade5d14a4c9aba288b55b3018e0d86d2fca5fb589364eab07a1787",
+        "edited": true
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276720124400,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\.jarvis-personal-operator\\backups\\691b542805e3b2dfa9dd642a\\notes\\operator.txt.original",
+        "ref": ".jarvis-personal-operator/backups/691b542805e3b2dfa9dd642a/notes/operator.txt.original",
+        "sha256": "sha256:95676c6c9cade5d14a4c9aba288b55b3018e0d86d2fca5fb589364eab07a1787",
+        "size_bytes": 13
+      },
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "file",
+        "mtime_ns": 1788623276731262900,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\notes\\operator.txt",
+        "ref": "notes/operator.txt",
+        "sha256": "sha256:44ff9e98b83191a854f035bd148ab632ca0c5f04a6db08973dd5a372a67afb6a",
+        "size_bytes": 15
+      }
+    },
+    "search": {
+      "before": {
+        "exists": true,
+        "kind": "directory",
+        "mtime_ns": 1788623276646453400,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs",
+        "ref": "inputs",
+        "sha256": null,
+        "size_bytes": 0
+      },
+      "error": null,
+      "operation": "file.search",
+      "readback": {
+        "limit_reached": false,
+        "match_count": 1,
+        "scanned_files": 2
+      },
+      "reconciled": true,
+      "replayed": false,
+      "request_id": "operator-a66d560a9e3c46fca8a95faf79775a09",
+      "result": {
+        "matches": [
+          {
+            "identity": {
+              "exists": true,
+              "kind": "file",
+              "mtime_ns": 1788623276610822000,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs\\source.csv",
+              "ref": "inputs/source.csv",
+              "sha256": "sha256:828aff379c091dcd00898108c81be993442e5e9aec28f9a185872bd966a90162",
+              "size_bytes": 80
+            },
+            "snippet": "Name,Status,Quantity,UnitPrice\nAlpha,open,2,10\nBeta,closed,3,7.5\nGamma,open,4,5\n"
+          }
+        ]
+      },
+      "schema": "jarvis.personal_operator.receipt.v1",
+      "source_identity": null,
+      "status": "COMPLETED",
+      "target_identity": {
+        "exists": true,
+        "kind": "directory",
+        "mtime_ns": 1788623276646453400,
+        "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime\\owned\\inputs",
+        "ref": "inputs",
+        "sha256": null,
+        "size_bytes": 0
+      }
+    }
+  },
+  "pdf": {
+    "combined": "pdf/combined.pdf",
+    "created": "pdf/report.pdf",
+    "derived_from_docx_sha256": "fb8ce2622db011149a31c6530336a90510aec128fb41565e6f20d97a70539cba",
+    "retry_reconciled": true,
+    "retry_replayed": true,
+    "split": "pdf/split-appendix.pdf"
+  },
+  "proof_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\personal-operator-runtime",
+  "proof_script_sha256": "c8cdfab5923730876260c6edfcad0d148d2b2658e2020b8f2a4c8808cac6eef4",
+  "schema": "jarvis.v13.personal_operator.product_proof.v1",
+  "source_clean_at_start": true,
+  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "source_tree_sha": "82185f10757655f32a5d1d2d84c24edde6ea2162",
+  "started_at": "2026-09-05T15:47:51.965453Z",
+  "verdict": "PASS",
+  "xlsx": {
+    "created": "xlsx/analysis.xlsx",
+    "formula_count": 2,
+    "updated": "xlsx/analysis-formulas.xlsx"
+  }
+}

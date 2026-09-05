@@ -1,0 +1,1003 @@
+{
+  "authority_spine": {
+    "browser_runtime": "jarvis_foundry.connectors.web_research.PlaywrightBrowserConnector",
+    "effect_journal": "jarvis_foundry.effects",
+    "executive": "unchanged",
+    "fabric_catalog": "jarvis_foundry.fabric.catalog",
+    "mission_loop": "unchanged",
+    "procedure": "jarvis_foundry.operations.procedure",
+    "process_owner": "jarvis_foundry.connectors.personal_operator.PersonalOperatorConnector",
+    "windows_provider": "jarvis_foundry.connectors.windows_operator.WindowsOperatorProvider"
+  },
+  "contract_version": "jarvis.v13.computer-operator-proof.v2",
+  "final_status": "REAL_PROOF_PASS",
+  "fixture": {
+    "compiler": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe",
+    "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+    "executable_sha256": "daf573f7e652b6ca527802b4da80f29bd4b8edb957569f21db9f11323ced0ca3",
+    "source": "scripts/v13_operator_fixture.cs",
+    "source_sha256": "80cccce0150d3ce9968ed03f57b0d2dbcca79b792d5fbdf9b3355a6699475f7f"
+  },
+  "integrity": {
+    "ambiguous_effect_reconciled": true,
+    "browser_ambiguity_reconciled_after_runtime_restart": true,
+    "browser_process_loss_observed": true,
+    "browser_stop_after_effect_frozen": true,
+    "browser_target_drift_recovered": true,
+    "browser_wait_verified": true,
+    "download_requests": 1,
+    "native_save_dispatches": 1,
+    "procedure_terminal": "COMPLETED",
+    "same_executable_decoy_survived": true,
+    "stop_after_effect_frozen": true,
+    "unexpected_dialog_classified": true,
+    "upload_requests": 1,
+    "wrong_window_blocked": true
+  },
+  "known_limitations": [
+    "Windows UI Automation requires accessible application controls",
+    "blind coordinate fallback is intentionally absent",
+    "browser file transfers require explicit owned-root paths",
+    "public external mutation was not exercised"
+  ],
+  "policy": {
+    "gmail_observation": "DISABLED",
+    "gmail_read": "DEFERRED_BY_OWNER",
+    "gmail_send": "DEFERRED_BY_OWNER",
+    "live_mutated": false,
+    "main_origin_mutated": false,
+    "voice": "DEFERRED_BY_OWNER"
+  },
+  "readiness_scope": "journey and fault proof only; release readiness is decided after all test and independent-verifier gates",
+  "real_multi_app_proof": {
+    "download_sha256": "a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132",
+    "final_sha256": "4ff7721d1c195543ef45f79c534013001505a81b8920659bd2eb88a69670a7af",
+    "final_size_bytes": 54,
+    "source_sha256": "a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132",
+    "surfaces": [
+      "owned local source file",
+      "localhost HTTP server",
+      "Playwright Chromium",
+      "WinForms accessibility application",
+      "canonical procedure/effect ledger"
+    ],
+    "uploaded_sha256": "4ff7721d1c195543ef45f79c534013001505a81b8920659bd2eb88a69670a7af"
+  },
+  "results": {
+    "accessibility_inspect": {
+      "action_kind": "desktop.control.inspect",
+      "capability_id": "cap.desktop.control.inspect",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:4c37d28b356f4f42e49835d4ab195a19dfd6c518f65a7c59969a54877e4b4273",
+      "error_code": "",
+      "journal_state": null,
+      "performed": null,
+      "provider_ref": null,
+      "replayed": null,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "app_open": {
+      "action_kind": "desktop.open",
+      "capability_id": "cap.desktop.open",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:b2da1e9b2f4c68583d3fb0409d79d336cda64e42670a284d5b7cf843f3b01513",
+      "error_code": "",
+      "journal_state": "COMPLETED",
+      "performed": true,
+      "provider_ref": null,
+      "replayed": false,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "browser_download": {
+      "first": {
+        "action_kind": "browser.web.execute",
+        "capability_id": "cap.browser.web.execute",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:0fd8ac308dc6a2e531a4c4c0ab544f986164ce4cb1dd86523f0f044ca6461327",
+        "error_code": "",
+        "journal_state": "COMPLETED",
+        "performed": true,
+        "provider_ref": "http://127.0.0.1:55538/",
+        "replayed": false,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "replay": {
+        "action_kind": "browser.web.execute",
+        "capability_id": "cap.browser.web.execute",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:0fd8ac308dc6a2e531a4c4c0ab544f986164ce4cb1dd86523f0f044ca6461327",
+        "error_code": "",
+        "journal_state": "COMPLETED",
+        "performed": false,
+        "provider_ref": "http://127.0.0.1:55538/",
+        "replayed": true,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "server_request_count": 1,
+      "sha256": "a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132"
+    },
+    "browser_restart": {
+      "after_process_loss": {
+        "error_code": "browser_wait_failed",
+        "outcome": "FAILED"
+      },
+      "cleanup_error": null,
+      "fresh_session_recovered": true,
+      "fresh_session_wait_verified": true,
+      "health": {
+        "available": true,
+        "browser": "chromium",
+        "browser_executable": "C:\\Users\\b\\AppData\\Local\\ms-playwright\\chromium-1234\\chrome-win64\\chrome.exe",
+        "browser_version": "151.0.7922.34",
+        "browsers_path": "default",
+        "error_code": null,
+        "headless": true,
+        "playwright_version": "1.62.0",
+        "status": "READY"
+      },
+      "terminated_process": {
+        "captured_tree_size": 4,
+        "create_time": 134330969781716209,
+        "exe": "C:\\Users\\b\\AppData\\Local\\ms-playwright\\chromium_headless_shell-1234\\chrome-headless-shell-win64\\chrome-headless-shell.exe",
+        "pid": 28652,
+        "termination_readback": {
+          "create_time": 134330969781716209,
+          "exe": "C:\\Users\\b\\AppData\\Local\\ms-playwright\\chromium_headless_shell-1234\\chrome-headless-shell-win64\\chrome-headless-shell.exe",
+          "exit_code": 259,
+          "exit_code_after": 0,
+          "live": true,
+          "live_after": false,
+          "pid": 28652,
+          "via": "windows_handle"
+        }
+      }
+    },
+    "browser_target_drift": {
+      "recovered_attempt": {
+        "outcome": "COMPLETED",
+        "reconciled": true
+      },
+      "server_request_count": 1,
+      "stale_attempt": {
+        "error_code": "target_drift",
+        "outcome": "UNKNOWN"
+      }
+    },
+    "browser_upload": {
+      "ambiguous": {
+        "action_kind": "browser.web.execute",
+        "capability_id": "cap.browser.web.execute",
+        "claimed": "UNKNOWN",
+        "effect_id": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+        "error_code": "stop_after_effect",
+        "journal_state": "FROZEN",
+        "performed": true,
+        "provider_ref": "http://127.0.0.1:55538/",
+        "replayed": false,
+        "success": false,
+        "verified": "UNKNOWN"
+      },
+      "effect_state": {
+        "accepted": true,
+        "action_key": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+        "before_state": {
+          "action": "upload",
+          "authority": "DATA_ONLY",
+          "download_target": null,
+          "name": "Upload edited report",
+          "readback_target": {
+            "name": "Upload complete",
+            "role": "status",
+            "timeout_ms": 5000,
+            "wait_state": "visible"
+          },
+          "reconciliation_target": {
+            "expected_value": null,
+            "name": "Upload complete",
+            "role": "status",
+            "timeout_ms": 5000,
+            "wait_state": "visible"
+          },
+          "role": "button",
+          "target_id": "upload-edited-report",
+          "upload_source": "downloads/report.csv",
+          "url": "http://127.0.0.1:55538/"
+        },
+        "claim_active": false,
+        "claim_expires_at": 1788623697.8920052,
+        "claimed_at": 1788623397.8920052,
+        "expected_effects": [
+          "bounded browser action"
+        ],
+        "frozen_reason": "effect outcome is ambiguous; reconcile before retry",
+        "reconciled": true,
+        "request_identity": {
+          "action_kind": "browser.web.execute",
+          "attempt": 1,
+          "before_state_ref": null,
+          "budget": {},
+          "capability_id": "cap.browser.web.execute",
+          "capability_version": "1.0.0",
+          "contract_version": "jarvis.v10.adapter.v1",
+          "credential_refs": [],
+          "effect_class": "REVERSIBLE_EXTERNAL",
+          "effect_id": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+          "idempotency_key": "idempotency:e97e5929a548a5aef50a77a61eb559e079fcea14e6a61f8c004c90446aeac1e3",
+          "input_hash": "f880dbb759b32978b22c305f8ca810b159e6d2b25728f4bfac3542165470fad3",
+          "mission_id": "v13.operator.browser-upload",
+          "request_id": "request:effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51:attempt:1",
+          "step_id": "browser_upload",
+          "step_version": 1,
+          "stop_scope": [
+            "GLOBAL",
+            "v13.operator.browser-upload"
+          ],
+          "target_ref": "http://127.0.0.1:55538/",
+          "workflow_id": "v13.operator.real-proof"
+        },
+        "status": "FROZEN",
+        "terminal_outcome": "COMPLETED"
+      },
+      "reconciled": {
+        "action_kind": "browser.web.reconcile",
+        "capability_id": "cap.browser.web.reconcile",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:139735251d7b50ddc40bedac532677d452d4dfd32b1ab89bf5aa4f8667de17cf",
+        "error_code": "",
+        "journal_state": "FROZEN",
+        "performed": true,
+        "provider_ref": "http://127.0.0.1:55538/",
+        "replayed": false,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "replay": {
+        "action_kind": "browser.web.execute",
+        "capability_id": "cap.browser.web.execute",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+        "error_code": "",
+        "journal_state": "FROZEN",
+        "performed": false,
+        "provider_ref": "http://127.0.0.1:55538/",
+        "replayed": true,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "runtime_restart_reconstructed_effect": true,
+      "server_request_count": 1,
+      "sha256": "4ff7721d1c195543ef45f79c534013001505a81b8920659bd2eb88a69670a7af",
+      "wrong_postcondition_reconcile": {
+        "action_kind": "browser.web.reconcile",
+        "capability_id": "cap.browser.web.reconcile",
+        "claimed": "BLOCKED",
+        "effect_id": "effect:9823d88bb412cd1f456759cda905177bcf94169cc46273d176b15a4e4d98421e",
+        "error_code": "effect_identity_mismatch",
+        "journal_state": null,
+        "performed": null,
+        "provider_ref": null,
+        "replayed": null,
+        "success": false,
+        "verified": "UNKNOWN"
+      },
+      "wrong_resource_reconcile": {
+        "action_kind": "browser.web.reconcile",
+        "capability_id": "cap.browser.web.reconcile",
+        "claimed": "BLOCKED",
+        "effect_id": "effect:5326904aab97ad498fd7464749a7f70596e3fb869234945284e0465699b9cb77",
+        "error_code": "effect_identity_mismatch",
+        "journal_state": null,
+        "performed": null,
+        "provider_ref": null,
+        "replayed": null,
+        "success": false,
+        "verified": "UNKNOWN"
+      }
+    },
+    "browser_wait": {
+      "action_kind": "browser.web.wait",
+      "capability_id": "cap.browser.web.wait",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:05b6661f1e907cf6acf1411fc273ae03746cf24f40fb9ed72b30ea4678cdd850",
+      "error_code": "",
+      "journal_state": null,
+      "performed": true,
+      "provider_ref": "http://127.0.0.1:55538/",
+      "replayed": null,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "download_inspect": {
+      "action_kind": "file.read",
+      "capability_id": "cap.file.read",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:a1c18b557520371a3ee99d3eba37669715b77ab687b231cf49752eb116d592bf",
+      "error_code": "",
+      "journal_state": null,
+      "performed": null,
+      "provider_ref": null,
+      "replayed": null,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "edit_text": {
+      "action_kind": "desktop.control.replace_text",
+      "capability_id": "cap.desktop.control.replace_text",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:2d0fa3da3b513459cd43fd2a63a4c2e52c60c34e307d2ca0bccc3437d8e5026e",
+      "error_code": "",
+      "journal_state": "COMPLETED",
+      "performed": true,
+      "provider_ref": "computer:52760:134330969917241463:60360790",
+      "replayed": false,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "final_readback": {
+      "action_kind": "file.read",
+      "capability_id": "cap.file.read",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:a1c18b557520371a3ee99d3eba37669715b77ab687b231cf49752eb116d592bf",
+      "error_code": "",
+      "journal_state": null,
+      "performed": null,
+      "provider_ref": null,
+      "replayed": null,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "focus": {
+      "action_kind": "desktop.focus",
+      "capability_id": "cap.desktop.focus",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:79c5b19b800a506eec00d708ffb4a88cf0a6bba752361160542767bec9f83ace",
+      "error_code": "",
+      "journal_state": "COMPLETED",
+      "performed": true,
+      "provider_ref": null,
+      "replayed": false,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "procedure": {
+      "history_event_count": 23,
+      "status": "COMPLETED",
+      "steps": [
+        {
+          "status": "COMPLETED",
+          "step_id": "source_read"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "browser_wait"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "browser_download"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "download_inspect"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "app_open"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "accessibility_inspect"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "edit_text"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "save_reconcile"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "final_readback"
+        },
+        {
+          "status": "COMPLETED",
+          "step_id": "browser_upload"
+        }
+      ],
+      "terminal_outcome": "COMPLETED"
+    },
+    "process_restart": {
+      "close": {
+        "action_kind": "desktop.close",
+        "capability_id": "cap.desktop.close",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:33585edc387438c795761bc28aa17b109774625bfb11106f7cd6cbe00da27f19",
+        "error_code": "",
+        "journal_state": "COMPLETED",
+        "performed": true,
+        "provider_ref": null,
+        "replayed": false,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "crash": {
+        "action_id": "process-crash-proof",
+        "after": null,
+        "before": {
+          "enabled": true,
+          "focused": false,
+          "selected": null,
+          "selector": {
+            "automation_id": "CrashButton",
+            "class_name": "WindowsForms10.BUTTON.app.0.34f5582_r6_ad1",
+            "control_type": "ButtonControl",
+            "name": "Crash fixture",
+            "runtime_id": [
+              42,
+              37751488
+            ]
+          },
+          "value": null,
+          "value_length": null,
+          "value_sha256": null,
+          "visible": true,
+          "window": {
+            "automation_id": "OperatorFixtureWindow",
+            "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
+            "hwnd": 60360790,
+            "observation_generation": 8,
+            "process": {
+              "create_time": 134330969917241463,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "logical_id": "fixture-main",
+              "pid": 52760
+            },
+            "runtime_id": [
+              42,
+              60360790
+            ],
+            "title": "JARVIS V13 Main Editor"
+          }
+        },
+        "control": {
+          "automation_id": "CrashButton",
+          "class_name": null,
+          "control_type": null,
+          "name": null,
+          "runtime_id": []
+        },
+        "detail": "PID 52760 could not be verified",
+        "dialog": null,
+        "effect_possible": true,
+        "error_code": "process_identity_unavailable",
+        "kind": "click",
+        "outcome": "UNKNOWN",
+        "process": {
+          "create_time": 134330969917241463,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "logical_id": "fixture-main",
+          "pid": 52760
+        },
+        "reconciled": false,
+        "reconciliation_required": true,
+        "window": {
+          "automation_id": "OperatorFixtureWindow",
+          "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
+          "hwnd": 60360790,
+          "observation_generation": 1,
+          "process": {
+            "create_time": 134330969917241463,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "logical_id": "fixture-main",
+            "pid": 52760
+          },
+          "runtime_id": [
+            42,
+            60360790
+          ],
+          "title": "JARVIS V13 Main Editor"
+        }
+      },
+      "decoy_survived": true,
+      "logical_id_policy": "immutable per process generation",
+      "new_process": {
+        "create_time": 134330970049191775,
+        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+        "logical_id": "fixture-restarted",
+        "pid": 37604
+      },
+      "old_process_after_restart": {
+        "before": {
+          "args": [
+            "JARVIS V13 Main Editor",
+            "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv"
+          ],
+          "before": {
+            "process_id": "fixture-main",
+            "registered": false
+          },
+          "command_identity": "sha256:a3750dac4a8f347f94109139fe338ea86f0325b59c7a7e9018b0c5c3c6300eb2",
+          "creation_identity": {
+            "create_time": 134330969917241463,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "pid": 52760
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "idempotency_key": "idempotency:05d69e644d8ac308f81c44048e2e19eb43543d7d62eaf1f5dbcbfa9ae52b3a7e",
+          "launched_at": "2026-09-05T15:49:51.739408Z",
+          "opened_identity": {
+            "exists": true,
+            "kind": "file",
+            "mtime_ns": 1788623390038538600,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv",
+            "ref": "downloads/report.csv",
+            "sha256": "sha256:a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132",
+            "size_bytes": 31
+          },
+          "operation": "desktop.open",
+          "owned_descendants": [
+            52760
+          ],
+          "pid": 52760,
+          "process_id": "fixture-main",
+          "request_fingerprint": "sha256:4d931b6cd43115aeeca2781ceea6325626bd31bf67945f893173489c10438e46",
+          "show_window": true,
+          "state": "running"
+        },
+        "error": null,
+        "operation": "process.inspect",
+        "readback": {
+          "alive": false,
+          "observed_identity": {
+            "create_time": 134330969917241463,
+            "pid": 52760
+          }
+        },
+        "reconciled": true,
+        "replayed": false,
+        "request_id": "operator-d7a1123bb3904a1a919d04dbcfb8cee7",
+        "result": {
+          "matches": false,
+          "process_id": "fixture-main",
+          "state": "exited"
+        },
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "COMPLETED",
+        "target_identity": {
+          "args": [
+            "JARVIS V13 Main Editor",
+            "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv"
+          ],
+          "before": {
+            "process_id": "fixture-main",
+            "registered": false
+          },
+          "command_identity": "sha256:a3750dac4a8f347f94109139fe338ea86f0325b59c7a7e9018b0c5c3c6300eb2",
+          "creation_identity": {
+            "create_time": 134330969917241463,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "pid": 52760
+          },
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "idempotency_key": "idempotency:05d69e644d8ac308f81c44048e2e19eb43543d7d62eaf1f5dbcbfa9ae52b3a7e",
+          "launched_at": "2026-09-05T15:49:51.739408Z",
+          "opened_identity": {
+            "exists": true,
+            "kind": "file",
+            "mtime_ns": 1788623390038538600,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv",
+            "ref": "downloads/report.csv",
+            "sha256": "sha256:a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132",
+            "size_bytes": 31
+          },
+          "operation": "desktop.open",
+          "owned_descendants": [
+            52760
+          ],
+          "pid": 52760,
+          "process_id": "fixture-main",
+          "request_fingerprint": "sha256:4d931b6cd43115aeeca2781ceea6325626bd31bf67945f893173489c10438e46",
+          "show_window": true,
+          "state": "running"
+        }
+      },
+      "stale_identity_refused": {
+        "action_id": "stale-window-after-app-restart",
+        "after": null,
+        "before": null,
+        "control": {
+          "automation_id": "SaveButton",
+          "class_name": null,
+          "control_type": null,
+          "name": null,
+          "runtime_id": []
+        },
+        "detail": "window identity belongs to a different process",
+        "dialog": null,
+        "effect_possible": false,
+        "error_code": "process_identity_mismatch",
+        "kind": "click",
+        "outcome": "FAILED",
+        "process": {
+          "create_time": 134330970049191775,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "logical_id": "fixture-restarted",
+          "pid": 37604
+        },
+        "reconciled": false,
+        "reconciliation_required": false,
+        "window": {
+          "automation_id": "OperatorFixtureWindow",
+          "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
+          "hwnd": 60360790,
+          "observation_generation": 1,
+          "process": {
+            "create_time": 134330969917241463,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "logical_id": "fixture-main",
+            "pid": 52760
+          },
+          "runtime_id": [
+            42,
+            60360790
+          ],
+          "title": "JARVIS V13 Main Editor"
+        }
+      }
+    },
+    "save_reconcile": {
+      "ambiguous": {
+        "action_kind": "desktop.control.click",
+        "capability_id": "cap.desktop.control.click",
+        "claimed": "UNKNOWN",
+        "effect_id": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+        "error_code": "stop_after_possible_effect",
+        "journal_state": "FROZEN",
+        "performed": true,
+        "provider_ref": "computer:52760:134330969917241463:60360790",
+        "replayed": false,
+        "success": false,
+        "verified": "UNKNOWN"
+      },
+      "effect_state": {
+        "accepted": true,
+        "action_key": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+        "before_state": {},
+        "claim_active": false,
+        "claim_expires_at": 1788623695.6426604,
+        "claimed_at": 1788623395.6426604,
+        "expected_effects": [
+          "desktop.control.click"
+        ],
+        "frozen_reason": "effect outcome is ambiguous; reconcile before retry",
+        "reconciled": true,
+        "request_identity": {
+          "action_kind": "desktop.control.click",
+          "attempt": 1,
+          "before_state_ref": null,
+          "budget": {},
+          "capability_id": "cap.desktop.control.click",
+          "capability_version": "1.0.0",
+          "contract_version": "jarvis.v10.adapter.v1",
+          "credential_refs": [],
+          "effect_class": "REVERSIBLE_LOCAL",
+          "effect_id": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+          "idempotency_key": "idempotency:59842ba73d7d88b628f7f596c23e3861bc0a71f6cd6c7e79106e3e6f704c98ce",
+          "input_hash": "78658e27ff3d2d3c524155522a096380b4530975c825fefc9aa9a4d0a6a320ce",
+          "mission_id": "v13.operator.save-reconcile",
+          "request_id": "request:effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb:attempt:1",
+          "step_id": "save_reconcile",
+          "step_version": 1,
+          "stop_scope": [
+            "GLOBAL",
+            "v13.operator.save-reconcile"
+          ],
+          "target_ref": "fixture-main/SaveButton",
+          "workflow_id": "v13.operator.real-proof"
+        },
+        "status": "FROZEN",
+        "terminal_outcome": "COMPLETED"
+      },
+      "reconciled": {
+        "action_kind": "desktop.action.reconcile",
+        "capability_id": "cap.desktop.action.reconcile",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:57c5c2357ea5f9ca0b611d3b89ae72c9ba5133c3160aa06abbf8c197683348af",
+        "error_code": "",
+        "journal_state": "FROZEN",
+        "performed": true,
+        "provider_ref": "computer:52760:134330969917241463:60360790",
+        "replayed": null,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "replay": {
+        "action_kind": "desktop.control.click",
+        "capability_id": "cap.desktop.control.click",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+        "error_code": "",
+        "journal_state": "FROZEN",
+        "performed": false,
+        "provider_ref": "computer:52760:134330969917241463:60360790",
+        "replayed": true,
+        "success": true,
+        "verified": "MATCH"
+      },
+      "save_count": 1
+    },
+    "source_read": {
+      "action_kind": "file.read",
+      "capability_id": "cap.file.read",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:b1cd539322f2ff888c405017618820034323d8f20ddf067f957d339e2d93c823",
+      "error_code": "",
+      "journal_state": null,
+      "performed": null,
+      "provider_ref": null,
+      "replayed": null,
+      "success": true,
+      "verified": "MATCH"
+    },
+    "unexpected_dialog": {
+      "classification": {
+        "action_id": "unexpected-dialog-proof",
+        "after": null,
+        "before": {
+          "enabled": true,
+          "focused": false,
+          "selected": null,
+          "selector": {
+            "automation_id": "UnexpectedDialogButton",
+            "class_name": "WindowsForms10.BUTTON.app.0.34f5582_r6_ad1",
+            "control_type": "ButtonControl",
+            "name": "Open unexpected dialog",
+            "runtime_id": [
+              42,
+              76746222
+            ]
+          },
+          "value": null,
+          "value_length": null,
+          "value_sha256": null,
+          "visible": true,
+          "window": {
+            "automation_id": "OperatorFixtureWindow",
+            "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
+            "hwnd": 60360790,
+            "observation_generation": 2,
+            "process": {
+              "create_time": 134330969917241463,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "logical_id": "fixture-main",
+              "pid": 52760
+            },
+            "runtime_id": [
+              42,
+              60360790
+            ],
+            "title": "JARVIS V13 Main Editor"
+          }
+        },
+        "control": {
+          "automation_id": "UnexpectedDialogButton",
+          "class_name": null,
+          "control_type": null,
+          "name": null,
+          "runtime_id": []
+        },
+        "detail": "an undeclared dialog appeared after dispatch",
+        "dialog": {
+          "enabled": true,
+          "identity": {
+            "automation_id": "",
+            "class_name": "#32770",
+            "hwnd": 34078976,
+            "observation_generation": 4,
+            "process": {
+              "create_time": 134330969917241463,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "logical_id": "fixture-main",
+              "pid": 52760
+            },
+            "runtime_id": [
+              42,
+              34078976
+            ],
+            "title": "JARVIS V13 Unexpected Dialog"
+          },
+          "is_dialog": true,
+          "visible": true
+        },
+        "effect_possible": true,
+        "error_code": "unexpected_dialog",
+        "kind": "click",
+        "outcome": "UNKNOWN",
+        "process": {
+          "create_time": 134330969917241463,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "logical_id": "fixture-main",
+          "pid": 52760
+        },
+        "reconciled": false,
+        "reconciliation_required": true,
+        "window": {
+          "automation_id": "OperatorFixtureWindow",
+          "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
+          "hwnd": 60360790,
+          "observation_generation": 1,
+          "process": {
+            "create_time": 134330969917241463,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "logical_id": "fixture-main",
+            "pid": 52760
+          },
+          "runtime_id": [
+            42,
+            60360790
+          ],
+          "title": "JARVIS V13 Main Editor"
+        }
+      },
+      "focus_ambiguity": {
+        "before": null,
+        "error": {
+          "classification": "window_ambiguous",
+          "message": "owned process has multiple visible top-level windows"
+        },
+        "operation": "desktop.focus",
+        "readback": null,
+        "reconciled": false,
+        "replayed": false,
+        "request_id": "operator-3a04fd423f704d87af3d05e94b6889d0",
+        "result": null,
+        "schema": "jarvis.personal_operator.receipt.v1",
+        "source_identity": null,
+        "status": "FAILED",
+        "target_identity": null
+      },
+      "structured_close": {
+        "action_id": "close-unexpected-dialog",
+        "after": null,
+        "before": {
+          "enabled": true,
+          "focused": true,
+          "selected": null,
+          "selector": {
+            "automation_id": "2",
+            "class_name": "Button",
+            "control_type": "ButtonControl",
+            "name": "OK",
+            "runtime_id": [
+              42,
+              3084462
+            ]
+          },
+          "value": null,
+          "value_length": null,
+          "value_sha256": null,
+          "visible": true,
+          "window": {
+            "automation_id": "",
+            "class_name": "#32770",
+            "hwnd": 34078976,
+            "observation_generation": 6,
+            "process": {
+              "create_time": 134330969917241463,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "logical_id": "fixture-main",
+              "pid": 52760
+            },
+            "runtime_id": [
+              42,
+              34078976
+            ],
+            "title": "JARVIS V13 Unexpected Dialog"
+          }
+        },
+        "control": {
+          "automation_id": null,
+          "class_name": null,
+          "control_type": null,
+          "name": "OK",
+          "runtime_id": []
+        },
+        "detail": null,
+        "dialog": null,
+        "effect_possible": true,
+        "error_code": null,
+        "kind": "click",
+        "outcome": "COMPLETED",
+        "process": {
+          "create_time": 134330969917241463,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "logical_id": "fixture-main",
+          "pid": 52760
+        },
+        "reconciled": true,
+        "reconciliation_required": false,
+        "window": {
+          "automation_id": "",
+          "class_name": "#32770",
+          "hwnd": 34078976,
+          "observation_generation": 5,
+          "process": {
+            "create_time": 134330969917241463,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "logical_id": "fixture-main",
+            "pid": 52760
+          },
+          "runtime_id": [
+            42,
+            34078976
+          ],
+          "title": "JARVIS V13 Unexpected Dialog"
+        }
+      }
+    },
+    "wrong_window": {
+      "action_id": "wrong-window-proof",
+      "after": null,
+      "before": null,
+      "control": {
+        "automation_id": "SaveButton",
+        "class_name": null,
+        "control_type": null,
+        "name": null,
+        "runtime_id": []
+      },
+      "detail": "window identity belongs to a different process",
+      "dialog": null,
+      "effect_possible": false,
+      "error_code": "process_identity_mismatch",
+      "kind": "click",
+      "outcome": "FAILED",
+      "process": {
+        "create_time": 134330969917241463,
+        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+        "logical_id": "fixture-main",
+        "pid": 52760
+      },
+      "reconciled": false,
+      "reconciliation_required": false,
+      "window": {
+        "automation_id": "OperatorFixtureWindow",
+        "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
+        "hwnd": 62325368,
+        "observation_generation": 1,
+        "process": {
+          "create_time": 134330969911155622,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "logical_id": "fixture-decoy",
+          "pid": 23592
+        },
+        "runtime_id": [
+          42,
+          62325368
+        ],
+        "title": "JARVIS V13 Decoy Editor"
+      }
+    }
+  },
+  "source": {
+    "base_sha": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
+    "branch": "candidate/v13-final-personal-executive-convergence-20260905",
+    "head": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "merge_base": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
+    "origin_main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "personal_operator_input": "db4ad1d11af14a666ad5b1b6b1be0059d6950da1",
+    "schema": 40,
+    "v12_source_sha": "7f153851517b5529dd1e582725a0c2a6d96ddc9b",
+    "worktree_clean": true,
+    "worktree_clean_before_report": true
+  },
+  "verdict": "PASS"
+}

@@ -1,0 +1,2130 @@
+{
+  "artifact_lineage": {
+    "assignments": {
+      "A": [
+        {
+          "path": "inputs/renewals.csv",
+          "sha256": "c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a",
+          "size_bytes": 167,
+          "source_id": "source-001-39b822d583"
+        },
+        {
+          "path": "inputs/renewals.json",
+          "sha256": "969e20b6f683447adb86d48a71c9881554facef60b6d3cf5fd98aeace7d7ac15",
+          "size_bytes": 353,
+          "source_id": "source-002-f26ab28aba"
+        }
+      ],
+      "B": [
+        {
+          "path": "fragments/01_context.txt",
+          "sha256": "3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4",
+          "size_bytes": 111,
+          "source_id": "source-001-66d6c87f13"
+        },
+        {
+          "path": "fragments/02_decisions.md",
+          "sha256": "b8d78d9af44664de518ecbf351bbeaaa3d5989f89236fa0c6659d3850277f8be",
+          "size_bytes": 160,
+          "source_id": "source-002-2c6d35f1e1"
+        },
+        {
+          "path": "fragments/03_actions.txt",
+          "sha256": "8b28bfa679f488abda8dd7afe55f4ccab72f6410f8532a7c03b44e326ccc2d9f",
+          "size_bytes": 137,
+          "source_id": "source-003-a0943d62b1"
+        }
+      ],
+      "C": [
+        {
+          "path": "inputs/archive/prior-note.txt",
+          "sha256": "a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14",
+          "size_bytes": 43,
+          "source_id": "source-001-9c00a027da"
+        },
+        {
+          "path": "inputs/constraints.md",
+          "sha256": "9588be505df2f947d986d909894d1167a4dac599996f3369b65b69db2a754857",
+          "size_bytes": 115,
+          "source_id": "source-002-fe9c2d309c"
+        },
+        {
+          "path": "inputs/operations.csv",
+          "sha256": "4e556642f7e4eabfb0524da2c0510ad0fd52735bf23c409878835d0caac3be9c",
+          "size_bytes": 75,
+          "source_id": "source-003-2a19171430"
+        },
+        {
+          "path": "inputs/service.json",
+          "sha256": "203f0d0132a5d18d64ffa37f660cc5b21ec43b5729d607babc0ca6510034d95e",
+          "size_bytes": 141,
+          "source_id": "source-004-dd140ccd1b"
+        }
+      ],
+      "D": [
+        {
+          "path": "owner-assignment/owner-notes.md",
+          "sha256": "4d3d9772264d6374beeeef1eeed328de085ee266058b8f71505cfd6f02c67fb6",
+          "size_bytes": 170,
+          "source_id": "source-001-1ca2d1f5a7"
+        },
+        {
+          "path": "owner-assignment/pipeline.csv",
+          "sha256": "ea8c080b99bcdf1c5514ce394b14ee3af4bd1db92596e73828bdf18ec2d2c7f9",
+          "size_bytes": 268,
+          "source_id": "source-002-f7d69e8e90"
+        }
+      ]
+    },
+    "source_preservation": "PRESERVE_ORIGINALS",
+    "status": "PASS"
+  },
+  "campaign_integration": {
+    "assignments": {
+      "A": {
+        "campaign_status": "COMPLETED",
+        "objective_status": "COMPLETED",
+        "verifier_outcome": "PASSED"
+      },
+      "B": {
+        "campaign_status": "COMPLETED",
+        "objective_status": "COMPLETED",
+        "verifier_outcome": "PASSED"
+      },
+      "C": {
+        "campaign_status": "COMPLETED",
+        "objective_status": "COMPLETED",
+        "verifier_outcome": "PASSED"
+      },
+      "D": {
+        "campaign_status": "COMPLETED",
+        "objective_status": "COMPLETED",
+        "verifier_outcome": "PASSED"
+      }
+    },
+    "status": "PASS"
+  },
+  "capability_composition": {
+    "authority": "Executive objective/plan -> V12 Campaign -> MissionLoop -> Capability Fabric -> canonical effect journal",
+    "second_runtime_created": false,
+    "status": "PASS"
+  },
+  "cross_format_consistency": {
+    "assignments": {
+      "A": [
+        {
+          "assertion_id": "document-pdf-record-count",
+          "left": "4",
+          "left_deliverable_id": "document",
+          "left_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "operator": "equals",
+          "required": true,
+          "right": "4",
+          "right_deliverable_id": "pdf",
+          "right_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "status": "PASS"
+        },
+        {
+          "assertion_id": "workbook-document-record-count",
+          "left": 4,
+          "left_deliverable_id": "workbook",
+          "left_selector": "row_count",
+          "operator": "contains",
+          "required": true,
+          "right": "4",
+          "right_deliverable_id": "document",
+          "right_selector": "regex:Records: ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "B": [
+        {
+          "assertion_id": "document-pdf-record-count",
+          "left": "3",
+          "left_deliverable_id": "document",
+          "left_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "operator": "equals",
+          "required": true,
+          "right": "3",
+          "right_deliverable_id": "pdf",
+          "right_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "C": [
+        {
+          "assertion_id": "document-pdf-record-count",
+          "left": "3",
+          "left_deliverable_id": "document",
+          "left_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "operator": "equals",
+          "required": true,
+          "right": "3",
+          "right_deliverable_id": "pdf",
+          "right_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "status": "PASS"
+        },
+        {
+          "assertion_id": "workbook-document-record-count",
+          "left": 3,
+          "left_deliverable_id": "workbook",
+          "left_selector": "row_count",
+          "operator": "contains",
+          "required": true,
+          "right": "3",
+          "right_deliverable_id": "document",
+          "right_selector": "regex:Records: ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "D": [
+        {
+          "assertion_id": "workbook-document-record-count",
+          "left": 4,
+          "left_deliverable_id": "workbook",
+          "left_selector": "row_count",
+          "operator": "contains",
+          "required": true,
+          "right": "4",
+          "right_deliverable_id": "document",
+          "right_selector": "regex:Records: ([0-9]+)",
+          "status": "PASS"
+        }
+      ]
+    },
+    "status": "PASS"
+  },
+  "duplicate_mutations": {
+    "partial_pdf_duplicate_mutations": 0,
+    "plan_recorded_events": {
+      "A": 1,
+      "B": 1,
+      "C": 1,
+      "D": 1
+    },
+    "status": "PASS"
+  },
+  "final_status": "V13_GENERAL_WORK_ENGINE_READY",
+  "finalize_pid": 2572,
+  "finalized_at": "2026-09-05T15:54:56.247252Z",
+  "general_work_planner": {
+    "artifact_counts": {
+      "docx": 4,
+      "pdf": 3,
+      "xlsx": 3
+    },
+    "assignment_count": 4,
+    "plans": {
+      "A": {
+        "inferred_formats": [
+          "xlsx",
+          "docx",
+          "pdf"
+        ],
+        "plan_hash": "f95a3f4618dc6d18d8b35a8770f9b7f918c78d4b15667e7664c726dc00c54df8",
+        "plan_id": "general-work:b82c1aabf6556f737e2efef8",
+        "topological_layers": [
+          [
+            "inspect-001",
+            "inspect-002"
+          ],
+          [
+            "normalize-data"
+          ],
+          [
+            "build-document",
+            "build-pdf",
+            "build-workbook"
+          ]
+        ]
+      },
+      "B": {
+        "inferred_formats": [
+          "docx",
+          "pdf"
+        ],
+        "plan_hash": "43f09761208bb477024f6d4d7db0db1626341599ca1bb2865962463f72c20888",
+        "plan_id": "general-work:51d1b584e470b528534298d8",
+        "topological_layers": [
+          [
+            "inspect-001",
+            "inspect-002",
+            "inspect-003"
+          ],
+          [
+            "build-document",
+            "build-pdf"
+          ]
+        ]
+      },
+      "C": {
+        "inferred_formats": [
+          "xlsx",
+          "docx",
+          "pdf"
+        ],
+        "plan_hash": "dc446462125ae511583a2507c45835fe8bf8132080a0ca8fff478f1890c497ea",
+        "plan_id": "general-work:986291b3a2b3a87a2f5aad6f",
+        "topological_layers": [
+          [
+            "inspect-001",
+            "inspect-002",
+            "inspect-003",
+            "inspect-004"
+          ],
+          [
+            "normalize-data"
+          ],
+          [
+            "build-document",
+            "build-pdf",
+            "build-workbook"
+          ]
+        ]
+      },
+      "D": {
+        "inferred_formats": [
+          "xlsx",
+          "docx"
+        ],
+        "plan_hash": "28a7793a7da2a83afb2e6785e88a4006d4635b1583ff5b2d46ba1df9a5117855",
+        "plan_id": "general-work:196fc896c6ba388e9f60b735",
+        "topological_layers": [
+          [
+            "inspect-001",
+            "inspect-002"
+          ],
+          [
+            "normalize-data"
+          ],
+          [
+            "build-document",
+            "build-workbook"
+          ]
+        ]
+      }
+    },
+    "status": "PASS"
+  },
+  "gmail": {
+    "observation": "DISABLED",
+    "read": "DEFERRED",
+    "send": "DEFERRED"
+  },
+  "independent_verifier": {
+    "mode": "fresh-process-read-only",
+    "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\independent-verification.json",
+    "sha256": "3c7929c65540b32ad91d559aa8b499e44ea38f5d79a60cbcca174d13d40c1c58",
+    "status": "PASS",
+    "verifier_pid": 50376
+  },
+  "known_limitations": [
+    "Local artifact generation uses the inherited python-docx, openpyxl, and PDF connectors; visual acceptance is therefore required and hash-bound.",
+    "PowerPoint deliverables were excluded from this proof by owner direction.",
+    "The engine is bounded to the registered local resource root and the supported General Work action catalog."
+  ],
+  "live_mutated": false,
+  "main_or_origin_mutated": false,
+  "proof_date": "2026-09-04",
+  "proofs": {
+    "A": {
+      "artifact_findings": [
+        {
+          "actual": {
+            "contains": [
+              "Renewal Portfolio Review",
+              "Records: 4"
+            ],
+            "text_sha256": "d8020bd4fd3c3a3ad0bff90c2e071d14e553058d27b377e11b0c81b5c271a2df"
+          },
+          "assertion_id": "document-content",
+          "deliverable_id": "document",
+          "expected": [
+            "Renewal Portfolio Review",
+            "Records: 4"
+          ],
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 4,
+          "assertion_id": "normalized-row-count",
+          "deliverable_id": "normalized-data",
+          "expected": 4,
+          "kind": "row_count",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": {
+            "contains": [
+              "Records: 4"
+            ],
+            "text_sha256": "7445d092e16a1836c403c4405d87ed38d6661812bab88c40dcbb3e8126312d22"
+          },
+          "assertion_id": "pdf-content",
+          "deliverable_id": "pdf",
+          "expected": "Records: 4",
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 1,
+          "assertion_id": "pdf-page-count",
+          "deliverable_id": "pdf",
+          "expected": 1,
+          "kind": "page_count",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 4,
+          "assertion_id": "workbook-row-count",
+          "deliverable_id": "workbook",
+          "expected": 4,
+          "kind": "row_count",
+          "required": true,
+          "status": "PASS"
+        }
+      ],
+      "artifacts": [
+        {
+          "deliverable_id": "document",
+          "details": {
+            "paragraph_count": 7,
+            "paragraphs": [
+              "Renewal Portfolio Review",
+              "Prepare a verified renewal package with an editable workbook, written report, and printable copy",
+              "This package consolidates 2 captured source files. Records: 4",
+              "Source lineage",
+              "Data summary",
+              "Records: 4\nColumns: 6\nAnnual Value total: 294000",
+              ""
+            ],
+            "table_cells": 39,
+            "table_count": 2,
+            "table_rows": 8,
+            "table_text_rows": [
+              "Source | Format | SHA 256",
+              "inputs/renewals.csv | CSV | c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a",
+              "inputs/renewals.json | JSON | 969e20b6f683447adb86d48a71c9881554facef60b6d3cf5fd98aeace7d7ac15",
+              "Account | Status | Annual Value | Owner | Renewal Date | Source File",
+              "Acme North | open | 125000 | Mira | 2026-09-18 | inputs/renewals.csv",
+              "Blue Harbor | at risk | 84000 | Noah | 2026-09-22 | inputs/renewals.csv",
+              "Cedar Labs | open | 46000 | Mira | 2026-09-27 | inputs/renewals.json",
+              "Delta Works | closed | 39000 | Noah | 2026-09-11 | inputs/renewals.json"
+            ],
+            "text": "Renewal Portfolio Review\nPrepare a verified renewal package with an editable workbook, written report, and printable copy\nThis package consolidates 2 captured source files. Records: 4\nSource lineage\nData summary\nRecords: 4\nColumns: 6\nAnnual Value total: 294000\n\nSource | Format | SHA 256\ninputs/renewals.csv | CSV | c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a\ninputs/renewals.json | JSON | 969e20b6f683447adb86d48a71c9881554facef60b6d3cf5fd98aeace7d7ac15\nAccount | Status | Annual Value | Owner | Renewal Date | Source File\nAcme North | open | 125000 | Mira | 2026-09-18 | inputs/renewals.csv\nBlue Harbor | at risk | 84000 | Noah | 2026-09-22 | inputs/renewals.csv\nCedar Labs | open | 46000 | Mira | 2026-09-27 | inputs/renewals.json\nDelta Works | closed | 39000 | Noah | 2026-09-11 | inputs/renewals.json",
+            "text_chars": 826,
+            "text_sha256": "d8020bd4fd3c3a3ad0bff90c2e071d14e553058d27b377e11b0c81b5c271a2df"
+          },
+          "exists": true,
+          "format": "docx",
+          "kind": "docx",
+          "path": "delivery/documents/renewal-portfolio.docx",
+          "sha256": "9b1bff4fccd0bdc48c9343a2d5dc9f9bbe0ca2fda1e755acab8a6003b9892753",
+          "size_bytes": 36459,
+          "source_ids": [
+            "source-001-39b822d583",
+            "source-002-f26ab28aba"
+          ],
+          "table": null
+        },
+        {
+          "deliverable_id": "normalized-data",
+          "details": {
+            "container_keys": [
+              "records"
+            ],
+            "json_type": "records",
+            "records_path": "$.records",
+            "schema": [
+              "Account",
+              "Status",
+              "Annual Value",
+              "Owner",
+              "Renewal Date",
+              "Source File"
+            ]
+          },
+          "exists": true,
+          "format": "json",
+          "kind": "table",
+          "path": "delivery/data/renewal-portfolio-normalized.json",
+          "sha256": "5aeed91cd6a3cac405c456653f36d9fc8eeea74a7f0a8b5c2a9cb3715cd15c6e",
+          "size_bytes": 832,
+          "source_ids": [
+            "source-001-39b822d583",
+            "source-002-f26ab28aba"
+          ],
+          "table": {
+            "column_count": 6,
+            "headers": [
+              "Account",
+              "Status",
+              "Annual Value",
+              "Owner",
+              "Renewal Date",
+              "Source File"
+            ],
+            "row_count": 4,
+            "rows": [
+              [
+                "Acme North",
+                "open",
+                "125000",
+                "Mira",
+                "2026-09-18",
+                "inputs/renewals.csv"
+              ],
+              [
+                "Blue Harbor",
+                "at risk",
+                "84000",
+                "Noah",
+                "2026-09-22",
+                "inputs/renewals.csv"
+              ],
+              [
+                "Cedar Labs",
+                "open",
+                46000,
+                "Mira",
+                "2026-09-27",
+                "inputs/renewals.json"
+              ],
+              [
+                "Delta Works",
+                "closed",
+                39000,
+                "Noah",
+                "2026-09-11",
+                "inputs/renewals.json"
+              ]
+            ]
+          }
+        },
+        {
+          "deliverable_id": "pdf",
+          "details": {
+            "metadata": {
+              "/Author": "JARVIS Foundry",
+              "/CreationDate": "D:20000101000000+00'00'",
+              "/Creator": "anonymous",
+              "/Keywords": "",
+              "/ModDate": "D:20000101000000+00'00'",
+              "/Producer": "ReportLab PDF Library - (opensource)",
+              "/Subject": "Source SHA-256: c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a",
+              "/Title": "Renewal Portfolio Review",
+              "/Trapped": "/False"
+            },
+            "page_count": 1,
+            "pages": [
+              "Renewal Portfolio Review\nPage 1 of 1\nSource SHA-256: c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a\nPrepare a verified renewal package with an editable workbook, written report, and printable\ncopy\nRecords: 4\nCaptured sources: 2\nColumns: Account, Status, Annual Value, Owner, Renewal Date, Source File\nAnnual Value total: 294000\n"
+            ],
+            "text": "Renewal Portfolio Review\nPage 1 of 1\nSource SHA-256: c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a\nPrepare a verified renewal package with an editable workbook, written report, and printable\ncopy\nRecords: 4\nCaptured sources: 2\nColumns: Account, Status, Annual Value, Owner, Renewal Date, Source File\nAnnual Value total: 294000\n",
+            "text_chars": 346,
+            "text_sha256": "7445d092e16a1836c403c4405d87ed38d6661812bab88c40dcbb3e8126312d22"
+          },
+          "exists": true,
+          "format": "pdf",
+          "kind": "pdf",
+          "path": "delivery/pdf/renewal-portfolio.pdf",
+          "sha256": "b87aa681dde87f7a5f78fc487279c610d5106db308b09f4ffedda08ef6892239",
+          "size_bytes": 1973,
+          "source_ids": [
+            "source-001-39b822d583",
+            "source-002-f26ab28aba"
+          ],
+          "table": null
+        },
+        {
+          "deliverable_id": "workbook",
+          "details": {
+            "external_links": 0,
+            "formula_cells": 0,
+            "schema": [
+              "Account",
+              "Status",
+              "Annual Value",
+              "Owner",
+              "Renewal Date",
+              "Source File"
+            ],
+            "sheet_count": 1,
+            "sheet_name": "Data",
+            "workbook_format": "xlsx"
+          },
+          "exists": true,
+          "format": "xlsx",
+          "kind": "table",
+          "path": "delivery/spreadsheets/renewal-portfolio.xlsx",
+          "sha256": "2fed1a01bdbae4dfa5eb71d8bb890969d6c74735b9f9afed77521ab1d5fa0fcb",
+          "size_bytes": 5497,
+          "source_ids": [
+            "source-001-39b822d583",
+            "source-002-f26ab28aba"
+          ],
+          "table": {
+            "column_count": 6,
+            "headers": [
+              "Account",
+              "Status",
+              "Annual Value",
+              "Owner",
+              "Renewal Date",
+              "Source File"
+            ],
+            "row_count": 4,
+            "rows": [
+              [
+                "Acme North",
+                "open",
+                125000,
+                "Mira",
+                "2026-09-18",
+                "inputs/renewals.csv"
+              ],
+              [
+                "Blue Harbor",
+                "at risk",
+                84000,
+                "Noah",
+                "2026-09-22",
+                "inputs/renewals.csv"
+              ],
+              [
+                "Cedar Labs",
+                "open",
+                46000,
+                "Mira",
+                "2026-09-27",
+                "inputs/renewals.json"
+              ],
+              [
+                "Delta Works",
+                "closed",
+                39000,
+                "Noah",
+                "2026-09-11",
+                "inputs/renewals.json"
+              ]
+            ]
+          }
+        }
+      ],
+      "campaign_status": "COMPLETED",
+      "consistency_findings": [
+        {
+          "assertion_id": "document-pdf-record-count",
+          "left": "4",
+          "left_deliverable_id": "document",
+          "left_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "operator": "equals",
+          "required": true,
+          "right": "4",
+          "right_deliverable_id": "pdf",
+          "right_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "status": "PASS"
+        },
+        {
+          "assertion_id": "workbook-document-record-count",
+          "left": 4,
+          "left_deliverable_id": "workbook",
+          "left_selector": "row_count",
+          "operator": "contains",
+          "required": true,
+          "right": "4",
+          "right_deliverable_id": "document",
+          "right_selector": "regex:Records: ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "controls": {
+        "stop_resume": {
+          "action_starts_during_stop": 0,
+          "blocked_outcome": "BLOCKED",
+          "resumed_mission_id": "mission-gw-f95a3f4618dc6d18-001-2f309843",
+          "resumed_status": "EXECUTING",
+          "stopped_status": "STOPPED"
+        }
+      },
+      "objective_status": "COMPLETED",
+      "quality_coverage": [
+        {
+          "declared_requirements": [
+            "document contains the package summary and source lineage"
+          ],
+          "deliverable_id": "document",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "document-content"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "normalized rows match captured tabular sources"
+          ],
+          "deliverable_id": "normalized-data",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "normalized-row-count"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "printable copy reopens with the package summary"
+          ],
+          "deliverable_id": "pdf",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "pdf-content",
+            "pdf-page-count"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "workbook reopens with the normalized row count"
+          ],
+          "deliverable_id": "workbook",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "workbook-row-count"
+          ]
+        }
+      ],
+      "source_findings": [
+        {
+          "actual_sha256": "c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a",
+          "actual_size_bytes": 167,
+          "path": "inputs/renewals.csv",
+          "required_sha256": "c6a456af52de64bb688629755cad1e30b5aeb228b9bf5369bc465b366d9cbd5a",
+          "required_size_bytes": 167,
+          "source_id": "source-001-39b822d583",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "969e20b6f683447adb86d48a71c9881554facef60b6d3cf5fd98aeace7d7ac15",
+          "actual_size_bytes": 353,
+          "path": "inputs/renewals.json",
+          "required_sha256": "969e20b6f683447adb86d48a71c9881554facef60b6d3cf5fd98aeace7d7ac15",
+          "required_size_bytes": 353,
+          "source_id": "source-002-f26ab28aba",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS",
+      "verification_hash": "f58afbd4eb9c038b66223c211d938205f7617b09750a5453a6d8b43aa60fcc6c",
+      "verifier_outcome": "PASSED",
+      "visual_status": [
+        {
+          "deliverable_id": "document",
+          "evidence_path": "delivery/evidence/document.json",
+          "evidence_sha256": "de2f4b1b7a797721553a9b56232c2274d298f993253c60e17f2fc0109454962d",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "deliverable_id": "normalized-data",
+          "required": false,
+          "status": "NOT_APPLICABLE"
+        },
+        {
+          "deliverable_id": "pdf",
+          "evidence_path": "delivery/evidence/pdf.json",
+          "evidence_sha256": "816e284d35fbdba8bbb5545f2f974853c3a5e1df8e7ae7fe9997e0ac4fb5d6dc",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "deliverable_id": "workbook",
+          "evidence_path": "delivery/evidence/workbook.json",
+          "evidence_sha256": "a2e5122dc17e1c373c8b9e918c89408d0598fcc1567bdeff4cd08a096b809f17",
+          "required": true,
+          "status": "PASS"
+        }
+      ]
+    },
+    "B": {
+      "artifact_findings": [
+        {
+          "actual": {
+            "contains": [
+              "Renewal Decision Record",
+              "Sources: 3"
+            ],
+            "text_sha256": "d6f626c568c682fb6f8e5ad8c6bdd5ac8b3fd84d6fad19cc1f9bb0c9f936a261"
+          },
+          "assertion_id": "document-content",
+          "deliverable_id": "document",
+          "expected": [
+            "Renewal Decision Record",
+            "Sources: 3"
+          ],
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": {
+            "contains": [
+              "Sources: 3"
+            ],
+            "text_sha256": "b0bcf56b7bfbc32de16a868c4b8c7c9603b696e73e55430f44e88b2f29cb4adb"
+          },
+          "assertion_id": "pdf-content",
+          "deliverable_id": "pdf",
+          "expected": "Sources: 3",
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 1,
+          "assertion_id": "pdf-page-count",
+          "deliverable_id": "pdf",
+          "expected": 1,
+          "kind": "page_count",
+          "required": true,
+          "status": "PASS"
+        }
+      ],
+      "artifacts": [
+        {
+          "deliverable_id": "document",
+          "details": {
+            "paragraph_count": 10,
+            "paragraphs": [
+              "Renewal Decision Record",
+              "Reconstruct the inconsistent text and Markdown fragments into one structured decision record and printable final copy",
+              "This package consolidates 3 captured source files. Sources: 3",
+              "Source lineage",
+              "01 context",
+              "Renewal decision context\nPortfolio value: 294000\nReview owner: Mira Chen\nDecision date: September 18, 2026",
+              "02 decisions",
+              "# Decisions\n- Prioritize Blue Harbor recovery.\n- Keep Acme North on the standard renewal path.\n- Close the Cedar Labs data gap before September 11, 2026.",
+              "03 actions",
+              "Actions\nNoah: schedule Blue Harbor executive call.\nMira: validate Cedar Labs commercial owner.\nFinance: confirm Delta Works booking."
+            ],
+            "table_cells": 12,
+            "table_count": 1,
+            "table_rows": 4,
+            "table_text_rows": [
+              "Source | Format | SHA 256",
+              "fragments/01_context.txt | TXT | 3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4",
+              "fragments/02_decisions.md | MD | b8d78d9af44664de518ecbf351bbeaaa3d5989f89236fa0c6659d3850277f8be",
+              "fragments/03_actions.txt | TXT | 8b28bfa679f488abda8dd7afe55f4ccab72f6410f8532a7c03b44e326ccc2d9f"
+            ],
+            "text": "Renewal Decision Record\nReconstruct the inconsistent text and Markdown fragments into one structured decision record and printable final copy\nThis package consolidates 3 captured source files. Sources: 3\nSource lineage\n01 context\nRenewal decision context\nPortfolio value: 294000\nReview owner: Mira Chen\nDecision date: September 18, 2026\n02 decisions\n# Decisions\n- Prioritize Blue Harbor recovery.\n- Keep Acme North on the standard renewal path.\n- Close the Cedar Labs data gap before September 11, 2026.\n03 actions\nActions\nNoah: schedule Blue Harbor executive call.\nMira: validate Cedar Labs commercial owner.\nFinance: confirm Delta Works booking.\nSource | Format | SHA 256\nfragments/01_context.txt | TXT | 3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4\nfragments/02_decisions.md | MD | b8d78d9af44664de518ecbf351bbeaaa3d5989f89236fa0c6659d3850277f8be\nfragments/03_actions.txt | TXT | 8b28bfa679f488abda8dd7afe55f4ccab72f6410f8532a7c03b44e326ccc2d9f",
+            "text_chars": 967,
+            "text_sha256": "d6f626c568c682fb6f8e5ad8c6bdd5ac8b3fd84d6fad19cc1f9bb0c9f936a261"
+          },
+          "exists": true,
+          "format": "docx",
+          "kind": "docx",
+          "path": "delivery/documents/renewal-decision-record.docx",
+          "sha256": "4732716e6815483962d587f82f7d834b0355812ee17e8af9093eeb85872e5c20",
+          "size_bytes": 36412,
+          "source_ids": [
+            "source-001-66d6c87f13",
+            "source-002-2c6d35f1e1",
+            "source-003-a0943d62b1"
+          ],
+          "table": null
+        },
+        {
+          "deliverable_id": "pdf",
+          "details": {
+            "metadata": {
+              "/Author": "JARVIS Foundry",
+              "/CreationDate": "D:20000101000000+00'00'",
+              "/Creator": "anonymous",
+              "/Keywords": "",
+              "/ModDate": "D:20000101000000+00'00'",
+              "/Producer": "ReportLab PDF Library - (opensource)",
+              "/Subject": "Source SHA-256: 3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4",
+              "/Title": "Renewal Decision Record",
+              "/Trapped": "/False"
+            },
+            "page_count": 1,
+            "pages": [
+              "Renewal Decision Record\nPage 1 of 1\nSource SHA-256: 3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4\nReconstruct the inconsistent text and Markdown fragments into one structured decision record\nand printable final copy\nSources: 3\nCaptured sources: 3\n01 context\nRenewal decision context\nPortfolio value: 294000\nReview owner: Mira Chen\nDecision date: September 18, 2026\n02 decisions\n# Decisions\n- Prioritize Blue Harbor recovery.\n- Keep Acme North on the standard renewal path.\n- Close the Cedar Labs data gap before September 11, 2026.\n03 actions\nActions\nNoah: schedule Blue Harbor executive call.\nMira: validate Cedar Labs commercial owner.\nFinance: confirm Delta Works booking.\n"
+            ],
+            "text": "Renewal Decision Record\nPage 1 of 1\nSource SHA-256: 3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4\nReconstruct the inconsistent text and Markdown fragments into one structured decision record\nand printable final copy\nSources: 3\nCaptured sources: 3\n01 context\nRenewal decision context\nPortfolio value: 294000\nReview owner: Mira Chen\nDecision date: September 18, 2026\n02 decisions\n# Decisions\n- Prioritize Blue Harbor recovery.\n- Keep Acme North on the standard renewal path.\n- Close the Cedar Labs data gap before September 11, 2026.\n03 actions\nActions\nNoah: schedule Blue Harbor executive call.\nMira: validate Cedar Labs commercial owner.\nFinance: confirm Delta Works booking.\n",
+            "text_chars": 695,
+            "text_sha256": "b0bcf56b7bfbc32de16a868c4b8c7c9603b696e73e55430f44e88b2f29cb4adb"
+          },
+          "exists": true,
+          "format": "pdf",
+          "kind": "pdf",
+          "path": "delivery/pdf/renewal-decision-record.pdf",
+          "sha256": "c2761c95b8091decb04082f4194cba5666582f5131779eb4b756f5f0224ad99a",
+          "size_bytes": 2202,
+          "source_ids": [
+            "source-001-66d6c87f13",
+            "source-002-2c6d35f1e1",
+            "source-003-a0943d62b1"
+          ],
+          "table": null
+        }
+      ],
+      "campaign_status": "COMPLETED",
+      "consistency_findings": [
+        {
+          "assertion_id": "document-pdf-record-count",
+          "left": "3",
+          "left_deliverable_id": "document",
+          "left_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "operator": "equals",
+          "required": true,
+          "right": "3",
+          "right_deliverable_id": "pdf",
+          "right_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "controls": {},
+      "objective_status": "COMPLETED",
+      "quality_coverage": [
+        {
+          "declared_requirements": [
+            "document contains the package summary and source lineage"
+          ],
+          "deliverable_id": "document",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "document-content"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "printable copy reopens with the package summary"
+          ],
+          "deliverable_id": "pdf",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "pdf-content",
+            "pdf-page-count"
+          ]
+        }
+      ],
+      "source_findings": [
+        {
+          "actual_sha256": "3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4",
+          "actual_size_bytes": 111,
+          "path": "fragments/01_context.txt",
+          "required_sha256": "3633921c18751f4c9a1484f82bb7338bd6723a1891ccd9f21ac63b824b87b2f4",
+          "required_size_bytes": 111,
+          "source_id": "source-001-66d6c87f13",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "b8d78d9af44664de518ecbf351bbeaaa3d5989f89236fa0c6659d3850277f8be",
+          "actual_size_bytes": 160,
+          "path": "fragments/02_decisions.md",
+          "required_sha256": "b8d78d9af44664de518ecbf351bbeaaa3d5989f89236fa0c6659d3850277f8be",
+          "required_size_bytes": 160,
+          "source_id": "source-002-2c6d35f1e1",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "8b28bfa679f488abda8dd7afe55f4ccab72f6410f8532a7c03b44e326ccc2d9f",
+          "actual_size_bytes": 137,
+          "path": "fragments/03_actions.txt",
+          "required_sha256": "8b28bfa679f488abda8dd7afe55f4ccab72f6410f8532a7c03b44e326ccc2d9f",
+          "required_size_bytes": 137,
+          "source_id": "source-003-a0943d62b1",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS",
+      "verification_hash": "e0e428ace09c78dd7a6edeee309ddcfdd8308f2af441ffa40782e7e3c194ff5f",
+      "verifier_outcome": "PASSED",
+      "visual_status": [
+        {
+          "deliverable_id": "document",
+          "evidence_path": "delivery/evidence/document.json",
+          "evidence_sha256": "0767ea83f6a66190d1e0434cb9bffadd9965915f7f694abcd824908c926b5f1c",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "deliverable_id": "pdf",
+          "evidence_path": "delivery/evidence/pdf.json",
+          "evidence_sha256": "c7330fc1b002124f1ee1060b1c21daadeb561e9b95e17786c72a16ea304aea0a",
+          "required": true,
+          "status": "PASS"
+        }
+      ]
+    },
+    "C": {
+      "artifact_findings": [
+        {
+          "actual": {
+            "contains": [
+              "Operations Control Package",
+              "Records: 3"
+            ],
+            "text_sha256": "b1cfb2ff1a42c9cd84d1d1007dddcfd1f8a7e4d3f75103ca2cf6a6a6ba36d9a5"
+          },
+          "assertion_id": "document-content",
+          "deliverable_id": "document",
+          "expected": [
+            "Operations Control Package",
+            "Records: 3"
+          ],
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 3,
+          "assertion_id": "normalized-row-count",
+          "deliverable_id": "normalized-data",
+          "expected": 3,
+          "kind": "row_count",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": {
+            "contains": [
+              "Records: 3"
+            ],
+            "text_sha256": "f43659d7e628569cd52f0acd5362149c96b934bae107f93081eec3a30bd603c3"
+          },
+          "assertion_id": "pdf-content",
+          "deliverable_id": "pdf",
+          "expected": "Records: 3",
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 1,
+          "assertion_id": "pdf-page-count",
+          "deliverable_id": "pdf",
+          "expected": 1,
+          "kind": "page_count",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 3,
+          "assertion_id": "workbook-row-count",
+          "deliverable_id": "workbook",
+          "expected": 3,
+          "kind": "row_count",
+          "required": true,
+          "status": "PASS"
+        }
+      ],
+      "artifacts": [
+        {
+          "deliverable_id": "document",
+          "details": {
+            "paragraph_count": 11,
+            "paragraphs": [
+              "Operations Control Package",
+              "Consolidate the mixed operations directory into a verified workbook, operating document, and printable control copy",
+              "This package consolidates 4 captured source files. Records: 3",
+              "Source lineage",
+              "Data summary",
+              "Records: 3\nColumns: 5\nBacklog total: 15",
+              "",
+              "prior note",
+              "Prior cycle closed four onboarding items.",
+              "constraints",
+              "# Operating constraints\nBilling changes require Finance review.\nHigh-risk work must retain an explicit owner."
+            ],
+            "table_cells": 35,
+            "table_count": 2,
+            "table_rows": 9,
+            "table_text_rows": [
+              "Source | Format | SHA 256",
+              "inputs/archive/prior-note.txt | TXT | a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14",
+              "inputs/constraints.md | MD | 9588be505df2f947d986d909894d1167a4dac599996f3369b65b69db2a754857",
+              "inputs/operations.csv | CSV | 4e556642f7e4eabfb0524da2c0510ad0fd52735bf23c409878835d0caac3be9c",
+              "inputs/service.json | JSON | 203f0d0132a5d18d64ffa37f660cc5b21ec43b5729d607babc0ca6510034d95e",
+              "Workstream | Owner | Backlog | Risk | Source File",
+              "Billing | Ana | 7 | medium | inputs/operations.csv",
+              "Onboarding | Leo | 3 | low | inputs/operations.csv",
+              "Renewals | Mira | 5 | high | inputs/service.json"
+            ],
+            "text": "Operations Control Package\nConsolidate the mixed operations directory into a verified workbook, operating document, and printable control copy\nThis package consolidates 4 captured source files. Records: 3\nSource lineage\nData summary\nRecords: 3\nColumns: 5\nBacklog total: 15\n\nprior note\nPrior cycle closed four onboarding items.\nconstraints\n# Operating constraints\nBilling changes require Finance review.\nHigh-risk work must retain an explicit owner.\nSource | Format | SHA 256\ninputs/archive/prior-note.txt | TXT | a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14\ninputs/constraints.md | MD | 9588be505df2f947d986d909894d1167a4dac599996f3369b65b69db2a754857\ninputs/operations.csv | CSV | 4e556642f7e4eabfb0524da2c0510ad0fd52735bf23c409878835d0caac3be9c\ninputs/service.json | JSON | 203f0d0132a5d18d64ffa37f660cc5b21ec43b5729d607babc0ca6510034d95e\nWorkstream | Owner | Backlog | Risk | Source File\nBilling | Ana | 7 | medium | inputs/operations.csv\nOnboarding | Leo | 3 | low | inputs/operations.csv\nRenewals | Mira | 5 | high | inputs/service.json",
+            "text_chars": 1061,
+            "text_sha256": "b1cfb2ff1a42c9cd84d1d1007dddcfd1f8a7e4d3f75103ca2cf6a6a6ba36d9a5"
+          },
+          "exists": true,
+          "format": "docx",
+          "kind": "docx",
+          "path": "delivery/documents/operations-control.docx",
+          "sha256": "efc75818482beb50184eda04c947d4b89e3b174fdb5b86ee6c9bd26fc36f70f7",
+          "size_bytes": 36636,
+          "source_ids": [
+            "source-001-9c00a027da",
+            "source-002-fe9c2d309c",
+            "source-003-2a19171430",
+            "source-004-dd140ccd1b"
+          ],
+          "table": null
+        },
+        {
+          "deliverable_id": "normalized-data",
+          "details": {
+            "container_keys": [
+              "records"
+            ],
+            "json_type": "records",
+            "records_path": "$.records",
+            "schema": [
+              "Workstream",
+              "Owner",
+              "Backlog",
+              "Risk",
+              "Source File"
+            ]
+          },
+          "exists": true,
+          "format": "json",
+          "kind": "table",
+          "path": "delivery/data/operations-control-normalized.json",
+          "sha256": "b524003ed55d1cf2941b6e3be65643c8f314f85971b1335818253f62fe3f44b8",
+          "size_bytes": 489,
+          "source_ids": [
+            "source-003-2a19171430",
+            "source-004-dd140ccd1b"
+          ],
+          "table": {
+            "column_count": 5,
+            "headers": [
+              "Workstream",
+              "Owner",
+              "Backlog",
+              "Risk",
+              "Source File"
+            ],
+            "row_count": 3,
+            "rows": [
+              [
+                "Billing",
+                "Ana",
+                "7",
+                "medium",
+                "inputs/operations.csv"
+              ],
+              [
+                "Onboarding",
+                "Leo",
+                "3",
+                "low",
+                "inputs/operations.csv"
+              ],
+              [
+                "Renewals",
+                "Mira",
+                5,
+                "high",
+                "inputs/service.json"
+              ]
+            ]
+          }
+        },
+        {
+          "deliverable_id": "pdf",
+          "details": {
+            "metadata": {
+              "/Author": "JARVIS Foundry",
+              "/CreationDate": "D:20000101000000+00'00'",
+              "/Creator": "anonymous",
+              "/Keywords": "",
+              "/ModDate": "D:20000101000000+00'00'",
+              "/Producer": "ReportLab PDF Library - (opensource)",
+              "/Subject": "Source SHA-256: a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14",
+              "/Title": "Operations Control Package",
+              "/Trapped": "/False"
+            },
+            "page_count": 1,
+            "pages": [
+              "Operations Control Package\nPage 1 of 1\nSource SHA-256: a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14\nConsolidate the mixed operations directory into a verified workbook, operating document, and\nprintable control copy\nRecords: 3\nCaptured sources: 4\nColumns: Workstream, Owner, Backlog, Risk, Source File\nBacklog total: 15\nprior note\nPrior cycle closed four onboarding items.\nconstraints\n# Operating constraints\nBilling changes require Finance review.\nHigh-risk work must retain an explicit owner.\n"
+            ],
+            "text": "Operations Control Package\nPage 1 of 1\nSource SHA-256: a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14\nConsolidate the mixed operations directory into a verified workbook, operating document, and\nprintable control copy\nRecords: 3\nCaptured sources: 4\nColumns: Workstream, Owner, Backlog, Risk, Source File\nBacklog total: 15\nprior note\nPrior cycle closed four onboarding items.\nconstraints\n# Operating constraints\nBilling changes require Finance review.\nHigh-risk work must retain an explicit owner.\n",
+            "text_chars": 515,
+            "text_sha256": "f43659d7e628569cd52f0acd5362149c96b934bae107f93081eec3a30bd603c3"
+          },
+          "exists": true,
+          "format": "pdf",
+          "kind": "pdf",
+          "path": "delivery/pdf/operations-control.pdf",
+          "sha256": "f5061561fa8ae96b4e705360ad7a09d75dbcd237ac16baaae50286f78fc0acc0",
+          "size_bytes": 2110,
+          "source_ids": [
+            "source-001-9c00a027da",
+            "source-002-fe9c2d309c",
+            "source-003-2a19171430",
+            "source-004-dd140ccd1b"
+          ],
+          "table": null
+        },
+        {
+          "deliverable_id": "workbook",
+          "details": {
+            "external_links": 0,
+            "formula_cells": 0,
+            "schema": [
+              "Workstream",
+              "Owner",
+              "Backlog",
+              "Risk",
+              "Source File"
+            ],
+            "sheet_count": 1,
+            "sheet_name": "Data",
+            "workbook_format": "xlsx"
+          },
+          "exists": true,
+          "format": "xlsx",
+          "kind": "table",
+          "path": "delivery/spreadsheets/operations-control.xlsx",
+          "sha256": "f46de8477dc88ebc185737fe5d34abf178d3e455625a1d41b4343980bcf28005",
+          "size_bytes": 5400,
+          "source_ids": [
+            "source-003-2a19171430",
+            "source-004-dd140ccd1b"
+          ],
+          "table": {
+            "column_count": 5,
+            "headers": [
+              "Workstream",
+              "Owner",
+              "Backlog",
+              "Risk",
+              "Source File"
+            ],
+            "row_count": 3,
+            "rows": [
+              [
+                "Billing",
+                "Ana",
+                7,
+                "medium",
+                "inputs/operations.csv"
+              ],
+              [
+                "Onboarding",
+                "Leo",
+                3,
+                "low",
+                "inputs/operations.csv"
+              ],
+              [
+                "Renewals",
+                "Mira",
+                5,
+                "high",
+                "inputs/service.json"
+              ]
+            ]
+          }
+        }
+      ],
+      "campaign_status": "COMPLETED",
+      "consistency_findings": [
+        {
+          "assertion_id": "document-pdf-record-count",
+          "left": "3",
+          "left_deliverable_id": "document",
+          "left_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "operator": "equals",
+          "required": true,
+          "right": "3",
+          "right_deliverable_id": "pdf",
+          "right_selector": "regex:(?:Records|Sources): ([0-9]+)",
+          "status": "PASS"
+        },
+        {
+          "assertion_id": "workbook-document-record-count",
+          "left": 3,
+          "left_deliverable_id": "workbook",
+          "left_selector": "row_count",
+          "operator": "contains",
+          "required": true,
+          "right": "3",
+          "right_deliverable_id": "document",
+          "right_selector": "regex:Records: ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "controls": {
+        "partial_write_reconciliation": {
+          "action_starts": 1,
+          "artifact_sha256": "f5061561fa8ae96b4e705360ad7a09d75dbcd237ac16baaae50286f78fc0acc0",
+          "duplicate_mutations": 0,
+          "effect_reconciled_events": 1,
+          "target": "delivery/pdf/operations-control.pdf"
+        },
+        "restart": {
+          "expected_hard_exit": 86,
+          "hard_exit": 86,
+          "materialization_replayed_without_duplicate_missions": true,
+          "mission_created_events": 9,
+          "plan_recorded_events": 1
+        },
+        "stale_output_repair": {
+          "action_starts": 2,
+          "backup_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\c\\owned\\.jarvis-general-work\\repairs\\14637fdcdce283d3b722\\operations-control.docx.9ceeb1650ab52bef.bak",
+          "backup_sha256": "9ceeb1650ab52befc67ce8401f5d100725fd0856f19bc9dab1c9643184533403",
+          "replacement_sha256": "efc75818482beb50184eda04c947d4b89e3b174fdb5b86ee6c9bd26fc36f70f7",
+          "stale_sha256": "9ceeb1650ab52befc67ce8401f5d100725fd0856f19bc9dab1c9643184533403",
+          "target": "delivery/documents/operations-control.docx"
+        },
+        "wait_resume": {
+          "action_starts_during_wait": 0,
+          "after_due_child": "READY",
+          "after_due_report": "READY",
+          "before_due_child": "WAITING",
+          "before_due_report": "READY",
+          "resumed_mission_id": "mission-gw-dc446462125ae511-001-2f309843",
+          "wait_kind": "TIME",
+          "wait_until": "2026-09-04T12:05:00Z"
+        }
+      },
+      "objective_status": "COMPLETED",
+      "quality_coverage": [
+        {
+          "declared_requirements": [
+            "document contains the package summary and source lineage"
+          ],
+          "deliverable_id": "document",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "document-content"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "normalized rows match captured tabular sources"
+          ],
+          "deliverable_id": "normalized-data",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "normalized-row-count"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "printable copy reopens with the package summary"
+          ],
+          "deliverable_id": "pdf",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "pdf-content",
+            "pdf-page-count"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "workbook reopens with the normalized row count"
+          ],
+          "deliverable_id": "workbook",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "workbook-row-count"
+          ]
+        }
+      ],
+      "source_findings": [
+        {
+          "actual_sha256": "a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14",
+          "actual_size_bytes": 43,
+          "path": "inputs/archive/prior-note.txt",
+          "required_sha256": "a580e484dfe71ffee4f9077726cacd980e0f22c1ac689ad0e701b85a3aa47f14",
+          "required_size_bytes": 43,
+          "source_id": "source-001-9c00a027da",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "9588be505df2f947d986d909894d1167a4dac599996f3369b65b69db2a754857",
+          "actual_size_bytes": 115,
+          "path": "inputs/constraints.md",
+          "required_sha256": "9588be505df2f947d986d909894d1167a4dac599996f3369b65b69db2a754857",
+          "required_size_bytes": 115,
+          "source_id": "source-002-fe9c2d309c",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "4e556642f7e4eabfb0524da2c0510ad0fd52735bf23c409878835d0caac3be9c",
+          "actual_size_bytes": 75,
+          "path": "inputs/operations.csv",
+          "required_sha256": "4e556642f7e4eabfb0524da2c0510ad0fd52735bf23c409878835d0caac3be9c",
+          "required_size_bytes": 75,
+          "source_id": "source-003-2a19171430",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "203f0d0132a5d18d64ffa37f660cc5b21ec43b5729d607babc0ca6510034d95e",
+          "actual_size_bytes": 141,
+          "path": "inputs/service.json",
+          "required_sha256": "203f0d0132a5d18d64ffa37f660cc5b21ec43b5729d607babc0ca6510034d95e",
+          "required_size_bytes": 141,
+          "source_id": "source-004-dd140ccd1b",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS",
+      "verification_hash": "d660f272e8ce1071d54688039891d641833ca113859c6c1bb2ef8cb734184a4d",
+      "verifier_outcome": "PASSED",
+      "visual_status": [
+        {
+          "deliverable_id": "document",
+          "evidence_path": "delivery/evidence/document.json",
+          "evidence_sha256": "800e2505a5aa722aec449618fca4a8913545a3dff35a0b6c89876435f48440a1",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "deliverable_id": "normalized-data",
+          "required": false,
+          "status": "NOT_APPLICABLE"
+        },
+        {
+          "deliverable_id": "pdf",
+          "evidence_path": "delivery/evidence/pdf.json",
+          "evidence_sha256": "931521d464d81f54de2181338b6913612395cb3e881b6bac333fdde0beee6899",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "deliverable_id": "workbook",
+          "evidence_path": "delivery/evidence/workbook.json",
+          "evidence_sha256": "793c4ef192d38607ef3e125ba07a0904838d9fa87c62291b9dbc03230f40932f",
+          "required": true,
+          "status": "PASS"
+        }
+      ]
+    },
+    "D": {
+      "artifact_findings": [
+        {
+          "actual": {
+            "contains": [
+              "Friday Pipeline Decision Brief",
+              "Records: 4"
+            ],
+            "text_sha256": "65a057b70c73117f7b2b768105be25531caa50ea554e8efc07532d13286b0cda"
+          },
+          "assertion_id": "document-content",
+          "deliverable_id": "document",
+          "expected": [
+            "Friday Pipeline Decision Brief",
+            "Records: 4"
+          ],
+          "kind": "text_contains",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 4,
+          "assertion_id": "normalized-row-count",
+          "deliverable_id": "normalized-data",
+          "expected": 4,
+          "kind": "row_count",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "actual": 4,
+          "assertion_id": "workbook-row-count",
+          "deliverable_id": "workbook",
+          "expected": 4,
+          "kind": "row_count",
+          "required": true,
+          "status": "PASS"
+        }
+      ],
+      "artifacts": [
+        {
+          "deliverable_id": "document",
+          "details": {
+            "paragraph_count": 9,
+            "paragraphs": [
+              "Friday Pipeline Decision Brief",
+              "Prepare Friday's owner pipeline decision brief as an editable workbook and written memo, without slides or PDF",
+              "This package consolidates 2 captured source files. Records: 4",
+              "Source lineage",
+              "Data summary",
+              "Records: 4\nColumns: 5\nValue total: 344000",
+              "",
+              "owner notes",
+              "# Friday owner notes\nProtect Pine Health timing.\nNorthstar is the cleanest near-term close.\nDo not create slides or a PDF; the operating team needs editable files."
+            ],
+            "table_cells": 34,
+            "table_count": 2,
+            "table_rows": 8,
+            "table_text_rows": [
+              "Source | Format | SHA 256",
+              "owner-assignment/owner-notes.md | MD | 4d3d9772264d6374beeeef1eeed328de085ee266058b8f71505cfd6f02c67fb6",
+              "owner-assignment/pipeline.csv | CSV | ea8c080b99bcdf1c5514ce394b14ee3af4bd1db92596e73828bdf18ec2d2c7f9",
+              "Company | Stage | Value | Next Step | Owner",
+              "Northstar | Proposal | 92000 | Send security answers | Mira",
+              "Orbit Systems | Discovery | 61000 | Confirm buying committee | Noah",
+              "Pine Health | Negotiation | 148000 | Resolve legal redline | Ana",
+              "Quarry AI | Qualified | 43000 | Schedule technical workshop | Leo"
+            ],
+            "text": "Friday Pipeline Decision Brief\nPrepare Friday's owner pipeline decision brief as an editable workbook and written memo, without slides or PDF\nThis package consolidates 2 captured source files. Records: 4\nSource lineage\nData summary\nRecords: 4\nColumns: 5\nValue total: 344000\n\nowner notes\n# Friday owner notes\nProtect Pine Health timing.\nNorthstar is the cleanest near-term close.\nDo not create slides or a PDF; the operating team needs editable files.\nSource | Format | SHA 256\nowner-assignment/owner-notes.md | MD | 4d3d9772264d6374beeeef1eeed328de085ee266058b8f71505cfd6f02c67fb6\nowner-assignment/pipeline.csv | CSV | ea8c080b99bcdf1c5514ce394b14ee3af4bd1db92596e73828bdf18ec2d2c7f9\nCompany | Stage | Value | Next Step | Owner\nNorthstar | Proposal | 92000 | Send security answers | Mira\nOrbit Systems | Discovery | 61000 | Confirm buying committee | Noah\nPine Health | Negotiation | 148000 | Resolve legal redline | Ana\nQuarry AI | Qualified | 43000 | Schedule technical workshop | Leo",
+            "text_chars": 986,
+            "text_sha256": "65a057b70c73117f7b2b768105be25531caa50ea554e8efc07532d13286b0cda"
+          },
+          "exists": true,
+          "format": "docx",
+          "kind": "docx",
+          "path": "delivery/documents/friday-pipeline-decision.docx",
+          "sha256": "b13a92b89055175a518990d2197fc8707031013e3d350355b4632bd497a9ffe6",
+          "size_bytes": 36598,
+          "source_ids": [
+            "source-001-1ca2d1f5a7",
+            "source-002-f7d69e8e90"
+          ],
+          "table": null
+        },
+        {
+          "deliverable_id": "normalized-data",
+          "details": {
+            "container_keys": [
+              "records"
+            ],
+            "json_type": "records",
+            "records_path": "$.records",
+            "schema": [
+              "Company",
+              "Stage",
+              "Value",
+              "Next Step",
+              "Owner"
+            ]
+          },
+          "exists": true,
+          "format": "json",
+          "kind": "table",
+          "path": "delivery/data/friday-pipeline-decision-normalized.json",
+          "sha256": "27703670dd47a04ff320f865069f64d44a619b9bba2f3f5eaf1a4c676bfa06ab",
+          "size_bytes": 681,
+          "source_ids": [
+            "source-002-f7d69e8e90"
+          ],
+          "table": {
+            "column_count": 5,
+            "headers": [
+              "Company",
+              "Stage",
+              "Value",
+              "Next Step",
+              "Owner"
+            ],
+            "row_count": 4,
+            "rows": [
+              [
+                "Northstar",
+                "Proposal",
+                "92000",
+                "Send security answers",
+                "Mira"
+              ],
+              [
+                "Orbit Systems",
+                "Discovery",
+                "61000",
+                "Confirm buying committee",
+                "Noah"
+              ],
+              [
+                "Pine Health",
+                "Negotiation",
+                "148000",
+                "Resolve legal redline",
+                "Ana"
+              ],
+              [
+                "Quarry AI",
+                "Qualified",
+                "43000",
+                "Schedule technical workshop",
+                "Leo"
+              ]
+            ]
+          }
+        },
+        {
+          "deliverable_id": "workbook",
+          "details": {
+            "external_links": 0,
+            "formula_cells": 0,
+            "schema": [
+              "Company",
+              "Stage",
+              "Value",
+              "Next Step",
+              "Owner"
+            ],
+            "sheet_count": 1,
+            "sheet_name": "Data",
+            "workbook_format": "xlsx"
+          },
+          "exists": true,
+          "format": "xlsx",
+          "kind": "table",
+          "path": "delivery/spreadsheets/friday-pipeline-decision.xlsx",
+          "sha256": "f06de5b4505a542f0f90899d22e90b97428c5fecdabf6ae4709a10c081776173",
+          "size_bytes": 5475,
+          "source_ids": [
+            "source-002-f7d69e8e90"
+          ],
+          "table": {
+            "column_count": 5,
+            "headers": [
+              "Company",
+              "Stage",
+              "Value",
+              "Next Step",
+              "Owner"
+            ],
+            "row_count": 4,
+            "rows": [
+              [
+                "Northstar",
+                "Proposal",
+                "92000",
+                "Send security answers",
+                "Mira"
+              ],
+              [
+                "Orbit Systems",
+                "Discovery",
+                "61000",
+                "Confirm buying committee",
+                "Noah"
+              ],
+              [
+                "Pine Health",
+                "Negotiation",
+                "148000",
+                "Resolve legal redline",
+                "Ana"
+              ],
+              [
+                "Quarry AI",
+                "Qualified",
+                "43000",
+                "Schedule technical workshop",
+                "Leo"
+              ]
+            ]
+          }
+        }
+      ],
+      "campaign_status": "COMPLETED",
+      "consistency_findings": [
+        {
+          "assertion_id": "workbook-document-record-count",
+          "left": 4,
+          "left_deliverable_id": "workbook",
+          "left_selector": "row_count",
+          "operator": "contains",
+          "required": true,
+          "right": "4",
+          "right_deliverable_id": "document",
+          "right_selector": "regex:Records: ([0-9]+)",
+          "status": "PASS"
+        }
+      ],
+      "controls": {},
+      "objective_status": "COMPLETED",
+      "quality_coverage": [
+        {
+          "declared_requirements": [
+            "document contains the package summary and source lineage"
+          ],
+          "deliverable_id": "document",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "document-content"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "normalized rows match captured tabular sources"
+          ],
+          "deliverable_id": "normalized-data",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "normalized-row-count"
+          ]
+        },
+        {
+          "declared_requirements": [
+            "workbook reopens with the normalized row count"
+          ],
+          "deliverable_id": "workbook",
+          "status": "PASS",
+          "substantive_assertion_ids": [
+            "workbook-row-count"
+          ]
+        }
+      ],
+      "source_findings": [
+        {
+          "actual_sha256": "4d3d9772264d6374beeeef1eeed328de085ee266058b8f71505cfd6f02c67fb6",
+          "actual_size_bytes": 170,
+          "path": "owner-assignment/owner-notes.md",
+          "required_sha256": "4d3d9772264d6374beeeef1eeed328de085ee266058b8f71505cfd6f02c67fb6",
+          "required_size_bytes": 170,
+          "source_id": "source-001-1ca2d1f5a7",
+          "status": "PASS"
+        },
+        {
+          "actual_sha256": "ea8c080b99bcdf1c5514ce394b14ee3af4bd1db92596e73828bdf18ec2d2c7f9",
+          "actual_size_bytes": 268,
+          "path": "owner-assignment/pipeline.csv",
+          "required_sha256": "ea8c080b99bcdf1c5514ce394b14ee3af4bd1db92596e73828bdf18ec2d2c7f9",
+          "required_size_bytes": 268,
+          "source_id": "source-002-f7d69e8e90",
+          "status": "PASS"
+        }
+      ],
+      "status": "PASS",
+      "verification_hash": "9e05d6d6593c0b5dfa18bc04128deaa06204ebe05d2fae93f0fcaa5440ca33ca",
+      "verifier_outcome": "PASSED",
+      "visual_status": [
+        {
+          "deliverable_id": "document",
+          "evidence_path": "delivery/evidence/document.json",
+          "evidence_sha256": "935b1c9a1c3cd3fed52af03bc1e5b4fd1ee0b0a37238087c14f76163f60a2624",
+          "required": true,
+          "status": "PASS"
+        },
+        {
+          "deliverable_id": "normalized-data",
+          "required": false,
+          "status": "NOT_APPLICABLE"
+        },
+        {
+          "deliverable_id": "workbook",
+          "evidence_path": "delivery/evidence/workbook.json",
+          "evidence_sha256": "43cc8cb1ecd900e36e774f6a22e459c1dd98ee3198cc478bbfda676ab08d6a7f",
+          "required": true,
+          "status": "PASS"
+        }
+      ]
+    }
+  },
+  "quality_verification": {
+    "assignments": {
+      "A": {
+        "quality_coverage": [
+          {
+            "declared_requirements": [
+              "document contains the package summary and source lineage"
+            ],
+            "deliverable_id": "document",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "document-content"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "normalized rows match captured tabular sources"
+            ],
+            "deliverable_id": "normalized-data",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "normalized-row-count"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "printable copy reopens with the package summary"
+            ],
+            "deliverable_id": "pdf",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "pdf-content",
+              "pdf-page-count"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "workbook reopens with the normalized row count"
+            ],
+            "deliverable_id": "workbook",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "workbook-row-count"
+            ]
+          }
+        ],
+        "visual_status": [
+          {
+            "deliverable_id": "document",
+            "evidence_path": "delivery/evidence/document.json",
+            "evidence_sha256": "de2f4b1b7a797721553a9b56232c2274d298f993253c60e17f2fc0109454962d",
+            "required": true,
+            "status": "PASS"
+          },
+          {
+            "deliverable_id": "normalized-data",
+            "required": false,
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "deliverable_id": "pdf",
+            "evidence_path": "delivery/evidence/pdf.json",
+            "evidence_sha256": "816e284d35fbdba8bbb5545f2f974853c3a5e1df8e7ae7fe9997e0ac4fb5d6dc",
+            "required": true,
+            "status": "PASS"
+          },
+          {
+            "deliverable_id": "workbook",
+            "evidence_path": "delivery/evidence/workbook.json",
+            "evidence_sha256": "a2e5122dc17e1c373c8b9e918c89408d0598fcc1567bdeff4cd08a096b809f17",
+            "required": true,
+            "status": "PASS"
+          }
+        ]
+      },
+      "B": {
+        "quality_coverage": [
+          {
+            "declared_requirements": [
+              "document contains the package summary and source lineage"
+            ],
+            "deliverable_id": "document",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "document-content"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "printable copy reopens with the package summary"
+            ],
+            "deliverable_id": "pdf",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "pdf-content",
+              "pdf-page-count"
+            ]
+          }
+        ],
+        "visual_status": [
+          {
+            "deliverable_id": "document",
+            "evidence_path": "delivery/evidence/document.json",
+            "evidence_sha256": "0767ea83f6a66190d1e0434cb9bffadd9965915f7f694abcd824908c926b5f1c",
+            "required": true,
+            "status": "PASS"
+          },
+          {
+            "deliverable_id": "pdf",
+            "evidence_path": "delivery/evidence/pdf.json",
+            "evidence_sha256": "c7330fc1b002124f1ee1060b1c21daadeb561e9b95e17786c72a16ea304aea0a",
+            "required": true,
+            "status": "PASS"
+          }
+        ]
+      },
+      "C": {
+        "quality_coverage": [
+          {
+            "declared_requirements": [
+              "document contains the package summary and source lineage"
+            ],
+            "deliverable_id": "document",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "document-content"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "normalized rows match captured tabular sources"
+            ],
+            "deliverable_id": "normalized-data",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "normalized-row-count"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "printable copy reopens with the package summary"
+            ],
+            "deliverable_id": "pdf",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "pdf-content",
+              "pdf-page-count"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "workbook reopens with the normalized row count"
+            ],
+            "deliverable_id": "workbook",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "workbook-row-count"
+            ]
+          }
+        ],
+        "visual_status": [
+          {
+            "deliverable_id": "document",
+            "evidence_path": "delivery/evidence/document.json",
+            "evidence_sha256": "800e2505a5aa722aec449618fca4a8913545a3dff35a0b6c89876435f48440a1",
+            "required": true,
+            "status": "PASS"
+          },
+          {
+            "deliverable_id": "normalized-data",
+            "required": false,
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "deliverable_id": "pdf",
+            "evidence_path": "delivery/evidence/pdf.json",
+            "evidence_sha256": "931521d464d81f54de2181338b6913612395cb3e881b6bac333fdde0beee6899",
+            "required": true,
+            "status": "PASS"
+          },
+          {
+            "deliverable_id": "workbook",
+            "evidence_path": "delivery/evidence/workbook.json",
+            "evidence_sha256": "793c4ef192d38607ef3e125ba07a0904838d9fa87c62291b9dbc03230f40932f",
+            "required": true,
+            "status": "PASS"
+          }
+        ]
+      },
+      "D": {
+        "quality_coverage": [
+          {
+            "declared_requirements": [
+              "document contains the package summary and source lineage"
+            ],
+            "deliverable_id": "document",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "document-content"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "normalized rows match captured tabular sources"
+            ],
+            "deliverable_id": "normalized-data",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "normalized-row-count"
+            ]
+          },
+          {
+            "declared_requirements": [
+              "workbook reopens with the normalized row count"
+            ],
+            "deliverable_id": "workbook",
+            "status": "PASS",
+            "substantive_assertion_ids": [
+              "workbook-row-count"
+            ]
+          }
+        ],
+        "visual_status": [
+          {
+            "deliverable_id": "document",
+            "evidence_path": "delivery/evidence/document.json",
+            "evidence_sha256": "935b1c9a1c3cd3fed52af03bc1e5b4fd1ee0b0a37238087c14f76163f60a2624",
+            "required": true,
+            "status": "PASS"
+          },
+          {
+            "deliverable_id": "normalized-data",
+            "required": false,
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "deliverable_id": "workbook",
+            "evidence_path": "delivery/evidence/workbook.json",
+            "evidence_sha256": "43cc8cb1ecd900e36e774f6a22e459c1dd98ee3198cc478bbfda676ab08d6a7f",
+            "required": true,
+            "status": "PASS"
+          }
+        ]
+      }
+    },
+    "status": "PASS",
+    "visual_attestation": {
+      "evidence": [
+        {
+          "assignment": "A",
+          "deliverable_id": "document",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\a\\owned\\delivery\\evidence\\document.json",
+          "evidence_sha256": "de2f4b1b7a797721553a9b56232c2274d298f993253c60e17f2fc0109454962d",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "A",
+          "deliverable_id": "pdf",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\a\\owned\\delivery\\evidence\\pdf.json",
+          "evidence_sha256": "816e284d35fbdba8bbb5545f2f974853c3a5e1df8e7ae7fe9997e0ac4fb5d6dc",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "A",
+          "deliverable_id": "workbook",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\a\\owned\\delivery\\evidence\\workbook.json",
+          "evidence_sha256": "a2e5122dc17e1c373c8b9e918c89408d0598fcc1567bdeff4cd08a096b809f17",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "B",
+          "deliverable_id": "document",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\b\\owned\\delivery\\evidence\\document.json",
+          "evidence_sha256": "0767ea83f6a66190d1e0434cb9bffadd9965915f7f694abcd824908c926b5f1c",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "B",
+          "deliverable_id": "pdf",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\b\\owned\\delivery\\evidence\\pdf.json",
+          "evidence_sha256": "c7330fc1b002124f1ee1060b1c21daadeb561e9b95e17786c72a16ea304aea0a",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "C",
+          "deliverable_id": "document",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\c\\owned\\delivery\\evidence\\document.json",
+          "evidence_sha256": "800e2505a5aa722aec449618fca4a8913545a3dff35a0b6c89876435f48440a1",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "C",
+          "deliverable_id": "pdf",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\c\\owned\\delivery\\evidence\\pdf.json",
+          "evidence_sha256": "931521d464d81f54de2181338b6913612395cb3e881b6bac333fdde0beee6899",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "C",
+          "deliverable_id": "workbook",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\c\\owned\\delivery\\evidence\\workbook.json",
+          "evidence_sha256": "793c4ef192d38607ef3e125ba07a0904838d9fa87c62291b9dbc03230f40932f",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "D",
+          "deliverable_id": "document",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\d\\owned\\delivery\\evidence\\document.json",
+          "evidence_sha256": "935b1c9a1c3cd3fed52af03bc1e5b4fd1ee0b0a37238087c14f76163f60a2624",
+          "reviewed_frames": 1
+        },
+        {
+          "assignment": "D",
+          "deliverable_id": "workbook",
+          "evidence_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\d\\owned\\delivery\\evidence\\workbook.json",
+          "evidence_sha256": "43cc8cb1ecd900e36e774f6a22e459c1dd98ee3198cc478bbfda676ab08d6a7f",
+          "reviewed_frames": 1
+        }
+      ],
+      "review_manifest_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\visual-review-manifest.json",
+      "review_manifest_sha256": "04b56fe5b3ca807cc9d62a4472a6317882d3e2a92b765ca3038550643844479a",
+      "reviewed_at": "2026-09-05T15:53:37.4464337Z",
+      "reviewer": "OpenAI Codex visual reviewer"
+    }
+  },
+  "remaining_blockers": [],
+  "repair": {
+    "partial_write_reconciliation": {
+      "action_starts": 1,
+      "artifact_sha256": "f5061561fa8ae96b4e705360ad7a09d75dbcd237ac16baaae50286f78fc0acc0",
+      "duplicate_mutations": 0,
+      "effect_reconciled_events": 1,
+      "target": "delivery/pdf/operations-control.pdf"
+    },
+    "restart": {
+      "expected_hard_exit": 86,
+      "hard_exit": 86,
+      "materialization_replayed_without_duplicate_missions": true,
+      "mission_created_events": 9,
+      "plan_recorded_events": 1
+    },
+    "stale_output_repair": {
+      "action_starts": 2,
+      "backup_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\general-work\\assignments\\c\\owned\\.jarvis-general-work\\repairs\\14637fdcdce283d3b722\\operations-control.docx.9ceeb1650ab52bef.bak",
+      "backup_sha256": "9ceeb1650ab52befc67ce8401f5d100725fd0856f19bc9dab1c9643184533403",
+      "replacement_sha256": "efc75818482beb50184eda04c947d4b89e3b174fdb5b86ee6c9bd26fc36f70f7",
+      "stale_sha256": "9ceeb1650ab52befc67ce8401f5d100725fd0856f19bc9dab1c9643184533403",
+      "target": "delivery/documents/operations-control.docx"
+    },
+    "wait_resume": {
+      "action_starts_during_wait": 0,
+      "after_due_child": "READY",
+      "after_due_report": "READY",
+      "before_due_child": "WAITING",
+      "before_due_report": "READY",
+      "resumed_mission_id": "mission-gw-dc446462125ae511-001-2f309843",
+      "wait_kind": "TIME",
+      "wait_until": "2026-09-04T12:05:00Z"
+    }
+  },
+  "restart": {
+    "expected_hard_exit": 86,
+    "hard_exit": 86,
+    "materialization_replayed_without_duplicate_missions": true,
+    "mission_created_events": 9,
+    "plan_recorded_events": 1
+  },
+  "schema": "jarvis.v13.general-work-engine-proof.v1",
+  "source": {
+    "base_sha": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
+    "branch": "candidate/v13-final-personal-executive-convergence-20260905",
+    "main_sha_after": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "main_sha_before": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "merge_base": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
+    "origin_main_sha_after": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "origin_main_sha_before": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "personal_operator_input_sha": "db4ad1d11af14a666ad5b1b6b1be0059d6950da1",
+    "personal_operator_semantics": {
+      "intact_pptx_lineage_digest": true,
+      "wrapped_lines": [
+        "PDF SHA-256:",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ]
+    },
+    "schema_version": 40,
+    "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "worktree": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905",
+    "worktree_clean_after": true,
+    "worktree_clean_before": true
+  },
+  "stop": {
+    "action_starts_during_stop": 0,
+    "blocked_outcome": "BLOCKED",
+    "resumed_mission_id": "mission-gw-f95a3f4618dc6d18-001-2f309843",
+    "resumed_status": "EXECUTING",
+    "stopped_status": "STOPPED"
+  },
+  "verdict": "PASS",
+  "wait_resume": {
+    "action_starts_during_wait": 0,
+    "after_due_child": "READY",
+    "after_due_report": "READY",
+    "before_due_child": "WAITING",
+    "before_due_report": "READY",
+    "resumed_mission_id": "mission-gw-dc446462125ae511-001-2f309843",
+    "wait_kind": "TIME",
+    "wait_until": "2026-09-04T12:05:00Z"
+  }
+}

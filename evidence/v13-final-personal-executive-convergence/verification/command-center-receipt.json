@@ -1,0 +1,42 @@
+{
+  "schema": "jarvis.v13.command-center-source-backed-receipt.v1",
+  "generated_at": "2026-09-05T17:04:00.9622092Z",
+  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "all_checks_pass": true,
+  "checks": {
+    "active_objective": true,
+    "mcp_readiness_reconnect": true,
+    "blocked_needs_owner": true,
+    "no_live_runtime_target": true,
+    "external_effect_receipt": true,
+    "verification_pass_fail_repair": true,
+    "playwright_three_of_three": true,
+    "provider_wait": true,
+    "campaign": true,
+    "stop_resume": true,
+    "worker_activity": true,
+    "multiple_missions": true,
+    "source_sha_bound": true,
+    "owner_context": true,
+    "recovery": true,
+    "capability_probation": true
+  },
+  "autonomy_proof": {
+    "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\autonomy-proof.json",
+    "sha256": "70d15340c5ab073237c7590cf2e3991bfb0b4981229ca815f74406903d64048d"
+  },
+  "screenshots": [
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\screenshots\\live-overview-1600x1280.png",
+      "sha256": "0b97f15d99774b239cae3f577a25733e385389e5c69b471e5c5e1e6539f47d3a"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\screenshots\\live-work-390x844.png",
+      "sha256": "35fe9dd21776fc993405184071c585beaca93b46db65d0efbfffb9e18d54e610"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\screenshots\\live-mission-detail-1600x1280.png",
+      "sha256": "6c3d6b4b91db66bd566b825355da9edd91f4142cb5f5d8dec093acba5c0179fd"
+    }
+  ]
+}

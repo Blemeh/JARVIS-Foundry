@@ -1,0 +1,26 @@
+{
+  "contract": "jarvis.v13.test-evidence-binding.v1",
+  "generated_on": "2026-09-05",
+  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "source_tree_sha": "82185f10757655f32a5d1d2d84c24edde6ea2162",
+  "preclosure_verification": {
+    "repository": "C:/temp/JARVIS-V13-Full-Suite-Verification-20260905",
+    "commit": "798f949739be88e0c2a3c1ea467ad6ce9d8952f1",
+    "parent": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "tree": "92792357bcc3c560f0ac16e67a2110c8a83e6a79",
+    "changed_paths_from_source": [
+      "docs/CURRENT_STATE.md"
+    ],
+    "documentation_state_base_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a"
+  },
+  "junit": {
+    "path": "verification/full-suite-preclosure.junit.xml",
+    "sha256": "0e9826c1005c92ef38634e7314b4fa00402cb92b7f3c9a3bc6725cdae33323f4",
+    "tests": 3407,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "serialized": true,
+    "command": "uv run --extra dev --extra web python -m pytest -q --tb=line --junitxml=<evidence>/verification/full-suite-green.xml tests/foundry tests/convergence"
+  }
+}

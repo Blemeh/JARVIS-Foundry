@@ -1,0 +1,36 @@
+{
+  "contract": "jarvis.v13.frontend-verification.v1",
+  "generated_at": "2026-09-05T17:01:10.6545187Z",
+  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "tests": 162,
+  "failures": 0,
+  "errors": 0,
+  "checks": {
+    "unit_tests_pass": true,
+    "typecheck_pass": true,
+    "lint_pass": true,
+    "production_build_pass": true,
+    "source_bound": true
+  },
+  "artifacts": [
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\frontend\\vitest-results.json",
+      "sha256": "d9c36ceb54ea554ce492f0ca9a8add535671c7e4d8fe625ee40345cc0a051b13"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\ui\\command-center\\dist\\index.html",
+      "sha256": "b553ecb69bce284441e39b51dbf2d93ba2cb769bf7cbf27fe4edb51f6f7a8b44"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\ui\\command-center\\dist\\assets\\index-a3N0iWdt.js",
+      "sha256": "29d85b1f8ef7d5883ff0e5ad2426cf723c83645598f2099ab2b73022024b0cdc"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\ui\\command-center\\dist\\assets\\index-DJBqPEYC.css",
+      "sha256": "b5c9057f0ba8811f6665c1aa58ae6633431867be0ea6b6576609c4a4b0f7ffca"
+    }
+  ],
+  "warnings": [
+    "Vite reported the existing obsidianVault.ts static/dynamic import chunking warning."
+  ]
+}

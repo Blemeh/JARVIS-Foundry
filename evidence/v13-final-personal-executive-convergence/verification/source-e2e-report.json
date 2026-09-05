@@ -1,0 +1,33 @@
+{
+  "contract": "jarvis.v13.source-backed-e2e.v1",
+  "generated_at": "2026-09-05T17:04:00.9437671Z",
+  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "tests": 3,
+  "failures": 0,
+  "errors": 0,
+  "checks": {
+    "playwright_pass": true,
+    "disposable_api_pass": true,
+    "reconnect_restart_stop_pass": true,
+    "missing_state_fails_closed": true,
+    "source_bound": true
+  },
+  "artifacts": [
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\autonomy-proof.json",
+      "sha256": "70d15340c5ab073237c7590cf2e3991bfb0b4981229ca815f74406903d64048d"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\screenshots\\live-overview-1600x1280.png",
+      "sha256": "0b97f15d99774b239cae3f577a25733e385389e5c69b471e5c5e1e6539f47d3a"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\screenshots\\live-work-390x844.png",
+      "sha256": "35fe9dd21776fc993405184071c585beaca93b46db65d0efbfffb9e18d54e610"
+    },
+    {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\source-e2e\\screenshots\\live-mission-detail-1600x1280.png",
+      "sha256": "6c3d6b4b91db66bd566b825355da9edd91f4142cb5f5d8dec093acba5c0179fd"
+    }
+  ]
+}

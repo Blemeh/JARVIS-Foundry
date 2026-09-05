@@ -1,0 +1,1538 @@
+{
+  "activation_authorized": false,
+  "authority_spine": {
+    "campaign": "jarvis_foundry.executive.campaigns",
+    "chief": "priority and briefing advisory",
+    "command_center": "read-only projection and canonical control transport",
+    "delegation": "owner intent admission only",
+    "effect_journal": "jarvis_foundry.effects",
+    "executive": "jarvis_foundry.executive.autonomy",
+    "fabric_catalog": "jarvis_foundry.fabric.catalog",
+    "general_work": "capability composition under Fabric",
+    "independent_verifier": "scripts/v13_independent_verify.py",
+    "mcp_runtime": "jarvis_foundry.mcp_backend.FabricMcpBackend",
+    "mission_loop": "jarvis_foundry.mission.loop.MissionLoop",
+    "owner_context": "jarvis_foundry.owner_context",
+    "status": "PASS",
+    "workforce": "worker orchestration under MissionLoop",
+    "world": "DATA_ONLY research and decision advisory"
+  },
+  "contract": "jarvis.v13.final-personal-executive-convergence-proof.v1",
+  "duplicate_counters": {
+    "campaigns": 0,
+    "effects": 0,
+    "false_successes": 0,
+    "missions": 0,
+    "objectives": 0,
+    "owner_intents": 0,
+    "registrations": 0,
+    "resumes": 0,
+    "unnecessary_owner_questions": 0,
+    "unrelated_process_impact": 0,
+    "unverified_consequential_completions": 0,
+    "wakes": 0,
+    "work_packages": 0,
+    "worker_attempts": 0
+  },
+  "final_status": "V13_PERSONAL_EXECUTIVE_CONVERGED",
+  "generated_at": "2026-09-05T18:00:00Z",
+  "gmail": {
+    "authenticated": false,
+    "observation": "DISABLED",
+    "probed": false,
+    "read": "DEFERRED_BY_OWNER",
+    "send": "DEFERRED_BY_OWNER"
+  },
+  "input_accounting": {
+    "lane_1_delegation": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "final": "64339327cb9fa67d324dd6904b400a05c49d5396",
+      "source": "b0452fee89fad9f3ec6c9efa6e660f62bb76850e"
+    },
+    "lane_2_workforce": {
+      "classification": "UNIQUE_ACCEPTED_DELTA_TESTED_TREE_RECONSTRUCTED",
+      "final": "317b0a28c6307700b71cdc2a8cc3cbf634a01bb5",
+      "source": "3dde885dbf98c9fe761d8bf415792c6fb5888323",
+      "tested": "9cd7cd26a3eb50fd18ba8003b011cde71445cb0e"
+    },
+    "lane_3_general_work": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "final": "9020df4e947e948a63e363576f865ec110bd2a6d",
+      "source": "9b8b14eef6eceb1652428c9288ffd991ada7e8fd"
+    },
+    "lane_4_computer_operator": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "final": "c91ed0e8e534dfc9f41c0825831de47fe85b5674",
+      "source": "668929830211034e1cbf3b916d6c1ecad45f69d4"
+    },
+    "lane_5_world": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "final": "eadc6494733345c929b0432d415ffcb6c00704d5",
+      "source": "9d309ee43ef3d56b3d7917f5fc81b481dfd11e35"
+    },
+    "lane_6_chief": {
+      "classification": "PARTIALLY_ABSORBED_STRONGEST_IMPLEMENTATION",
+      "final": "0795a620473495e3a390ba8d108e1279969a1eb4",
+      "proof_source": "0618358d5ed2f957895ea80d8375256250b8d45d",
+      "repaired": "3e113faef2908819935d2c74f3811189e0aeb2f6"
+    },
+    "lane_7_command_center": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "final": "6e3b0ecff154d40aa219d8e428543da5d60e4e61",
+      "product_integration": "302d1e00bf1557ddf5351f0d94edccc6ef0844c0",
+      "source": "635102ea29db37124e313f5ea7562530c5579dd9"
+    },
+    "old_v12_component_tips": {
+      "classification": "ALREADY_REPRESENTED_BY_V12_FINAL"
+    },
+    "owner_context": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "final": "ca3e9adb6a559f507253bdf7b70854424bc8b35d",
+      "source": "41dfcd285e3fb407237a43b9c2caba47d9d6ab1b"
+    },
+    "personal_operator": {
+      "classification": "UNIQUE_ACCEPTED_DELTA",
+      "source": "db4ad1d11af14a666ad5b1b6b1be0059d6950da1"
+    },
+    "ui_509e288": {
+      "classification": "ALREADY_REPRESENTED_STRONGER_BY_LANE_7",
+      "sha": "509e2884f6dab3473c0fe79b762610a0404840d3"
+    },
+    "v12_final": {
+      "classification": "FROZEN_BASE",
+      "sha": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
+    }
+  },
+  "limitations": [
+    "Provider production trust remains SUSPENDED outside this candidate.",
+    "Gmail, voice, and English/Albanian localization remain deferred.",
+    "No public external mutation, deploy, promotion, or activation was exercised."
+  ],
+  "live_mutated": false,
+  "main_mutated": false,
+  "origin_mutated": false,
+  "proofs": {
+    "A": {
+      "defect": {
+        "expected_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+        "final_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+        "initial_sha256": "26d55bc9c0965cda3e022a948911992f9ba08f39ea89c6369115164b87f23de0"
+      },
+      "owner_text": "Fix it.",
+      "path": {
+        "campaign_id": "campaign:v13-final-proof-a",
+        "child_id": "child:v13-final-proof-a",
+        "directive_id": "delegate:v13-final-proof-a",
+        "exact_text": "Fix it.",
+        "intent_id": "delegation-intent:3417b336e05ac4d8fc14db44d525d7e5",
+        "mission_id": "mission:v13-final-proof-a",
+        "objective_id": "objective:v13-final-proof-a",
+        "plan_id": "plan:v13-final-proof-a",
+        "proof_id": "A",
+        "resource_id": "resource:v13-final-proof-a",
+        "step_id": "step:v13-final-proof-a"
+      },
+      "repair": {
+        "capability_id": "cap.file.replace",
+        "claimed": "COMPLETED",
+        "effect_id": "effect:b0cf5428e9f1f0ff0a33dc88ac0eae95e0c8bfa120a593e8f13a3afd1d4c296d",
+        "replay_performed": false,
+        "replayed": true,
+        "verified": "UNKNOWN"
+      },
+      "status": "PASS",
+      "verifier_fail": {
+        "checks_passed": 0,
+        "checks_total": 1,
+        "manifest": "manifest.json",
+        "manifest_sha256": "52b4a87f70b7cc9dcc779ad9e72d9fa23e27fda3d27e62a862047c358ce41acd",
+        "process_returncode": 1,
+        "results": [
+          {
+            "actual_sha256": "26d55bc9c0965cda3e022a948911992f9ba08f39ea89c6369115164b87f23de0",
+            "expected_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+            "kind": "file_hash",
+            "name": "repair-target",
+            "pass": false,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+          }
+        ],
+        "root": ".",
+        "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+        "verdict": "FAIL",
+        "verified_at": "2026-09-05T21:04:31.740348Z",
+        "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+      },
+      "verifier_pass": {
+        "checks_passed": 1,
+        "checks_total": 1,
+        "manifest": "manifest.json",
+        "manifest_sha256": "52b4a87f70b7cc9dcc779ad9e72d9fa23e27fda3d27e62a862047c358ce41acd",
+        "process_returncode": 0,
+        "results": [
+          {
+            "actual_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+            "expected_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+            "kind": "file_hash",
+            "name": "repair-target",
+            "pass": true,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+          }
+        ],
+        "root": ".",
+        "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+        "verdict": "PASS",
+        "verified_at": "2026-09-05T21:04:35.299746Z",
+        "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+      }
+    },
+    "B": {
+      "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json",
+      "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+      "outcome": {
+        "acceptance_identity": "39c09aca-32d3-4549-9240-9f704225eb89",
+        "acceptance_kind": "verification.accepted",
+        "actual_observed": {
+          "failure_reason": null,
+          "mission_completion": "PASSED",
+          "mission_state": "COMPLETE",
+          "outcome": "SUCCEEDED",
+          "repair_count": 0,
+          "verifier_evidence": {
+            "artifact": "proof-b-artifact.json",
+            "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+            "verification": "proof-b-verification.json",
+            "verification_sha256": "6f5d79c91e61765f8eaab869b4ba716fcb589ea1cc5e6b15502917834476ae61"
+          },
+          "verifier_status": "PASS"
+        },
+        "attempted": "Prepare a bounded evidence-backed briefing and only the useful editable artifacts",
+        "briefing": {
+          "repair_or_failure": {
+            "attempts": 0,
+            "reason": null
+          },
+          "result": "SUCCEEDED",
+          "verification": {
+            "acceptance": "ACCEPTED",
+            "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+            "builder_run_id": "builder:B",
+            "checks": {
+              "artifact_matches": true,
+              "fresh_process": true,
+              "source_bound": true
+            },
+            "findings": [],
+            "verdict_id": "verdict:B:pass",
+            "verdict_status": "PASS",
+            "verifier_run_id": "independent-verifier:B"
+          },
+          "what_happened_next": "owner outcome complete",
+          "what_jarvis_learned": "accepted success reinforces evidence for similar future decisions",
+          "what_was_attempted": "Prepare a bounded evidence-backed briefing and only the useful editable artifacts",
+          "why": "durable mission objective"
+        },
+        "candidate_id": null,
+        "created": true,
+        "decision_id": null,
+        "estimated_outcome": {},
+        "evidence_refs": [
+          "39c09aca-32d3-4549-9240-9f704225eb89",
+          "verdict:B:pass",
+          "5726724a-a76a-47b9-860d-84a5fb91e792",
+          "a769b26c-904a-4ddd-82e4-f943d0551386"
+        ],
+        "failure_reason": null,
+        "finalized": true,
+        "mission_id": "mission:v13-final-proof-b",
+        "objective_id": "objective:v13-final-proof-b",
+        "outcome_event_id": "bb40daf7-a0e6-48cb-ae65-4c74f2ca69f9",
+        "outcome_id": "outcome-01269e916c2bd76221173d3f",
+        "outcome_sequence": 152,
+        "outcome_source_id": "outcome-reconciler",
+        "outcome_source_type": "supervisor",
+        "project_id": null,
+        "provenance": {
+          "authority": "ledger+mission_projection+latest_verifier+AcceptanceGate",
+          "candidate_evidence": [],
+          "reconciler": "v13-final-convergence-proof",
+          "source": null,
+          "source_event_ids": [
+            "39c09aca-32d3-4549-9240-9f704225eb89",
+            "verdict:B:pass",
+            "5726724a-a76a-47b9-860d-84a5fb91e792",
+            "a769b26c-904a-4ddd-82e4-f943d0551386"
+          ]
+        },
+        "recorded_at": "2026-09-05T21:04:38.133814Z",
+        "repair_attempts": [],
+        "resource_id": null,
+        "revision": 1,
+        "schema": "jarvis.v11.outcome.v1",
+        "status": "SUCCEEDED",
+        "system_target": null,
+        "timestamps": {
+          "finality_occurred_at": "2026-09-05T21:04:37.984832Z",
+          "mission_updated_at": "2026-09-05T21:04:38.023506Z"
+        },
+        "truth_accepted": true,
+        "verification": {
+          "acceptance": "ACCEPTED",
+          "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+          "builder_run_id": "builder:B",
+          "checks": {
+            "artifact_matches": true,
+            "fresh_process": true,
+            "source_bound": true
+          },
+          "findings": [],
+          "verdict_id": "verdict:B:pass",
+          "verdict_status": "PASS",
+          "verifier_run_id": "independent-verifier:B"
+        },
+        "why": "durable mission objective"
+      },
+      "status": "PASS",
+      "verification": {
+        "checks_passed": 1,
+        "checks_total": 1,
+        "manifest": "proof-b-manifest.json",
+        "manifest_sha256": "6a8b1481748af44999d7998279d8c777a3d8ec21dceb2ea4948be197119e5214",
+        "process_returncode": 0,
+        "results": [
+          {
+            "actual_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+            "expected_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+            "kind": "file_hash",
+            "name": "proof-B-artifact-hash",
+            "pass": true,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json"
+          }
+        ],
+        "root": ".",
+        "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+        "verdict": "PASS",
+        "verified_at": "2026-09-05T21:04:37.865664Z",
+        "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+      }
+    },
+    "C": {
+      "ambiguous_effect": {
+        "computer_reconciled": true,
+        "general_duplicate_mutations": 0
+      },
+      "computer_operator": {
+        "browser_upload_requests": 1,
+        "native_save_dispatches": 1
+      },
+      "general_work_planning": "PASS",
+      "mixed_files_and_data": true,
+      "owner_text": "Handle this.",
+      "path": {
+        "campaign_id": "campaign:v13-final-proof-c",
+        "child_id": "child:v13-final-proof-c",
+        "directive_id": "delegate:v13-final-proof-c",
+        "exact_text": "Handle this.",
+        "intent_id": "delegation-intent:56b435e47c460c8936e4450be6a8f4c5",
+        "mission_id": "mission:v13-final-proof-c",
+        "objective_id": "objective:v13-final-proof-c",
+        "plan_id": "plan:v13-final-proof-c",
+        "proof_id": "C",
+        "resource_id": "workforce-resource:work-package:v13-final-proof-c",
+        "step_id": "step:v13-final-proof-c"
+      },
+      "personal_operator_verifier": "PASS",
+      "status": "PASS",
+      "worker": {
+        "branch_name": "candidate/v13-final-proof-worker",
+        "effect_id": "effect:a344bc5ca444fd647b6d52d42e6bedc97888995f7afd2a9d5bae3b90ed93defe",
+        "final_sha256": "b46ca3c64b1fdc4222ee5d778cc317ef534d54a8a18546fe3d56cd90c33342a9",
+        "package_hash": "d4c1d18ff9b0ba581859f24f97ebbac3d6bd06e2bb70099b3dc75eaf81bcc5f1",
+        "package_id": "work-package:v13-final-proof-c",
+        "package_status": "ACCEPTED",
+        "replayed": true,
+        "session_id": "workforce:work-package:v13-final-proof-c:a1",
+        "session_status": "COMPLETED",
+        "source_sha": "5d47c0f04ad90471624871f44fe1794302b54156",
+        "worker_runs": [
+          {
+            "mission_id": "mission:v13-final-proof-c",
+            "model": "local",
+            "provider": "fabric",
+            "role": "builder",
+            "run_id": "workforce:work-package:v13-final-proof-c:a1",
+            "status": "COMPLETED",
+            "step_id": "step:v13-final-proof-c"
+          },
+          {
+            "mission_id": "mission:v13-final-proof-c",
+            "model": "local",
+            "provider": "fabric",
+            "role": "verifier",
+            "run_id": "workforce:work-package:v13-final-proof-c:a1-verify",
+            "status": "COMPLETED",
+            "step_id": "step:v13-final-proof-c"
+          }
+        ],
+        "worktree_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\worker-worktree"
+      }
+    },
+    "D": {
+      "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json",
+      "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+      "outcome": {
+        "acceptance_identity": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+        "acceptance_kind": "verification.accepted",
+        "actual_observed": {
+          "failure_reason": null,
+          "mission_completion": "PASSED",
+          "mission_state": "COMPLETE",
+          "outcome": "SUCCEEDED",
+          "repair_count": 0,
+          "verifier_evidence": {
+            "artifact": "proof-d-artifact.json",
+            "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+            "verification": "proof-d-verification.json",
+            "verification_sha256": "9dacf43e0e431bd5d7c3e1b3ae148a4aafb66601679d68eeb467554ba4a445d7"
+          },
+          "verifier_status": "PASS"
+        },
+        "attempted": "Select at most one useful next action while preserving honest WAIT and insufficient-evidence options",
+        "briefing": {
+          "repair_or_failure": {
+            "attempts": 0,
+            "reason": null
+          },
+          "result": "SUCCEEDED",
+          "verification": {
+            "acceptance": "ACCEPTED",
+            "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "builder_run_id": "builder:D",
+            "checks": {
+              "artifact_matches": true,
+              "fresh_process": true,
+              "source_bound": true
+            },
+            "findings": [],
+            "verdict_id": "verdict:D:pass",
+            "verdict_status": "PASS",
+            "verifier_run_id": "independent-verifier:D"
+          },
+          "what_happened_next": "owner outcome complete",
+          "what_jarvis_learned": "accepted success reinforces evidence for similar future decisions",
+          "what_was_attempted": "Select at most one useful next action while preserving honest WAIT and insufficient-evidence options",
+          "why": "durable mission objective"
+        },
+        "candidate_id": null,
+        "created": true,
+        "decision_id": null,
+        "estimated_outcome": {},
+        "evidence_refs": [
+          "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+          "verdict:D:pass",
+          "099351c3-07f3-4e3c-8dac-a6781bed9786",
+          "56719131-8950-4470-a744-30b75030f517"
+        ],
+        "failure_reason": null,
+        "finalized": true,
+        "mission_id": "mission:v13-final-proof-d",
+        "objective_id": "objective:v13-final-proof-d",
+        "outcome_event_id": "bd94dc7f-cd49-4bf9-ac3a-50423752f6ce",
+        "outcome_id": "outcome-5034892762ab1f530a6c3ced",
+        "outcome_sequence": 264,
+        "outcome_source_id": "outcome-reconciler",
+        "outcome_source_type": "supervisor",
+        "project_id": null,
+        "provenance": {
+          "authority": "ledger+mission_projection+latest_verifier+AcceptanceGate",
+          "candidate_evidence": [],
+          "reconciler": "v13-final-convergence-proof",
+          "source": null,
+          "source_event_ids": [
+            "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "verdict:D:pass",
+            "099351c3-07f3-4e3c-8dac-a6781bed9786",
+            "56719131-8950-4470-a744-30b75030f517"
+          ]
+        },
+        "recorded_at": "2026-09-05T21:04:59.184072Z",
+        "repair_attempts": [],
+        "resource_id": null,
+        "revision": 1,
+        "schema": "jarvis.v11.outcome.v1",
+        "status": "SUCCEEDED",
+        "system_target": null,
+        "timestamps": {
+          "finality_occurred_at": "2026-09-05T21:04:59.022932Z",
+          "mission_updated_at": "2026-09-05T21:04:59.069929Z"
+        },
+        "truth_accepted": true,
+        "verification": {
+          "acceptance": "ACCEPTED",
+          "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+          "builder_run_id": "builder:D",
+          "checks": {
+            "artifact_matches": true,
+            "fresh_process": true,
+            "source_bound": true
+          },
+          "findings": [],
+          "verdict_id": "verdict:D:pass",
+          "verdict_status": "PASS",
+          "verifier_run_id": "independent-verifier:D"
+        },
+        "why": "durable mission objective"
+      },
+      "status": "PASS",
+      "verification": {
+        "checks_passed": 1,
+        "checks_total": 1,
+        "manifest": "proof-d-manifest.json",
+        "manifest_sha256": "0cf9e812f3f0e4285e8a257871b8011a8aaac3bc10caec4c8782cd98a84c9110",
+        "process_returncode": 0,
+        "results": [
+          {
+            "actual_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+            "expected_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+            "kind": "file_hash",
+            "name": "proof-D-artifact-hash",
+            "pass": true,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json"
+          }
+        ],
+        "root": ".",
+        "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+        "verdict": "PASS",
+        "verified_at": "2026-09-05T21:04:58.885148Z",
+        "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+      }
+    },
+    "E": {
+      "artifact": {
+        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json",
+        "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+        "outcome": {
+          "acceptance_identity": "7180b409-2f58-461b-9240-9c1072006342",
+          "acceptance_kind": "verification.accepted",
+          "actual_observed": {
+            "failure_reason": null,
+            "mission_completion": "PASSED",
+            "mission_state": "COMPLETE",
+            "outcome": "SUCCEEDED",
+            "repair_count": 0,
+            "verifier_evidence": {
+              "artifact": "proof-e-artifact.json",
+              "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+              "verification": "proof-e-verification.json",
+              "verification_sha256": "77efd7fd6eacd47a77739079a63b7318f5e72d859a673dc20cb1b6ea9929133d"
+            },
+            "verifier_status": "PASS"
+          },
+          "attempted": "Preserve exact continuation through STOP and restart",
+          "briefing": {
+            "repair_or_failure": {
+              "attempts": 0,
+              "reason": null
+            },
+            "result": "SUCCEEDED",
+            "verification": {
+              "acceptance": "ACCEPTED",
+              "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+              "builder_run_id": "builder:E",
+              "checks": {
+                "artifact_matches": true,
+                "fresh_process": true,
+                "source_bound": true
+              },
+              "findings": [],
+              "verdict_id": "verdict:E:pass",
+              "verdict_status": "PASS",
+              "verifier_run_id": "independent-verifier:E"
+            },
+            "what_happened_next": "owner outcome complete",
+            "what_jarvis_learned": "accepted success reinforces evidence for similar future decisions",
+            "what_was_attempted": "Preserve exact continuation through STOP and restart",
+            "why": "durable mission objective"
+          },
+          "candidate_id": null,
+          "created": true,
+          "decision_id": null,
+          "estimated_outcome": {},
+          "evidence_refs": [
+            "7180b409-2f58-461b-9240-9c1072006342",
+            "verdict:E:pass",
+            "528d5f72-da15-47a4-ac40-a26d6668af7b",
+            "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+          ],
+          "failure_reason": null,
+          "finalized": true,
+          "mission_id": "mission:v13-final-proof-e",
+          "objective_id": "objective:v13-final-proof-e",
+          "outcome_event_id": "19859876-7937-47c4-a397-93c5a752d289",
+          "outcome_id": "outcome-dd9689c7648ceddad218f3c2",
+          "outcome_sequence": 306,
+          "outcome_source_id": "outcome-reconciler",
+          "outcome_source_type": "supervisor",
+          "project_id": null,
+          "provenance": {
+            "authority": "ledger+mission_projection+latest_verifier+AcceptanceGate",
+            "candidate_evidence": [],
+            "reconciler": "v13-final-convergence-proof",
+            "source": null,
+            "source_event_ids": [
+              "7180b409-2f58-461b-9240-9c1072006342",
+              "verdict:E:pass",
+              "528d5f72-da15-47a4-ac40-a26d6668af7b",
+              "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+            ]
+          },
+          "recorded_at": "2026-09-05T21:05:03.258797Z",
+          "repair_attempts": [],
+          "resource_id": "resource:v13-final-proof-e",
+          "revision": 1,
+          "schema": "jarvis.v11.outcome.v1",
+          "status": "SUCCEEDED",
+          "system_target": null,
+          "timestamps": {
+            "finality_occurred_at": "2026-09-05T21:05:02.957411Z",
+            "mission_updated_at": "2026-09-05T21:05:03.148016Z"
+          },
+          "truth_accepted": true,
+          "verification": {
+            "acceptance": "ACCEPTED",
+            "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+            "builder_run_id": "builder:E",
+            "checks": {
+              "artifact_matches": true,
+              "fresh_process": true,
+              "source_bound": true
+            },
+            "findings": [],
+            "verdict_id": "verdict:E:pass",
+            "verdict_status": "PASS",
+            "verifier_run_id": "independent-verifier:E"
+          },
+          "why": "durable mission objective"
+        },
+        "status": "PASS",
+        "verification": {
+          "checks_passed": 1,
+          "checks_total": 1,
+          "manifest": "proof-e-manifest.json",
+          "manifest_sha256": "037904bd406d2882e326c4ba6c52fa8da68133b57fa39e90cb8680765d9019e7",
+          "process_returncode": 0,
+          "results": [
+            {
+              "actual_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+              "expected_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+              "kind": "file_hash",
+              "name": "proof-E-artifact-hash",
+              "pass": true,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json"
+            }
+          ],
+          "root": ".",
+          "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+          "verdict": "PASS",
+          "verified_at": "2026-09-05T21:05:02.787838Z",
+          "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+        }
+      },
+      "dispatches_during_stop": 0,
+      "effect_id": "effect:64173a2bd60815f49f738ebd8603d9f149343ed6be9ce3bb10fc366ba87fcd83",
+      "path": {
+        "campaign_id": "campaign:v13-final-proof-e",
+        "child_id": "child:v13-final-proof-e",
+        "directive_id": null,
+        "exact_text": "Preserve exact continuation through STOP and restart.",
+        "intent_id": null,
+        "mission_id": "mission:v13-final-proof-e",
+        "objective_id": "objective:v13-final-proof-e",
+        "plan_id": "plan:v13-final-proof-e",
+        "proof_id": "E",
+        "resource_id": "resource:v13-final-proof-e",
+        "step_id": "step:v13-final-proof-e"
+      },
+      "readiness_before_restart": "DEGRADED",
+      "replay_performed": false,
+      "replayed": true,
+      "resume_event_ids": [
+        "7d0468c6-3cb6-4807-861f-776aceacc225"
+      ],
+      "status": "PASS",
+      "stop_directive_id": "stop:v13-final-proof",
+      "stopped_snapshot": {
+        "controls": {
+          "resume_available": true,
+          "runtime_state": "STOPPED"
+        },
+        "stop": {
+          "active": true,
+          "reason": "STOP the active convergence recovery proof",
+          "record": {
+            "reason": "STOP the active convergence recovery proof",
+            "requested_at": "2026-09-05T21:05:01.399566Z",
+            "source": "authenticated-owner",
+            "stop_id": "2a9627b4-aaf1-4370-9394-97a4993d3f42"
+          },
+          "source": "sentinel_or_durable_control"
+        }
+      }
+    },
+    "F": {
+      "command_center_source_backed": true,
+      "exact_owner_texts": [
+        "Find the next useful thing.",
+        "Fix it.",
+        "Handle this.",
+        "Prepare me for tomorrow."
+      ],
+      "fresh_process_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+      "missions": [
+        {
+          "mission_id": "mission:v13-final-proof-e",
+          "objective": "Preserve exact continuation through STOP and restart",
+          "state": "COMPLETE"
+        },
+        {
+          "mission_id": "mission:v13-final-proof-d",
+          "objective": "Select at most one useful next action while preserving honest WAIT and insufficient-evidence options",
+          "state": "COMPLETE"
+        },
+        {
+          "mission_id": "mission:v13-final-proof-c",
+          "objective": "Handle one mixed local work package through General Work, Personal Operator, Computer Operator, and one AI worker",
+          "state": "COMPLETE"
+        },
+        {
+          "mission_id": "mission:v13-final-proof-b",
+          "objective": "Prepare a bounded evidence-backed briefing and only the useful editable artifacts",
+          "state": "COMPLETE"
+        },
+        {
+          "mission_id": "mission:v13-final-proof-a",
+          "objective": "Repair the bounded local defect and verify it",
+          "state": "COMPLETE"
+        }
+      ],
+      "projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+      "rebuilt_projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+      "status": "PASS",
+      "verification": [
+        {
+          "acceptance_status": "ACCEPTED",
+          "mission_id": "mission:v13-final-proof-e",
+          "status": "PASS",
+          "verdict_id": "verdict:E:pass"
+        },
+        {
+          "acceptance_status": "ACCEPTED",
+          "mission_id": "mission:v13-final-proof-d",
+          "status": "PASS",
+          "verdict_id": "verdict:D:pass"
+        },
+        {
+          "acceptance_status": "ACCEPTED",
+          "mission_id": "mission:v13-final-proof-c",
+          "status": "PASS",
+          "verdict_id": "verdict-v2-905920981cd0963fc6e27b3e"
+        },
+        {
+          "acceptance_status": "ACCEPTED",
+          "mission_id": "mission:v13-final-proof-b",
+          "status": "PASS",
+          "verdict_id": "verdict:B:pass"
+        },
+        {
+          "acceptance_status": "ACCEPTED",
+          "mission_id": "mission:v13-final-proof-a",
+          "status": "PASS",
+          "verdict_id": "verdict:A:pass"
+        },
+        {
+          "acceptance_status": "PENDING",
+          "mission_id": "mission:v13-final-proof-a",
+          "status": "FAIL",
+          "verdict_id": "verdict:A:fail"
+        }
+      ],
+      "workers": [
+        {
+          "mission_id": "mission:v13-final-proof-c",
+          "model": "local",
+          "provider": "fabric",
+          "run_id": "workforce:work-package:v13-final-proof-c:a1-verify",
+          "status": "COMPLETED"
+        },
+        {
+          "mission_id": "mission:v13-final-proof-c",
+          "model": "local",
+          "provider": "fabric",
+          "run_id": "workforce:work-package:v13-final-proof-c:a1",
+          "status": "COMPLETED"
+        }
+      ]
+    }
+  },
+  "receipt_checks": {
+    "chief_of_staff_passed": true,
+    "chief_verifier_passed": true,
+    "command_center_passed": true,
+    "computer_operator_passed": true,
+    "general_work_passed": true,
+    "owner_context_passed": true,
+    "personal_operator_passed": true,
+    "world_intelligence_passed": true,
+    "world_verifier_passed": true
+  },
+  "receipts": {
+    "chief_of_staff": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\chief_of_staff.json",
+      "sha256": "56afea20eeaa3c2312faa6c9d37f348c3f031700bfb9f999b3ff293371472981",
+      "size_bytes": 214762
+    },
+    "chief_verifier": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\chief_verifier.json",
+      "sha256": "f39bdd300cdc1a2534993a066a91ffdc959a5e64d966fd7c5d8882dd02741c09",
+      "size_bytes": 6119
+    },
+    "command_center": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\command_center.json",
+      "sha256": "5804eef077fe41fa0771e0a247e7bf0509adffa32a4a6958191e7a4fcfd2d544",
+      "size_bytes": 1791
+    },
+    "computer_operator": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\computer_operator.json",
+      "sha256": "366757c8732d38ca1f9a59fbeb796335751e5a4ef21024a7e04804df72b02f4c",
+      "size_bytes": 38156
+    },
+    "general_work": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\general_work.json",
+      "sha256": "e98fc7031a61b2d025f5ed0d50323421183dd4275c8ebfea3f8ca75e71a91abf",
+      "size_bytes": 81097
+    },
+    "owner_context": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\owner_context.json",
+      "sha256": "4cc79d7eafac0667bc44a76a57f05411d0a0773eeef3db9cd91a5a8c9d9645e6",
+      "size_bytes": 68442
+    },
+    "personal_operator": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\personal_operator.json",
+      "sha256": "b9d4d937cee7f5fbf5be51dbcbfb460f44ce22edd59ab92d63b95ce7143a241e",
+      "size_bytes": 171754
+    },
+    "world_intelligence": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\world_intelligence.json",
+      "sha256": "fbf446ebbf6f9f2566cc2572723b18be2d2f79a1c9c705eaea5a4cc68a662b49",
+      "size_bytes": 152514
+    },
+    "world_verifier": {
+      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\world_verifier.json",
+      "sha256": "7b9286406120e63ae05605e2e1cf8afc71b1e5cabd3a317fd0ce30e565a6b116",
+      "size_bytes": 46587
+    }
+  },
+  "remaining_blockers": [],
+  "shared_spine": {
+    "database": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\shared-spine.db",
+    "database_sha256": "e1f87381c35d92112f04c3577db9b73296d07edf0834c43c93a42355a558a949",
+    "duplicate_counters": {
+      "campaigns": 0,
+      "effects": 0,
+      "false_successes": 0,
+      "missions": 0,
+      "objectives": 0,
+      "owner_intents": 0,
+      "registrations": 0,
+      "resumes": 0,
+      "unnecessary_owner_questions": 0,
+      "unrelated_process_impact": 0,
+      "unverified_consequential_completions": 0,
+      "wakes": 0,
+      "work_packages": 0,
+      "worker_attempts": 0
+    },
+    "ledger": {
+      "events": 313,
+      "integrity_verified_events": 313,
+      "quick_check": "ok"
+    },
+    "proofs": {
+      "A": {
+        "defect": {
+          "expected_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+          "final_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+          "initial_sha256": "26d55bc9c0965cda3e022a948911992f9ba08f39ea89c6369115164b87f23de0"
+        },
+        "owner_text": "Fix it.",
+        "path": {
+          "campaign_id": "campaign:v13-final-proof-a",
+          "child_id": "child:v13-final-proof-a",
+          "directive_id": "delegate:v13-final-proof-a",
+          "exact_text": "Fix it.",
+          "intent_id": "delegation-intent:3417b336e05ac4d8fc14db44d525d7e5",
+          "mission_id": "mission:v13-final-proof-a",
+          "objective_id": "objective:v13-final-proof-a",
+          "plan_id": "plan:v13-final-proof-a",
+          "proof_id": "A",
+          "resource_id": "resource:v13-final-proof-a",
+          "step_id": "step:v13-final-proof-a"
+        },
+        "repair": {
+          "capability_id": "cap.file.replace",
+          "claimed": "COMPLETED",
+          "effect_id": "effect:b0cf5428e9f1f0ff0a33dc88ac0eae95e0c8bfa120a593e8f13a3afd1d4c296d",
+          "replay_performed": false,
+          "replayed": true,
+          "verified": "UNKNOWN"
+        },
+        "status": "PASS",
+        "verifier_fail": {
+          "checks_passed": 0,
+          "checks_total": 1,
+          "manifest": "manifest.json",
+          "manifest_sha256": "52b4a87f70b7cc9dcc779ad9e72d9fa23e27fda3d27e62a862047c358ce41acd",
+          "process_returncode": 1,
+          "results": [
+            {
+              "actual_sha256": "26d55bc9c0965cda3e022a948911992f9ba08f39ea89c6369115164b87f23de0",
+              "expected_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+              "kind": "file_hash",
+              "name": "repair-target",
+              "pass": false,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+            }
+          ],
+          "root": ".",
+          "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+          "verdict": "FAIL",
+          "verified_at": "2026-09-05T21:04:31.740348Z",
+          "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+        },
+        "verifier_pass": {
+          "checks_passed": 1,
+          "checks_total": 1,
+          "manifest": "manifest.json",
+          "manifest_sha256": "52b4a87f70b7cc9dcc779ad9e72d9fa23e27fda3d27e62a862047c358ce41acd",
+          "process_returncode": 0,
+          "results": [
+            {
+              "actual_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+              "expected_sha256": "37d7d91d47051bccea1144006a9adf7a1ad4c8218dd0d46ed4c051793e74ea2d",
+              "kind": "file_hash",
+              "name": "repair-target",
+              "pass": true,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+            }
+          ],
+          "root": ".",
+          "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+          "verdict": "PASS",
+          "verified_at": "2026-09-05T21:04:35.299746Z",
+          "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+        }
+      },
+      "B": {
+        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json",
+        "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+        "outcome": {
+          "acceptance_identity": "39c09aca-32d3-4549-9240-9f704225eb89",
+          "acceptance_kind": "verification.accepted",
+          "actual_observed": {
+            "failure_reason": null,
+            "mission_completion": "PASSED",
+            "mission_state": "COMPLETE",
+            "outcome": "SUCCEEDED",
+            "repair_count": 0,
+            "verifier_evidence": {
+              "artifact": "proof-b-artifact.json",
+              "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+              "verification": "proof-b-verification.json",
+              "verification_sha256": "6f5d79c91e61765f8eaab869b4ba716fcb589ea1cc5e6b15502917834476ae61"
+            },
+            "verifier_status": "PASS"
+          },
+          "attempted": "Prepare a bounded evidence-backed briefing and only the useful editable artifacts",
+          "briefing": {
+            "repair_or_failure": {
+              "attempts": 0,
+              "reason": null
+            },
+            "result": "SUCCEEDED",
+            "verification": {
+              "acceptance": "ACCEPTED",
+              "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+              "builder_run_id": "builder:B",
+              "checks": {
+                "artifact_matches": true,
+                "fresh_process": true,
+                "source_bound": true
+              },
+              "findings": [],
+              "verdict_id": "verdict:B:pass",
+              "verdict_status": "PASS",
+              "verifier_run_id": "independent-verifier:B"
+            },
+            "what_happened_next": "owner outcome complete",
+            "what_jarvis_learned": "accepted success reinforces evidence for similar future decisions",
+            "what_was_attempted": "Prepare a bounded evidence-backed briefing and only the useful editable artifacts",
+            "why": "durable mission objective"
+          },
+          "candidate_id": null,
+          "created": true,
+          "decision_id": null,
+          "estimated_outcome": {},
+          "evidence_refs": [
+            "39c09aca-32d3-4549-9240-9f704225eb89",
+            "verdict:B:pass",
+            "5726724a-a76a-47b9-860d-84a5fb91e792",
+            "a769b26c-904a-4ddd-82e4-f943d0551386"
+          ],
+          "failure_reason": null,
+          "finalized": true,
+          "mission_id": "mission:v13-final-proof-b",
+          "objective_id": "objective:v13-final-proof-b",
+          "outcome_event_id": "bb40daf7-a0e6-48cb-ae65-4c74f2ca69f9",
+          "outcome_id": "outcome-01269e916c2bd76221173d3f",
+          "outcome_sequence": 152,
+          "outcome_source_id": "outcome-reconciler",
+          "outcome_source_type": "supervisor",
+          "project_id": null,
+          "provenance": {
+            "authority": "ledger+mission_projection+latest_verifier+AcceptanceGate",
+            "candidate_evidence": [],
+            "reconciler": "v13-final-convergence-proof",
+            "source": null,
+            "source_event_ids": [
+              "39c09aca-32d3-4549-9240-9f704225eb89",
+              "verdict:B:pass",
+              "5726724a-a76a-47b9-860d-84a5fb91e792",
+              "a769b26c-904a-4ddd-82e4-f943d0551386"
+            ]
+          },
+          "recorded_at": "2026-09-05T21:04:38.133814Z",
+          "repair_attempts": [],
+          "resource_id": null,
+          "revision": 1,
+          "schema": "jarvis.v11.outcome.v1",
+          "status": "SUCCEEDED",
+          "system_target": null,
+          "timestamps": {
+            "finality_occurred_at": "2026-09-05T21:04:37.984832Z",
+            "mission_updated_at": "2026-09-05T21:04:38.023506Z"
+          },
+          "truth_accepted": true,
+          "verification": {
+            "acceptance": "ACCEPTED",
+            "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+            "builder_run_id": "builder:B",
+            "checks": {
+              "artifact_matches": true,
+              "fresh_process": true,
+              "source_bound": true
+            },
+            "findings": [],
+            "verdict_id": "verdict:B:pass",
+            "verdict_status": "PASS",
+            "verifier_run_id": "independent-verifier:B"
+          },
+          "why": "durable mission objective"
+        },
+        "status": "PASS",
+        "verification": {
+          "checks_passed": 1,
+          "checks_total": 1,
+          "manifest": "proof-b-manifest.json",
+          "manifest_sha256": "6a8b1481748af44999d7998279d8c777a3d8ec21dceb2ea4948be197119e5214",
+          "process_returncode": 0,
+          "results": [
+            {
+              "actual_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+              "expected_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+              "kind": "file_hash",
+              "name": "proof-B-artifact-hash",
+              "pass": true,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json"
+            }
+          ],
+          "root": ".",
+          "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+          "verdict": "PASS",
+          "verified_at": "2026-09-05T21:04:37.865664Z",
+          "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+        }
+      },
+      "C": {
+        "ambiguous_effect": {
+          "computer_reconciled": true,
+          "general_duplicate_mutations": 0
+        },
+        "computer_operator": {
+          "browser_upload_requests": 1,
+          "native_save_dispatches": 1
+        },
+        "general_work_planning": "PASS",
+        "mixed_files_and_data": true,
+        "owner_text": "Handle this.",
+        "path": {
+          "campaign_id": "campaign:v13-final-proof-c",
+          "child_id": "child:v13-final-proof-c",
+          "directive_id": "delegate:v13-final-proof-c",
+          "exact_text": "Handle this.",
+          "intent_id": "delegation-intent:56b435e47c460c8936e4450be6a8f4c5",
+          "mission_id": "mission:v13-final-proof-c",
+          "objective_id": "objective:v13-final-proof-c",
+          "plan_id": "plan:v13-final-proof-c",
+          "proof_id": "C",
+          "resource_id": "workforce-resource:work-package:v13-final-proof-c",
+          "step_id": "step:v13-final-proof-c"
+        },
+        "personal_operator_verifier": "PASS",
+        "status": "PASS",
+        "worker": {
+          "branch_name": "candidate/v13-final-proof-worker",
+          "effect_id": "effect:a344bc5ca444fd647b6d52d42e6bedc97888995f7afd2a9d5bae3b90ed93defe",
+          "final_sha256": "b46ca3c64b1fdc4222ee5d778cc317ef534d54a8a18546fe3d56cd90c33342a9",
+          "package_hash": "d4c1d18ff9b0ba581859f24f97ebbac3d6bd06e2bb70099b3dc75eaf81bcc5f1",
+          "package_id": "work-package:v13-final-proof-c",
+          "package_status": "ACCEPTED",
+          "replayed": true,
+          "session_id": "workforce:work-package:v13-final-proof-c:a1",
+          "session_status": "COMPLETED",
+          "source_sha": "5d47c0f04ad90471624871f44fe1794302b54156",
+          "worker_runs": [
+            {
+              "mission_id": "mission:v13-final-proof-c",
+              "model": "local",
+              "provider": "fabric",
+              "role": "builder",
+              "run_id": "workforce:work-package:v13-final-proof-c:a1",
+              "status": "COMPLETED",
+              "step_id": "step:v13-final-proof-c"
+            },
+            {
+              "mission_id": "mission:v13-final-proof-c",
+              "model": "local",
+              "provider": "fabric",
+              "role": "verifier",
+              "run_id": "workforce:work-package:v13-final-proof-c:a1-verify",
+              "status": "COMPLETED",
+              "step_id": "step:v13-final-proof-c"
+            }
+          ],
+          "worktree_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\worker-worktree"
+        }
+      },
+      "D": {
+        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json",
+        "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+        "outcome": {
+          "acceptance_identity": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+          "acceptance_kind": "verification.accepted",
+          "actual_observed": {
+            "failure_reason": null,
+            "mission_completion": "PASSED",
+            "mission_state": "COMPLETE",
+            "outcome": "SUCCEEDED",
+            "repair_count": 0,
+            "verifier_evidence": {
+              "artifact": "proof-d-artifact.json",
+              "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+              "verification": "proof-d-verification.json",
+              "verification_sha256": "9dacf43e0e431bd5d7c3e1b3ae148a4aafb66601679d68eeb467554ba4a445d7"
+            },
+            "verifier_status": "PASS"
+          },
+          "attempted": "Select at most one useful next action while preserving honest WAIT and insufficient-evidence options",
+          "briefing": {
+            "repair_or_failure": {
+              "attempts": 0,
+              "reason": null
+            },
+            "result": "SUCCEEDED",
+            "verification": {
+              "acceptance": "ACCEPTED",
+              "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+              "builder_run_id": "builder:D",
+              "checks": {
+                "artifact_matches": true,
+                "fresh_process": true,
+                "source_bound": true
+              },
+              "findings": [],
+              "verdict_id": "verdict:D:pass",
+              "verdict_status": "PASS",
+              "verifier_run_id": "independent-verifier:D"
+            },
+            "what_happened_next": "owner outcome complete",
+            "what_jarvis_learned": "accepted success reinforces evidence for similar future decisions",
+            "what_was_attempted": "Select at most one useful next action while preserving honest WAIT and insufficient-evidence options",
+            "why": "durable mission objective"
+          },
+          "candidate_id": null,
+          "created": true,
+          "decision_id": null,
+          "estimated_outcome": {},
+          "evidence_refs": [
+            "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "verdict:D:pass",
+            "099351c3-07f3-4e3c-8dac-a6781bed9786",
+            "56719131-8950-4470-a744-30b75030f517"
+          ],
+          "failure_reason": null,
+          "finalized": true,
+          "mission_id": "mission:v13-final-proof-d",
+          "objective_id": "objective:v13-final-proof-d",
+          "outcome_event_id": "bd94dc7f-cd49-4bf9-ac3a-50423752f6ce",
+          "outcome_id": "outcome-5034892762ab1f530a6c3ced",
+          "outcome_sequence": 264,
+          "outcome_source_id": "outcome-reconciler",
+          "outcome_source_type": "supervisor",
+          "project_id": null,
+          "provenance": {
+            "authority": "ledger+mission_projection+latest_verifier+AcceptanceGate",
+            "candidate_evidence": [],
+            "reconciler": "v13-final-convergence-proof",
+            "source": null,
+            "source_event_ids": [
+              "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+              "verdict:D:pass",
+              "099351c3-07f3-4e3c-8dac-a6781bed9786",
+              "56719131-8950-4470-a744-30b75030f517"
+            ]
+          },
+          "recorded_at": "2026-09-05T21:04:59.184072Z",
+          "repair_attempts": [],
+          "resource_id": null,
+          "revision": 1,
+          "schema": "jarvis.v11.outcome.v1",
+          "status": "SUCCEEDED",
+          "system_target": null,
+          "timestamps": {
+            "finality_occurred_at": "2026-09-05T21:04:59.022932Z",
+            "mission_updated_at": "2026-09-05T21:04:59.069929Z"
+          },
+          "truth_accepted": true,
+          "verification": {
+            "acceptance": "ACCEPTED",
+            "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "builder_run_id": "builder:D",
+            "checks": {
+              "artifact_matches": true,
+              "fresh_process": true,
+              "source_bound": true
+            },
+            "findings": [],
+            "verdict_id": "verdict:D:pass",
+            "verdict_status": "PASS",
+            "verifier_run_id": "independent-verifier:D"
+          },
+          "why": "durable mission objective"
+        },
+        "status": "PASS",
+        "verification": {
+          "checks_passed": 1,
+          "checks_total": 1,
+          "manifest": "proof-d-manifest.json",
+          "manifest_sha256": "0cf9e812f3f0e4285e8a257871b8011a8aaac3bc10caec4c8782cd98a84c9110",
+          "process_returncode": 0,
+          "results": [
+            {
+              "actual_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+              "expected_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
+              "kind": "file_hash",
+              "name": "proof-D-artifact-hash",
+              "pass": true,
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json"
+            }
+          ],
+          "root": ".",
+          "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+          "verdict": "PASS",
+          "verified_at": "2026-09-05T21:04:58.885148Z",
+          "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+        }
+      },
+      "E": {
+        "artifact": {
+          "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json",
+          "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+          "outcome": {
+            "acceptance_identity": "7180b409-2f58-461b-9240-9c1072006342",
+            "acceptance_kind": "verification.accepted",
+            "actual_observed": {
+              "failure_reason": null,
+              "mission_completion": "PASSED",
+              "mission_state": "COMPLETE",
+              "outcome": "SUCCEEDED",
+              "repair_count": 0,
+              "verifier_evidence": {
+                "artifact": "proof-e-artifact.json",
+                "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+                "verification": "proof-e-verification.json",
+                "verification_sha256": "77efd7fd6eacd47a77739079a63b7318f5e72d859a673dc20cb1b6ea9929133d"
+              },
+              "verifier_status": "PASS"
+            },
+            "attempted": "Preserve exact continuation through STOP and restart",
+            "briefing": {
+              "repair_or_failure": {
+                "attempts": 0,
+                "reason": null
+              },
+              "result": "SUCCEEDED",
+              "verification": {
+                "acceptance": "ACCEPTED",
+                "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+                "builder_run_id": "builder:E",
+                "checks": {
+                  "artifact_matches": true,
+                  "fresh_process": true,
+                  "source_bound": true
+                },
+                "findings": [],
+                "verdict_id": "verdict:E:pass",
+                "verdict_status": "PASS",
+                "verifier_run_id": "independent-verifier:E"
+              },
+              "what_happened_next": "owner outcome complete",
+              "what_jarvis_learned": "accepted success reinforces evidence for similar future decisions",
+              "what_was_attempted": "Preserve exact continuation through STOP and restart",
+              "why": "durable mission objective"
+            },
+            "candidate_id": null,
+            "created": true,
+            "decision_id": null,
+            "estimated_outcome": {},
+            "evidence_refs": [
+              "7180b409-2f58-461b-9240-9c1072006342",
+              "verdict:E:pass",
+              "528d5f72-da15-47a4-ac40-a26d6668af7b",
+              "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+            ],
+            "failure_reason": null,
+            "finalized": true,
+            "mission_id": "mission:v13-final-proof-e",
+            "objective_id": "objective:v13-final-proof-e",
+            "outcome_event_id": "19859876-7937-47c4-a397-93c5a752d289",
+            "outcome_id": "outcome-dd9689c7648ceddad218f3c2",
+            "outcome_sequence": 306,
+            "outcome_source_id": "outcome-reconciler",
+            "outcome_source_type": "supervisor",
+            "project_id": null,
+            "provenance": {
+              "authority": "ledger+mission_projection+latest_verifier+AcceptanceGate",
+              "candidate_evidence": [],
+              "reconciler": "v13-final-convergence-proof",
+              "source": null,
+              "source_event_ids": [
+                "7180b409-2f58-461b-9240-9c1072006342",
+                "verdict:E:pass",
+                "528d5f72-da15-47a4-ac40-a26d6668af7b",
+                "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+              ]
+            },
+            "recorded_at": "2026-09-05T21:05:03.258797Z",
+            "repair_attempts": [],
+            "resource_id": "resource:v13-final-proof-e",
+            "revision": 1,
+            "schema": "jarvis.v11.outcome.v1",
+            "status": "SUCCEEDED",
+            "system_target": null,
+            "timestamps": {
+              "finality_occurred_at": "2026-09-05T21:05:02.957411Z",
+              "mission_updated_at": "2026-09-05T21:05:03.148016Z"
+            },
+            "truth_accepted": true,
+            "verification": {
+              "acceptance": "ACCEPTED",
+              "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+              "builder_run_id": "builder:E",
+              "checks": {
+                "artifact_matches": true,
+                "fresh_process": true,
+                "source_bound": true
+              },
+              "findings": [],
+              "verdict_id": "verdict:E:pass",
+              "verdict_status": "PASS",
+              "verifier_run_id": "independent-verifier:E"
+            },
+            "why": "durable mission objective"
+          },
+          "status": "PASS",
+          "verification": {
+            "checks_passed": 1,
+            "checks_total": 1,
+            "manifest": "proof-e-manifest.json",
+            "manifest_sha256": "037904bd406d2882e326c4ba6c52fa8da68133b57fa39e90cb8680765d9019e7",
+            "process_returncode": 0,
+            "results": [
+              {
+                "actual_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+                "expected_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+                "kind": "file_hash",
+                "name": "proof-E-artifact-hash",
+                "pass": true,
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json"
+              }
+            ],
+            "root": ".",
+            "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
+            "verdict": "PASS",
+            "verified_at": "2026-09-05T21:05:02.787838Z",
+            "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
+          }
+        },
+        "dispatches_during_stop": 0,
+        "effect_id": "effect:64173a2bd60815f49f738ebd8603d9f149343ed6be9ce3bb10fc366ba87fcd83",
+        "path": {
+          "campaign_id": "campaign:v13-final-proof-e",
+          "child_id": "child:v13-final-proof-e",
+          "directive_id": null,
+          "exact_text": "Preserve exact continuation through STOP and restart.",
+          "intent_id": null,
+          "mission_id": "mission:v13-final-proof-e",
+          "objective_id": "objective:v13-final-proof-e",
+          "plan_id": "plan:v13-final-proof-e",
+          "proof_id": "E",
+          "resource_id": "resource:v13-final-proof-e",
+          "step_id": "step:v13-final-proof-e"
+        },
+        "readiness_before_restart": "DEGRADED",
+        "replay_performed": false,
+        "replayed": true,
+        "resume_event_ids": [
+          "7d0468c6-3cb6-4807-861f-776aceacc225"
+        ],
+        "status": "PASS",
+        "stop_directive_id": "stop:v13-final-proof",
+        "stopped_snapshot": {
+          "controls": {
+            "resume_available": true,
+            "runtime_state": "STOPPED"
+          },
+          "stop": {
+            "active": true,
+            "reason": "STOP the active convergence recovery proof",
+            "record": {
+              "reason": "STOP the active convergence recovery proof",
+              "requested_at": "2026-09-05T21:05:01.399566Z",
+              "source": "authenticated-owner",
+              "stop_id": "2a9627b4-aaf1-4370-9394-97a4993d3f42"
+            },
+            "source": "sentinel_or_durable_control"
+          }
+        }
+      },
+      "F": {
+        "command_center_source_backed": true,
+        "exact_owner_texts": [
+          "Find the next useful thing.",
+          "Fix it.",
+          "Handle this.",
+          "Prepare me for tomorrow."
+        ],
+        "fresh_process_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+        "missions": [
+          {
+            "mission_id": "mission:v13-final-proof-e",
+            "objective": "Preserve exact continuation through STOP and restart",
+            "state": "COMPLETE"
+          },
+          {
+            "mission_id": "mission:v13-final-proof-d",
+            "objective": "Select at most one useful next action while preserving honest WAIT and insufficient-evidence options",
+            "state": "COMPLETE"
+          },
+          {
+            "mission_id": "mission:v13-final-proof-c",
+            "objective": "Handle one mixed local work package through General Work, Personal Operator, Computer Operator, and one AI worker",
+            "state": "COMPLETE"
+          },
+          {
+            "mission_id": "mission:v13-final-proof-b",
+            "objective": "Prepare a bounded evidence-backed briefing and only the useful editable artifacts",
+            "state": "COMPLETE"
+          },
+          {
+            "mission_id": "mission:v13-final-proof-a",
+            "objective": "Repair the bounded local defect and verify it",
+            "state": "COMPLETE"
+          }
+        ],
+        "projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+        "rebuilt_projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+        "status": "PASS",
+        "verification": [
+          {
+            "acceptance_status": "ACCEPTED",
+            "mission_id": "mission:v13-final-proof-e",
+            "status": "PASS",
+            "verdict_id": "verdict:E:pass"
+          },
+          {
+            "acceptance_status": "ACCEPTED",
+            "mission_id": "mission:v13-final-proof-d",
+            "status": "PASS",
+            "verdict_id": "verdict:D:pass"
+          },
+          {
+            "acceptance_status": "ACCEPTED",
+            "mission_id": "mission:v13-final-proof-c",
+            "status": "PASS",
+            "verdict_id": "verdict-v2-905920981cd0963fc6e27b3e"
+          },
+          {
+            "acceptance_status": "ACCEPTED",
+            "mission_id": "mission:v13-final-proof-b",
+            "status": "PASS",
+            "verdict_id": "verdict:B:pass"
+          },
+          {
+            "acceptance_status": "ACCEPTED",
+            "mission_id": "mission:v13-final-proof-a",
+            "status": "PASS",
+            "verdict_id": "verdict:A:pass"
+          },
+          {
+            "acceptance_status": "PENDING",
+            "mission_id": "mission:v13-final-proof-a",
+            "status": "FAIL",
+            "verdict_id": "verdict:A:fail"
+          }
+        ],
+        "workers": [
+          {
+            "mission_id": "mission:v13-final-proof-c",
+            "model": "local",
+            "provider": "fabric",
+            "run_id": "workforce:work-package:v13-final-proof-c:a1-verify",
+            "status": "COMPLETED"
+          },
+          {
+            "mission_id": "mission:v13-final-proof-c",
+            "model": "local",
+            "provider": "fabric",
+            "run_id": "workforce:work-package:v13-final-proof-c:a1",
+            "status": "COMPLETED"
+          }
+        ]
+      }
+    },
+    "schema": 40
+  },
+  "source": {
+    "base_sha": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
+    "branch": "candidate/v13-final-personal-executive-convergence-20260905",
+    "main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "merge_base": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
+    "origin_main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",
+    "schema": 40,
+    "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "source_tree_sha": "82185f10757655f32a5d1d2d84c24edde6ea2162",
+    "worktree": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905",
+    "worktree_clean": true
+  },
+  "verdict": "PASS"
+}

@@ -1,0 +1,1953 @@
+{
+  "artifacts": {
+    "ambiguous_reference": {
+      "action_taken": false,
+      "candidates": [
+        {
+          "confidence": 0.73,
+          "context_id": "unresolved:yesterday-a",
+          "effective_at": "2026-09-02T10:00:00Z",
+          "evidence": [
+            "date:yesterday:2026-09-02",
+            "recency:72h",
+            "current"
+          ],
+          "kind": "UNRESOLVED_ITEM",
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-02T10:00:00Z",
+            "content_hash": "665376b922f08913953f03f3831dd919379478489803792ec5422dd5036c92d3",
+            "evidence_refs": [
+              "proof:fixture/unresolved:yesterday-a"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:yesterday-a",
+            "source_type": "repository"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": true,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "Provider recovery item A"
+        },
+        {
+          "confidence": 0.73,
+          "context_id": "unresolved:yesterday-b",
+          "effective_at": "2026-09-02T10:00:00Z",
+          "evidence": [
+            "date:yesterday:2026-09-02",
+            "recency:72h",
+            "current"
+          ],
+          "kind": "UNRESOLVED_ITEM",
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-02T10:00:00Z",
+            "content_hash": "658d135ee9f8da66876874f018ae1b0142985401fa3babc17aedd0d0987edd0c",
+            "evidence_refs": [
+              "proof:fixture/unresolved:yesterday-b"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:yesterday-b",
+            "source_type": "repository"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": true,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "Provider recovery item B"
+        }
+      ],
+      "confidence": 0.73,
+      "contract": "jarvis.owner-reference-resolution.v1",
+      "decision_authority": "FUTURE_DELEGATION_ENGINE",
+      "evidence": {
+        "ambiguity_margin": 0.12,
+        "current_project": null,
+        "minimum_confidence": 0.45,
+        "now": "2026-09-03T12:00:00Z",
+        "recent_context_ids": [],
+        "yesterday_filter": true
+      },
+      "selected_context_id": null,
+      "status": "AMBIGUOUS",
+      "utterance": "the thing from yesterday"
+    },
+    "bounded_context": {
+      "authority": {
+        "context": "ADVISORY_ONLY",
+        "execution": "NONE",
+        "owner_controls": "AUTHORITATIVE_AND_HIGHER_PRECEDENCE"
+      },
+      "bounds": {
+        "max_chars": 6000,
+        "max_items": 5,
+        "per_kind_limit": 2,
+        "truncated": true,
+        "used_chars": 5156,
+        "used_items": 3
+      },
+      "contract": "jarvis.owner-context-package.v1",
+      "contradictions": [],
+      "excluded_count": 19,
+      "generated_at": "2026-09-03T12:00:00Z",
+      "items": [
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "objective:jarvis-v13",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "ACTIVE_OBJECTIVE",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 95.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "5316e6183550c487fb3734c321d2417d0f5c9d0d2379d5809dd8b23e689028a8",
+            "evidence_refs": [
+              "proof:fixture/objective:jarvis-v13"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/objective:jarvis-v13",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.628711Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "recent_context_rank:0",
+              "lexical:context,owner",
+              "current"
+            ],
+            "score": 3.1929
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "5577b564-5bea-45a9-8ce3-d648cb186fa3",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Build durable owner context without a second Executive",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.628711Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "unresolved:provider",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "UNRESOLVED_ITEM",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "c2ec98cc55104331df6aa7dbdb82983bcf73f3a2e6d16bcdd47c41875d67f532",
+            "evidence_refs": [
+              "proof:fixture/unresolved:provider"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:provider",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.763271Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:500,http,provider",
+              "current"
+            ],
+            "score": 1.97
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "43a8ca30-38db-44b2-be95-2db358000e6a",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "The configured provider returns HTTP 500",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.763271Z"
+        },
+        {
+          "attributes": {
+            "fact_key": "project:jarvis:priority",
+            "value": "OWNER_CONTEXT"
+          },
+          "confidence": 1.0,
+          "context_id": "priority:new",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": "2026-09-10T00:00:00Z",
+          "freshness": "FRESH",
+          "kind": "PRIORITY",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 100.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "01d403c6a8dbf4e5c1b115bd931e37d7231caa69753eaead79a25a571a854b7f",
+            "evidence_refs": [
+              "proof:fixture/priority:new"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/priority:new",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:04.009107Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:context,durability,jarvis,owner,project",
+              "current"
+            ],
+            "score": 1.85
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "d62d4f23-da4d-4b7e-b618-bb9cd96a2314",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Owner-context durability is the immediate priority",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.009107Z"
+        }
+      ],
+      "owner_context_contract": "jarvis.owner-context.v1",
+      "query": {
+        "current_situation": "The JARVIS project is blocked by provider HTTP 500",
+        "entity_refs": [],
+        "event_type": null,
+        "input_hash": "7dbc6763a95cdc6043b2646ca6a6d010b7444e7c72615c9201db622aed4e0dbc",
+        "now": "2026-09-03T12:00:00Z",
+        "objective_id": null,
+        "program_id": null,
+        "project_id": "jarvis",
+        "recent_context_ids": [
+          "objective:jarvis-v13"
+        ],
+        "referenced_entity": null,
+        "requested_task": "Continue owner-context durability work",
+        "severity": null,
+        "situation_state": "BLOCKED",
+        "truncated": false
+      },
+      "sections": {
+        "active_objectives": [
+          "objective:jarvis-v13"
+        ],
+        "commitments": [],
+        "constraints": [],
+        "decisions": [],
+        "goals": [],
+        "historical_outcomes": [],
+        "permissions": [],
+        "preferences": [],
+        "priorities": [
+          "priority:new"
+        ],
+        "programs": [],
+        "projects": [],
+        "rejected_approaches": [],
+        "standing_orders": [],
+        "unresolved_items": [
+          "unresolved:provider"
+        ],
+        "vetoes": [],
+        "waiting_on_owner": []
+      },
+      "status": "READY",
+      "warnings": [
+        "contradiction_group_excluded_by_bounds:owner-context-conflict:9eaaef5a867761e0"
+      ]
+    },
+    "compiled_context": {
+      "authority": {
+        "context": "ADVISORY_ONLY",
+        "execution": "NONE",
+        "owner_controls": "AUTHORITATIVE_AND_HIGHER_PRECEDENCE"
+      },
+      "bounds": {
+        "max_chars": 30000,
+        "max_items": 20,
+        "per_kind_limit": 6,
+        "truncated": false,
+        "used_chars": 26706,
+        "used_items": 18
+      },
+      "contract": "jarvis.owner-context-package.v1",
+      "contradictions": [
+        {
+          "context_ids": [
+            "preference:detailed",
+            "preference:quiet"
+          ],
+          "contradiction_id": "owner-context-conflict:9eaaef5a867761e0",
+          "fact_keys": [
+            "briefing_detail"
+          ],
+          "status": "CONFLICTING",
+          "values": [
+            {
+              "context_id": "preference:detailed",
+              "effective_at": "2026-09-03T08:00:00Z",
+              "freshness": "UNBOUNDED",
+              "provenance": {
+                "authority": "REPOSITORY_AUTHORITY",
+                "captured_at": "2026-09-03T08:00:00Z",
+                "content_hash": "ece3f6e58f83ffcbc37c1d8fad266751355ffbda32ffab8312e754fe09546164",
+                "evidence_refs": [
+                  "proof:fixture/preference:detailed"
+                ],
+                "owner_directive_id": null,
+                "source_id": "v13-owner-context-proof",
+                "source_ref": "fixture/preference:detailed",
+                "source_type": "repository"
+              },
+              "value": "DETAILED"
+            },
+            {
+              "context_id": "preference:quiet",
+              "effective_at": "2026-09-03T08:00:00Z",
+              "freshness": "UNBOUNDED",
+              "provenance": {
+                "authority": "REPOSITORY_AUTHORITY",
+                "captured_at": "2026-09-03T08:00:00Z",
+                "content_hash": "77854efa5fdb20c53d45e625fc2254e934637199aab240d1170ebf024a59dcba",
+                "evidence_refs": [
+                  "proof:fixture/preference:quiet"
+                ],
+                "owner_directive_id": null,
+                "source_id": "v13-owner-context-proof",
+                "source_ref": "fixture/preference:quiet",
+                "source_type": "repository"
+              },
+              "value": "QUIET"
+            }
+          ]
+        }
+      ],
+      "excluded_count": 4,
+      "generated_at": "2026-09-03T12:00:00Z",
+      "items": [
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "objective:jarvis-v13",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "ACTIVE_OBJECTIVE",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 95.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "5316e6183550c487fb3734c321d2417d0f5c9d0d2379d5809dd8b23e689028a8",
+            "evidence_refs": [
+              "proof:fixture/objective:jarvis-v13"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/objective:jarvis-v13",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.628711Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "recent_context_rank:0",
+              "lexical:context,owner",
+              "current"
+            ],
+            "score": 3.1929
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "5577b564-5bea-45a9-8ce3-d648cb186fa3",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Build durable owner context without a second Executive",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.628711Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "unresolved:provider",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "UNRESOLVED_ITEM",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "c2ec98cc55104331df6aa7dbdb82983bcf73f3a2e6d16bcdd47c41875d67f532",
+            "evidence_refs": [
+              "proof:fixture/unresolved:provider"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:provider",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.763271Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:500,http,provider",
+              "current"
+            ],
+            "score": 1.97
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "43a8ca30-38db-44b2-be95-2db358000e6a",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "The configured provider returns HTTP 500",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.763271Z"
+        },
+        {
+          "attributes": {
+            "fact_key": "project:jarvis:priority",
+            "value": "OWNER_CONTEXT"
+          },
+          "confidence": 1.0,
+          "context_id": "priority:new",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": "2026-09-10T00:00:00Z",
+          "freshness": "FRESH",
+          "kind": "PRIORITY",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 100.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "01d403c6a8dbf4e5c1b115bd931e37d7231caa69753eaead79a25a571a854b7f",
+            "evidence_refs": [
+              "proof:fixture/priority:new"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/priority:new",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:04.009107Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:context,durability,jarvis,owner,project",
+              "current"
+            ],
+            "score": 1.85
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "d62d4f23-da4d-4b7e-b618-bb9cd96a2314",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Owner-context durability is the immediate priority",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.009107Z"
+        },
+        {
+          "attributes": {
+            "command_type": "STANDING_ORDER",
+            "contract": "jarvis.standing-order.v1",
+            "evaluation": "ADVISORY_ONLY",
+            "fact_key": "standing_order:standing-investigate",
+            "intended_behavior": {
+              "description": "investigate the project blocker",
+              "kind": "INVESTIGATE",
+              "owner_interruption": "NOT_REQUIRED"
+            },
+            "owner_directive_metadata": {
+              "standing_order": {
+                "contract": "jarvis.standing-order.v1",
+                "evaluation": "ADVISORY_ONLY",
+                "intended_behavior": {
+                  "description": "investigate the project blocker",
+                  "kind": "INVESTIGATE",
+                  "owner_interruption": "NOT_REQUIRED"
+                },
+                "owner_text": "If a project becomes blocked, investigate it.",
+                "parser": {
+                  "confidence": 1.0,
+                  "status": "STRUCTURED",
+                  "unknown_fields": [],
+                  "version": "1.0"
+                },
+                "priority": 80,
+                "scope": {
+                  "entity_refs": [],
+                  "global": false,
+                  "objective_ids": [],
+                  "program_ids": [],
+                  "project_ids": [
+                    "jarvis"
+                  ],
+                  "tags": []
+                },
+                "state": "ACTIVE",
+                "trigger": {
+                  "condition_text": "a project becomes blocked",
+                  "keywords_all": [
+                    "project",
+                    "blocked"
+                  ],
+                  "kind": "PROJECT_STATE",
+                  "states": [
+                    "BLOCKED"
+                  ]
+                }
+              }
+            },
+            "owner_text": "If a project becomes blocked, investigate it.",
+            "parser": {
+              "confidence": 1.0,
+              "status": "STRUCTURED",
+              "unknown_fields": [],
+              "version": "1.0"
+            },
+            "priority": 80,
+            "scope": {
+              "entity_refs": [],
+              "global": false,
+              "objective_ids": [],
+              "program_ids": [],
+              "project_ids": [
+                "jarvis"
+              ],
+              "tags": []
+            },
+            "state": "ACTIVE",
+            "target": "jarvis",
+            "trigger": {
+              "condition_text": "a project becomes blocked",
+              "keywords_all": [
+                "project",
+                "blocked"
+              ],
+              "kind": "PROJECT_STATE",
+              "states": [
+                "BLOCKED"
+              ]
+            }
+          },
+          "confidence": 1.0,
+          "context_id": "directive:standing-investigate",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-05T15:47:04.217152Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "STANDING_ORDER",
+          "observed_at": "2026-09-05T15:47:04.217152Z",
+          "priority": 80.0,
+          "provenance": {
+            "authority": "AUTHENTICATED_OWNER",
+            "captured_at": "2026-09-05T15:47:04.217152Z",
+            "content_hash": "0a3b3ca30e00ea61a27ea5f2b868b450a5d5b12ef34f3919431a8563e9815e66",
+            "evidence_refs": [
+              "event:37a2f243-e136-4b1d-90fc-86eabb21d3c4",
+              "nonce:standing-investigate"
+            ],
+            "owner_directive_id": "standing-investigate",
+            "source_id": "local-owner",
+            "source_ref": "owner-directive:standing-investigate",
+            "source_type": "owner"
+          },
+          "recorded_at": "2026-09-05T15:47:04.217155Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:blocked,jarvis,owner,project",
+              "current"
+            ],
+            "score": 1.73
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "37a2f243-e136-4b1d-90fc-86eabb21d3c4",
+          "source_event_type": "owner_directive.recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "If a project becomes blocked, investigate it.",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.217155Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "project:jarvis",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "PROJECT",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "c0a30878cc3baf396db8b18158fcca827b2a8ed42b8bb475469716360af4c15c",
+            "evidence_refs": [
+              "proof:fixture/project:jarvis"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/project:jarvis",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.561899Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:jarvis,project",
+              "current"
+            ],
+            "score": 1.65
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "0c2aab37-b09c-45ff-8c21-421ee6d2f272",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "JARVIS Foundry is the active personal executive project",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.561899Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "waiting:provider",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "WAITING_ON_OWNER",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "b242c8413ab210a98c23dc2cf049aaa1056902a82bf735c6afb9f3c340d6fb91",
+            "evidence_refs": [
+              "proof:fixture/waiting:provider"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/waiting:provider",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.729914Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:owner,provider",
+              "current"
+            ],
+            "score": 1.65
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "d67fb322-36cb-4930-9377-692dfe186f72",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Waiting on owner to choose the final provider account",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.729914Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "decision:isolate-v13",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "DECISION",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "b182c17aa5d925306bfa11e2a6a88b50505bedefb2466e987a8f0dcf826c64ca",
+            "evidence_refs": [
+              "proof:fixture/decision:isolate-v13"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/decision:isolate-v13",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.867760Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:context,owner",
+              "current"
+            ],
+            "score": 1.55
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "f2c9ebf3-53a4-4d36-8bc6-dad4afa65333",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Build V13 owner context only in an isolated source worktree",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.867760Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "outcome:v11",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": false,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "HISTORICAL_OUTCOME",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "4b07a2e98655972d5e60bd53491128924f59f4245b57c0094e10a6a2d0072774",
+            "evidence_refs": [
+              "proof:fixture/outcome:v11"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/outcome:v11",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.829520Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:blocked,provider",
+              "historical_context"
+            ],
+            "score": 1.4929
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "088b19ec-bea7-42ef-86de-cefea1bea481",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "RESOLVED",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "V11 proof was provider-blocked and produced zero effects",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.829520Z"
+        },
+        {
+          "attributes": {
+            "due_at": "2026-09-04T09:00:00Z",
+            "fact_key": "commitment:v13-review",
+            "value": "review candidate"
+          },
+          "confidence": 1.0,
+          "context_id": "commitment:review",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "COMMITMENT",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "128a03c027f963cedc79cb5480bb7f848e5d2522ef6ace17228938bc7c8fdc86",
+            "evidence_refs": [
+              "proof:fixture/commitment:review"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/commitment:review",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.696773Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:context,owner",
+              "current"
+            ],
+            "score": 1.49
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "bb6ea21a-302e-4f89-9387-2d3585ebcbfa",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Review the owner-context candidate on September 4",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.696773Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "program:jarvis-1.0",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "PROGRAM",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "6f25ae22bbcc1ee8b105a1b827e788909baf537f1bdff185c9d506ec412a3070",
+            "evidence_refs": [
+              "proof:fixture/program:jarvis-1.0"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/program:jarvis-1.0",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.526136Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "lexical:jarvis",
+              "current"
+            ],
+            "score": 1.45
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "23d978c4-6a58-4343-8c05-109e22b1bef3",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "JARVIS 1.0 personal operator program",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.526136Z"
+        },
+        {
+          "attributes": {
+            "fact_key": "constraint:live-mutation",
+            "value": "DENY"
+          },
+          "confidence": 1.0,
+          "context_id": "constraint:no-live-mutation",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "CONSTRAINT",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "d4b677c1d9fe604894f88d90f8deb224f4b8570554367fc573006412a1ca2028",
+            "evidence_refs": [
+              "proof:fixture/constraint:no-live-mutation"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/constraint:no-live-mutation",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.905021Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "current"
+            ],
+            "score": 1.25
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "e6dcda52-edcf-458d-85bd-fd973f53e157",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Do not merge, push, deploy, or mutate the live runtime",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.905021Z"
+        },
+        {
+          "attributes": {
+            "fact_key": "permission:isolated-source",
+            "value": "ALLOW"
+          },
+          "confidence": 1.0,
+          "context_id": "permission:isolated-source",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "PERMISSION",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "d9ccfbd3e7f858ef0a320bca7d0d2fd072099bdfaac96a56b7a9ec55bbcc0895",
+            "evidence_refs": [
+              "proof:fixture/permission:isolated-source"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/permission:isolated-source",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.938152Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "current"
+            ],
+            "score": 1.25
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "55a36f8d-ab3a-4c8e-b459-cbcea8bd84f0",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Source-only changes are permitted in the isolated V13 worktree",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.938152Z"
+        },
+        {
+          "attributes": {
+            "preference_key": "briefing_detail",
+            "preference_value": "DETAILED"
+          },
+          "confidence": 1.0,
+          "context_id": "preference:detailed",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [
+            "preference:quiet"
+          ],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "PREFERENCE",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "ece3f6e58f83ffcbc37c1d8fad266751355ffbda32ffab8312e754fe09546164",
+            "evidence_refs": [
+              "proof:fixture/preference:detailed"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/preference:detailed",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:04.089018Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "current"
+            ],
+            "score": 1.25
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "8d8c58eb-1cb8-4600-b3cc-781524429747",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Prefer detailed progress reports during critical recovery",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.089018Z"
+        },
+        {
+          "attributes": {
+            "preference_key": "briefing_detail",
+            "preference_value": "QUIET"
+          },
+          "confidence": 1.0,
+          "context_id": "preference:quiet",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [
+            "preference:detailed"
+          ],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "PREFERENCE",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "77854efa5fdb20c53d45e625fc2254e934637199aab240d1170ebf024a59dcba",
+            "evidence_refs": [
+              "proof:fixture/preference:quiet"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/preference:quiet",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:04.049608Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "current"
+            ],
+            "score": 1.25
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "ffb00084-90f6-4f28-b862-3584e96145e5",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Prefer quiet recovery without routine interruption",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.049608Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "rejected:memory-platform",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": false,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "REJECTED_APPROACH",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "9ceb2148a32ea8e6d24f41dada7ebd7c365a1db10c36c777734795d1f2a7922e",
+            "evidence_refs": [
+              "proof:fixture/rejected:memory-platform"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/rejected:memory-platform",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.796826Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "project:jarvis",
+              "historical_context"
+            ],
+            "score": 1.15
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "4ca05b8b-856b-4a47-a74b-bdc84ec48db7",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "RESOLVED",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Do not build a second memory platform",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.796826Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "goal:personal-operator",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-03T08:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "GOAL",
+          "observed_at": "2026-09-03T08:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "1b085d30db4776dc40aeaa1990033f1ce11dc402dea3eaf3478a92d6a73e0996",
+            "evidence_refs": [
+              "proof:fixture/goal:personal-operator"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/goal:personal-operator",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:03.496867Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "global_scope",
+              "lexical:jarvis,owner",
+              "global_governance_context",
+              "current"
+            ],
+            "score": 0.9429
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": true,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "525172f1-2eaf-46f4-bd23-8c33fec73fd5",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "JARVIS should understand the owner across projects and time",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:03.496867Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "unresolved:yesterday-a",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-02T10:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "UNRESOLVED_ITEM",
+          "observed_at": "2026-09-02T10:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-02T10:00:00Z",
+            "content_hash": "665376b922f08913953f03f3831dd919379478489803792ec5422dd5036c92d3",
+            "evidence_refs": [
+              "proof:fixture/unresolved:yesterday-a"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:yesterday-a",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:04.125987Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "global_scope",
+              "lexical:provider",
+              "current"
+            ],
+            "score": 0.8
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": true,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "7891d83b-fb05-4c90-bf3b-13b203c3dbda",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Provider recovery item A",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.125987Z"
+        },
+        {
+          "attributes": {},
+          "confidence": 1.0,
+          "context_id": "unresolved:yesterday-b",
+          "contract": "jarvis.owner-context.v1",
+          "contradicts": [],
+          "current": true,
+          "effective_at": "2026-09-02T10:00:00Z",
+          "fresh_until": null,
+          "freshness": "UNBOUNDED",
+          "kind": "UNRESOLVED_ITEM",
+          "observed_at": "2026-09-02T10:00:00Z",
+          "priority": 0.0,
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-02T10:00:00Z",
+            "content_hash": "658d135ee9f8da66876874f018ae1b0142985401fa3babc17aedd0d0987edd0c",
+            "evidence_refs": [
+              "proof:fixture/unresolved:yesterday-b"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:yesterday-b",
+            "source_type": "repository"
+          },
+          "recorded_at": "2026-09-05T15:47:04.164533Z",
+          "related_context_ids": [],
+          "relevance": {
+            "evidence": [
+              "global_scope",
+              "lexical:provider",
+              "current"
+            ],
+            "score": 0.7
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": true,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [],
+            "tags": []
+          },
+          "shadowed_by": null,
+          "source_event_id": "8739f451-005a-424a-851d-3395a36b6d29",
+          "source_event_type": "owner_context.item_recorded",
+          "state": "ACTIVE",
+          "superseded_by": null,
+          "supersedes": null,
+          "text": "Provider recovery item B",
+          "unknown_fields": [],
+          "updated_at": "2026-09-05T15:47:04.164533Z"
+        }
+      ],
+      "owner_context_contract": "jarvis.owner-context.v1",
+      "query": {
+        "current_situation": "The JARVIS project is blocked by provider HTTP 500",
+        "entity_refs": [],
+        "event_type": null,
+        "input_hash": "7dbc6763a95cdc6043b2646ca6a6d010b7444e7c72615c9201db622aed4e0dbc",
+        "now": "2026-09-03T12:00:00Z",
+        "objective_id": null,
+        "program_id": null,
+        "project_id": "jarvis",
+        "recent_context_ids": [
+          "objective:jarvis-v13"
+        ],
+        "referenced_entity": null,
+        "requested_task": "Continue owner-context durability work",
+        "severity": null,
+        "situation_state": "BLOCKED",
+        "truncated": false
+      },
+      "sections": {
+        "active_objectives": [
+          "objective:jarvis-v13"
+        ],
+        "commitments": [
+          "commitment:review"
+        ],
+        "constraints": [
+          "constraint:no-live-mutation"
+        ],
+        "decisions": [
+          "decision:isolate-v13"
+        ],
+        "goals": [
+          "goal:personal-operator"
+        ],
+        "historical_outcomes": [
+          "outcome:v11"
+        ],
+        "permissions": [
+          "permission:isolated-source"
+        ],
+        "preferences": [
+          "preference:detailed",
+          "preference:quiet"
+        ],
+        "priorities": [
+          "priority:new"
+        ],
+        "programs": [
+          "program:jarvis-1.0"
+        ],
+        "projects": [
+          "project:jarvis"
+        ],
+        "rejected_approaches": [
+          "rejected:memory-platform"
+        ],
+        "standing_orders": [
+          "directive:standing-investigate"
+        ],
+        "unresolved_items": [
+          "unresolved:provider",
+          "unresolved:yesterday-a",
+          "unresolved:yesterday-b"
+        ],
+        "vetoes": [],
+        "waiting_on_owner": [
+          "waiting:provider"
+        ]
+      },
+      "status": "CONFLICTING",
+      "warnings": []
+    },
+    "reconstructed_context_kinds": [
+      "ACTIVE_OBJECTIVE",
+      "COMMITMENT",
+      "CONSTRAINT",
+      "DECISION",
+      "GOAL",
+      "HISTORICAL_OUTCOME",
+      "PERMISSION",
+      "PREFERENCE",
+      "PRIORITY",
+      "PROGRAM",
+      "PROJECT",
+      "REJECTED_APPROACH",
+      "STANDING_ORDER",
+      "UNRESOLVED_ITEM",
+      "VETO",
+      "WAITING_ON_OWNER"
+    ],
+    "standing_order_match": {
+      "authority_precedence": [
+        "STOP",
+        "VETO",
+        "AUTHENTICATED_OWNER_CONTROL",
+        "STANDING_ORDER_ADVISORY"
+      ],
+      "contract": "jarvis.standing-order-evaluation.v1",
+      "execution": {
+        "allowed": false,
+        "performed": false
+      },
+      "matched": [
+        {
+          "directive_id": "standing-investigate",
+          "intended_behavior": {
+            "description": "investigate the project blocker",
+            "kind": "INVESTIGATE",
+            "owner_interruption": "NOT_REQUIRED"
+          },
+          "owner_text": "If a project becomes blocked, investigate it.",
+          "priority": 80.0,
+          "provenance": {
+            "authority": "AUTHENTICATED_OWNER",
+            "captured_at": "2026-09-05T15:47:04.217152Z",
+            "content_hash": "0a3b3ca30e00ea61a27ea5f2b868b450a5d5b12ef34f3919431a8563e9815e66",
+            "evidence_refs": [
+              "event:37a2f243-e136-4b1d-90fc-86eabb21d3c4",
+              "nonce:standing-investigate"
+            ],
+            "owner_directive_id": "standing-investigate",
+            "source_id": "local-owner",
+            "source_ref": "owner-directive:standing-investigate",
+            "source_type": "owner"
+          },
+          "scope_evidence": [
+            "project:jarvis"
+          ],
+          "standing_order_id": "directive:standing-investigate",
+          "trigger_evidence": [
+            "state:BLOCKED",
+            "keywords_all:blocked,project"
+          ]
+        }
+      ],
+      "owner_control_ids": [],
+      "owner_control_reason": null,
+      "query": {
+        "current_situation": "The JARVIS project is blocked by provider HTTP 500",
+        "entity_refs": [],
+        "event_type": null,
+        "now": "2026-09-03T12:00:00Z",
+        "objective_id": null,
+        "program_id": null,
+        "project_id": "jarvis",
+        "recent_context_ids": [
+          "objective:jarvis-v13"
+        ],
+        "referenced_entity": null,
+        "requested_task": "Continue owner-context durability work",
+        "severity": null,
+        "situation_state": "BLOCKED"
+      },
+      "status": "MATCHED",
+      "unknown": []
+    },
+    "standing_order_stopped": {
+      "authority_precedence": [
+        "STOP",
+        "VETO",
+        "AUTHENTICATED_OWNER_CONTROL",
+        "STANDING_ORDER_ADVISORY"
+      ],
+      "contract": "jarvis.standing-order-evaluation.v1",
+      "execution": {
+        "allowed": false,
+        "performed": false
+      },
+      "matched": [],
+      "owner_control_ids": [],
+      "owner_control_reason": "emergency stop marker is present",
+      "query": {
+        "current_situation": "The JARVIS project is blocked by provider HTTP 500",
+        "entity_refs": [],
+        "event_type": null,
+        "now": "2026-09-03T12:00:00Z",
+        "objective_id": null,
+        "program_id": null,
+        "project_id": "jarvis",
+        "recent_context_ids": [
+          "objective:jarvis-v13"
+        ],
+        "referenced_entity": null,
+        "requested_task": "Continue owner-context durability work",
+        "severity": null,
+        "situation_state": "BLOCKED"
+      },
+      "status": "BLOCKED_BY_OWNER_CONTROL",
+      "unknown": []
+    },
+    "standing_order_vetoed": {
+      "authority_precedence": [
+        "STOP",
+        "VETO",
+        "AUTHENTICATED_OWNER_CONTROL",
+        "STANDING_ORDER_ADVISORY"
+      ],
+      "contract": "jarvis.standing-order-evaluation.v1",
+      "execution": {
+        "allowed": false,
+        "performed": false
+      },
+      "matched": [],
+      "owner_control_ids": [
+        "veto-investigation"
+      ],
+      "owner_control_reason": "active VETO_ACTION directive veto-investigation matches",
+      "query": {
+        "current_situation": "The JARVIS project is blocked by provider HTTP 500",
+        "entity_refs": [],
+        "event_type": null,
+        "now": "2026-09-03T12:00:00Z",
+        "objective_id": null,
+        "program_id": null,
+        "project_id": "jarvis",
+        "recent_context_ids": [
+          "objective:jarvis-v13"
+        ],
+        "referenced_entity": null,
+        "requested_task": "Continue owner-context durability work",
+        "severity": null,
+        "situation_state": "BLOCKED"
+      },
+      "status": "BLOCKED_BY_OWNER_CONTROL",
+      "unknown": []
+    },
+    "strong_reference": {
+      "action_taken": false,
+      "candidates": [
+        {
+          "confidence": 1.0,
+          "context_id": "objective:jarvis-v13",
+          "effective_at": "2026-09-03T08:00:00Z",
+          "evidence": [
+            "recent_context_rank:0",
+            "project_scope:jarvis",
+            "kind_cue:continuation",
+            "recency:24h",
+            "current"
+          ],
+          "kind": "ACTIVE_OBJECTIVE",
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "5316e6183550c487fb3734c321d2417d0f5c9d0d2379d5809dd8b23e689028a8",
+            "evidence_refs": [
+              "proof:fixture/objective:jarvis-v13"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/objective:jarvis-v13",
+            "source_type": "repository"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "Build durable owner context without a second Executive"
+        },
+        {
+          "confidence": 0.9,
+          "context_id": "commitment:review",
+          "effective_at": "2026-09-03T08:00:00Z",
+          "evidence": [
+            "project_scope:jarvis",
+            "kind_cue:continuation",
+            "recency:24h",
+            "current"
+          ],
+          "kind": "COMMITMENT",
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "128a03c027f963cedc79cb5480bb7f848e5d2522ef6ace17228938bc7c8fdc86",
+            "evidence_refs": [
+              "proof:fixture/commitment:review"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/commitment:review",
+            "source_type": "repository"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "Review the owner-context candidate on September 4"
+        },
+        {
+          "confidence": 0.9,
+          "context_id": "unresolved:provider",
+          "effective_at": "2026-09-03T08:00:00Z",
+          "evidence": [
+            "project_scope:jarvis",
+            "kind_cue:continuation",
+            "recency:24h",
+            "current"
+          ],
+          "kind": "UNRESOLVED_ITEM",
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "c2ec98cc55104331df6aa7dbdb82983bcf73f3a2e6d16bcdd47c41875d67f532",
+            "evidence_refs": [
+              "proof:fixture/unresolved:provider"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/unresolved:provider",
+            "source_type": "repository"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "The configured provider returns HTTP 500"
+        },
+        {
+          "confidence": 0.9,
+          "context_id": "waiting:provider",
+          "effective_at": "2026-09-03T08:00:00Z",
+          "evidence": [
+            "project_scope:jarvis",
+            "kind_cue:continuation",
+            "recency:24h",
+            "current"
+          ],
+          "kind": "WAITING_ON_OWNER",
+          "provenance": {
+            "authority": "REPOSITORY_AUTHORITY",
+            "captured_at": "2026-09-03T08:00:00Z",
+            "content_hash": "b242c8413ab210a98c23dc2cf049aaa1056902a82bf735c6afb9f3c340d6fb91",
+            "evidence_refs": [
+              "proof:fixture/waiting:provider"
+            ],
+            "owner_directive_id": null,
+            "source_id": "v13-owner-context-proof",
+            "source_ref": "fixture/waiting:provider",
+            "source_type": "repository"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "Waiting on owner to choose the final provider account"
+        },
+        {
+          "confidence": 0.65,
+          "context_id": "directive:standing-investigate",
+          "effective_at": "2026-09-05T15:47:04.217152Z",
+          "evidence": [
+            "project_scope:jarvis",
+            "recency:24h",
+            "current"
+          ],
+          "kind": "STANDING_ORDER",
+          "provenance": {
+            "authority": "AUTHENTICATED_OWNER",
+            "captured_at": "2026-09-05T15:47:04.217152Z",
+            "content_hash": "0a3b3ca30e00ea61a27ea5f2b868b450a5d5b12ef34f3919431a8563e9815e66",
+            "evidence_refs": [
+              "event:37a2f243-e136-4b1d-90fc-86eabb21d3c4",
+              "nonce:standing-investigate"
+            ],
+            "owner_directive_id": "standing-investigate",
+            "source_id": "local-owner",
+            "source_ref": "owner-directive:standing-investigate",
+            "source_type": "owner"
+          },
+          "scope": {
+            "entity_refs": [],
+            "global": false,
+            "objective_ids": [],
+            "program_ids": [],
+            "project_ids": [
+              "jarvis"
+            ],
+            "tags": []
+          },
+          "state": "ACTIVE",
+          "text": "If a project becomes blocked, investigate it."
+        }
+      ],
+      "confidence": 1.0,
+      "contract": "jarvis.owner-reference-resolution.v1",
+      "decision_authority": "FUTURE_DELEGATION_ENGINE",
+      "evidence": {
+        "ambiguity_margin": 0.12,
+        "current_project": "jarvis",
+        "minimum_confidence": 0.45,
+        "now": "2026-09-03T12:00:00Z",
+        "recent_context_ids": [
+          "objective:jarvis-v13"
+        ],
+        "yesterday_filter": false
+      },
+      "selected_context_id": "objective:jarvis-v13",
+      "status": "RESOLVED",
+      "utterance": "continue this"
+    }
+  },
+  "checks": {
+    "01_fresh_process_reconstructs_owner_project_context": true,
+    "02_irrelevant_history_excluded": true,
+    "03_revoked_standing_order_not_active": true,
+    "04_stop_veto_outranks_standing_order": true,
+    "05_contradictory_preferences_visible": true,
+    "06_stale_context_does_not_override_newer_truth": true,
+    "07_continue_this_resolves_with_strong_evidence": true,
+    "08_ambiguous_reference_reports_ambiguity": true,
+    "09_context_remains_bounded": true,
+    "10_restart_reconstructs_identical_durable_truth": true
+  },
+  "contract": "jarvis.v13.owner-context-proof.v1",
+  "counts": {
+    "compiled_items": 18,
+    "context_current": 19,
+    "context_history": 23,
+    "ledger_events": 28,
+    "standing_orders_active": 1
+  },
+  "database": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\owner-context\\run-592baf7873\\foundry.db",
+  "generated_at": "2026-09-03T12:00:00Z",
+  "passed": true,
+  "schema": 40,
+  "source": {
+    "base_sha": "afddb8d5ca3d5c3459a4f5394e84affb92d13738",
+    "branch": "candidate/v13-final-personal-executive-convergence-20260905",
+    "commits_ahead": 88,
+    "dirty": false,
+    "dirty_paths": [],
+    "head_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "merge_base": "afddb8d5ca3d5c3459a4f5394e84affb92d13738",
+    "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "worktree": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905"
+  },
+  "source_attestations": {
+    "base_is_exact_merge_base": true,
+    "branch_matches_candidate": true,
+    "source_is_reachable_from_head": true,
+    "worktree_is_clean": true
+  }
+}
