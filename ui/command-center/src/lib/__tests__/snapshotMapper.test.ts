@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapMemoryGraph, mapMissionRun, mapMissionStatus, mapMissions, mapSystemOverview, mapSystems, mapTrustSummary, mapWorkers } from "../snapshotMapper";
+import { mapMemoryGraph, mapMissionRun, mapMissionStatus, mapMissions, mapSystemOverview, mapSystems, mapTimeline, mapTrustSummary, mapWorkers } from "../snapshotMapper";
 import type { FoundrySnapshot } from "../snapshotTypes";
 import { MEASURED_COST_LABEL, NOT_REPORTED_NUMERIC } from "../truthFormat";
 import { allSnapshotTruthCases } from "./snapshotTruthCases";
@@ -93,6 +93,25 @@ describe("snapshotMapper", () => {
     expect(missions[0].completion).toBe(NOT_REPORTED_NUMERIC);
   });
 
+  it("places canonical ledger events in rendered time buckets", () => {
+    const snapshot = baseSnapshot();
+    snapshot.timeline = [
+      {
+        sequence: 1,
+        event_id: "event-now",
+        event_type: "command_center.fixture_marker",
+        occurred_at: "2026-08-20T11:59:00Z",
+      },
+      {
+        sequence: 2,
+        event_id: "event-earlier",
+        event_type: "provider.recovered",
+        occurred_at: "2026-08-20T09:00:00Z",
+      },
+    ];
+    expect(mapTimeline(snapshot).map((event) => event.group)).toEqual(["NOW", "T-1 HOUR"]);
+  });
+
   it("keeps unsupported live fields UNKNOWN and exposes the canonical lifecycle", () => {
     const snapshot = baseSnapshot();
     snapshot.missions[0].state = "UNRECOGNIZED_STATE";
@@ -112,6 +131,38 @@ describe("snapshotMapper", () => {
       "owner_goal", "plan", "mission", "worker", "action_artifact",
       "evidence", "verifier", "repair_retry", "memory", "owner_briefing",
     ]);
+  });
+
+  it("uses structured lifecycle stages instead of matching event names", () => {
+    const snapshot = baseSnapshot();
+    const missionRef = {
+      kind: "mission",
+      id: "m-1",
+      event_id: "event-structured",
+    };
+    snapshot.timeline = [
+      {
+        sequence: 1,
+        event_id: "event-name-only",
+        event_type: "verification.failed",
+        occurred_at: snapshot.generated_at,
+        evidence_refs: [missionRef],
+      },
+      {
+        sequence: 2,
+        event_id: "event-structured",
+        event_type: "renamed.lifecycle.signal",
+        occurred_at: snapshot.generated_at,
+        lifecycle_contract: "jarvis.command-center-mission-lifecycle.v1",
+        lifecycle_stages: ["VERIFIER"],
+        evidence_refs: [missionRef],
+      },
+    ];
+
+    const verifier = mapMissionRun(snapshot, "m-1").lifecycle?.find(
+      (stage) => stage.key === "verifier",
+    );
+    expect(verifier?.eventIds).toEqual(["event-structured"]);
   });
 
   it("maps authoritative zero cost and computed verification coverage", () => {

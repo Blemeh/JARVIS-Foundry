@@ -192,6 +192,20 @@ def test_command_center_exposes_direct_durable_record_routes(db: FoundryDatabase
         source_type="supervisor", source_id="test", idempotency_key="mission.created:m-direct",
     )
     db.append(created)
+    db.append(Event.create(
+        "connector.attempt_recorded",
+        {
+            "attempt_id": "attempt-direct",
+            "mission_id": "m-direct",
+            "connector_id": "connector-direct",
+            "action_kind": "file.write",
+            "outcome": "COMPLETED",
+            "provider_ref": "provider-receipt-direct",
+            "evidence_refs": ["evidence-direct"],
+        },
+        source_type="supervisor", source_id="test",
+        idempotency_key="connector.attempt_recorded:attempt-direct",
+    ))
     server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
     server.start()
     try:
@@ -204,6 +218,11 @@ def test_command_center_exposes_direct_durable_record_routes(db: FoundryDatabase
             event = json.loads(response.read())
         assert event["status"] == "FOUND"
         assert event["record"]["event_id"] == created.event_id
+        with urlopen(f"{base}/api/record/provider_attempt/attempt-direct", timeout=3) as response:
+            attempt = json.loads(response.read())
+        assert attempt["status"] == "FOUND"
+        assert attempt["record"]["mission_id"] == "m-direct"
+        assert attempt["record"]["provider_ref"] == "provider-receipt-direct"
         try:
             urlopen(f"{base}/api/record/mission/not-found", timeout=3)
         except HTTPError as error:

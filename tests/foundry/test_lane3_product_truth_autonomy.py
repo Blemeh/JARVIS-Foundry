@@ -25,5 +25,11 @@ def test_source_backed_loop_reaches_memory_and_owner_briefing() -> None:
         assert adversarial["failed_verifier"] == "PASS"
         assert adversarial["repair_retry"] == "PASS"
         assert all(value in {"PASS", "COVERED_BY_EXISTING_CANONICAL_TEST"} for value in adversarial.values())
+        assert proof["fixture_ids"]["campaign_id"]
+        assert proof["fixture_ids"]["active_mission_id"]
+        assert proof["fixture_ids"]["blocked_mission_id"]
+        assert proof["checks"]
+        assert all(proof["checks"].values()), proof["checks"]
+        assert proof["all_checks_pass"] is True
     finally:
         server.close()

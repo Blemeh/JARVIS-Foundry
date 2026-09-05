@@ -45,7 +45,69 @@ type MissionDetailData = {
   lineage: LineageNode[];
   steps: MissionStep[];
   related: RelatedEntities;
+  effectTruth: Record<string, unknown> | null;
 };
+
+type EffectReceipt = {
+  kind: "provider_attempt" | "effect_lineage" | "effect";
+  id: string;
+  status: string;
+  detail: string;
+  sourceEventId?: string;
+};
+
+function records(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === "object")
+    : [];
+}
+
+function missionEffectReceipts(
+  effectTruth: Record<string, unknown> | null,
+  missionId: string,
+): EffectReceipt[] {
+  if (!effectTruth) return [];
+  const attempts = records(effectTruth.attempts)
+    .filter((row) => row.mission_id === missionId)
+    .map((row): EffectReceipt => ({
+      kind: "provider_attempt",
+      id: String(row.attempt_id ?? row.source_event_id ?? "UNKNOWN"),
+      status: String(row.outcome ?? "UNKNOWN"),
+      detail: [
+        row.connector_id ? `connector ${row.connector_id}` : null,
+        row.provider_ref ? `provider receipt ${row.provider_ref}` : null,
+        row.action_kind ? `action ${row.action_kind}` : null,
+      ].filter(Boolean).join(" · ") || "Provider attempt detail unavailable",
+      sourceEventId: typeof row.source_event_id === "string" ? row.source_event_id : undefined,
+    }));
+  const lineage = records(effectTruth.lineage)
+    .filter((row) => row.mission_id === missionId)
+    .map((row): EffectReceipt => ({
+      kind: "effect_lineage",
+      id: String(row.lineage_id ?? row.source_event_id ?? "UNKNOWN"),
+      status: String(row.outcome ?? "UNKNOWN"),
+      detail: [
+        row.external_object_id ? `external object ${row.external_object_id}` : null,
+        row.effect_ticket_id ? `effect ticket ${row.effect_ticket_id}` : null,
+        row.ambiguity_reason ? `ambiguity ${row.ambiguity_reason}` : null,
+      ].filter(Boolean).join(" · ") || "Effect lineage detail unavailable",
+      sourceEventId: typeof row.source_event_id === "string" ? row.source_event_id : undefined,
+    }));
+  const actions = records(effectTruth.actions)
+    .filter((row) => String(row.target_ref ?? "").includes(missionId))
+    .map((row): EffectReceipt => ({
+      kind: "effect",
+      id: String(row.action_key ?? "UNKNOWN"),
+      status: String(row.status ?? "UNKNOWN"),
+      detail: [
+        row.system_id ? `system ${row.system_id}` : null,
+        row.kind ? `action ${row.kind}` : null,
+        row.target_ref ? `target ${row.target_ref}` : null,
+      ].filter(Boolean).join(" · ") || "External action detail unavailable",
+      sourceEventId: typeof row.last_event_id === "string" ? row.last_event_id : undefined,
+    }));
+  return [...attempts, ...lineage, ...actions];
+}
 
 export function MissionDetail() {
   const { missionId } = useParams();
@@ -55,13 +117,14 @@ export function MissionDetail() {
     async () => {
       const mission = await client.getMission(missionIdResolved);
       if (!mission) return null;
-      const [run, workers, evidence, lineage, steps, related] = await Promise.all([
+      const [run, workers, evidence, lineage, steps, related, ownerSurface] = await Promise.all([
         client.getMissionRun(mission.id),
         client.listWorkers(),
         client.listEvidence(),
         client.getLineage(mission.id),
         client.getMissionSteps(mission.id),
         client.getRelatedEntities("mission", mission.id),
+        client.getOwnerControlSurface?.() ?? Promise.resolve(null),
       ]);
       return {
         mission,
@@ -71,6 +134,7 @@ export function MissionDetail() {
         lineage,
         steps,
         related,
+        effectTruth: ownerSurface?.effectTruth ?? null,
       } satisfies MissionDetailData;
     },
     [client, version, missionIdResolved],
@@ -88,7 +152,7 @@ export function MissionDetail() {
       errorLabel="Mission detail unavailable"
       surface="Mission detail"
     >
-      {({ mission, run, workers, evidence, lineage, steps, related }) => {
+      {({ mission, run, workers, evidence, lineage, steps, related, effectTruth }) => {
   const stepByKey = Object.fromEntries(steps.map((s) => [s.key, s]));
   const lifecycle = run.lifecycle ?? [];
   const lifecycleKnown = lifecycle.filter((record) => record.state !== "UNKNOWN" && record.state !== "UNAVAILABLE");
@@ -112,6 +176,7 @@ export function MissionDetail() {
     { label: "Notifications", refs: related.notifications },
   ];
   const hasRelated = relatedGroups.some((group) => group.refs.length > 0);
+  const effectReceipts = missionEffectReceipts(effectTruth, mission.id);
 
   return (
     <div className="shell-content">
@@ -229,6 +294,33 @@ export function MissionDetail() {
               <span className="t-mono">{mission.id}</span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="panel panel-corner detail-panel detail-panel-full" aria-label="Effects and provider receipts">
+        <div className="panel-header">
+          <h2 className="t-label panel-title text-muted">
+            <Link2 size={13} className="panel-icon" />
+            Effects / Provider Receipts
+          </h2>
+          <span className="t-mono text-muted">{effectReceipts.length} source-backed records</span>
+        </div>
+        <div className="panel-body">
+          {effectReceipts.length ? (
+            <ul className="detail-event-list">
+              {effectReceipts.map((receipt) => (
+                <li key={`${receipt.kind}:${receipt.id}`}>
+                  <div>
+                    <Link className="t-mono detail-event-title" to={`/records/${receipt.kind}/${encodeURIComponent(receipt.id)}`}>{receipt.id}</Link>
+                    <span className="t-mono text-muted">{receipt.status} · {receipt.detail}</span>
+                  </div>
+                  {receipt.sourceEventId ? <EntityRefLink entity={{ kind: "timeline", id: receipt.sourceEventId, label: receipt.sourceEventId }} /> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="t-mono text-dim">No canonical external-effect attempt, receipt, or lineage record is linked to this mission.</span>
+          )}
         </div>
       </section>
 

@@ -27,6 +27,7 @@ const World = lazy(() => import("./routes/World").then((m) => ({ default: m.Worl
 const Capabilities = lazy(() => import("./routes/Capabilities").then((m) => ({ default: m.Capabilities })));
 const You = lazy(() => import("./routes/You").then((m) => ({ default: m.You })));
 const Settings = lazy(() => import("./routes/Settings").then((m) => ({ default: m.Settings })));
+const ForensicRecordDetail = lazy(() => import("./routes/ForensicRecordDetail").then((m) => ({ default: m.ForensicRecordDetail })));
 
 function RouteSuspense({ children }: { children: ReactNode }) {
   return (
@@ -72,6 +73,7 @@ export function App() {
           <Route path="/systems/:systemId" element={<RouteSuspense><SystemDetail /></RouteSuspense>} />
           <Route path="/notifications" element={<RouteSuspense><Notifications /></RouteSuspense>} />
           <Route path="/owner" element={<RouteSuspense><OwnerManagement /></RouteSuspense>} />
+          <Route path="/records/:recordKind/:recordId" element={<RouteSuspense><ForensicRecordDetail /></RouteSuspense>} />
           <Route
             path="*"
             element={

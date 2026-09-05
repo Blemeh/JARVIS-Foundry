@@ -46,6 +46,7 @@ async function waitFor(url, child, label, ready) {
 const root = resolve(process.cwd(), "..", "..")
 const sourceRoot = join(root, "src")
 const apiPort = Number(process.env.JARVIS_LANE3_API_PORT) || await allocatePort()
+const controlPort = Number(process.env.JARVIS_FIXTURE_CONTROL_PORT) || await allocatePort()
 const uiPort = Number(process.env.JARVIS_PLAYWRIGHT_PORT) || await allocatePort()
 const systemRoot = process.env.SystemRoot || process.env.WINDIR || "C:\\Windows"
 const pathValue = ["C:\\Program Files\\nodejs", "C:\\Program Files\\Git\\cmd", "C:\\Program Files\\Git\\bin", join(systemRoot, "System32"), join(systemRoot), process.env.PATH]
@@ -62,7 +63,16 @@ const apiScript = join(root, "scripts", "lane3_autonomy_fixture_server.py")
 const viteBin = join(process.cwd(), "node_modules", "vite", "bin", "vite.js")
 const cli = join(process.cwd(), "node_modules", "@playwright", "test", "cli.js")
 
-const api = spawn(python, [...pythonArgs, apiScript, "--port", String(apiPort), "--evidence-out", evidenceOut], {
+const api = spawn(python, [
+  ...pythonArgs,
+  apiScript,
+  "--port",
+  String(apiPort),
+  "--control-port",
+  String(controlPort),
+  "--evidence-out",
+  evidenceOut,
+], {
   cwd: root,
   stdio: ["ignore", "pipe", "pipe"],
   env: { ...process.env, PATH: pathValue, PYTHONPATH: sourceRoot },
@@ -72,6 +82,7 @@ api.stdout.on("data", (chunk) => process.stdout.write(`[lane3-api] ${chunk}`))
 api.stderr.on("data", (chunk) => process.stderr.write(`[lane3-api] ${chunk}`))
 
 const apiBase = `http://127.0.0.1:${apiPort}/api`
+const controlBase = `http://127.0.0.1:${controlPort}`
 const vite = spawn(process.execPath, [viteBin, "--host", "127.0.0.1", "--port", String(uiPort), "--strictPort"], {
   cwd: process.cwd(),
   stdio: "ignore",
@@ -80,7 +91,7 @@ const vite = spawn(process.execPath, [viteBin, "--host", "127.0.0.1", "--port", 
     PATH: pathValue,
     VITE_JARVIS_MODE: "live",
     VITE_JARVIS_API_BASE: apiBase,
-    VITE_JARVIS_POLL_MS: "60000",
+    VITE_JARVIS_POLL_MS: "250",
   },
   windowsHide: true,
 })
@@ -104,10 +115,20 @@ try {
       payload &&
       Array.isArray(payload.missions) &&
       payload.missions.some((mission) => ["COMPLETE", "COMPLETED"].includes(String(mission?.state).toUpperCase())) &&
+      payload.work_hierarchy?.objectives?.some((objective) => objective?.status === "ACTIVE") &&
+      payload.work_hierarchy?.campaigns?.some((campaign) => campaign?.wait_kinds?.includes("PROVIDER")) &&
+      payload.work_hierarchy?.missions?.length >= 3 &&
       Array.isArray(payload.memory) &&
       payload.memory.length > 0 &&
+      payload.owner_context?.current_count >= 4 &&
       payload.briefing_packet,
     ),
+  )
+  await waitFor(
+    `${controlBase}/state`,
+    api,
+    "disposable fixture controller",
+    (payload) => payload?.status === "READY" && payload?.api === apiBase,
   )
   await waitFor(`http://127.0.0.1:${uiPort}/`, vite, "Vite Command Center")
   // The live fixture proves the source-backed autonomy journey.  The rest of
@@ -123,7 +144,8 @@ try {
       PATH: pathValue,
       VITE_JARVIS_MODE: "live",
       VITE_JARVIS_API_BASE: apiBase,
-      VITE_JARVIS_POLL_MS: "60000",
+      VITE_JARVIS_POLL_MS: "250",
+      JARVIS_FIXTURE_CONTROL_BASE: controlBase,
       JARVIS_PLAYWRIGHT_PORT: String(uiPort),
       JARVIS_PLAYWRIGHT_USE_WEBSERVER: "0",
       JARVIS_CAPTURE_DIR: captureDir,

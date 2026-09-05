@@ -1,18 +1,28 @@
 import { AlertOctagon, OctagonX, RotateCcw, ShieldCheck } from "lucide-react";
 import { Dialog } from "./Dialog";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import { sourceModeLabel, type ResolvedSourceMode } from "../lib/sourceMode";
+import { isCanonicalSource, sourceModeLabel, type ResolvedSourceMode } from "../lib/sourceMode";
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function canResume(live: boolean, sourceMode: ResolvedSourceMode): boolean {
-  return !live || sourceMode === "LIVE";
+export function canResume(
+  live: boolean,
+  sourceMode: ResolvedSourceMode,
+  targetDirectiveId: string | null = null,
+): boolean {
+  return !live || sourceMode === "LIVE" && Boolean(targetDirectiveId);
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function canActivateStop(live: boolean, sourceMode: ResolvedSourceMode): boolean {
+  return !live || isCanonicalSource(sourceMode);
 }
 
 export function EmergencyStopDialog() {
-  const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, activateStop, resetStop, mode, sourceMode, mutationsEnabled } =
+  const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, resumeTargetId, activateStop, resetStop, mode, sourceMode } =
     useCommandCenter();
 
   const live = mode === "live";
+  const canonical = isCanonicalSource(sourceMode);
 
   return (
     <Dialog
@@ -24,9 +34,15 @@ export function EmergencyStopDialog() {
         stopActive ? (
           <>
             <span className="t-mono text-muted" style={{ marginRight: "auto" }}>
-              {sourceMode === "LIVE" ? "STOP active" : sourceMode === "SIMULATED" ? "Simulated" : `STOP ${sourceModeLabel(sourceMode)}`} at {stopActivatedAt ? new Date(stopActivatedAt).toLocaleTimeString() : ""}
+              {canonical ? "STOP active" : sourceMode === "SIMULATED" ? "Simulated" : `STOP ${sourceModeLabel(sourceMode)}`} at {stopActivatedAt ? new Date(stopActivatedAt).toLocaleTimeString() : ""}
             </span>
-            <button type="button" className="btn" onClick={resetStop} disabled={!canResume(live, sourceMode)}>
+            <button
+              type="button"
+              className="btn"
+              onClick={resetStop}
+              disabled={!canResume(live, sourceMode, resumeTargetId)}
+              title={live && resumeTargetId ? `Revoke ${resumeTargetId}` : undefined}
+            >
               <RotateCcw size={14} />
               Resume
             </button>
@@ -40,7 +56,7 @@ export function EmergencyStopDialog() {
               type="button"
               className="btn btn-danger btn-stop-simulate"
               onClick={activateStop}
-              disabled={!mutationsEnabled && live}
+              disabled={!canActivateStop(live, sourceMode)}
             >
               <OctagonX size={14} />
               {live ? "Activate STOP" : "Simulate STOP"}
@@ -55,7 +71,7 @@ export function EmergencyStopDialog() {
           <div>
             <p className="t-label">
               {stopActive
-                ? sourceMode === "LIVE"
+                ? canonical
                   ? "LIVE STOP - CANONICAL DIRECTIVE"
                   : sourceMode === "SIMULATED"
                     ? "SIMULATED STOP - UI CANDIDATE"
@@ -63,7 +79,7 @@ export function EmergencyStopDialog() {
                 : "STOP IS THE HIGHEST AUTHORITY OWNER CONTROL"}
             </p>
             <p className="prose">
-              {sourceMode === "LIVE"
+              {canonical
                 ? "Activating STOP records STOP_EVERYTHING on the durable owner directive ledger and engages the emergency-stop sentinel when configured. UI disconnect cannot clear STOP."
                 : sourceMode === "SIMULATED"
                   ? "This candidate is not connected to the JARVIS Supervisor. Activating STOP runs a local UI simulation only."
@@ -78,12 +94,12 @@ export function EmergencyStopDialog() {
           </li>
           <li>
             <ShieldCheck size={14} aria-hidden="true" />
-            {sourceMode === "LIVE" ? "Uses the same OwnerControlService path as authenticated controls probes" : sourceMode === "SIMULATED" ? "The future runtime adapter will replace this simulation with the real directive path" : "Canonical owner-control path unavailable"}
+            {canonical ? "Uses the same OwnerControlService path as authenticated controls probes" : sourceMode === "SIMULATED" ? "The future runtime adapter will replace this simulation with the real directive path" : "Canonical owner-control path unavailable"}
           </li>
         </ul>
         {stopActive ? (
           <p className="stop-banner" role="status">
-            {sourceMode === "LIVE" ? "UI STATE: LIVE STOP ACTIVE" : sourceMode === "SIMULATED" ? "UI STATE: SIMULATED STOP - NO PRODUCTION SIDE EFFECT" : `UI STATE: STOP ${sourceModeLabel(sourceMode)}`}
+            {canonical ? "UI STATE: LIVE STOP ACTIVE" : sourceMode === "SIMULATED" ? "UI STATE: SIMULATED STOP - NO PRODUCTION SIDE EFFECT" : `UI STATE: STOP ${sourceModeLabel(sourceMode)}`}
           </p>
         ) : null}
       </div>

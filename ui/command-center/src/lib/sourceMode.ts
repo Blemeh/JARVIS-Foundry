@@ -24,9 +24,13 @@ export function sourceCopy(
   source: ResolvedSourceMode,
   copy: { live: string; simulated: string; unavailable: string },
 ): string {
-  if (source === "LIVE") return copy.live;
+  if (isCanonicalSource(source)) return copy.live;
   if (source === "SIMULATED") return copy.simulated;
   return copy.unavailable;
+}
+
+export function isCanonicalSource(source: ResolvedSourceMode): boolean {
+  return source === "LIVE" || source === "DEGRADED";
 }
 
 export function sourceModeLabel(source: ResolvedSourceMode): string {

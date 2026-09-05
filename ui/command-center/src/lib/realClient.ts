@@ -6,6 +6,7 @@ import type {
   DataSource,
   EntityKind,
   EvidenceArtifact,
+  ForensicRecord,
   JarvisClient,
   LineageNode,
   MemoryGraph,
@@ -17,6 +18,7 @@ import type {
   MockEventStream,
   MockEventType,
   Notification,
+  OwnerDelegationMode,
   OwnerControlSurface,
   OwnerGoalResult,
   RelatedEntities,
@@ -28,6 +30,7 @@ import type {
   TimelineEvent,
   TrustSummary,
   Worker,
+  WorkHierarchy,
   ObsidianVaultFile,
 } from "./contracts";
 import { mapObsidianVault } from "./obsidianVault";
@@ -48,7 +51,12 @@ import {
   mapTrustSummary,
   mapWorkers,
 } from "./snapshotMapper";
-import type { FoundrySnapshot, FoundryExecutive, OwnerCommandResponse } from "./snapshotTypes";
+import type {
+  FoundrySnapshot,
+  FoundryExecutive,
+  FoundryTimelinePage,
+  OwnerCommandResponse,
+} from "./snapshotTypes";
 
 const DEFAULT_API = "/api";
 const SNAPSHOT_FETCH_TIMEOUT_MS = 120_000;
@@ -68,6 +76,10 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   private _source: DataSource = "LIVE";
   private snapshot: FoundrySnapshot | null = null;
   private snapshotRequest: Promise<FoundrySnapshot> | null = null;
+  private readonly seenEventIds = new Set<string>();
+  private eventCursor: number | null = null;
+  private controlSessionReady = false;
+  private controlSessionRequest: Promise<void> | null = null;
   private lastError: string | null = null;
   private lastFetchedAt: string | null = null;
   private readonly stream: PollingEventStream;
@@ -114,7 +126,19 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
           throw new Error("snapshot is missing canonical health or source-of-truth metadata");
         }
         const snapshot = payload as FoundrySnapshot;
+        const incomingSequence = snapshot.source_of_truth.ledger_head_sequence;
+        const acceptedSequence = this.snapshot?.source_of_truth.ledger_head_sequence;
+        if (!Number.isSafeInteger(incomingSequence) || incomingSequence < 0) {
+          throw new Error("snapshot has an invalid ledger head sequence");
+        }
+        if (acceptedSequence !== undefined && incomingSequence < acceptedSequence) {
+          throw new Error(`stale snapshot sequence ${incomingSequence} is behind accepted sequence ${acceptedSequence}`);
+        }
         this.snapshot = snapshot;
+        if (this.eventCursor === null) {
+          this.eventCursor = incomingSequence;
+          for (const event of snapshot.timeline) this.seenEventIds.add(event.event_id);
+        }
         this.lastFetchedAt = new Date().toISOString();
         this.lastError = null;
         this._source = snapshot.health.degraded ? "DEGRADED" : "LIVE";
@@ -144,36 +168,178 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   private async pollLedgerEvents(): Promise<MockEvent[]> {
-    const previous = this.snapshot;
-    const previousIds = new Set(previous?.timeline.map((event) => event.event_id) ?? []);
-    const snapshot = await this.refreshSnapshot();
-    if (!previous) return [];
-    return snapshot.timeline
-      .filter((event) => !previousIds.has(event.event_id))
-      .map((event) => ({
-        id: event.event_id,
-        type: "ledger.event" as const,
-        at: event.occurred_at ?? event.recorded_at ?? snapshot.generated_at,
-        detail: event.summary ?? event.event_type,
-      }));
+    try {
+      const initial = await this.snapshotOrFetch();
+      let cursor = this.eventCursor ?? initial.source_of_truth.ledger_head_sequence;
+      const pending: FoundryTimelinePage["events"] = [];
+      for (let pageNumber = 0; pageNumber < 100; pageNumber += 1) {
+        const query = new URLSearchParams({
+          after_sequence: String(cursor),
+          limit: "500",
+        });
+        const response = await fetchWithTimeout(
+          `${this.apiBase}/timeline?${query.toString()}`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (!response.ok) throw new Error(`timeline HTTP ${response.status}`);
+        const page = (await response.json()) as Partial<FoundryTimelinePage>;
+        if (
+          page.schema !== "v13.command-center-event-page.v1"
+          || !Array.isArray(page.events)
+          || !Number.isSafeInteger(page.next_sequence)
+          || !Number.isSafeInteger(page.ledger_head_sequence)
+          || page.next_sequence! < cursor
+          || page.ledger_head_sequence! < cursor
+        ) {
+          throw new Error("timeline page has an invalid or stale durable cursor");
+        }
+        pending.push(...page.events);
+        const next = page.next_sequence!;
+        if (!page.has_more) {
+          cursor = page.ledger_head_sequence!;
+          break;
+        }
+        if (next === cursor) {
+          throw new Error("timeline page did not advance its durable cursor");
+        }
+        cursor = next;
+        if (pageNumber === 99) {
+          throw new Error("timeline backlog exceeded bounded catch-up pages");
+        }
+      }
+      const snapshot = await this.refreshSnapshot();
+      if (snapshot.source_of_truth.ledger_head_sequence < cursor) {
+        throw new Error(
+          `snapshot sequence ${snapshot.source_of_truth.ledger_head_sequence} is behind event cursor ${cursor}`,
+        );
+      }
+      this.eventCursor = cursor;
+      const events = pending
+        .slice()
+        .sort((left, right) => left.sequence - right.sequence)
+        .filter((event) => {
+          if (this.seenEventIds.has(event.event_id)) return false;
+          this.seenEventIds.add(event.event_id);
+          return true;
+        })
+        .map((event) => ({
+          id: event.event_id,
+          type: "ledger.event" as const,
+          at: event.occurred_at ?? event.recorded_at ?? snapshot.generated_at,
+          detail: event.summary ?? event.event_type,
+        }));
+      return events;
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.message : String(error);
+      this._source = "DISCONNECTED";
+      throw error;
+    }
   }
 
-  private async ownerCommand(command_type: string, exact_text: string, target?: string | null): Promise<OwnerCommandResponse> {
-    const response = await fetch(`${this.apiBase}/owner-command`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ command_type, exact_text, target: target ?? null }),
-    });
-    const payload = (await response.json()) as OwnerCommandResponse;
-    if (!response.ok) {
+  private async ownerCommand(
+    command_type: string,
+    exact_text: string,
+    target?: string | null,
+    metadata?: Record<string, unknown>,
+  ): Promise<OwnerCommandResponse> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await this.ensureControlSession();
+      const response = await fetchWithTimeout(`${this.apiBase}/owner-command`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          command_type,
+          exact_text,
+          target: target ?? null,
+          ...(metadata ? { metadata } : {}),
+        }),
+      });
+      const payload = (await response.json()) as OwnerCommandResponse;
+      if (response.ok) {
+        await this.refreshSnapshot();
+        return payload;
+      }
+      if (response.status === 401 && attempt === 0) {
+        this.controlSessionReady = false;
+        continue;
+      }
       throw new Error(payload.reason ?? `owner command HTTP ${response.status}`);
     }
-    await this.refreshSnapshot();
-    return payload;
+    throw new Error("owner command browser session could not be authenticated");
+  }
+
+  private async ensureControlSession(): Promise<void> {
+    if (this.controlSessionReady) return;
+    if (this.controlSessionRequest) return this.controlSessionRequest;
+    const request = (async () => {
+      const response = await fetchWithTimeout(`${this.apiBase}/control-session`, {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new Error(`owner control session HTTP ${response.status}`);
+      }
+      this.controlSessionReady = true;
+    })().finally(() => {
+      if (this.controlSessionRequest === request) {
+        this.controlSessionRequest = null;
+      }
+    });
+    this.controlSessionRequest = request;
+    return request;
   }
 
   async listMissions(): Promise<Mission[]> {
     return mapMissions(await this.snapshotOrFetch());
+  }
+
+  async getWorkHierarchy(): Promise<WorkHierarchy> {
+    const snapshot = await this.snapshotOrFetch();
+    const hierarchy = snapshot.work_hierarchy;
+    if (
+      hierarchy?.schema === "v13.command-center-work.v1"
+      && Array.isArray(hierarchy.objectives)
+      && Array.isArray(hierarchy.missions)
+      && Array.isArray(hierarchy.actions)
+    ) {
+      return hierarchy;
+    }
+    return {
+      schema: "v13.command-center-work.v1",
+      status: "UNAVAILABLE",
+      reason: "The connected runtime does not publish the V13 Work hierarchy projection.",
+      authority: "READ_ONLY_CANONICAL_PROJECTIONS",
+      ui_authority: "NONE",
+      levels: {},
+      goals: [],
+      programs: [],
+      projects: [],
+      objectives: [],
+      campaigns: [],
+      missions: [],
+      actions: [],
+    };
+  }
+
+  async getForensicRecord(kind: string, id: string): Promise<ForensicRecord | null> {
+    try {
+      const response = await fetchWithTimeout(
+        `${this.apiBase}/record/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`,
+        { headers: { Accept: "application/json" } },
+      );
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`forensic record HTTP ${response.status}`);
+      const payload = (await response.json()) as Partial<ForensicRecord>;
+      if (payload.status !== "FOUND" || payload.kind !== kind || !payload.record) {
+        throw new Error("forensic record contract is invalid");
+      }
+      return payload as ForensicRecord;
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.message : String(error);
+      this._source = "DISCONNECTED";
+      throw error;
+    }
   }
 
   async getMission(id: string): Promise<Mission | null> {
@@ -395,7 +561,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   subscribeEvents(): MockEventStream {
-    void this.refreshSnapshot();
+    void this.snapshotOrFetch();
     return this.stream;
   }
 
@@ -412,8 +578,8 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   async reconnectStream(): Promise<void> {
-    this.stream.reconnect();
     await this.refreshSnapshot();
+    this.stream.reconnect();
   }
 
   async requestGateReevaluation(missionId: string) {
@@ -439,9 +605,19 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     }
   }
 
-  async submitOwnerGoal(objective: string): Promise<OwnerGoalResult> {
+  async submitOwnerGoal(
+    objective: string,
+    mode?: OwnerDelegationMode,
+  ): Promise<OwnerGoalResult> {
     try {
-      const result = await this.ownerCommand("GOAL", objective, "GLOBAL");
+      const requestId = globalThis.crypto?.randomUUID?.()
+        ?? `command-center-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const result = mode
+        ? await this.ownerCommand("DELEGATE", objective, "GLOBAL", {
+            mode,
+            request_id: requestId,
+          })
+        : await this.ownerCommand("GOAL", objective, "GLOBAL");
       return { accepted: result.status === "APPLIED", directiveId: result.directive_id, eventId: result.event_id };
     } catch (error) {
       return { accepted: false, error: error instanceof Error ? error.message : String(error) };
@@ -468,9 +644,18 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     }
   }
 
-  async resumeOperations(reason = "resume jarvis"): Promise<{ accepted: boolean; error?: string }> {
+  async resumeOperations(
+    targetDirectiveId?: string,
+    reason = "resume exact owner hold",
+  ): Promise<{ accepted: boolean; error?: string }> {
+    if (!targetDirectiveId) {
+      return {
+        accepted: false,
+        error: "Resume requires one exact active STOP or PAUSE directive.",
+      };
+    }
     try {
-      await this.ownerCommand("RESUME", reason, "GLOBAL");
+      await this.ownerCommand("RESUME", reason, targetDirectiveId);
       return { accepted: true };
     } catch (error) {
       return { accepted: false, error: error instanceof Error ? error.message : String(error) };

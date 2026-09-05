@@ -12,11 +12,12 @@ import pytest
 
 from jarvis_foundry.command_center import (
     CommandCenterServer, build_health_snapshot, build_operational_status_snapshot,
-    build_snapshot,
+    build_snapshot, decision_timeline,
 )
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
-from jarvis_foundry.owner_controls import sign_command
+from jarvis_foundry.owner_controls import OwnerControlService, sign_command
+from jarvis_foundry.supervisor.estop import EmergencyStop
 from jarvis_foundry.deployment import runtime_identity
 
 
@@ -178,6 +179,60 @@ def test_owner_command_localhost_auto_signs(db: FoundryDatabase, tmp_path: Path)
         server.close()
 
 
+def test_browser_owner_command_requires_local_http_only_session(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    secret = b"ui-browser-session-secret"
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
+    server.configure_owner(secret)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        exact_text = "preserve this owner text exactly"
+        body = json.dumps({
+            "command_type": "GOAL",
+            "target": "GLOBAL",
+            "exact_text": exact_text,
+        }).encode()
+        unauthenticated = Request(
+            f"{base}/api/owner-command",
+            data=body,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "http://127.0.0.1:5173",
+            },
+        )
+        with pytest.raises(HTTPError) as rejected:
+            urlopen(unauthenticated, timeout=3)
+        assert rejected.value.code == 401
+
+        session_request = Request(
+            f"{base}/api/control-session",
+            headers={"Origin": "http://127.0.0.1:5173"},
+        )
+        with urlopen(session_request, timeout=3) as response:
+            assert json.loads(response.read())["status"] == "READY"
+            cookie = response.headers["Set-Cookie"].split(";", 1)[0]
+        authenticated = Request(
+            f"{base}/api/owner-command",
+            data=body,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "http://127.0.0.1:5173",
+                "Cookie": cookie,
+            },
+        )
+        with urlopen(authenticated, timeout=3) as response:
+            assert json.loads(response.read())["status"] == "APPLIED"
+
+        snapshot = build_snapshot(db, stop_path=tmp_path / "STOP")
+        assert snapshot["controls"]["goals"][0]["exact_text"] == exact_text
+    finally:
+        server.close()
+
+
 def test_owner_command_invalidates_cached_snapshot(db: FoundryDatabase, tmp_path: Path) -> None:
     """A successful owner command must be visible on the next UI poll."""
     secret = b"ui-bridge-secret"
@@ -221,6 +276,185 @@ def test_owner_command_stop_everything_activates_sentinel(db: FoundryDatabase, t
         assert snapshot["stop"]["active"] is True
     finally:
         server.close()
+
+
+def test_snapshot_stop_remains_active_from_durable_control_without_sentinel(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    secret = b"durable-stop-secret"
+    stop_path = tmp_path / "STOP"
+    service = OwnerControlService(
+        db, secret=secret, stop_path=stop_path, owner_id="test-owner",
+    )
+    exact_text = "durable stop must remain authoritative"
+    nonce = "durable-stop-nonce"
+    service.apply(
+        "STOP_EVERYTHING",
+        target="GLOBAL",
+        exact_text=exact_text,
+        nonce=nonce,
+        signature=sign_command(
+            secret, "STOP_EVERYTHING", "GLOBAL", exact_text, nonce,
+        ),
+    )
+    stop_path.unlink()
+
+    snapshot = build_snapshot(db, stop_path=stop_path)
+
+    assert snapshot["stop"]["active"] is True
+    assert snapshot["stop"]["record"] is None
+    assert snapshot["controls"]["runtime_state"] == "STOPPED"
+    assert snapshot["controls"]["state_evidence"]["stop_directive_ids"]
+
+
+def test_cached_snapshot_refreshes_external_stop_sentinel(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    stop_path = tmp_path / "STOP"
+    server = CommandCenterServer(db, stop_path=stop_path)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            before = json.loads(response.read())
+        assert before["stop"]["active"] is False
+
+        EmergencyStop(stop_path).activate("tray hotkey stop")
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            stopped = json.loads(response.read())
+        assert stopped["stop"]["active"] is True
+        assert stopped["controls"]["runtime_state"] == "STOPPED"
+
+        EmergencyStop(stop_path).clear()
+        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+            resumed = json.loads(response.read())
+        assert resumed["stop"]["active"] is False
+    finally:
+        server.close()
+
+
+def test_decision_timeline_preserves_durable_non_contiguous_sequences(
+    db: FoundryDatabase,
+) -> None:
+    first = Event.create(
+        "mission.created",
+        {
+            "mission_id": "m-sequence-1",
+            "objective": "first durable event",
+            "state": "PLANNED",
+            "acceptance_criteria": ["sequence is preserved"],
+        },
+        source_type="test",
+        source_id="timeline",
+        idempotency_key="mission.created:m-sequence-1",
+    )
+    heartbeat = Event.create(
+        "supervisor.heartbeat",
+        {"instance_id": "timeline-heartbeat", "trust_state": "LAB"},
+        source_type="supervisor",
+        source_id="timeline",
+        idempotency_key="supervisor.heartbeat:timeline-gap",
+    )
+    second = Event.create(
+        "mission.created",
+        {
+            "mission_id": "m-sequence-2",
+            "objective": "second durable event",
+            "state": "PLANNED",
+            "acceptance_criteria": ["sequence is preserved"],
+        },
+        source_type="test",
+        source_id="timeline",
+        idempotency_key="mission.created:m-sequence-2",
+    )
+    first_sequence = db.append(first)[0]
+    db.append(heartbeat)
+    second_sequence = db.append(second)[0]
+
+    timeline = decision_timeline(db)
+    by_id = {item["event_id"]: item["sequence"] for item in timeline}
+
+    assert by_id[first.event_id] == first_sequence
+    assert by_id[second.event_id] == second_sequence
+    assert second_sequence > first_sequence + 1
+
+
+def test_timeline_cursor_endpoint_pages_durable_events(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    sequences: list[int] = []
+    for index in range(3):
+        event = Event.create(
+            "mission.created",
+            {
+                "mission_id": f"m-page-{index}",
+                "objective": f"timeline page {index}",
+                "state": "PLANNED",
+                "acceptance_criteria": ["cursor page is durable"],
+            },
+            source_type="test",
+            source_id="timeline-page",
+            idempotency_key=f"mission.created:m-page-{index}",
+        )
+        sequences.append(db.append(event)[0])
+
+    server = CommandCenterServer(db, stop_path=tmp_path / "STOP")
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(
+            f"{base}/api/timeline?after_sequence={sequences[0]}&limit=1",
+            timeout=3,
+        ) as response:
+            first_page = json.loads(response.read())
+        assert first_page["schema"] == "v13.command-center-event-page.v1"
+        assert [event["sequence"] for event in first_page["events"]] == [
+            sequences[1],
+        ]
+        assert first_page["has_more"] is True
+        assert first_page["next_sequence"] == sequences[1]
+
+        with urlopen(
+            f"{base}/api/timeline?after_sequence={first_page['next_sequence']}&limit=1",
+            timeout=3,
+        ) as response:
+            final_page = json.loads(response.read())
+        assert [event["sequence"] for event in final_page["events"]] == [
+            sequences[2],
+        ]
+        assert final_page["has_more"] is False
+        assert final_page["next_sequence"] == sequences[2]
+        assert final_page["ledger_head_sequence"] == sequences[2]
+    finally:
+        server.close()
+
+
+def test_timeline_publishes_versioned_lifecycle_stages(
+    db: FoundryDatabase,
+) -> None:
+    event = Event.create(
+        "mission.created",
+        {
+            "mission_id": "m-lifecycle-contract",
+            "objective": "publish structured lifecycle truth",
+            "state": "PLANNED",
+            "acceptance_criteria": ["stage labels are versioned"],
+        },
+        source_type="test",
+        source_id="lifecycle-contract",
+        idempotency_key="mission.created:m-lifecycle-contract",
+    )
+    db.append(event)
+
+    projected = next(
+        item for item in decision_timeline(db)
+        if item["event_id"] == event.event_id
+    )
+
+    assert projected["lifecycle_contract"] == (
+        "jarvis.command-center-mission-lifecycle.v1"
+    )
+    assert projected["lifecycle_stages"] == ["PLAN", "MISSION"]
 
 
 def test_snapshot_maps_mission_for_ui_reads(db: FoundryDatabase) -> None:

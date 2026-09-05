@@ -50,6 +50,127 @@ export interface Mission {
   owner: string;
 }
 
+export type WorkHierarchyLevelState =
+  | "AVAILABLE"
+  | "EMPTY"
+  | "NOT_YET_INTEGRATED"
+  | "UNAVAILABLE";
+
+export interface WorkGoal {
+  goal_id: string;
+  directive_id: string;
+  label: string;
+  status: string;
+  target: string;
+  source_event_id?: string | null;
+  objective_ids: string[];
+}
+
+export interface WorkProgram {
+  program_id: string;
+  label: string;
+  status: string;
+  source: string;
+  project_ids: string[];
+  objective_ids: string[];
+}
+
+export interface WorkProject {
+  project_id: string;
+  label: string;
+  program_id?: string | null;
+  status: string;
+  source: string;
+  objective_ids: string[];
+}
+
+export interface WorkObjective {
+  objective_id: string;
+  label: string;
+  parent_id?: string | null;
+  goal_id?: string | null;
+  project_id?: string | null;
+  program_id?: string | null;
+  status: string;
+  priority?: unknown;
+  deadline?: string | null;
+  campaign_ids: string[];
+  mission_ids: string[];
+  plan_ids: string[];
+  action_ids: string[];
+  progress_evidence: {
+    status: string;
+    confidence?: unknown;
+    evidence_refs: string[];
+  };
+  source_event_id?: string | null;
+  updated_at?: string | null;
+}
+
+export interface WorkCampaign {
+  campaign_id: string;
+  objective_id?: string | null;
+  status: string;
+  mission_ids: string[];
+  child_count: number;
+  accepted_child_count?: number | null;
+  pending_count: number;
+  wait_kinds: string[];
+  action_ids: string[];
+  checkpoint_id?: string | null;
+  updated_at?: string | null;
+  source: string;
+}
+
+export interface WorkMissionLink {
+  mission_id: string;
+  objective_id?: string | null;
+  campaign_id?: string | null;
+  status: string;
+  action_ids: string[];
+  worker_ids: string[];
+  evidence_refs: string[];
+  verdict_ids: string[];
+  source_event_id?: string | null;
+}
+
+export interface WorkAction {
+  action_id: string;
+  step_id?: string | null;
+  label: string;
+  status: string;
+  objective_id?: string | null;
+  campaign_id?: string | null;
+  mission_id?: string | null;
+  worker_ids: string[];
+  evidence_refs: string[];
+  verdict_ids: string[];
+  source: string;
+}
+
+export interface WorkHierarchy {
+  schema: "v13.command-center-work.v1";
+  status: "AVAILABLE" | "PARTIAL" | "EMPTY" | "UNAVAILABLE";
+  reason?: string;
+  authority: string;
+  ui_authority: "NONE";
+  levels: Record<string, WorkHierarchyLevelState>;
+  goals: WorkGoal[];
+  programs: WorkProgram[];
+  projects: WorkProject[];
+  objectives: WorkObjective[];
+  campaigns: WorkCampaign[];
+  missions: WorkMissionLink[];
+  actions: WorkAction[];
+  bounds?: Record<string, unknown>;
+}
+
+export interface ForensicRecord {
+  status: "FOUND";
+  kind: string;
+  record: Record<string, unknown>;
+}
+
 /** Lifecycle truth is deliberately closed over explicit absence. */
 export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "UNKNOWN" | "UNAVAILABLE";
 
@@ -265,6 +386,8 @@ export interface OwnerGoalResult {
   error?: string;
 }
 
+export type OwnerDelegationMode = "TELL_ME" | "PREPARE" | "HANDLE" | "WATCH";
+
 export type OwnerAttentionClassification =
   | "INFORM"
   | "DECISION_REQUIRED"
@@ -298,12 +421,27 @@ export interface OwnerControlSurface {
   paused: boolean;
   stopped: boolean;
   resumeAvailable: boolean;
+  resumableDirectiveIds: string[];
   goals: Record<string, unknown>[];
   constraints: Record<string, unknown>[];
   vetoes: Record<string, unknown>[];
   reprioritizations: Record<string, unknown>[];
   redirects: Record<string, unknown>[];
   directiveHistory: Record<string, unknown>[];
+  ownerContext?: {
+    contract: string;
+    status: string;
+    authority: {
+      model: string;
+      ownerControls: string;
+      execution: string;
+    };
+    sections: Record<string, Record<string, unknown>[]>;
+    currentCount: number;
+    historyCount: number;
+    warnings: string[];
+    reason?: string;
+  };
   briefings: Record<string, unknown>[];
   resultTraceability: {
     status: string;
@@ -709,6 +847,10 @@ export interface JarvisClient {
   readonly source: DataSource;
   readonly connection: ConnectionState;
   listMissions(): Promise<Mission[]>;
+  /** Additive V13 read projection. Missing backends stay explicitly unavailable. */
+  getWorkHierarchy?(): Promise<WorkHierarchy>;
+  /** Read one bounded projection record; never a raw database row. */
+  getForensicRecord?(kind: string, id: string): Promise<ForensicRecord | null>;
   getMission(id: string): Promise<Mission | null>;
   getMissionRun(missionId: string): Promise<MissionRun>;
   getMissionSteps(missionId: string): Promise<MissionStep[]>;
@@ -748,9 +890,9 @@ export interface JarvisClient {
   reconnectStream(): Promise<void>;
   requestGateReevaluation(missionId: string): Promise<{ accepted: boolean; simulatedAt: string; missionId: string; error?: string }>;
   requestHalt(missionId: string): Promise<{ accepted: boolean; simulatedAt: string; missionId: string; error?: string }>;
-  submitOwnerGoal(objective: string): Promise<OwnerGoalResult>;
+  submitOwnerGoal(objective: string, mode?: OwnerDelegationMode): Promise<OwnerGoalResult>;
   activateStop(reason: string): Promise<StopResult>;
-  resumeOperations(reason?: string): Promise<{ accepted: boolean; error?: string }>;
+  resumeOperations(targetDirectiveId?: string, reason?: string): Promise<{ accepted: boolean; error?: string }>;
   /** @deprecated simulated mode only — use activateStop in live mode */
   simulateStop(): Promise<StopResult>;
 }

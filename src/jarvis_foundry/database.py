@@ -46,6 +46,9 @@ class ReadSnapshotContext:
         self.connection: sqlite3.Connection | None = None
         self._token = None
         self._event_cache: dict[tuple[object, ...], list[Event]] = {}
+        self._sequenced_event_cache: dict[
+            tuple[object, ...], list[tuple[int, Event]]
+        ] = {}
         self._event_count_cache: dict[str | None, int] = {}
         self._row_cache: dict[tuple[str, str, str], dict[str, object] | None] = {}
         self._count_cache: dict[str, int] = {}
@@ -69,6 +72,7 @@ class ReadSnapshotContext:
             self.connection.close()
             self.connection = None
         self._event_cache.clear()
+        self._sequenced_event_cache.clear()
         self._event_count_cache.clear()
         self._row_cache.clear()
         self._count_cache.clear()
@@ -124,6 +128,63 @@ class ReadSnapshotContext:
         ).fetchall()
         events = [self.database._row_to_event(row) for row in rows]
         self._event_cache[key] = events
+        return events
+
+    def events_with_sequences(
+        self,
+        *,
+        limit: int | None = None,
+        newest_first: bool = False,
+        after_sequence: int | None = None,
+        event_types: tuple[str, ...] | None = None,
+        event_type_prefixes: tuple[str, ...] | None = None,
+        exclude_event_types: tuple[str, ...] | None = None,
+    ) -> list[tuple[int, Event]]:
+        """Read events together with their durable ledger sequence."""
+        key = (
+            limit,
+            newest_first,
+            after_sequence,
+            tuple(event_types or ()),
+            tuple(event_type_prefixes or ()),
+            tuple(exclude_event_types or ()),
+        )
+        cached = self._sequenced_event_cache.get(key)
+        if cached is not None:
+            return cached
+
+        clauses: list[str] = []
+        args: list[object] = []
+        if after_sequence is not None:
+            clauses.append("sequence > ?")
+            args.append(max(0, int(after_sequence)))
+        if event_types:
+            placeholders = ", ".join("?" for _ in event_types)
+            clauses.append(f"event_type IN ({placeholders})")
+            args.extend(event_types)
+        if event_type_prefixes:
+            clauses.append(
+                "(" + " OR ".join("event_type LIKE ?" for _ in event_type_prefixes) + ")"
+            )
+            args.extend(f"{prefix}%" for prefix in event_type_prefixes)
+        if exclude_event_types:
+            placeholders = ", ".join("?" for _ in exclude_event_types)
+            clauses.append(f"event_type NOT IN ({placeholders})")
+            args.extend(exclude_event_types)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = "DESC" if newest_first else "ASC"
+        limit_sql = " LIMIT ?" if limit is not None else ""
+        if limit is not None:
+            args.append(max(1, int(limit)))
+        rows = self._connection().execute(
+            f"SELECT * FROM events{where} ORDER BY sequence {order}{limit_sql}",
+            tuple(args),
+        ).fetchall()
+        events = [
+            (int(row["sequence"]), self.database._row_to_event(row))
+            for row in rows
+        ]
+        self._sequenced_event_cache[key] = events
         return events
 
     def event_count(self, event_type: str | None = None) -> int:
@@ -361,6 +422,62 @@ class FoundryDatabase:
                 tuple(args),
             ).fetchall()
         return [self._row_to_event(row) for row in rows]
+
+    def events_with_sequences(
+        self,
+        *,
+        readonly: bool = True,
+        limit: int | None = None,
+        newest_first: bool = False,
+        after_sequence: int | None = None,
+        event_types: tuple[str, ...] | None = None,
+        event_type_prefixes: tuple[str, ...] | None = None,
+        exclude_event_types: tuple[str, ...] | None = None,
+    ) -> list[tuple[int, Event]]:
+        """Read events with their durable SQLite ledger sequence."""
+        active_context = _ACTIVE_READ_SNAPSHOT.get()
+        if active_context is not None and active_context.database is self and readonly:
+            return active_context.events_with_sequences(
+                limit=limit,
+                newest_first=newest_first,
+                after_sequence=after_sequence,
+                event_types=event_types,
+                event_type_prefixes=event_type_prefixes,
+                exclude_event_types=exclude_event_types,
+            )
+
+        clauses: list[str] = []
+        args: list[object] = []
+        if after_sequence is not None:
+            clauses.append("sequence > ?")
+            args.append(max(0, int(after_sequence)))
+        if event_types:
+            placeholders = ", ".join("?" for _ in event_types)
+            clauses.append(f"event_type IN ({placeholders})")
+            args.extend(event_types)
+        if event_type_prefixes:
+            clauses.append(
+                "(" + " OR ".join("event_type LIKE ?" for _ in event_type_prefixes) + ")"
+            )
+            args.extend(f"{prefix}%" for prefix in event_type_prefixes)
+        if exclude_event_types:
+            placeholders = ", ".join("?" for _ in exclude_event_types)
+            clauses.append(f"event_type NOT IN ({placeholders})")
+            args.extend(exclude_event_types)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = "DESC" if newest_first else "ASC"
+        limit_sql = " LIMIT ?" if limit is not None else ""
+        if limit is not None:
+            args.append(max(1, int(limit)))
+        with self.connect(readonly=readonly) as connection:
+            rows = connection.execute(
+                f"SELECT * FROM events{where} ORDER BY sequence {order}{limit_sql}",
+                tuple(args),
+            ).fetchall()
+        return [
+            (int(row["sequence"]), self._row_to_event(row))
+            for row in rows
+        ]
 
     def event_count(self, *, readonly: bool = True, event_type: str | None = None) -> int:
         """Row count without materializing the ledger."""

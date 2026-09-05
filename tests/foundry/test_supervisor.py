@@ -137,6 +137,30 @@ def test_unparseable_sentinel_still_stops(tmp_path):
     assert stop.read()["stop_id"] == "unparseable-sentinel"
 
 
+def test_clear_retries_transient_windows_sharing_violation(
+    tmp_path, monkeypatch,
+):
+    path = tmp_path / "EMERGENCY_STOP"
+    stop = EmergencyStop(path)
+    stop.activate("concurrent readback")
+    path_type = type(path)
+    unlink = path_type.unlink
+    attempts = 0
+
+    def flaky_unlink(candidate, *args, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        if candidate == path and attempts < 3:
+            raise PermissionError(32, "sharing violation", str(candidate))
+        return unlink(candidate, *args, **kwargs)
+
+    monkeypatch.setattr(path_type, "unlink", flaky_unlink)
+
+    assert stop.clear() is True
+    assert attempts == 3
+    assert not path.exists()
+
+
 def test_incomplete_sentinel_still_stops_with_defaults(tmp_path):
     """A parseable sentinel missing fields must fail closed (adversarial
     finding: missing 'reason' crashed heartbeat with KeyError)."""

@@ -2008,6 +2008,18 @@
   word-break: break-all;
 }
 
+.forensic-json {
+  max-height: 58vh;
+  margin: 0;
+  padding: 18px;
+  overflow: auto;
+  color: #aeb9c1;
+  background: rgba(0, 0, 0, 0.18);
+  font: 500 10px/1.55 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .record-note {
   font-size: 13px;
 }

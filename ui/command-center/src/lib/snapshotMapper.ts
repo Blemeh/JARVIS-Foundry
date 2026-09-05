@@ -20,7 +20,12 @@ import type {
   WorkerStatus,
   OwnerControlSurface,
 } from "./contracts";
-import type { FoundrySnapshot, FoundryMission, FoundryVerification } from "./snapshotTypes";
+import type {
+  FoundrySnapshot,
+  FoundryMission,
+  FoundryVerification,
+  MissionLifecycleStage,
+} from "./snapshotTypes";
 import {
   isUnknownToken,
   MEASURED_COST_LABEL,
@@ -158,11 +163,22 @@ export function mapEvidence(snapshot: FoundrySnapshot, verification: FoundryVeri
   });
 }
 
+function timelineGroup(eventAt: string | undefined, generatedAt: string): string {
+  const eventTime = eventAt ? new Date(eventAt).getTime() : Number.NaN;
+  const generatedTime = new Date(generatedAt).getTime();
+  if (!Number.isFinite(eventTime) || !Number.isFinite(generatedTime)) return "NOW";
+  const ageMs = Math.max(0, generatedTime - eventTime);
+  if (ageMs <= 60 * 60 * 1000) return "NOW";
+  if (ageMs <= 6 * 60 * 60 * 1000) return "T-1 HOUR";
+  if (ageMs <= 24 * 60 * 60 * 1000) return "T-6 HOURS";
+  return "T-24 HOURS";
+}
+
 export function mapTimeline(snapshot: FoundrySnapshot): TimelineEvent[] {
   return snapshot.timeline.map((e) => ({
     id: e.event_id,
     at: e.recorded_at ?? e.occurred_at ?? "UNKNOWN",
-    group: e.event_type.split(".")[0] ?? "system",
+    group: timelineGroup(e.recorded_at ?? e.occurred_at, snapshot.generated_at),
     category: /fail|crash|blocked|degraded|frozen|mismatch/i.test(e.event_type)
       ? "INCIDENT"
       : e.event_type.includes("owner") || e.event_type.includes("directive")
@@ -431,6 +447,18 @@ export function mapNotifications(snapshot: FoundrySnapshot): Notification[] {
 export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlSurface {
   const controls = snapshot.controls ?? ({} as FoundrySnapshot["controls"]);
   const queue = snapshot.decision_queue ?? {};
+  const stateEvidence = controls.state_evidence ?? {};
+  const projectedResumeIds = [
+    ...(Array.isArray(stateEvidence.stop_directive_ids) ? stateEvidence.stop_directive_ids : []),
+    ...(Array.isArray(stateEvidence.pause_directive_ids) ? stateEvidence.pause_directive_ids : []),
+  ];
+  const activeResumeIds = (snapshot.owner_directives?.active ?? [])
+    .filter((record) => ["STOP_EVERYTHING", "PAUSE"].includes(String(record.command_type ?? "")))
+    .map((record) => record.directive_id);
+  const resumableDirectiveIds = [...new Set(
+    [...projectedResumeIds, ...activeResumeIds]
+      .filter((value): value is string => typeof value === "string" && Boolean(value.trim())),
+  )];
   const rawState = typeof controls.runtime_state === "string"
     ? controls.runtime_state
     : snapshot.stop.active
@@ -444,12 +472,27 @@ export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlS
     paused: Boolean(controls.paused),
     stopped: Boolean(snapshot.stop.active || rawState === "STOPPED"),
     resumeAvailable: Boolean(controls.resume_available),
+    resumableDirectiveIds,
     goals: controls.goals ?? [],
     constraints: controls.constraints ?? [],
     vetoes: controls.vetoes ?? [],
     reprioritizations: controls.reprioritizations ?? [],
     redirects: controls.redirects ?? [],
     directiveHistory: snapshot.owner_directives?.records ?? [],
+    ownerContext: snapshot.owner_context ? {
+      contract: snapshot.owner_context.contract ?? "jarvis.owner-context.v1",
+      status: snapshot.owner_context.status ?? "UNKNOWN",
+      authority: {
+        model: snapshot.owner_context.authority?.model ?? "UNKNOWN",
+        ownerControls: snapshot.owner_context.authority?.owner_controls ?? "UNKNOWN",
+        execution: snapshot.owner_context.authority?.execution ?? "NONE",
+      },
+      sections: snapshot.owner_context.sections ?? {},
+      currentCount: Number(snapshot.owner_context.current_count ?? 0),
+      historyCount: Number(snapshot.owner_context.history_count ?? 0),
+      warnings: snapshot.owner_context.warnings ?? [],
+      reason: snapshot.owner_context.reason,
+    } : undefined,
     briefings: snapshot.briefings ?? [],
     effectTruth: snapshot.effect_truth ?? undefined,
     evolutionTruth: snapshot.evolution_truth ?? undefined,
@@ -499,11 +542,11 @@ function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): Auto
     event.evidence_refs?.some((ref) => ref.id === missionId && ref.kind === "mission")
       || event.evidence_refs?.some((ref) => ref.id === missionId),
   );
-  const eventIds = (...patterns: RegExp[]): string[] => events
-    .filter((event) => patterns.some((pattern) => pattern.test(event.event_type)))
+  const eventIds = (...stages: MissionLifecycleStage[]): string[] => events
+    .filter((event) => stages.some((stage) => event.lifecycle_stages?.includes(stage)))
     .map((event) => event.event_id);
-  const eventRefs = (...patterns: RegExp[]): EntityRef[] => events
-    .filter((event) => patterns.some((pattern) => pattern.test(event.event_type)))
+  const eventRefs = (...stages: MissionLifecycleStage[]): EntityRef[] => events
+    .filter((event) => stages.some((stage) => event.lifecycle_stages?.includes(stage)))
     .flatMap((event) => missionEventRefs(event, missionId))
     .filter((ref, index, all) => all.findIndex((candidate) => candidate.kind === ref.kind && candidate.id === ref.id) === index);
   const state = String(mission?.state ?? "UNKNOWN").toUpperCase();
@@ -527,18 +570,15 @@ function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): Auto
     return target === "GLOBAL" || target === missionId;
   });
   const goalId = goal?.directive_id ?? goal?.id;
-  const goalEvents = eventIds(/^owner_directive\.recorded$/);
-  const planEvents = eventIds(/mission\.created|mission_step\.recorded|executive\.decision_materialized|portfolio\..*selected|worker_loop\.portfolio_selected/);
-  const workerEvents = eventIds(/agent_run\.|worker\.(route_decided|run_recorded|crashed|fallback_triggered)/);
-  const actionEvents = eventIds(/system\.action_(started|completed|failed)|effect\./);
-  const evidenceEvents = eventIds(/evidence\.created|worker\.evidence_reconciled/);
-  const verifierEvents = eventIds(/verification\.(started|passed|failed|blocked)/);
-  const repairStateEvents = events
-    .filter((event) => event.event_type === "mission.state_changed" && String(event.state ?? "").toUpperCase() === "REPAIRING")
-    .map((event) => event.event_id);
-  const repairEvents = eventIds(/fallback|repair|retry/i).concat(repairStateEvents);
-  const memoryEvents = eventIds(/memory\./);
-  const briefingEvents = eventIds(/briefing\./);
+  const goalEvents = eventIds("OWNER_GOAL");
+  const planEvents = eventIds("PLAN");
+  const workerEvents = eventIds("WORKER");
+  const actionEvents = eventIds("ACTION_ARTIFACT");
+  const evidenceEvents = eventIds("EVIDENCE");
+  const verifierEvents = eventIds("VERIFIER");
+  const repairEvents = eventIds("REPAIR_RETRY");
+  const memoryEvents = eventIds("MEMORY");
+  const briefingEvents = eventIds("OWNER_BRIEFING");
   const completedWorker = workers.find((worker) => String(worker.status).toUpperCase() === "COMPLETED");
   const failedWorker = workers.find((worker) => ["FAILED", "CANCELLED"].includes(String(worker.status).toUpperCase()));
   const runningWorker = workers.find((worker) => String(worker.status).toUpperCase() === "RUNNING");
@@ -549,39 +589,39 @@ function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): Auto
   return [
     make("owner_goal", "Owner goal", goal || goalEvents.length ? "COMPLETE" : "UNKNOWN",
       typeof goal?.exact_text === "string" ? goal.exact_text : goal ? "Recorded owner goal" : "No owner goal is recorded for this mission.",
-      lifecycleRef("timeline", goalId).concat(eventRefs(/^owner_directive\.recorded$/)), goalEvents),
+      lifecycleRef("timeline", goalId).concat(eventRefs("OWNER_GOAL")), goalEvents),
     make("plan", "Plan", planEvents.length ? "COMPLETE" : mission ? "PENDING" : "UNKNOWN",
       planEvents.length ? "Plan and mission admission are recorded in the ledger." : "No plan admission event is recorded.",
-      eventRefs(/mission\.created|mission_step\.recorded|executive\.|portfolio\./), planEvents),
+      eventRefs("PLAN"), planEvents),
     make("mission", "Mission", missionState,
       mission ? `${state}${mission.next_action ? ` · next ${mission.next_action}` : ""}` : "Mission record unavailable.",
       lifecycleRef("mission", missionId).concat(lifecycleRef("timeline", mission?.last_event_id)),
       mission?.last_event_id ? [mission.last_event_id] : []),
     make("worker", "Worker", failedWorker ? "FAILED" : completedWorker ? "COMPLETE" : runningWorker ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
       failedWorker ? `Worker failure: ${failedWorker.failure_class ?? "UNKNOWN"}` : completedWorker ? "Worker run completed." : runningWorker ? "Worker run active." : "No worker run is recorded.",
-      workers.flatMap((worker) => lifecycleRef("agent", worker.run_id)).concat(eventRefs(/agent_run\.|worker\./)),
+      workers.flatMap((worker) => lifecycleRef("agent", worker.run_id)).concat(eventRefs("WORKER")),
       workerEvents.concat(workers.map((worker) => worker.last_event_id).filter((id): id is string => Boolean(id)))),
     make("action_artifact", "Action / artifact", hasArtifact ? "COMPLETE" : actionEvents.some((id) => id) ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
       hasArtifact ? "Artifact hash is recorded in an evidence bundle." : actionEvents.length ? "Effect/action event is recorded; completion is not yet evidenced." : "No action or artifact record is available.",
-      eventRefs(/system\.action_|effect\.|evidence\.created/), actionEvents),
+      eventRefs("ACTION_ARTIFACT"), actionEvents),
     make("evidence", "Evidence", evidence.length ? "COMPLETE" : mission ? "PENDING" : "UNKNOWN",
       evidence.length ? `${evidence.length} evidence bundle${evidence.length === 1 ? "" : "s"} recorded.` : "No evidence bundle is recorded.",
-      evidence.flatMap((item) => lifecycleRef("evidence", item.bundle_id)).concat(eventRefs(/evidence\.|worker\.evidence_reconciled/)),
+      evidence.flatMap((item) => lifecycleRef("evidence", item.bundle_id)).concat(eventRefs("EVIDENCE")),
       evidenceEvents.concat(evidence.map((item) => item.last_event_id).filter((id): id is string => Boolean(id)))),
     make("verifier", "Verifier", latestVerdict?.status === "PASS" ? "COMPLETE" : latestVerdict?.status === "FAIL" ? "FAILED" : latestVerdict?.status === "STARTED" ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
       latestVerdict ? `${latestVerdict.status}${latestVerdict.findings ? ` · ${String(latestVerdict.findings)}` : ""}` : "No independent verifier verdict is recorded.",
-      verdicts.flatMap((item) => lifecycleRef("verdict", item.verdict_id)).concat(eventRefs(/verification\./)),
+      verdicts.flatMap((item) => lifecycleRef("verdict", item.verdict_id)).concat(eventRefs("VERIFIER")),
       verifierEvents.concat(verdicts.map((item) => item.last_event_id).filter((id): id is string => Boolean(id)))),
     make("repair_retry", "Repair / retry", repairEvents.length ? "COMPLETE" : latestVerdict?.status === "FAIL" ? "PENDING" : "PENDING",
       repairEvents.length ? "Repair or retry lineage is recorded." : latestVerdict?.status === "FAIL" ? "Verifier failed; no repair event is recorded yet." : "No repair or retry is recorded.",
-      eventRefs(/fallback|repair|retry/i), repairEvents),
+      eventRefs("REPAIR_RETRY"), repairEvents),
     make("memory", "Memory", snapshot.memory.some((item) => item.mission_id === missionId) ? "COMPLETE" : missionState === "COMPLETE" ? "UNKNOWN" : mission ? "PENDING" : "UNKNOWN",
       snapshot.memory.some((item) => item.mission_id === missionId) ? "Mission-linked memory write is recorded." : "No mission-linked memory write is recorded.",
-      snapshot.memory.filter((item) => item.mission_id === missionId).flatMap((item) => lifecycleRef("memory", item.memory_id)).concat(eventRefs(/memory\./)),
+      snapshot.memory.filter((item) => item.mission_id === missionId).flatMap((item) => lifecycleRef("memory", item.memory_id)).concat(eventRefs("MEMORY")),
       memoryEvents),
     make("owner_briefing", "Owner briefing", latestBriefing ? "COMPLETE" : "UNKNOWN",
       latestBriefing ? "Briefing packet projection is available." : "No briefing packet projection is available.",
-      eventRefs(/briefing\./), briefingEvents),
+      eventRefs("OWNER_BRIEFING"), briefingEvents),
   ];
 }
 

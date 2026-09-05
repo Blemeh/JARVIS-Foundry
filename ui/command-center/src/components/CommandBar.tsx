@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEven
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, CircleAlert, Command, Search, Send, Sparkles } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
-import type { SearchResultItem, SearchResults } from "../lib/contracts";
+import type { OwnerDelegationMode, SearchResultItem, SearchResults } from "../lib/contracts";
 import { agentRunToWorker } from "../lib/cohesion";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { StopControl } from "./EmergencyStop";
@@ -48,10 +48,10 @@ function parseCommandIntent(raw: string): Intent | null {
 }
 
 const delegationModes = [
-  { label: "Tell me", detail: "Explain & advise" },
-  { label: "Prepare", detail: "Draft, do not act" },
-  { label: "Handle", detail: "Execute in scope" },
-  { label: "Watch", detail: "Monitor & alert" },
+  { label: "Tell me", detail: "Explain & advise", value: "TELL_ME" },
+  { label: "Prepare", detail: "Draft, do not act", value: "PREPARE" },
+  { label: "Handle", detail: "Execute in scope", value: "HANDLE" },
+  { label: "Watch", detail: "Monitor & alert", value: "WATCH" },
 ] as const;
 type DelegationMode = (typeof delegationModes)[number]["label"];
 
@@ -60,11 +60,6 @@ function delegationBody(raw: string): string {
   const currentPrefix = delegationModes.find((item) =>
     trimmed.toLowerCase().startsWith(`${item.label.toLowerCase()}:`));
   return currentPrefix ? trimmed.slice(currentPrefix.label.length + 1).trimStart() : trimmed;
-}
-
-function delegatedGoal(mode: DelegationMode, raw: string): string {
-  const body = delegationBody(raw).trim();
-  return body ? `${mode}: ${body}` : "";
 }
 
 const modePlaceholders: Record<DelegationMode, string> = {
@@ -124,9 +119,7 @@ export function CommandBar() {
   };
 
   const selectMode = (nextMode: DelegationMode) => {
-    const body = delegationBody(value);
     setMode(nextMode);
-    setValue(body.trim() ? `${nextMode}: ${body}` : "");
     setResults(null);
     setActiveIndex(-1);
     window.requestAnimationFrame(() => inputRef.current?.focus());
@@ -135,7 +128,7 @@ export function CommandBar() {
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     const body = delegationBody(value).trim();
-    const command = delegatedGoal(mode, value);
+    const command = body;
     if (!command || sending) return;
     setHistory((current) => [command, ...current.filter((entry) => entry !== command)].slice(0, 6));
     const parsed = parseCommandIntent(body);
@@ -146,7 +139,8 @@ export function CommandBar() {
     }
     setSending(true);
     try {
-      const result = await client.submitOwnerGoal(command);
+      const delegationMode = delegationModes.find((item) => item.label === mode)?.value as OwnerDelegationMode;
+      const result = await client.submitOwnerGoal(command, delegationMode);
       if (result.accepted) {
         setValue(""); setResults(null);
         setStatus({ kind: "ok", text: `Durable owner goal accepted${result.directiveId ? ` · ${result.directiveId}` : ""}` });

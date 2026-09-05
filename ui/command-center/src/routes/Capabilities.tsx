@@ -39,7 +39,7 @@ function string(value: unknown, fallback = "UNKNOWN"): string {
 }
 
 function classify(row: CapabilityRow): GroupName {
-  const haystack = `${string(row.spec.capability_id)} ${string(row.spec.action_kind)} ${string(row.spec.kind)} ${string(row.metadata?.source, "")}`.toLowerCase();
+  const haystack = `${string(row.spec.capability_id)} ${string(row.spec.action_kind)} ${string(row.spec.kind)} ${string(row.metadata?.source, "")} ${JSON.stringify(row.metadata?.provenance ?? {})}`.toLowerCase();
   if (/self|acquir|generated|synth/.test(haystack)) return "Self-acquired";
   if (/github|git\./.test(haystack)) return "GitHub";
   if (/browser|playwright|chrome/.test(haystack)) return "Browser";
@@ -52,6 +52,27 @@ function classify(row: CapabilityRow): GroupName {
   if (/provider|model|llm|api/.test(haystack)) return "Providers";
   if (/code|repo|script|test|build/.test(haystack)) return "Code";
   return "System";
+}
+
+function trustState(row: CapabilityRow): string {
+  return string(row.readiness.trust_state ?? row.metadata?.trust_state);
+}
+
+function displayedState(row: CapabilityRow): string {
+  const trust = trustState(row);
+  if (trust === "PROBATION" || trust === "DISABLED") return trust;
+  return string(row.readiness.state);
+}
+
+function provenance(row: CapabilityRow): string {
+  const nested = row.metadata?.provenance;
+  if (nested && typeof nested === "object") {
+    const source = (nested as Record<string, unknown>).source;
+    const stage = (nested as Record<string, unknown>).stage;
+    const authority = (nested as Record<string, unknown>).authority;
+    return [source, stage, authority].filter((value): value is string => typeof value === "string" && Boolean(value.trim())).join(" · ") || "UNKNOWN";
+  }
+  return string(row.metadata?.source);
 }
 
 function CapabilitiesContent(data: OverviewData) {
@@ -87,7 +108,7 @@ function CapabilitiesContent(data: OverviewData) {
             <header><Icon size={17} aria-hidden="true" /><h2 id={`capability-${name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>{name}</h2><span>{groupRows.length || "—"}</span></header>
             {groupRows.length ? <div>{groupRows.map((row) => {
               const id = string(row.spec.capability_id);
-              const readiness = string(row.readiness.state);
+              const readiness = displayedState(row);
               return <button key={id} type="button" className="rm-capability-row" onClick={() => setSelected(row)}>
                 <span className={`rm-readiness rm-readiness--${readiness.toLowerCase()}`} />
                 <span><strong>{id}</strong><small>{string(row.spec.action_kind)} · {string(row.spec.kind)}</small></span>
@@ -103,13 +124,14 @@ function CapabilitiesContent(data: OverviewData) {
           <Network size={22} /><h2>{string(selected.spec.capability_id)}</h2><p>{string(selected.spec.action_kind)} through {string(selected.spec.executor)}.</p>
           <dl>
             <div><dt>Observed readiness</dt><dd>{string(selected.readiness.state)}</dd></div>
+            <div><dt>Catalog trust</dt><dd>{trustState(selected)}</dd></div>
             <div><dt>Last verified</dt><dd>{string(selected.readiness.last_verified_at)}</dd></div>
             <div><dt>Last outcome</dt><dd>{string(selected.readiness.last_outcome)}</dd></div>
             <div><dt>Claim vs verified</dt><dd>{string(selected.readiness.claimed_vs_verified)}</dd></div>
             <div><dt>Semantic</dt><dd>{string(selected.spec.semantic)}</dd></div>
             <div><dt>Unattended</dt><dd>{string(selected.spec.unattended)}</dd></div>
             <div><dt>Effect class</dt><dd>{string(selected.metadata?.effect_class)}</dd></div>
-            <div><dt>Provenance</dt><dd>{string(selected.metadata?.provenance ?? selected.metadata?.source, "UNKNOWN")}</dd></div>
+            <div><dt>Provenance</dt><dd>{provenance(selected)}</dd></div>
           </dl>
           <h3>Limitations</h3><p>{Array.isArray(selected.spec.limitations) && selected.spec.limitations.length ? selected.spec.limitations.join(" · ") : "No limitation metadata was published."}</p>
           <h3>Trust note</h3><p>{string(selected.readiness.note, "No readiness note was published.")}</p>

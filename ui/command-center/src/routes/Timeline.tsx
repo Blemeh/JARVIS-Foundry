@@ -9,7 +9,7 @@ import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, RefChipRow } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { metaLabelToRef, refsFromTimelineEvent } from "../lib/entityRefs";
-import { sourceModeLabel } from "../lib/sourceMode";
+import { isCanonicalSource, sourceModeLabel } from "../lib/sourceMode";
 
 const filters: { key: "ALL" | TimelineCategory; label: string }[] = [
   { key: "ALL", label: "All Events" },
@@ -95,7 +95,7 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
           <p className="t-label text-muted page-kicker">Evidence Spine</p>
           <h1 className="t-display">Evidence Spine</h1>
           <p className="prose page-desc">
-            {sourceMode === "SIMULATED" ? "Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views are local only and every reference is navigable." : sourceMode === "LIVE" ? "Canonical ledger sequence for missions, handoffs, verifier gates, recovery, and STOP directives. Every reference is navigable." : `Timeline source ${sourceModeLabel(sourceMode)}: canonical events are unavailable and no fixture fallback is shown.`}
+            {sourceMode === "SIMULATED" ? "Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views are local only and every reference is navigable." : isCanonicalSource(sourceMode) ? "Canonical ledger sequence for missions, handoffs, verifier gates, recovery, and STOP directives. Every reference is navigable." : `Timeline source ${sourceModeLabel(sourceMode)}: canonical events are unavailable and no fixture fallback is shown.`}
           </p>
         </div>
         <span className="t-mono text-muted timeline-head-hash">LEDGER SOURCE: {sourceModeLabel(sourceMode)} · event identity is recorded by the backend</span>
@@ -180,7 +180,7 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
 
       {groups.length === 0 ? (
         <div className="panel panel-corner">
-          <EmptyState label="Empty timeline" detail={sourceMode === "SIMULATED" ? "No events match the current filters in this simulated ledger." : sourceMode === "LIVE" ? "No canonical events match the current filters." : `Timeline data is unavailable: runtime source is ${sourceMode}.`} />
+          <EmptyState label="Empty timeline" detail={sourceMode === "SIMULATED" ? "No events match the current filters in this simulated ledger." : isCanonicalSource(sourceMode) ? "No canonical events match the current filters." : `Timeline data is unavailable: runtime source is ${sourceMode}.`} />
         </div>
       ) : (
         <div className="timeline">

@@ -36,6 +36,7 @@ describe("explicit Command Center source mode", () => {
   it("never substitutes simulated copy for an unavailable source", () => {
     const copy = { live: "canonical", simulated: "fixture", unavailable: "unavailable" };
     expect(sourceCopy("LIVE", copy)).toBe("canonical");
+    expect(sourceCopy("DEGRADED", copy)).toBe("canonical");
     expect(sourceCopy("SIMULATED", copy)).toBe("fixture");
     expect(sourceCopy("DISCONNECTED", copy)).toBe("unavailable");
   });

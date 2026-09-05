@@ -5,7 +5,7 @@ export interface FoundrySnapshot {
   source_of_truth: { kind: string; ledger_head_sequence: number; event_count: number };
   supervisor: Record<string, unknown>;
   system_state: Record<string, unknown>;
-  stop: { active: boolean; record: unknown; source: string };
+  stop: { active: boolean; record: unknown; source: string; reason?: string | null };
   controls: {
     goals: Record<string, unknown>[];
     constraints: Record<string, unknown>[];
@@ -49,6 +49,8 @@ export interface FoundrySnapshot {
     history_count?: number;
     active_count?: number;
   };
+  owner_context?: FoundryOwnerContext;
+  work_hierarchy?: import("./contracts").WorkHierarchy;
   decision_queue?: {
     open?: Record<string, unknown>[];
     history?: Record<string, unknown>[];
@@ -90,6 +92,35 @@ export interface FoundrySnapshot {
     files?: FoundryVaultFile[];
     count?: number;
   };
+}
+
+export interface FoundryOwnerContext {
+  contract?: string;
+  status?: string;
+  generated_at?: string;
+  authority?: {
+    model?: string;
+    owner_controls?: string;
+    execution?: string;
+  };
+  sections?: Record<string, Record<string, unknown>[]>;
+  current?: Record<string, unknown>[];
+  current_count?: number;
+  history_count?: number;
+  history_surface?: string;
+  unknown?: Record<string, unknown>[];
+  warnings?: string[];
+  bounds?: Record<string, unknown>;
+  reason?: string;
+}
+
+export interface FoundryTimelinePage {
+  schema: "v13.command-center-event-page.v1";
+  after_sequence: number;
+  next_sequence: number;
+  ledger_head_sequence: number;
+  has_more: boolean;
+  events: FoundryTimelineEvent[];
 }
 
 export interface FoundryVaultFile {
@@ -163,6 +194,11 @@ export interface FoundryExecutiveAutonomy {
   operational_followup_proposals?: Record<string, Record<string, unknown>>;
   latest_cycle?: Record<string, unknown>;
   briefing?: Record<string, unknown> | null;
+  campaigns?: {
+    schema?: string;
+    campaigns?: Record<string, Record<string, unknown>>;
+    error?: string;
+  };
   status?: string;
   reason?: string;
 }
@@ -274,12 +310,26 @@ export interface FoundryTimelineEvent {
   decision?: string;
   state?: string;
   next_action?: string;
+  lifecycle_contract?: "jarvis.command-center-mission-lifecycle.v1";
+  lifecycle_stages?: MissionLifecycleStage[];
   evidence_refs?: { kind: string; id?: string; event_id?: string }[];
   source?: { type?: string; id?: string };
   correlation_id?: string;
   causation_id?: string;
   rejected_alternative?: string | null;
 }
+
+export type MissionLifecycleStage =
+  | "OWNER_GOAL"
+  | "PLAN"
+  | "MISSION"
+  | "WORKER"
+  | "ACTION_ARTIFACT"
+  | "EVIDENCE"
+  | "VERIFIER"
+  | "REPAIR_RETRY"
+  | "MEMORY"
+  | "OWNER_BRIEFING";
 
 export interface OwnerCommandResponse {
   status: "APPLIED" | "REJECTED" | "MALFORMED" | "BLOCKED";

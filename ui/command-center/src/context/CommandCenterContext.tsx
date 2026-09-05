@@ -31,6 +31,7 @@ interface CommandCenterState {
   streamConnected: boolean;
   stopActive: boolean;
   stopActivatedAt: string | null;
+  resumeTargetId: string | null;
   stopDialogOpen: boolean;
   openStopDialog: () => void;
   closeStopDialog: () => void;
@@ -61,6 +62,14 @@ interface CommandCenterState {
 
 const CommandCenterContext = createContext<CommandCenterState | null>(null);
 
+function sameConnection(left: ConnectionState, right: ConnectionState): boolean {
+  return left.connected === right.connected
+    && left.source === right.source
+    && left.stale === right.stale
+    && left.lastFetchedAt === right.lastFetchedAt
+    && left.error === right.error;
+}
+
 export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [client] = useState<JarvisClient>(() => createJarvisClient());
   const mode = resolveClientMode();
@@ -69,13 +78,14 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
   const [connection, setConnection] = useState<ConnectionState>(client.connection);
   const [scenario, setScenario] = useState<Scenario | null>(null);
-  const [streamConnected, setStreamConnected] = useState(true);
+  const [streamConnected, setStreamConnected] = useState(client.connection.connected);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsStatus, setNotificationsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [demoIndex, setDemoIndex] = useState(0);
   const [stopActive, setStopActive] = useState(false);
   const [stopActivatedAt, setStopActivatedAt] = useState<string | null>(null);
+  const [resumeTargetId, setResumeTargetId] = useState<string | null>(null);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
   const [trustDialogOpen, setTrustDialogOpen] = useState(false);
   const [trustSummary, setTrustSummary] = useState<TrustSummary | null>(null);
@@ -90,22 +100,29 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
 
   const refreshNotifications = useCallback(async () => {
     try {
-      const [list, trust] = await Promise.all([
+      const [list, trust, ownerSurface] = await Promise.all([
         client.listNotifications(),
         client.getTrustSummary(),
+        client.getOwnerControlSurface?.() ?? Promise.resolve(null),
       ]);
       setNotifications(list);
       setNotificationsStatus("ready");
       setNotificationsError(null);
       setTrustSummary(trust);
       setTrustSummaryStatus("ready");
-      setConnection(client.connection);
+      const nextConnection = client.connection;
+      setConnection(nextConnection);
       if (mode === "live") {
-        // A gated trust decision is not the same thing as an active STOP.
-        // Only the canonical suspended state (derived from the STOP
-        // sentinel/directive) may freeze the Command Center surfaces.
-        const active = trust.state === "SUSPENDED";
+        setStreamConnected(nextConnection.connected && !nextConnection.stale);
+      }
+      const active = ownerSurface?.stopped;
+      if (typeof active === "boolean") {
         setStopActive(active);
+        setResumeTargetId(ownerSurface?.resumableDirectiveIds[0] ?? null);
+        if (!active) {
+          setStopActivatedAt(null);
+          setResumeTargetId(null);
+        }
       }
     } catch (err: unknown) {
       setNotifications([]);
@@ -113,7 +130,9 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       setNotificationsError(err instanceof Error ? err.message : String(err));
       setTrustSummary(null);
       setTrustSummaryStatus("error");
-      setConnection(client.connection);
+      const nextConnection = client.connection;
+      setConnection(nextConnection);
+      if (mode === "live") setStreamConnected(false);
     }
   }, [client, mode]);
 
@@ -124,9 +143,14 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stream = client.subscribeEvents();
+    const syncConnection = () => {
+      const next = client.connection;
+      setConnection((current) => sameConnection(current, next) ? current : next);
+      setStreamConnected(stream.connected && (mode === "simulated" || next.connected && !next.stale));
+    };
     const unsubscribe = stream.subscribe((event) => {
       setVersion((v) => v + 1);
-      setStreamConnected(stream.connected);
+      syncConnection();
       void refreshNotifications();
       if (event.type === "stop.simulated") {
         setStopActive(true);
@@ -137,8 +161,13 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
         setStopActivatedAt(null);
       }
     });
-    return unsubscribe;
-  }, [client, refreshNotifications]);
+    syncConnection();
+    const connectionTimer = window.setInterval(syncConnection, 1000);
+    return () => {
+      window.clearInterval(connectionTimer);
+      unsubscribe();
+    };
+  }, [client, mode, refreshNotifications]);
 
   const openStopDialog = useCallback(() => setStopDialogOpen(true), []);
   const closeStopDialog = useCallback(() => setStopDialogOpen(false), []);
@@ -158,15 +187,19 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   }, [client, refreshNotifications]);
 
   const resetStop = useCallback(async () => {
-    const result = await client.resumeOperations();
+    if (!mockClient && !resumeTargetId) return;
+    const result = await client.resumeOperations(resumeTargetId ?? undefined);
     if (result.accepted) {
-      setStopActive(false);
-      setStopActivatedAt(null);
-      if (mockClient) await mockClient.resumeSimulation();
+      if (mockClient) {
+        await mockClient.resumeSimulation();
+        setStopActive(false);
+        setStopActivatedAt(null);
+        setResumeTargetId(null);
+      }
       setVersion((v) => v + 1);
-      void refreshNotifications();
+      await refreshNotifications();
     }
-  }, [client, mockClient, refreshNotifications]);
+  }, [client, mockClient, refreshNotifications, resumeTargetId]);
 
   const runScenario = useCallback(
     async (name: Scenario) => {
@@ -184,12 +217,16 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   );
 
   const reconnectStream = useCallback(async () => {
-    if (!mockClient) return;
-    await mockClient.reconnectStream();
-    setStreamConnected(mockClient.subscribeEvents().connected);
-    setVersion((v) => v + 1);
-    void refreshNotifications();
-  }, [mockClient, refreshNotifications]);
+    try {
+      await client.reconnectStream();
+      setVersion((v) => v + 1);
+      void refreshNotifications();
+    } finally {
+      const next = client.connection;
+      setConnection(next);
+      setStreamConnected(next.connected && !next.stale);
+    }
+  }, [client, refreshNotifications]);
 
   const simulateEvent = useCallback(
     async (type: MockEventType) => {
@@ -245,6 +282,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       streamConnected,
       stopActive,
       stopActivatedAt,
+      resumeTargetId,
       stopDialogOpen,
       openStopDialog,
       closeStopDialog,
@@ -282,6 +320,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       streamConnected,
       stopActive,
       stopActivatedAt,
+      resumeTargetId,
       stopDialogOpen,
       openStopDialog,
       closeStopDialog,

@@ -603,10 +603,161 @@ def owner_context_read_projection(
     database: FoundryDatabase,
     *,
     now: str | None = None,
+    owner_directives: dict[str, Any] | None = None,
+    decision_queue: dict[str, Any] | None = None,
+    limit: int = 100,
 ) -> dict[str, Any]:
-    """JSON-safe projection for later Executive, YOU page, and briefings."""
+    """Return the bounded, current-only Command Center owner-context surface."""
 
-    return project_owner_context(database, now=now).as_dict()
+    projection = project_owner_context(database, now=now)
+    generated_at = projection.generated_at
+    bound = max(1, min(int(limit), 500))
+
+    # Canonical owner directives are already projected from the ledger by
+    # project_owner_context. The optional materialized projection is accepted
+    # only to keep this read adapter compatible with Command Center callers.
+    del owner_directives
+
+    current = [
+        record.as_dict(now=generated_at)
+        for record in projection.current
+    ]
+    known_ids = {
+        str(record.get("context_id") or "")
+        for record in current
+    }
+    for item in (decision_queue or {}).get("open", []):
+        if not isinstance(item, dict):
+            continue
+        queue_id = str(item.get("queue_id") or "").strip()
+        if not queue_id:
+            continue
+        context_id = (
+            queue_id if queue_id.startswith("attention:")
+            else f"attention:{queue_id}"
+        )
+        if context_id in known_ids:
+            continue
+        summary = str(
+            item.get("summary")
+            or item.get("classification")
+            or "Owner attention required"
+        ).strip()
+        opened_at = str(item.get("opened_at") or generated_at)
+        source_event_id = str(item.get("source_event_id") or "").strip()
+        entity_refs = [
+            str(value)
+            for value in (item.get("mission_id"), item.get("entity_id"))
+            if value
+        ]
+        objective_ids = (
+            [str(item["entity_id"])]
+            if item.get("entity_kind") == "objective" and item.get("entity_id")
+            else []
+        )
+        current.append({
+            "contract": OWNER_CONTEXT_CONTRACT,
+            "context_id": context_id,
+            "kind": "WAITING_ON_OWNER",
+            "text": summary,
+            "state": "ACTIVE",
+            "current": True,
+            "freshness": "UNBOUNDED",
+            "scope": {
+                "global": not entity_refs and not objective_ids,
+                "program_ids": [],
+                "project_ids": [],
+                "objective_ids": objective_ids,
+                "entity_refs": entity_refs,
+                "tags": [],
+            },
+            "priority": float(
+                (item.get("item") or {}).get("importance") or 0.0
+            ),
+            "confidence": 1.0 if source_event_id else 0.0,
+            "observed_at": opened_at,
+            "effective_at": opened_at,
+            "recorded_at": opened_at,
+            "updated_at": opened_at,
+            "fresh_until": None,
+            "provenance": {
+                "source_type": "decision_queue",
+                "source_id": queue_id,
+                "source_ref": (
+                    f"event:{source_event_id}"
+                    if source_event_id else f"queue:{queue_id}"
+                ),
+                "content_hash": hashlib.sha256(
+                    summary.encode("utf-8")
+                ).hexdigest(),
+                "captured_at": opened_at,
+                "evidence_refs": list(item.get("evidence_refs") or []),
+                "authority": "ADVISORY",
+                "owner_directive_id": None,
+            },
+            "attributes": {
+                "classification": item.get("classification"),
+                "consequence": item.get("consequence"),
+            },
+            "related_context_ids": [],
+            "supersedes": None,
+            "superseded_by": None,
+            "contradicts": [],
+            "shadowed_by": None,
+            "source_event_id": source_event_id or None,
+            "source_event_type": item.get("source_event_type"),
+            "unknown_fields": [] if source_event_id else ["source_event_id"],
+        })
+        known_ids.add(context_id)
+
+    current.sort(
+        key=lambda record: (
+            str(record.get("effective_at") or ""),
+            str(record.get("recorded_at") or ""),
+            str(record.get("context_id") or ""),
+        ),
+        reverse=True,
+    )
+    bounded_current = current[:bound]
+    sections: dict[str, list[dict[str, Any]]] = {
+        name: [] for name in _SECTION_NAMES.values()
+    }
+    for record in bounded_current:
+        sections[_SECTION_NAMES[str(record["kind"])]].append(record)
+    unknown = [
+        record.as_dict(now=generated_at)
+        for record in projection.records
+        if record.state == "UNKNOWN" or record.unknown_fields
+    ]
+    unknown.extend(
+        record for record in bounded_current
+        if record.get("unknown_fields")
+    )
+    return {
+        "contract": OWNER_CONTEXT_CONTRACT,
+        "status": "AVAILABLE" if bounded_current else "EMPTY",
+        "generated_at": generated_at,
+        "authority": {
+            "model": "ADVISORY_EVENT_DERIVED",
+            "owner_controls": "AUTHORITATIVE_AND_HIGHER_PRECEDENCE",
+            "execution": "NONE",
+        },
+        "sections": sections,
+        "current": bounded_current,
+        "current_count": len(bounded_current),
+        "history_count": len(projection.records),
+        "history": [],
+        "history_surface": "/activity",
+        "contradictions": list(projection.contradictions),
+        "unknown": unknown[:bound],
+        "warnings": list(projection.warnings),
+        "bounds": {
+            "limit": bound,
+            "returned_current": len(bounded_current),
+            "history_included": False,
+            "truncated": len(current) > bound,
+        },
+    }
 
 
 __all__ = [

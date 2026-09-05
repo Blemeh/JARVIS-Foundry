@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CommandCenterProvider } from "../../context/CommandCenterContext";
-import { canResume, StopControl, EmergencyStopDialog } from "../EmergencyStop";
+import { canActivateStop, canResume, StopControl, EmergencyStopDialog } from "../EmergencyStop";
 
 function renderStop() {
   return render(
@@ -14,10 +14,15 @@ function renderStop() {
 }
 
 describe("Emergency STOP", () => {
-  it("keeps live Resume available while canonical STOP is active", () => {
-    expect(canResume(true, "LIVE")).toBe(true);
+  it("requires fresh live truth and one exact hold identity for Resume", () => {
+    expect(canResume(true, "LIVE", "directive-stop-1")).toBe(true);
+    expect(canResume(true, "LIVE")).toBe(false);
+    expect(canResume(true, "DEGRADED", "directive-stop-1")).toBe(false);
     expect(canResume(true, "DISCONNECTED")).toBe(false);
     expect(canResume(false, "SIMULATED")).toBe(true);
+    expect(canActivateStop(true, "LIVE")).toBe(true);
+    expect(canActivateStop(true, "DEGRADED")).toBe(true);
+    expect(canActivateStop(true, "DISCONNECTED")).toBe(false);
   });
 
   it("is prominent, opens a dialog, and only simulates in simulated mode", async () => {

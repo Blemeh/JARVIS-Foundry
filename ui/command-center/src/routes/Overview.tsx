@@ -13,11 +13,12 @@ import {
   Radio,
 } from "lucide-react";
 import { Dialog } from "../components/Dialog";
-import { JarvisNucleus, type JarvisNucleusState } from "../components/JarvisNucleus";
+import { JarvisNucleus } from "../components/JarvisNucleus";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import type { Mission } from "../lib/contracts";
+import { resolveNucleusState, type JarvisNucleusState } from "../lib/nucleusState";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
 
@@ -38,25 +39,6 @@ function compactAge(value: string | null | undefined): string {
 
 function activeMission(missions: Mission[]): Mission | null {
   return missions.find((mission) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(mission.status)) ?? null;
-}
-
-function resolveNucleusState(data: OverviewData, stopActive: boolean, scenario: string | null): JarvisNucleusState {
-  if (stopActive) return "STOPPED";
-  if (data.ownerAttention.length > 0) return "NEEDS_OWNER";
-  if (scenario === "RECOVERY" || scenario === "WORKER_CRASH") return "RECOVERING";
-  if (scenario === "MISSION_BLOCKED") return "BLOCKED";
-  const raw = data.autonomy.executive.state.toUpperCase();
-  if (raw.includes("OBSERV")) return "OBSERVING";
-  if (raw.includes("PLAN") || raw.includes("JUDG")) return "PLANNING";
-  if (raw.includes("RESEARCH")) return "RESEARCHING";
-  if (raw.includes("EXECUT") || raw.includes("WORK")) return "EXECUTING";
-  if (raw.includes("VERIF")) return "VERIFYING";
-  if (raw.includes("RECOVER")) return "RECOVERING";
-  if (raw.includes("BLOCK")) return "BLOCKED";
-  if (raw.includes("OWNER")) return "NEEDS_OWNER";
-  if (raw.includes("WAIT") || raw.includes("IDLE")) return "WAITING";
-  if (activeMission(data.missions)) return "EXECUTING";
-  return data.autonomy.status === "UNAVAILABLE" ? "UNKNOWN" : "WAITING";
 }
 
 const lifecycle = ["Observe", "Reason", "Prepare", "Act", "Verify"] as const;
@@ -80,7 +62,7 @@ function metricValue(data: OverviewData, key: string): string {
 }
 
 function OverviewContent(data: OverviewData) {
-  const { sourceMode, stopActive, scenario, streamConnected } = useCommandCenter();
+  const { sourceMode, stopActive, scenario, streamConnected, connection } = useCommandCenter();
   const [focusOpen, setFocusOpen] = useState(false);
   const mission = activeMission(data.missions);
   const currentWork = data.autonomy.current_work;
@@ -99,7 +81,17 @@ function OverviewContent(data: OverviewData) {
     mission?.nextAction ??
     data.autonomy.executive.wait_reason ??
     "No next action is recorded.";
-  const state = resolveNucleusState(data, stopActive, scenario);
+  const state = resolveNucleusState({
+    stopActive,
+    sourceMode,
+    streamConnected,
+    connectionStale: connection.stale,
+    ownerAttention: data.ownerAttention.length > 0,
+    scenario,
+    executiveState: data.autonomy.executive.state,
+    autonomyStatus: data.autonomy.status,
+    activeMissionStatus: mission?.status ?? null,
+  });
   const phase = data.autonomy.executive.stage ?? mission?.stage ?? null;
   const activeStage = stageIndex(state, mission);
   const lifecycleSuspended = state === "STOPPED";
@@ -144,7 +136,13 @@ function OverviewContent(data: OverviewData) {
         <div className={`rm-source-banner rm-source-banner--${sourceMode.toLowerCase()}`} role="status">
           <Radio size={14} aria-hidden="true" />
           <strong>{source}</strong>
-          <span>{sourceMode === "SIMULATED" ? "Preview fixture; no production state or effect is represented." : "Canonical runtime state is unavailable; values fail closed."}</span>
+          <span>{
+            sourceMode === "SIMULATED"
+              ? "Preview fixture; no production state or effect is represented."
+              : sourceMode === "DEGRADED"
+                ? "Canonical runtime truth is connected with degraded health; ordinary owner effects remain gated."
+                : "Canonical runtime state is unavailable; values fail closed."
+          }</span>
         </div>
       ) : null}
 
@@ -267,8 +265,8 @@ function OverviewContent(data: OverviewData) {
                   <strong>{phase ?? "UNKNOWN"}</strong>
                 </div>
                 <div>
-                  <span>Progress</span>
-                  <strong>{mission ? `${mission.completion}%` : "UNKNOWN"}</strong>
+                  <span>Progress evidence</span>
+                  <strong>{missionEvidence.length ? `${missionEvidence.length} linked record${missionEvidence.length === 1 ? "" : "s"}` : "NOT REPORTED"}</strong>
                 </div>
                 <div>
                   <span>Active workers</span>

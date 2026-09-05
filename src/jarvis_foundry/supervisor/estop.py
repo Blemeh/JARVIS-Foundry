@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from pathlib import Path
 
@@ -58,9 +59,17 @@ class EmergencyStop:
         }
 
     def clear(self) -> bool:
-        try:
-            self.path.unlink()
-            return True
-        except FileNotFoundError:
-            return False
+        for attempt in range(8):
+            try:
+                self.path.unlink()
+                return True
+            except FileNotFoundError:
+                return False
+            except OSError:
+                if attempt == 7:
+                    raise
+                # Windows can briefly deny deletion while a concurrent
+                # readback request closes its handle.
+                time.sleep(0.01 * (attempt + 1))
+        return False
 

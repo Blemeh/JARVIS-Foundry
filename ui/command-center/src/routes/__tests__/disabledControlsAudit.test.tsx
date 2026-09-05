@@ -77,7 +77,7 @@ describe("disabled control audit (simulated mode)", () => {
     expect(submit).toBeDisabled()
   })
 
-  it("encodes the default Tell me mode in the submitted owner goal", async () => {
+  it("submits exact owner text without encoding the default mode", async () => {
     const submitOwnerGoal = vi
       .spyOn(MockJarvisClient.prototype, "submitOwnerGoal")
       .mockResolvedValue({ accepted: false, error: "simulated rejection" })
@@ -88,10 +88,10 @@ describe("disabled control audit (simulated mode)", () => {
     await user.type(input, "Summarize retry risk")
     await user.click(screen.getByRole("button", { name: /Send command/i }))
 
-    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Tell me: Summarize retry risk"))
+    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Summarize retry risk", "TELL_ME"))
   })
 
-  it("keeps the selected delegation mode aligned after free text is entered", async () => {
+  it("keeps delegation mode separate from authenticated owner text", async () => {
     const submitOwnerGoal = vi
       .spyOn(MockJarvisClient.prototype, "submitOwnerGoal")
       .mockResolvedValue({ accepted: false, error: "simulated rejection" })
@@ -101,10 +101,11 @@ describe("disabled control audit (simulated mode)", () => {
     const input = await screen.findByRole("combobox", { name: /Direct JARVIS/i })
     await user.type(input, "Track provider recovery")
     await user.click(screen.getByRole("button", { name: /Watch/i }))
-    expect(input).toHaveValue("Watch: Track provider recovery")
+    expect(input).toHaveValue("Track provider recovery")
+    expect(screen.getByRole("button", { name: /Watch/i })).toHaveAttribute("aria-pressed", "true")
     await user.click(screen.getByRole("button", { name: /Send command/i }))
 
-    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Watch: Track provider recovery"))
+    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Track provider recovery", "WATCH"))
   })
 
   it("mission halt explains simulated-only contract when enabled", async () => {

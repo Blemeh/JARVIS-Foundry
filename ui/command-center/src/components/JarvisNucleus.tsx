@@ -1,17 +1,7 @@
 import { useId } from "react";
+import type { JarvisNucleusState } from "../lib/nucleusState";
 
-export type JarvisNucleusState =
-  | "WAITING"
-  | "OBSERVING"
-  | "PLANNING"
-  | "RESEARCHING"
-  | "EXECUTING"
-  | "VERIFYING"
-  | "RECOVERING"
-  | "BLOCKED"
-  | "NEEDS_OWNER"
-  | "STOPPED"
-  | "UNKNOWN";
+export type { JarvisNucleusState } from "../lib/nucleusState";
 
 const stateCopy: Record<JarvisNucleusState, string> = {
   WAITING: "Standing by for the next durable condition",

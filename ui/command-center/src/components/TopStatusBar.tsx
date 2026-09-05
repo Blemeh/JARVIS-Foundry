@@ -1,4 +1,4 @@
-import { Activity, Clock, Database, Menu, ShieldQuestion, WifiOff } from "lucide-react";
+import { Activity, Clock, Database, Menu, RefreshCw, ShieldQuestion, WifiOff } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useClock } from "../lib/useClock";
 import { useCommandCenter } from "../context/CommandCenterContext";
@@ -34,6 +34,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     connection,
     client,
     version,
+    reconnectStream,
   } = useCommandCenter();
   const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
   const schemaLabel = schemaQuery.data?.schema == null ? "UNKNOWN" : String(schemaQuery.data.schema);
@@ -63,7 +64,21 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           </div>
         </div>
         <div className="topbar-right topbar-god-meta">
-          {!streamConnected ? <span className="topbar-disconnect"><WifiOff size={13} aria-hidden="true" />Updates paused</span> : null}
+          {!streamConnected ? (
+            <span className="topbar-disconnect">
+              <WifiOff size={13} aria-hidden="true" />
+              <span>Updates paused</span>
+              <button
+                type="button"
+                className="topbar-stream-reconnect"
+                onClick={() => void reconnectStream()}
+                title="Reconnect to the canonical runtime projection"
+              >
+                <RefreshCw size={11} aria-hidden="true" />
+                Reconnect
+              </button>
+            </span>
+          ) : null}
           <span className="topbar-source data-source-pill" title={connection.error ?? `Data source: ${source}`}>
             <Database size={13} aria-hidden="true" />
             <span>DATA SOURCE: {source}</span>

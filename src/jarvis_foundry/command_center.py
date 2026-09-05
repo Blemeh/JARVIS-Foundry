@@ -17,10 +17,11 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import escape
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .database import FoundryDatabase
@@ -391,6 +392,100 @@ def _record_ref(kind: str, identifier: Any, event_id: Any = None) -> dict[str, A
     return ref
 
 
+def _projection_record(
+    snapshot: Mapping[str, Any],
+    kind: str,
+    record_id: str,
+) -> dict[str, Any] | None:
+    """Resolve a bounded Command Center record without exposing raw tables."""
+
+    def find(
+        rows: object,
+        *identity_fields: str,
+    ) -> dict[str, Any] | None:
+        if not isinstance(rows, list):
+            return None
+        return next(
+            (
+                dict(row)
+                for row in rows
+                if isinstance(row, Mapping)
+                and any(str(row.get(field) or "") == record_id for field in identity_fields)
+            ),
+            None,
+        )
+
+    direct: dict[str, tuple[str, tuple[str, ...]]] = {
+        "mission": ("missions", ("mission_id",)),
+        "agent_run": ("workers", ("run_id",)),
+        "worker": ("workers", ("run_id",)),
+        "evidence": ("evidence", ("bundle_id",)),
+        "verification": ("verification", ("verdict_id",)),
+        "verdict": ("verification", ("verdict_id",)),
+        "system": ("systems", ("system_id",)),
+        "memory": ("memory", ("memory_id",)),
+        "mission_step": ("mission_steps", ("contract_id", "step_id")),
+        "event": ("timeline", ("event_id",)),
+    }
+    if kind in direct:
+        collection, identities = direct[kind]
+        return find(snapshot.get(collection), *identities)
+
+    work = snapshot.get("work_hierarchy")
+    work_projection = dict(work) if isinstance(work, Mapping) else {}
+    if kind == "goal":
+        return find(work_projection.get("goals"), "goal_id", "directive_id")
+    if kind == "program":
+        return find(work_projection.get("programs"), "program_id")
+    if kind == "project":
+        return find(work_projection.get("projects"), "project_id")
+    if kind == "objective":
+        return find(work_projection.get("objectives"), "objective_id")
+    if kind == "campaign":
+        return find(work_projection.get("campaigns"), "campaign_id")
+    if kind == "action":
+        record = find(work_projection.get("actions"), "action_id", "step_id")
+        if record is not None:
+            return record
+
+    effect = snapshot.get("effect_truth")
+    effect_projection = dict(effect) if isinstance(effect, Mapping) else {}
+    if kind in {"action", "effect"}:
+        return find(effect_projection.get("actions"), "action_key")
+    if kind in {"provider_attempt", "connector_attempt"}:
+        return find(effect_projection.get("attempts"), "attempt_id")
+    if kind in {"effect_lineage", "connector_lineage"}:
+        return find(effect_projection.get("lineage"), "lineage_id")
+
+    if kind == "capability":
+        fabric = snapshot.get("capability_fabric")
+        fabric_projection = dict(fabric) if isinstance(fabric, Mapping) else {}
+        capabilities = fabric_projection.get("capabilities")
+        if isinstance(capabilities, list):
+            for row in capabilities:
+                if not isinstance(row, Mapping):
+                    continue
+                spec = row.get("spec")
+                metadata = row.get("metadata")
+                candidates: list[object] = []
+                if isinstance(spec, Mapping):
+                    candidates.extend(
+                        spec.get(field)
+                        for field in (
+                            "capability_id", "id", "name", "capability",
+                            "canonical_name",
+                        )
+                    )
+                if isinstance(metadata, Mapping):
+                    candidates.extend(
+                        metadata.get(field)
+                        for field in ("capability_id", "id", "name")
+                    )
+                if any(str(value or "") == record_id for value in candidates):
+                    return dict(row)
+    return None
+
+
 def _event_refs(payload: dict[str, Any], event_id: str) -> list[dict[str, Any]]:
     refs = [_record_ref("event", event_id, event_id)]
     mappings = {
@@ -409,6 +504,101 @@ def _event_refs(payload: dict[str, Any], event_id: str) -> list[dict[str, Any]]:
     if payload.get("evidence"):
         refs.append({"kind": "evidence", "value": payload["evidence"], "event_id": event_id})
     return refs
+
+
+_MISSION_LIFECYCLE_CONTRACT = "jarvis.command-center-mission-lifecycle.v1"
+_MISSION_LIFECYCLE_STAGE_ORDER = (
+    "OWNER_GOAL",
+    "PLAN",
+    "MISSION",
+    "WORKER",
+    "ACTION_ARTIFACT",
+    "EVIDENCE",
+    "VERIFIER",
+    "REPAIR_RETRY",
+    "MEMORY",
+    "OWNER_BRIEFING",
+)
+
+
+def _mission_lifecycle_stages(
+    event_type: str,
+    payload: Mapping[str, Any],
+) -> list[str]:
+    """Classify one event into the versioned mission lifecycle contract."""
+
+    stages: set[str] = set()
+    command_type = str(payload.get("command_type") or "").upper()
+    if event_type == "owner_directive.recorded" and command_type in {
+        "GOAL", "DELEGATE",
+    }:
+        stages.add("OWNER_GOAL")
+    if (
+        event_type in {
+            "mission.created",
+            "mission_step.recorded",
+            "executive.decision_materialized",
+            "worker_loop.portfolio_selected",
+        }
+        or event_type.startswith("executive.plan_")
+        or (
+            event_type.startswith("portfolio.")
+            and event_type.endswith("selected")
+        )
+    ):
+        stages.add("PLAN")
+    if event_type.startswith("mission."):
+        stages.add("MISSION")
+    if (
+        event_type.startswith(("agent_run.", "workforce."))
+        or event_type in {
+            "worker.route_decided",
+            "worker.run_recorded",
+            "worker.crashed",
+            "worker.fallback_triggered",
+            "worker.recovered",
+        }
+    ):
+        stages.add("WORKER")
+    if event_type.startswith((
+        "effect.",
+        "system.action_",
+        "fabric.execution.",
+        "operation.",
+    )):
+        stages.add("ACTION_ARTIFACT")
+    if (
+        event_type.startswith("evidence.")
+        or event_type == "worker.evidence_reconciled"
+    ):
+        stages.add("EVIDENCE")
+    if event_type.startswith("verification."):
+        stages.add("VERIFIER")
+    event_tokens = set(event_type.replace("-", "_").split("."))
+    if (
+        event_tokens.intersection({
+            "fallback",
+            "repair",
+            "repaired",
+            "retry",
+            "retried",
+            "recovery",
+            "recovered",
+        })
+        or (
+            event_type == "mission.state_changed"
+            and str(payload.get("state") or "").upper() == "REPAIRING"
+        )
+    ):
+        stages.add("REPAIR_RETRY")
+    if event_type.startswith("memory."):
+        stages.add("MEMORY")
+    if event_type.startswith("briefing."):
+        stages.add("OWNER_BRIEFING")
+    return [
+        stage for stage in _MISSION_LIFECYCLE_STAGE_ORDER
+        if stage in stages
+    ]
 
 
 def _worker_lease_matches(lease: dict[str, Any], worker: dict[str, Any]) -> bool:
@@ -476,26 +666,45 @@ def _current_failed_workers(
     ]
 
 
-def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[dict[str, Any]]:
+def decision_timeline(
+    database: FoundryDatabase,
+    *,
+    limit: int = 200,
+    after_sequence: int | None = None,
+) -> list[dict[str, Any]]:
     """Return a compact trace of material ledger decisions and outcomes."""
     limit = max(1, min(int(limit), 2000))
-    events = list(
-        reversed(
-            database.events(
-                readonly=True,
-                limit=max(1000, limit * 20),
-                newest_first=True,
-                exclude_event_types=(
-                    "supervisor.heartbeat",
-                    "worker_loop.cycle_started",
-                    "worker_loop.waiting",
-                    "agent_run.heartbeat",
-                ),
+    if after_sequence is None:
+        events = list(
+            reversed(
+                database.events_with_sequences(
+                    readonly=True,
+                    limit=max(1000, limit * 20),
+                    newest_first=True,
+                    exclude_event_types=(
+                        "supervisor.heartbeat",
+                        "worker_loop.cycle_started",
+                        "worker_loop.waiting",
+                        "agent_run.heartbeat",
+                    ),
+                )
             )
         )
-    )
+    else:
+        events = database.events_with_sequences(
+            readonly=True,
+            limit=limit,
+            newest_first=False,
+            after_sequence=max(0, int(after_sequence)),
+            exclude_event_types=(
+                "supervisor.heartbeat",
+                "worker_loop.cycle_started",
+                "worker_loop.waiting",
+                "agent_run.heartbeat",
+            ),
+        )
     material = []
-    for sequence, event in enumerate(events, start=1):
+    for sequence, event in events:
         payload = dict(event.payload) if isinstance(event.payload, dict) else {}
         event_type = str(event.event_type or "")
         material.append({
@@ -514,6 +723,10 @@ def decision_timeline(database: FoundryDatabase, *, limit: int = 200) -> list[di
             # repair/retry without reconstructing or guessing from prose.
             "state": payload.get("state") if isinstance(payload.get("state"), str) else None,
             "next_action": payload.get("next_action") if isinstance(payload.get("next_action"), str) else None,
+            "lifecycle_contract": _MISSION_LIFECYCLE_CONTRACT,
+            "lifecycle_stages": _mission_lifecycle_stages(
+                event_type, payload,
+            ),
             "rejected_alternative": payload.get("rejection_reason") or payload.get("reason") if "reject" in event_type else None,
             "evidence_refs": _event_refs(payload, event.event_id),
         })
@@ -1723,7 +1936,7 @@ def _build_snapshot(
         blocked_work_count=len(blocked),
     )
     paused = bool(control_state["paused"])
-    hold_active = bool(active_vetoes) or bool(stop) or paused
+    hold_active = bool(active_vetoes) or bool(control_state["stopped"]) or paused
     if hold_active:
         discovery_projection = dict(discovery_projection)
         discovery_projection["next_action"] = "HOLD: owner veto/STOP active"
@@ -1732,6 +1945,32 @@ def _build_snapshot(
         now=generated_at,
         limit=100,
     )
+    try:
+        from .owner_context import owner_context_read_projection
+        owner_context = owner_context_read_projection(
+            database,
+            now=generated_at,
+            owner_directives=owner_directives,
+            decision_queue=decision_queue,
+            limit=100,
+        )
+    except Exception as error:  # noqa: BLE001 - optional read model fails closed
+        owner_context = {
+            "contract": "jarvis.owner-context.v1",
+            "status": "UNAVAILABLE",
+            "reason": f"{type(error).__name__}: {error}",
+            "authority": {
+                "model": "ADVISORY_EVENT_DERIVED",
+                "owner_controls": "AUTHORITATIVE_AND_HIGHER_PRECEDENCE",
+                "execution": "NONE",
+            },
+            "sections": {},
+            "current": [],
+            "current_count": 0,
+            "history_count": 0,
+            "unknown": [],
+            "warnings": [],
+        }
     result_traceability = build_result_traceability(
         database,
         now=generated_at,
@@ -1783,6 +2022,34 @@ def _build_snapshot(
         }
     executive_projection = dict(executive_projection)
     executive_projection["autonomy"] = autonomy_projection
+    try:
+        from .command_center_work import project_work_hierarchy
+        work_hierarchy = project_work_hierarchy(
+            autonomy=autonomy_projection,
+            goals=goals,
+            missions=missions,
+            workers=workers,
+            evidence=evidence,
+            verdicts=verdicts,
+            mission_steps=steps,
+            limit=100,
+        )
+    except Exception as error:  # noqa: BLE001 - optional read model fails closed
+        work_hierarchy = {
+            "schema": "v13.command-center-work.v1",
+            "status": "UNAVAILABLE",
+            "reason": f"{type(error).__name__}: {error}",
+            "authority": "READ_ONLY_CANONICAL_PROJECTIONS",
+            "ui_authority": "NONE",
+            "levels": {},
+            "goals": [],
+            "programs": [],
+            "projects": [],
+            "objectives": [],
+            "campaigns": [],
+            "missions": [],
+            "actions": [],
+        }
     # V9 Continuous Executive: additive wake/condition subprojection
     try:
         from .executive.continuous import continuous_snapshot
@@ -1877,7 +2144,12 @@ def _build_snapshot(
         "source_of_truth": {"kind": "append_only_event_ledger", "ledger_head_sequence": event_count, "event_count": event_count},
         "supervisor": supervisor,
         "system_state": system_state,
-        "stop": {"active": bool(stop), "record": stop, "source": "sentinel_or_durable_control"},
+        "stop": {
+            "active": bool(control_state["stopped"]),
+            "record": stop,
+            "source": "sentinel_or_durable_control",
+            "reason": control_state["reason"] if control_state["stopped"] else None,
+        },
         "controls": {
             "goals": [with_ref(d, "directive", "directive_id") for d in goals],
             "constraints": [with_ref(d, "directive", "directive_id") for d in constraints],
@@ -1898,6 +2170,8 @@ def _build_snapshot(
             "active_count": owner_directives["active_count"],
         },
         "owner_directives": owner_directives,
+        "owner_context": owner_context,
+        "work_hierarchy": work_hierarchy,
         "decision_queue": decision_queue,
         "result_traceability": result_traceability,
         "missions": [with_ref(m, "mission", "mission_id") for m in missions],
@@ -1997,6 +2271,16 @@ def _is_loopback(host: str | None) -> bool:
         return ip_address(host).is_loopback
     except ValueError:
         return host in {"localhost", "::1"}
+
+
+def _is_local_origin(origin: str | None) -> bool:
+    if not origin:
+        return False
+    try:
+        parsed = urlparse(origin)
+    except ValueError:
+        return False
+    return parsed.scheme in {"http", "https"} and _is_loopback(parsed.hostname)
 
 
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]")
@@ -2137,11 +2421,13 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     stop_path: Path | None
     owner_secret: bytes | None
     owner_id: str = "local-owner"
+    control_session_token: str | None = None
     runtime_home: Path | None = None
     source_repo: Path | None = None
     timeline_limit: int = 200
     discovery_cycle_enabled: bool | None = None
     static_root: Path | None = None
+    CONTROL_SESSION_COOKIE = "JARVIS_OWNER_SESSION"
 
     def _write_body(self, body: bytes) -> bool:
         """Write an HTTP body while treating a client navigation as normal.
@@ -2180,6 +2466,12 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         self.send_header(
             "Cache-Control", "no-cache" if candidate.name == "index.html"
             else "public, max-age=31536000, immutable")
+        if (
+            candidate.name == "index.html"
+            and self.owner_secret
+            and self.control_session_token
+        ):
+            self._set_control_session_cookie()
         self._cors_headers()
         self.end_headers()
         self._write_body(body)
@@ -2249,7 +2541,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             return payload
 
     def _fresh_runtime_health(self, cached: dict[str, Any]) -> dict[str, Any]:
-        """Refresh only cheap runtime fields on a cached product snapshot."""
+        """Refresh cheap runtime and control truth on a cached product snapshot."""
         try:
             with command_center_readonly_connection(self.database) as connection:
                 state_row = connection.execute(
@@ -2263,6 +2555,18 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                     "SELECT lease_key, owner_id, expires_at, heartbeat_at "
                     "FROM leases ORDER BY heartbeat_at DESC"
                 ).fetchall()
+                legacy_active = [
+                    dict(row) for row in connection.execute(
+                        "SELECT * FROM directives WHERE active = 1 "
+                        "ORDER BY updated_at DESC"
+                    ).fetchall()
+                ]
+                active_work_count = int(connection.execute(
+                    "SELECT COUNT(*) FROM agent_runs WHERE status = 'RUNNING'"
+                ).fetchone()[0])
+                blocked_work_count = int(connection.execute(
+                    "SELECT COUNT(*) FROM missions WHERE state = 'BLOCKED'"
+                ).fetchone()[0])
             health = dict(cached.get("health") or {})
             state = dict(state_row) if state_row else {}
             now_iso = _now_iso()
@@ -2297,6 +2601,47 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 "event_count": int(ledger_row[1] or 0),
             })
             refreshed["source_of_truth"] = source
+            stop_record = (
+                EmergencyStop(self.stop_path).read()
+                if self.stop_path is not None else None
+            )
+            owner_directives = dict(cached.get("owner_directives") or {})
+            control_state = owner_control_state(
+                owner_directives,
+                legacy_active=legacy_active,
+                stop_record=stop_record,
+                supervisor_status=state.get("status"),
+                degraded=bool(health.get("degraded")),
+                active_work_count=active_work_count,
+                blocked_work_count=blocked_work_count,
+            )
+            refreshed["stop"] = {
+                "active": bool(control_state["stopped"]),
+                "record": stop_record,
+                "source": "sentinel_or_durable_control",
+                "reason": (
+                    control_state["reason"]
+                    if control_state["stopped"] else None
+                ),
+            }
+            controls = dict(cached.get("controls") or {})
+            controls.update({
+                "paused": control_state["paused"],
+                "resume_available": control_state["resume_available"],
+                "runtime_state": control_state["status"],
+                "state_reason": control_state["reason"],
+                "state_source": control_state["source"],
+                "state_evidence": control_state,
+            })
+            refreshed["controls"] = controls
+            if (
+                control_state["stopped"]
+                or control_state["paused"]
+                or control_state["veto_directive_ids"]
+            ):
+                discovery = dict(cached.get("discovery") or {})
+                discovery["next_action"] = "HOLD: owner veto/STOP active"
+                refreshed["discovery"] = discovery
             return refreshed
         except (OSError, sqlite3.Error):
             return cached
@@ -2310,6 +2655,41 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         route = self.path.split("?", 1)[0]
         if not route.startswith("/api/") and self._serve_static(route):
             return
+        if route == "/api/control-session":
+            if not self.owner_secret or not self.control_session_token:
+                self._json_response(
+                    {
+                        "status": "BLOCKED",
+                        "reason": "owner authentication secret is not configured",
+                    },
+                    status=503,
+                )
+                return
+            if not _is_loopback(self.client_address[0]):
+                self._json_response(
+                    {"status": "REJECTED", "reason": "control session is localhost-only"},
+                    status=401,
+                )
+                return
+            origin = self.headers.get("Origin")
+            if origin and not _is_local_origin(origin):
+                self._json_response(
+                    {"status": "REJECTED", "reason": "control session origin is not local"},
+                    status=403,
+                )
+                return
+            body = json.dumps(
+                {"status": "READY", "transport": "http_only_session"},
+                ensure_ascii=True,
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self._set_control_session_cookie()
+            self._cors_headers()
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self._write_body(body)
+            return
         if route == "/assets/Tektur.ttf":
             body = (Path(__file__).with_name("assets") / "Tektur.ttf").read_bytes()
             self.send_response(200)
@@ -2321,15 +2701,19 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             return
         if route.startswith("/api/record/"):
             parts = route.split("/")
-            if len(parts) != 5 or parts[2] != "record" or parts[3] not in {"mission", "event"} or not parts[4]:
+            allowed_kinds = {
+                "mission", "event", "agent_run", "worker", "evidence",
+                "verification", "verdict", "system", "memory", "mission_step",
+                "goal", "program", "project", "objective", "campaign",
+                "action", "effect", "provider_attempt", "connector_attempt",
+                "effect_lineage", "connector_lineage", "capability",
+            }
+            if len(parts) != 5 or parts[2] != "record" or parts[3] not in allowed_kinds or not parts[4]:
                 self.send_error(404)
                 return
             snapshot = self._cached_snapshot()
             record_kind, record_id = parts[3], unquote(parts[4])
-            if record_kind == "mission":
-                record = next((item for item in snapshot["missions"] if str(item.get("mission_id")) == record_id), None)
-            else:
-                record = next((item for item in snapshot["timeline"] if str(item.get("event_id")) == record_id), None)
+            record = _projection_record(snapshot, record_kind, record_id)
             if record is None:
                 self._json_response({"status": "NOT_FOUND", "kind": record_kind, "id": record_id}, status=404)
                 return
@@ -2414,18 +2798,58 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             self._json_response(projection, status=200)
             return
         if route == "/api/timeline":
+            query = parse_qs(urlparse(self.path).query)
             try:
-                with self.database.read_snapshot():
+                after_raw = query.get("after_sequence", [None])[0]
+                page_limit = max(
+                    1, min(int(query.get("limit", ["500"])[0]), 2000)
+                )
+                after_sequence = (
+                    None if after_raw is None else max(0, int(after_raw))
+                )
+                with self.database.read_snapshot() as read_context:
                     timeline = decision_timeline(
-                        self.database, limit=self.timeline_limit
+                        self.database,
+                        limit=(
+                            self.timeline_limit
+                            if after_sequence is None else page_limit + 1
+                        ),
+                        after_sequence=after_sequence,
                     )
+                    ledger_head = int(
+                        read_context.connection.execute(
+                            "SELECT COALESCE(MAX(sequence), 0) FROM events"
+                        ).fetchone()[0]
+                    )
+            except (TypeError, ValueError) as error:
+                self._json_response(
+                    {"status": "BAD_REQUEST", "reason": str(error)},
+                    status=400,
+                )
+                return
             except Exception as error:  # noqa: BLE001 - bounded read stays honest
                 self._json_response(
                     {"status": "UNAVAILABLE", "reason": f"{type(error).__name__}: {error}"},
                     status=503,
                 )
                 return
-            self._json_response(timeline, status=200)
+            if after_sequence is None:
+                self._json_response(timeline, status=200)
+                return
+            has_more = len(timeline) > page_limit
+            events = timeline[:page_limit]
+            next_sequence = (
+                int(events[-1]["sequence"])
+                if has_more and events else ledger_head
+            )
+            self._json_response({
+                "schema": "v13.command-center-event-page.v1",
+                "after_sequence": after_sequence,
+                "next_sequence": next_sequence,
+                "ledger_head_sequence": ledger_head,
+                "has_more": has_more,
+                "events": events,
+            }, status=200)
             return
         if route == "/api/vault/graph":
             vault_root = _vault_root_from_db(self.database)
@@ -2502,6 +2926,13 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
         if not self.owner_secret:
             self._json_response({"status": "BLOCKED", "reason": "owner authentication secret is not configured"}, status=503)
             return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if self.headers.get("Origin") and content_type != "application/json":
+            self._json_response(
+                {"status": "MALFORMED", "reason": "application/json content type required"},
+                status=415,
+            )
+            return
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length <= 0 or length > 64 * 1024:
@@ -2509,8 +2940,19 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 raise ValueError("JSON object required")
-            if route == "/api/owner-command" and not _is_loopback(self.client_address[0]):
-                raise OwnerAuthenticationError("owner-command is localhost-only")
+            if route == "/api/owner-command":
+                if not _is_loopback(self.client_address[0]):
+                    raise OwnerAuthenticationError("owner-command is localhost-only")
+                origin = self.headers.get("Origin")
+                if origin:
+                    if not _is_local_origin(origin):
+                        raise OwnerAuthenticationError(
+                            "owner-command origin is not local"
+                        )
+                    if not self._has_control_session():
+                        raise OwnerAuthenticationError(
+                            "owner-command browser session is not authenticated"
+                        )
             service = OwnerControlService(self.database, secret=self.owner_secret, stop_path=self.stop_path, owner_id=self.owner_id)
             command_type = str(payload.get("command_type", ""))
             target = payload.get("target")
@@ -2573,11 +3015,36 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 
     def _cors_headers(self) -> None:
         origin = self.headers.get("Origin", "")
-        if origin.startswith("http://127.0.0.1:") or origin.startswith("http://localhost:"):
+        if _is_local_origin(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Vary", "Origin")
+
+    def _set_control_session_cookie(self) -> None:
+        if not self.control_session_token:
+            return
+        self.send_header(
+            "Set-Cookie",
+            f"{self.CONTROL_SESSION_COOKIE}={self.control_session_token}; "
+            "HttpOnly; SameSite=Strict; Path=/api",
+        )
+
+    def _has_control_session(self) -> bool:
+        expected = self.control_session_token
+        if not expected:
+            return False
+        cookie = SimpleCookie()
+        try:
+            cookie.load(self.headers.get("Cookie", ""))
+        except Exception:
+            return False
+        morsel = cookie.get(self.CONTROL_SESSION_COOKIE)
+        return bool(
+            morsel
+            and secrets.compare_digest(str(morsel.value), expected)
+        )
 
     def _json_response(self, value: dict[str, Any], *, status: int) -> None:
         body = json.dumps(value, ensure_ascii=True).encode("utf-8")
@@ -2817,6 +3284,7 @@ class CommandCenterServer:
         handler.stop_path = Path(stop_path).resolve() if stop_path else None
         handler.owner_secret = None
         handler.owner_id = "local-owner"
+        handler.control_session_token = None
         handler.runtime_home = (
             Path(runtime_home).expanduser().resolve()
             if runtime_home is not None else Path(database.path).resolve().parent)
@@ -2839,6 +3307,7 @@ class CommandCenterServer:
             raise ValueError("owner secret cannot be empty")
         self._handler.owner_secret = bytes(secret)
         self._handler.owner_id = owner_id
+        self._handler.control_session_token = secrets.token_urlsafe(32)
         self._handler._invalidate_snapshot_cache()
 
     def start(self) -> None:

@@ -287,7 +287,7 @@ export class MockJarvisClient implements JarvisClient {
     return { accepted: true as const, simulatedAt: new Date().toISOString(), missionId };
   }
 
-  async submitOwnerGoal(_objective: string): Promise<OwnerGoalResult> {
+  async submitOwnerGoal(_objective: string, _mode?: import("./contracts").OwnerDelegationMode): Promise<OwnerGoalResult> {
     await delay();
     return { accepted: false, error: "simulated mode does not write to runtime" };
   }
@@ -296,7 +296,7 @@ export class MockJarvisClient implements JarvisClient {
     return this.simulateStop();
   }
 
-  async resumeOperations(): Promise<{ accepted: boolean; error?: string }> {
+  async resumeOperations(_targetDirectiveId?: string, _reason?: string): Promise<{ accepted: boolean; error?: string }> {
     await delay();
     await this.resumeSimulation();
     return { accepted: true };

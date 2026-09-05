@@ -19,6 +19,8 @@ type WorldSignal = {
   candidate: string;
   acted: string;
   refs: string[];
+  sourceEventIds: string[];
+  evidenceRefs: string[];
   kind: string;
 };
 
@@ -57,6 +59,8 @@ function signalsFrom(data: OverviewData): { signals: WorldSignal[]; authority: s
         candidate: "UNKNOWN",
         acted: signal.state,
         refs: [...(signal.source_event_ids ?? []), ...(signal.evidence_refs ?? [])],
+        sourceEventIds: signal.source_event_ids ?? [],
+        evidenceRefs: signal.evidence_refs ?? [],
         kind: signal.kind,
       })),
     };
@@ -67,6 +71,12 @@ function signalsFrom(data: OverviewData): { signals: WorldSignal[]; authority: s
       authority: "world_intelligence",
       signals: rawSignals.map((signal, index) => {
         const score = valueNumber(signal.confidence ?? signal.score);
+        const sourceEventIds = Array.isArray(signal.source_event_ids)
+          ? signal.source_event_ids.filter((item): item is string => typeof item === "string")
+          : [];
+        const evidenceRefs = Array.isArray(signal.evidence_refs)
+          ? signal.evidence_refs.filter((item): item is string => typeof item === "string")
+          : [];
         return {
           id: valueString(signal.signal_id ?? signal.id, `world-signal-${index + 1}`),
           summary: valueString(signal.summary ?? signal.title ?? signal.claim, "Signal summary unavailable"),
@@ -77,7 +87,9 @@ function signalsFrom(data: OverviewData): { signals: WorldSignal[]; authority: s
           entity: valueString(signal.entity_id ?? signal.entity),
           candidate: valueString(signal.candidate_id ?? signal.candidate, "NOT YET INTEGRATED"),
           acted: valueString(signal.action_state ?? signal.state, "UNKNOWN"),
-          refs: Array.isArray(signal.evidence_refs) ? signal.evidence_refs.filter((item): item is string => typeof item === "string") : [],
+          refs: [...sourceEventIds, ...evidenceRefs],
+          sourceEventIds,
+          evidenceRefs,
           kind: valueString(signal.kind, "world signal"),
         };
       }),
@@ -96,6 +108,8 @@ function signalsFrom(data: OverviewData): { signals: WorldSignal[]; authority: s
       candidate: "NOT YET INTEGRATED",
       acted: "RECORDED EVENT",
       refs: event.meta.map((item) => item.value),
+      sourceEventIds: [event.id],
+      evidenceRefs: event.evidenceId ? [event.evidenceId] : [],
       kind: "activity context",
     })),
   };
@@ -141,7 +155,16 @@ function WorldContent(data: OverviewData) {
 
       <aside className="rm-world-boundary"><Database size={17} /><div><strong>Authority boundary</strong><p>World is advisory context. A signal, entity, or prediction cannot create work or authorize effects on its own.</p></div><Link to="/activity">Raw activity <ArrowRight size={14} /></Link></aside>
 
-      <Drawer open={selected !== null} title="Signal evidence" onClose={() => setSelected(null)} footer={selected ? <Link className="btn" to={`/activity?event=${selected.id}`}>Open in activity</Link> : null}>
+      <Drawer
+        open={selected !== null}
+        title="Signal evidence"
+        onClose={() => setSelected(null)}
+        footer={selected?.sourceEventIds[0] ? (
+          <Link className="btn" to={`/activity?event=${encodeURIComponent(selected.sourceEventIds[0])}`}>
+            Open source event
+          </Link>
+        ) : null}
+      >
         {selected ? <div className="rm-signal-detail">
           <ScanSearch size={22} /><h2>{selected.summary}</h2>
           <dl>
@@ -150,7 +173,15 @@ function WorldContent(data: OverviewData) {
             <div><dt>Confidence</dt><dd>{selected.confidence}</dd></div><div><dt>Entity</dt><dd>{selected.entity}</dd></div>
             <div><dt>Candidate</dt><dd>{selected.candidate}</dd></div><div><dt>Acted on</dt><dd>{selected.acted}</dd></div>
           </dl>
-          <h3>Evidence references</h3>{selected.refs.length ? <ul>{selected.refs.map((ref) => <li key={ref}>{ref}</li>)}</ul> : <p>No evidence references were published with this projection.</p>}
+          <h3>Evidence references</h3>{selected.refs.length ? <ul>{selected.refs.map((ref) => (
+            <li key={ref}>
+              {selected.sourceEventIds.includes(ref)
+                ? <Link to={`/activity?event=${encodeURIComponent(ref)}`}>Event {ref}</Link>
+                : selected.evidenceRefs.includes(ref)
+                  ? <Link to={`/evidence/${encodeURIComponent(ref)}`}>Evidence {ref}</Link>
+                  : ref}
+            </li>
+          ))}</ul> : <p>No evidence references were published with this projection.</p>}
         </div> : null}
       </Drawer>
     </div>
