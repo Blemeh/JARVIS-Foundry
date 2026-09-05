@@ -170,6 +170,7 @@ def test_receipt_validation_rejects_wrong_source() -> None:
             "command_center": {
                 "all_checks_pass": True,
                 "checks": {"proof": True},
+                "source_sha": "1" * 40,
             },
         }
     )

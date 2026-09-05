@@ -370,6 +370,7 @@ def _validate_receipts(
         ),
         "command_center": (
             command_center.get("all_checks_pass") is True
+            and _receipt_source_sha(command_center) == source_sha
             and all(
                 item is True
                 for item in (command_center.get("checks") or {}).values()
@@ -1930,6 +1931,7 @@ def build_report(
         "limitations": [
             "Provider production trust remains SUSPENDED outside this candidate.",
             "Gmail, voice, and English/Albanian localization remain deferred.",
+            "PowerPoint deliverables and actions were excluded by owner direction.",
             "No public external mutation, deploy, promotion, or activation was exercised.",
         ],
         "remaining_blockers": [],
