@@ -28,7 +28,9 @@ from ..connectors.gmail_api import (
     GmailSendEffectDriver,
 )
 from ..connectors.local_artifacts import (
+    ArtifactPostWriteError,
     ArtifactValidationError,
+    InjectedArtifactFailure,
     LocalArtifactConnector,
     LocalArtifactError,
 )
@@ -67,10 +69,24 @@ class ExecutorContext:
     doc_transport: Callable[[str], tuple[int, bytes]] | None = None
     mcp_backend: Any | None = None
     mcp_mutation_verifier: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None
+    operator_executable_allowlist: tuple[str | Path, ...] = ()
+    operator_environment_allowlist: tuple[str, ...] = ()
+    artifact_source_roots: tuple[str | Path, ...] = ()
 
     def __post_init__(self) -> None:
         self.owned_root = Path(self.owned_root).expanduser().resolve()
         self.owned_root.mkdir(parents=True, exist_ok=True)
+        self.operator_executable_allowlist = tuple(
+            str(Path(value).expanduser().resolve(strict=True))
+            for value in self.operator_executable_allowlist
+        )
+        self.operator_environment_allowlist = tuple(
+            str(value) for value in self.operator_environment_allowlist
+        )
+        self.artifact_source_roots = tuple(
+            str(Path(value).expanduser().resolve(strict=True))
+            for value in self.artifact_source_roots
+        )
 
 
 def _sha256_file(path: Path) -> str:
@@ -1007,10 +1023,14 @@ def artifact_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str
 def _artifact_connector(
     ctx: ExecutorContext, payload: Mapping[str, Any]
 ) -> LocalArtifactConnector:
-    source_roots = payload.get("source_roots")
-    if source_roots is None and payload.get("source_root") is not None:
-        source_roots = [payload.get("source_root")]
-    return LocalArtifactConnector(ctx.owned_root, source_roots=source_roots)
+    if "source_root" in payload or "source_roots" in payload:
+        raise ArtifactValidationError(
+            "artifact source roots are trusted ExecutorContext policy, not action input"
+        )
+    return LocalArtifactConnector(
+        ctx.owned_root,
+        source_roots=ctx.artifact_source_roots,
+    )
 
 
 def _artifact_source(payload: Mapping[str, Any]) -> str:
@@ -1040,11 +1060,39 @@ def _artifact_parse_options(payload: Mapping[str, Any]) -> dict[str, Any]:
     return options
 
 
+def _artifact_bool_option(
+    payload: Mapping[str, Any],
+    name: str,
+    *,
+    default: bool = False,
+) -> bool:
+    value = payload.get(name, default)
+    if not isinstance(value, bool):
+        raise ArtifactValidationError(f"{name} must be boolean")
+    return value
+
+
 def _artifact_blocked(error: LocalArtifactError) -> dict[str, Any]:
+    if isinstance(error, ArtifactPostWriteError):
+        return {
+            "claimed": "UNKNOWN",
+            "error_code": error.error_code,
+            "error": str(error),
+            **error.evidence,
+        }
     return {
         "claimed": "BLOCKED",
         "error_code": getattr(error, "error_code", "artifact_error"),
         "error": str(error),
+    }
+
+
+def _artifact_interrupted(error: InjectedArtifactFailure) -> dict[str, Any]:
+    return {
+        "claimed": "UNKNOWN",
+        "error_code": "partial_failure",
+        "error": str(error),
+        **error.evidence,
     }
 
 
@@ -1056,6 +1104,8 @@ def artifact_parse(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str
         )
     except LocalArtifactError as error:
         return _artifact_blocked(error)
+    except InjectedArtifactFailure as error:
+        return _artifact_interrupted(error)
     result: dict[str, Any] = {
         "claimed": "COMPLETED",
         "source": parsed.source.as_dict(),
@@ -1115,10 +1165,14 @@ def artifact_docx_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> di
             target_ref=_artifact_target(payload),
             idempotency_key=str(payload.get("idempotency_key") or f"artifact.docx:{_artifact_target(payload)}"),
             title=str(payload.get("title") or "JARVIS local data report"),
-            fault_after_write=bool(payload.get("fault_after_write", False)),
+            fault_after_write=_artifact_bool_option(
+                payload, "fault_after_write"
+            ),
         )
     except LocalArtifactError as error:
         return _artifact_blocked(error)
+    except InjectedArtifactFailure as error:
+        return _artifact_interrupted(error)
     return {
         "claimed": "COMPLETED",
         "source": parsed.source.as_dict(),
@@ -1707,7 +1761,21 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
 def dispatch(ctx: ExecutorContext, action_kind: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     handler = mcp_invoke if action_kind.startswith("mcp.") else HANDLERS.get(action_kind)
     if handler is None:
-        raise FabricError(f"no executor for {action_kind}")
+        from .personal_operator import dispatch_personal_operator
+
+        result = dispatch_personal_operator(
+            ctx.owned_root,
+            action_kind,
+            payload,
+            executable_allowlist=ctx.operator_executable_allowlist,
+            environment_allowlist=ctx.operator_environment_allowlist,
+            artifact_source_roots=ctx.artifact_source_roots,
+        )
+        if result is None:
+            raise FabricError(f"no executor for {action_kind}")
+        if "claimed" not in result:
+            result["claimed"] = ClaimOutcome.UNKNOWN.value
+        return result
     bound = dict(payload)
     if action_kind.startswith("github.") and action_kind.endswith(".read"):
         bound.setdefault("action", action_kind)

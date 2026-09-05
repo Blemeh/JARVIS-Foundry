@@ -294,8 +294,11 @@ def test_external_source_root_is_preserved_through_fabric_verification(
     source_root.mkdir()
     owned.mkdir()
     source = _journey_source(source_root)
-    context = ExecutorContext(database=database, owned_root=owned)
-    roots = [str(source_root)]
+    context = ExecutorContext(
+        database=database,
+        owned_root=owned,
+        artifact_source_roots=(source_root,),
+    )
     intent = TaskIntent(
         task_id="journey-2.external",
         required_actions=(
@@ -315,7 +318,6 @@ def test_external_source_root_is_preserved_through_fabric_verification(
                 "artifact.table.summary",
                 {
                     "source": str(source),
-                    "source_roots": roots,
                     "expected_columns": ["Status", "Amount"],
                     "group_by": "Status",
                     "sum_column": "Amount",
@@ -326,7 +328,6 @@ def test_external_source_root_is_preserved_through_fabric_verification(
                 "artifact.docx.create",
                 {
                     "source": str(source),
-                    "source_roots": roots,
                     "expected_columns": ["Status", "Amount"],
                     "group_by": "Status",
                     "sum_column": "Amount",
@@ -344,7 +345,6 @@ def test_external_source_root_is_preserved_through_fabric_verification(
                         "$summary.source_sha256",
                         "$summary.row_count",
                     ],
-                    "source_roots": roots,
                 },
             ),
         ),

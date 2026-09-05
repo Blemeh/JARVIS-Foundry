@@ -313,6 +313,9 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("contributor-tier Hermes requires noninteractive consent",),
         ),
     )
+    from .personal_operator import personal_operator_specs
+
+    builtins = (*builtins, *personal_operator_specs())
     registered = []
     for spec in builtins:
         if get_spec(database, spec.capability_id) is None:
@@ -422,6 +425,7 @@ def _verify_action(
     claimed: Mapping[str, Any],
     owned_root: Path,
     payload: Mapping[str, Any] | None = None,
+    executor_context: ExecutorContext | None = None,
 ) -> VerifyVerdict:
     claimed_status = str(claimed.get("claimed") or "UNKNOWN")
     if claimed_status == "UNKNOWN":
@@ -433,11 +437,11 @@ def _verify_action(
         # until consecutive failures trip DEGRADED.
         return VerifyVerdict.MATCH
 
-    source_roots = None
-    if payload is not None:
-        source_roots = payload.get("source_roots")
-        if source_roots is None and payload.get("source_root") is not None:
-            source_roots = [payload.get("source_root")]
+    source_roots = (
+        executor_context.artifact_source_roots
+        if executor_context is not None
+        else ()
+    )
 
     def artifact_connector():
         from ..connectors.local_artifacts import LocalArtifactConnector
@@ -750,6 +754,28 @@ def _verify_action(
         ):
             return VerifyVerdict.MATCH
         return VerifyVerdict.UNKNOWN
+
+    from .personal_operator import verify_personal_operator
+
+    personal_operator_verdict = verify_personal_operator(
+        action_kind,
+        claimed,
+        owned_root,
+        payload,
+        executable_allowlist=(
+            executor_context.operator_executable_allowlist
+            if executor_context is not None
+            else ()
+        ),
+        environment_allowlist=(
+            executor_context.operator_environment_allowlist
+            if executor_context is not None
+            else ()
+        ),
+        artifact_source_roots=source_roots,
+    )
+    if personal_operator_verdict is not None:
+        return personal_operator_verdict
     if action_kind == "llm.dispatch":
         return VerifyVerdict.UNKNOWN
     return VerifyVerdict.UNKNOWN
@@ -760,10 +786,17 @@ def _verify_with_postconditions(
     claimed: Mapping[str, Any],
     owned_root: Path,
     payload: Mapping[str, Any] | None = None,
+    executor_context: ExecutorContext | None = None,
 ) -> tuple[VerifyVerdict, tuple[Any, ...]]:
     """Run the existing action verifier plus declared postconditions."""
 
-    verdict = _verify_action(action_kind, claimed, owned_root, payload)
+    verdict = _verify_action(
+        action_kind,
+        claimed,
+        owned_root,
+        payload,
+        executor_context,
+    )
     results = evaluate_postconditions(
         claimed,
         payload.get("postconditions") if payload is not None else (),
@@ -1056,7 +1089,11 @@ def execute_action(
             verdict = VerifyVerdict.UNKNOWN
     else:
         verdict, postconditions = _verify_with_postconditions(
-            action_kind, claimed, ctx.owned_root, payload,
+            action_kind,
+            claimed,
+            ctx.owned_root,
+            payload,
+            ctx,
         )
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
     if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
