@@ -24,6 +24,7 @@ from ..owner_directives import active_directives_for
 SUPERVISOR_CONTROLLER = "supervisor"
 _TERMINAL_OBJECTIVE = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"})
 _ACTIVE_OBJECTIVE = frozenset({"ACTIVE", "BLOCKED", "WAITING", "PLANNING", "REGRESSED"})
+_MISSION_GENERATION_OBJECTIVE = frozenset({"ACTIVE", "PLANNING", "REGRESSED"})
 _TERMINAL_STEP = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
 
 
@@ -785,6 +786,125 @@ def create_objective(
     return record
 
 
+def withdraw_objective_authority(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    directive_id: str,
+    reason: str,
+    controller: str = SUPERVISOR_CONTROLLER,
+    cancel_descendants: bool = True,
+    transition_id: str | None = None,
+) -> ObjectiveRecord | None:
+    """Suspend one owner-derived objective and optionally cancel descendants."""
+
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("objective authority withdrawal is Supervisor-owned")
+    transition = transition_id or directive_id
+    state = rebuild_executive_state(database)
+    objective = state.objectives.get(objective_id)
+    if objective is None:
+        return None
+    immutable_terminal = objective.status in {"COMPLETED", "FAILED", "CANCELLED"}
+    if not immutable_terminal:
+        if objective.status != "SUSPENDED":
+            now = isoformat()
+            try:
+                _append(
+                    database,
+                    "executive.objective_status_changed",
+                    {
+                        "objective_id": objective.objective_id,
+                        "status": "SUSPENDED",
+                        "reason": reason,
+                        "evidence_refs": list(filter(None, (
+                            str(objective.provenance.get("event_id") or ""),
+                            f"owner-directive:{directive_id}",
+                        ))),
+                        "updated_at": now,
+                        "version": objective.version + 1,
+                    },
+                    key=(
+                        "executive.objective_status_changed:"
+                        f"{objective.objective_id}:"
+                        f"{objective.version + 1}:SUSPENDED"
+                    ),
+                    source_id="v13-owner-authority",
+                    correlation_id=objective.objective_id,
+                )
+            except EventConflict:
+                concurrent = rebuild_executive_state(database).objectives.get(
+                    objective.objective_id
+                )
+                if concurrent is None or concurrent.status != "SUSPENDED":
+                    raise
+            objective = rebuild_executive_state(database).objectives[
+                objective.objective_id
+            ]
+        _append(
+            database,
+            "executive.objective_authority_revoked",
+            {
+                "objective_id": objective.objective_id,
+                "directive_id": directive_id,
+                "reason": reason,
+                "transition_id": transition,
+            },
+            key=(
+                "executive.objective_authority_revoked:"
+                f"{objective.objective_id}:{_hash(transition)}"
+            ),
+            correlation_id=objective.objective_id,
+        )
+    if cancel_descendants:
+        for mission_id in objective.mission_ids:
+            mission = database.row("missions", "mission_id", mission_id)
+            if (
+                mission is None
+                or str(mission.get("state") or "") in {
+                    "COMPLETE", "FAILED", "BLOCKED", "CANCELLED",
+                }
+            ):
+                continue
+            try:
+                _append(database, "mission.state_changed", {
+                    "mission_id": mission_id,
+                    "state": "CANCELLED",
+                    "next_action": "owner authority revoked",
+                    "reason": reason,
+                }, key=(
+                    f"mission.state_changed:{mission_id}:CANCELLED:"
+                    f"executive-authority-revoked:{_hash(transition)}"
+                ))
+            except ValueError:
+                pass
+        try:
+            from ..evolution.executive_portfolio import (
+                cancel_work_for_authority_withdrawal,
+                rebuild_portfolio_state,
+            )
+
+            portfolio = rebuild_portfolio_state(database)
+            for item in portfolio.work_items.values():
+                if (
+                    item.metadata.get("executive_objective_id")
+                    == objective.objective_id
+                    and item.status not in {
+                        "COMPLETED", "FAILED", "BLOCKED", "CANCELLED",
+                    }
+                ):
+                    cancel_work_for_authority_withdrawal(
+                        database,
+                        item.item_id,
+                        reason=reason,
+                        controller=controller,
+                        source_id="v13-owner-authority",
+                    )
+        except (ValueError, KeyError):
+            pass
+    return rebuild_executive_state(database).objectives.get(objective_id)
+
+
 def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_CONTROLLER) -> list[ObjectiveRecord]:
     """Admit each authenticated active GOAL exactly once with full provenance."""
     _gate(database, controller)
@@ -817,36 +937,21 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
                and str(objective.provenance.get("directive_id") or "") not in active_directive_ids
                and objective.status not in _TERMINAL_OBJECTIVE]
     for objective in revoked:
-        set_objective_status(
-            database, objective.objective_id, "SUSPENDED", controller=controller,
-            reason="owner GOAL directive was revoked; autonomous authority is withdrawn",
-            evidence_refs=(str(objective.provenance.get("event_id") or ""),),
+        withdraw_objective_authority(
+            database,
+            objective.objective_id,
+            directive_id=str(
+                objective.provenance.get("directive_id") or "unknown",
+            ),
+            reason=(
+                "owner GOAL directive was revoked; autonomous authority "
+                "is withdrawn"
+            ),
+            controller=controller,
         )
-        _append(database, "executive.objective_authority_revoked", {
-            "objective_id": objective.objective_id,
-            "directive_id": objective.provenance.get("directive_id"),
-            "reason": "owner GOAL directive revoked",
-        }, key=f"executive.objective_authority_revoked:{objective.objective_id}", correlation_id=objective.objective_id)
-        for mission_id in objective.mission_ids:
-            mission = database.row("missions", "mission_id", mission_id)
-            if mission is None or str(mission.get("state") or "") in {"COMPLETE", "FAILED", "BLOCKED", "CANCELLED"}:
-                continue
-            try:
-                _append(database, "mission.state_changed", {
-                    "mission_id": mission_id, "state": "CANCELLED",
-                    "next_action": "owner authority revoked",
-                    "reason": "owner GOAL directive was revoked",
-                }, key=f"mission.state_changed:{mission_id}:CANCELLED:executive-authority-revoked")
-            except ValueError:
-                pass
-        try:
-            from ..evolution.executive_portfolio import rebuild_portfolio_state, set_work_status
-            portfolio = rebuild_portfolio_state(database)
-            for item in portfolio.work_items.values():
-                if item.metadata.get("executive_objective_id") == objective.objective_id and item.status not in {"COMPLETED", "FAILED", "BLOCKED", "CANCELLED"}:
-                    set_work_status(database, item.item_id, "CANCELLED", reason="owner authority revoked", controller=controller, source_id="v8-owner-goal-admission")
-        except (ValueError, KeyError):
-            pass
+    from ..delegation.service import reconcile_owner_delegations
+
+    reconcile_owner_delegations(database, controller=controller)
     return created
 
 
@@ -1208,6 +1313,8 @@ def generate_missions_for_objective(
     objective = state.objectives.get(objective_id)
     if objective is None:
         raise ValueError(f"unknown objective: {objective_id}")
+    if objective.status not in _MISSION_GENERATION_OBJECTIVE:
+        return []
     plan = active_plan(database, objective_id)
     if plan is None:
         return []
@@ -2386,7 +2493,8 @@ __all__ = [
     "ObjectiveRecord", "PlanStep", "PlanRecord", "PriorityScore", "ProgressEvaluation",
     "ContinuationDecision", "EscalationRecord", "CoordinationDecision", "ExecutiveBriefing",
     "ExecutiveAutonomyState", "ExecutiveAutonomyService", "AutonomyCycle", "rebuild_executive_state", "create_objective",
-    "sync_owner_goals", "update_objective", "set_objective_status", "record_objective_progress",
+    "sync_owner_goals", "withdraw_objective_authority", "update_objective",
+    "set_objective_status", "record_objective_progress",
     "build_plan", "active_plan", "plan_ready_steps", "generate_missions_for_objective",
     "bind_mission_to_step", "observe_mission_outcome", "evaluate_objective_progress",
     "decide_continuation", "record_escalation", "resolve_escalation", "rank_objectives",

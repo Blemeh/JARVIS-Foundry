@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import os
 import secrets
 from dataclasses import dataclass
@@ -36,7 +35,8 @@ class OwnerCommandError(ValueError):
 _COMMANDS = frozenset({
     "GOAL", "CONSTRAINT", "ADD_CONSTRAINT", "VETO_ACTION", "STOP_MISSION", "STOP_EVERYTHING",
     "PAUSE", "RESUME", "REVOKE", "CANCEL_MISSION", "GATE_REEVALUATE",
-    "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY", "STANDING_ORDER",
+    "REPRIORITIZE", "REDIRECT", "RESTART_RECOVERY", "DELEGATE",
+    "STANDING_ORDER",
 })
 
 
@@ -133,6 +133,50 @@ def sign_command(
         ),
         hashlib.sha256,
     ).hexdigest()
+
+
+def stable_owner_request_directive_id(owner_id: str, request_id: str) -> str:
+    """Return one durable directive identity for an owner delivery request."""
+
+    normalized_owner = str(owner_id or "").strip()
+    normalized_request = str(request_id or "").strip()
+    if not normalized_owner:
+        raise OwnerCommandError("owner_id is required for stable request identity")
+    if (
+        not normalized_request
+        or len(normalized_request) > 256
+        or "\n" in normalized_request
+        or "\r" in normalized_request
+    ):
+        raise OwnerCommandError(
+            "metadata.request_id must be non-empty, at most 256 characters, "
+            "and contain no newlines"
+        )
+    digest = hashlib.sha256(canonical_json({
+        "command_type": "DELEGATE",
+        "owner_id": normalized_owner,
+        "request_id": normalized_request,
+    }).encode("utf-8")).hexdigest()
+    return f"owner-delegation-{digest[:32]}"
+
+
+def _directive_semantics(
+    command_type: str,
+    target: str | None,
+    exact_text: str,
+    *,
+    supersedes: str | None,
+    expires_at: str | None,
+    metadata: dict[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "command_type": command_type,
+        "target": target,
+        "exact_text": exact_text,
+        "supersedes": supersedes,
+        "expires_at": expires_at,
+        "metadata": dict(metadata or {}),
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -389,8 +433,108 @@ class OwnerControlService:
                 require_transition(str(mission["state"]), "CANCELLED")
             except ValueError as error:
                 raise OwnerCommandError(str(error)) from error
+        request_id: str | None = None
+        stable_request_identity = False
+        if command_type == "DELEGATE" and directive_id is None:
+            request_value = (metadata or {}).get("request_id")
+            if request_value is not None:
+                if not isinstance(request_value, str):
+                    raise OwnerCommandError(
+                        "metadata.request_id must be a string"
+                    )
+                request_id = request_value.strip()
+                directive_id = stable_owner_request_directive_id(
+                    self.owner_id,
+                    request_id,
+                )
+                stable_request_identity = True
         directive_id = directive_id or f"owner-{secrets.token_hex(12)}"
-        if self._existing_directive_id(directive_id):
+        existing_directive = self._existing_directive(directive_id)
+        if existing_directive is not None and stable_request_identity:
+            existing_semantics = _directive_semantics(
+                str(existing_directive.payload.get("command_type") or ""),
+                existing_directive.payload.get("target"),
+                str(existing_directive.payload.get("exact_text") or ""),
+                supersedes=existing_directive.payload.get("supersedes"),
+                expires_at=existing_directive.payload.get("expires_at"),
+                metadata=(
+                    existing_directive.payload.get("metadata")
+                    if isinstance(existing_directive.payload.get("metadata"), dict)
+                    else {}
+                ),
+            )
+            requested_semantics = _directive_semantics(
+                command_type,
+                target,
+                exact_text,
+                supersedes=supersedes_directive_id,
+                expires_at=expires_at,
+                metadata=metadata,
+            )
+            if canonical_json(existing_semantics) != canonical_json(
+                requested_semantics
+            ):
+                raise OwnerCommandError(
+                    "metadata.request_id already identifies a different "
+                    "delegation"
+                )
+            now = isoformat()
+            command_hash = hashlib.sha256(canonical_command(
+                command_type,
+                target,
+                exact_text,
+                nonce,
+                supersedes=supersedes_directive_id,
+                expires_at=expires_at,
+                metadata=metadata,
+            )).hexdigest()
+            nonce_event = Event.create(
+                "owner_control.nonce_used",
+                {
+                    "nonce": nonce,
+                    "command_hash": command_hash,
+                    "issued_at": now,
+                    "used_at": now,
+                },
+                source_type="owner",
+                source_id=self.owner_id,
+                correlation_id=existing_directive.correlation_id,
+                idempotency_key=f"owner_control.nonce_used:{nonce}",
+            )
+            duplicate_event = Event.create(
+                "owner_control.duplicate_received",
+                {
+                    "directive_id": directive_id,
+                    "request_id": request_id,
+                    "nonce": nonce,
+                    "command_hash": command_hash,
+                    "authenticated": True,
+                    "owner_id": self.owner_id,
+                    "original_event_id": existing_directive.event_id,
+                    "received_at": now,
+                },
+                source_type="owner",
+                source_id=self.owner_id,
+                correlation_id=existing_directive.correlation_id,
+                causation_id=nonce_event.event_id,
+                idempotency_key=(
+                    f"owner_control.duplicate_received:{directive_id}:{nonce}"
+                ),
+            )
+            self.database.append_events([nonce_event, duplicate_event])
+            return OwnerCommandResult(
+                directive_id,
+                duplicate_event.event_id,
+                command_type,
+                nonce,
+                supersedes_directive_id,
+                outcome="REPLAYED",
+                details={
+                    "request_id": request_id,
+                    "original_event_id": existing_directive.event_id,
+                },
+            )
+        if existing_directive is not None:
             raise OwnerCommandError(
                 f"directive_id already admitted: {directive_id}; use a new directive_id"
             )
@@ -523,11 +667,15 @@ class OwnerControlService:
 
     def redirect(self, *, target: str, exact_text: str, nonce: str,
                  signature: str,
-                 directive_id: str | None = None) -> OwnerCommandResult:
+                 directive_id: str | None = None,
+                 supersedes_directive_id: str | None = None,
+                 metadata: dict[str, Any] | None = None) -> OwnerCommandResult:
         """Record an authenticated mission/project redirect on the ledger."""
         return self.apply(
             "REDIRECT", target=target, exact_text=exact_text,
             nonce=nonce, signature=signature, directive_id=directive_id,
+            supersedes_directive_id=supersedes_directive_id,
+            metadata=metadata,
         )
 
     def resume(self, *, nonce: str, signature: str, target: str = "GLOBAL", exact_text: str = "resume jarvis") -> list[str]:

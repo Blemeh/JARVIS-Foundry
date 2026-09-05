@@ -34,6 +34,7 @@ OWNER_COMMANDS = frozenset({
     "REPRIORITIZE",
     "REDIRECT",
     "RESTART_RECOVERY",
+    "DELEGATE",
     "STANDING_ORDER",
 })
 

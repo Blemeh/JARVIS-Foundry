@@ -5,10 +5,10 @@ import os
 import sqlite3
 import tempfile
 import uuid
-from contextvars import ContextVar
 from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
 from .clock import isoformat
 from .events import Event, EventConflict, canonical_json
@@ -29,6 +29,7 @@ class _ClosingConnection(sqlite3.Connection):
 _ACTIVE_READ_SNAPSHOT: ContextVar["ReadSnapshotContext | None"] = ContextVar(
     "jarvis_foundry_active_read_snapshot", default=None
 )
+_PRECOMMIT_GUARDS_ATTRIBUTE = "_foundry_precommit_guards"
 
 
 class ReadSnapshotContext:
@@ -297,15 +298,34 @@ class FoundryDatabase:
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
         connection = self.connect()
+        setattr(connection, _PRECOMMIT_GUARDS_ATTRIBUTE, [])
         connection.execute("BEGIN IMMEDIATE")
         try:
             yield connection
+            guards = tuple(
+                getattr(connection, _PRECOMMIT_GUARDS_ATTRIBUTE)
+            )
+            for guard in guards:
+                guard(connection)
             connection.commit()
         except BaseException:
             connection.rollback()
             raise
         finally:
+            delattr(connection, _PRECOMMIT_GUARDS_ATTRIBUTE)
             connection.close()
+
+    @staticmethod
+    def register_precommit_guard(
+        connection: sqlite3.Connection,
+        guard: Callable[[sqlite3.Connection], None],
+    ) -> None:
+        guards = getattr(connection, _PRECOMMIT_GUARDS_ATTRIBUTE, None)
+        if guards is None:
+            raise RuntimeError(
+                "precommit guards require a FoundryDatabase transaction",
+            )
+        guards.append(guard)
 
     def append(self, event: Event) -> tuple[int, bool]:
         return self.append_events([event])[0]

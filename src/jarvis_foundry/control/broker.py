@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -140,37 +141,53 @@ def resolve_envelope_targets(database: FoundryDatabase,
     return tuple(resolved)
 
 
-def emergency_stop_reason(database: FoundryDatabase,
-                          stop_path: str | Path | None,
-                          identities: set[str] | frozenset[str] | None = None) -> str | None:
+def _emergency_stop_reason_on_connection(
+    connection: sqlite3.Connection,
+    identities: set[str] | frozenset[str] | None,
+) -> str | None:
+    stopped_rows = connection.execute(
+        "SELECT directive_id, command_type, target FROM directives "
+        "WHERE active = 1 AND command_type IN ('STOP_EVERYTHING', 'PAUSE') "
+        "ORDER BY updated_at DESC"
+    ).fetchall()
+    scope = {str(value) for value in identities or ()}
+    scope.add("GLOBAL")
+    for stopped in stopped_rows:
+        target = stopped[2]
+        if stopped[1] == "PAUSE" and identities is not None and target not in scope:
+            continue
+        if stopped[1] == "PAUSE":
+            return f"PAUSE directive {stopped[0]} is active"
+        if identities is None or target in (None, "", "GLOBAL") or target in scope:
+            return f"STOP_EVERYTHING directive {stopped[0]} is active"
+    state = connection.execute(
+        "SELECT status FROM supervisor_state WHERE singleton = 1"
+    ).fetchone()
+    if state is not None and state[0] in ("FROZEN", "SUSPENDED"):
+        return f"supervisor is {state[0]}"
+    return None
+
+
+def emergency_stop_reason(
+    database: FoundryDatabase,
+    stop_path: str | Path | None,
+    identities: set[str] | frozenset[str] | None = None,
+    *,
+    connection: sqlite3.Connection | None = None,
+) -> str | None:
     """Shared deterministic emergency-stop read (contract §9): stop
     marker, active STOP_EVERYTHING directive, FROZEN/SUSPENDED
     supervisor. Used by the broker AND the capability broker so the two
     can never disagree about what a STOP means."""
     if stop_path is not None and Path(stop_path).exists():
         return "emergency stop marker is present"
-    with database.connect(readonly=True) as connection:
-        stopped_rows = connection.execute(
-            "SELECT directive_id, command_type, target FROM directives "
-            "WHERE active = 1 AND command_type IN ('STOP_EVERYTHING', 'PAUSE') "
-            "ORDER BY updated_at DESC"
-        ).fetchall()
-        scope = {str(value) for value in identities or ()}
-        scope.add("GLOBAL")
-        for stopped in stopped_rows:
-            target = stopped[2]
-            if stopped[1] == "PAUSE" and identities is not None and target not in scope:
-                continue
-            if stopped[1] == "PAUSE":
-                return f"PAUSE directive {stopped[0]} is active"
-            if identities is None or target in (None, "", "GLOBAL") or target in scope:
-                return f"STOP_EVERYTHING directive {stopped[0]} is active"
-        state = connection.execute(
-            "SELECT status FROM supervisor_state WHERE singleton = 1"
-        ).fetchone()
-    if state is not None and state[0] in ("FROZEN", "SUSPENDED"):
-        return f"supervisor is {state[0]}"
-    return None
+    if connection is not None:
+        return _emergency_stop_reason_on_connection(connection, identities)
+    with database.connect(readonly=True) as read_connection:
+        return _emergency_stop_reason_on_connection(
+            read_connection,
+            identities,
+        )
 
 
 def matching_pause_reason(
@@ -205,23 +222,39 @@ def veto_identities_for(envelope: ActionEnvelope, canonical_kind: str,
     return identities
 
 
-def matching_veto_reason(database: FoundryDatabase,
-                         identities: set[str]) -> str | None:
-    """Shared deterministic veto read (contract §5.3): the first active
-    VETO_ACTION / STOP_MISSION directive whose target matches one of the
-    identities returns its directive id. Used by the broker AND the
-    capability broker."""
-    with database.connect(readonly=True) as connection:
-        rows = connection.execute(
-            "SELECT directive_id, command_type, target FROM directives "
-            "WHERE active = 1"
-        ).fetchall()
+def _matching_veto_reason_on_connection(
+    connection: sqlite3.Connection,
+    identities: set[str],
+) -> str | None:
+    rows = connection.execute(
+        "SELECT directive_id, command_type, target FROM directives "
+        "WHERE active = 1"
+    ).fetchall()
     for row in rows:
         if row["command_type"] in ("VETO_ACTION", "STOP_MISSION") and \
                 row["target"] in identities:
             return (f"active {row['command_type']} directive "
                     f"{row['directive_id']} matches")
     return None
+
+
+def matching_veto_reason(
+    database: FoundryDatabase,
+    identities: set[str],
+    *,
+    connection: sqlite3.Connection | None = None,
+) -> str | None:
+    """Shared deterministic veto read (contract §5.3): the first active
+    VETO_ACTION / STOP_MISSION directive whose target matches one of the
+    identities returns its directive id. Used by the broker AND the
+    capability broker."""
+    if connection is not None:
+        return _matching_veto_reason_on_connection(connection, identities)
+    with database.connect(readonly=True) as read_connection:
+        return _matching_veto_reason_on_connection(
+            read_connection,
+            identities,
+        )
 
 
 @dataclass(frozen=True, slots=True)

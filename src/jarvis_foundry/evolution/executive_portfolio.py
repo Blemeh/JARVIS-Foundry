@@ -727,6 +727,43 @@ def set_work_status(
     return str(database.append(event)[0])
 
 
+def cancel_work_for_authority_withdrawal(
+    database: FoundryDatabase,
+    item_id: str,
+    *,
+    reason: str,
+    controller: str = SUPERVISOR_CONTROLLER,
+    source_id: str = "v13-owner-authority",
+) -> str:
+    """Cancel existing work during owner-control propagation.
+
+    This is intentionally narrower than ``set_work_status``: it can only
+    record the one-way safety transition to CANCELLED, so an active STOP or
+    veto cannot prevent the Supervisor from making already-created work
+    non-executable.
+    """
+
+    _controller_identity_gate(controller)
+    _require(
+        item_id in rebuild_portfolio_state(database).work_items,
+        f"unknown portfolio item: {item_id}",
+    )
+    payload = {
+        "item_id": item_id,
+        "status": "CANCELLED",
+        "reason": reason,
+        "controller": controller,
+    }
+    event = Event.create(
+        "portfolio.work_status_changed",
+        payload,
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"portfolio.work_status_changed:{item_id}:CANCELLED",
+    )
+    return str(database.append(event)[0])
+
+
 def register_maintenance(
     database: FoundryDatabase,
     *,
@@ -2045,6 +2082,7 @@ __all__ = [
     "PortfolioError", "PortfolioPolicy", "PortfolioDecision", "PortfolioState",
     "WorkItem", "ScoredWork", "configure_portfolio_policy",
     "register_work_item", "update_work_item", "set_work_status",
+    "cancel_work_for_authority_withdrawal",
     "register_maintenance", "register_unknown", "register_research",
     "rebuild_portfolio_state", "portfolio_snapshot", "rank_portfolio_work",
     "select_next_work", "wake_is_due", "claim_selection",
