@@ -297,13 +297,13 @@ def _validate_receipts(
         or ()
     )
     checks = {
-        "owner_context_passed": (
+        "owner_context": (
             owner.get("passed") is True
             and _all_true(owner.get("checks"))
             and _all_true(owner.get("source_attestations"))
             and _receipt_source_sha(owner) == source_sha
         ),
-        "personal_operator_passed": (
+        "personal_operator": (
             personal.get("verdict") == "PASS"
             and _receipt_source_sha(personal) == source_sha
             and _all_true(personal.get("assertions"))
@@ -312,7 +312,7 @@ def _validate_receipts(
                 for value in personal_verifiers.values()
             )
         ),
-        "general_work_passed": (
+        "general_work": (
             general.get("verdict") == "PASS"
             and _receipt_source_sha(general) == source_sha
             and general_formats == {"xlsx", "docx"}
@@ -325,7 +325,7 @@ def _validate_receipts(
             and _at(general, "stop", "action_starts_during_stop") == 0
             and _at(general, "independent_verifier", "status") == "PASS"
         ),
-        "computer_operator_passed": (
+        "computer_operator": (
             computer.get("verdict") == "PASS"
             and _receipt_source_sha(computer) == source_sha
             and _at(computer, "integrity", "upload_requests") == 1
@@ -343,7 +343,7 @@ def _validate_receipts(
             )
             is True
         ),
-        "world_intelligence_passed": (
+        "world_intelligence": (
             world.get("contract") == "jarvis.v13.world-intelligence-proof.v1"
             and world.get("source_sha") == source_sha
             and world.get("schema") == 40
@@ -351,24 +351,24 @@ def _validate_receipts(
             == "WAIT_AND_RESEARCH_LATER"
             and _at(world, "boundaries", "live_mutated") is False
         ),
-        "world_verifier_passed": (
+        "world_verifier": (
             world_verifier.get("verdict") == "PASS"
             and world_verifier.get("source_sha") == source_sha
             and not world_verifier.get("failures")
         ),
-        "chief_of_staff_passed": (
+        "chief_of_staff": (
             chief.get("passed") is True
             and _receipt_source_sha(chief) == source_sha
             and _all_true(chief.get("checks"))
             and _at(chief, "counts", "candidates") == 1
             and _at(chief, "counts", "candidate_routed") == 1
         ),
-        "chief_verifier_passed": (
+        "chief_verifier": (
             chief_verifier.get("verdict") == "PASS"
             and chief_verifier.get("source_sha") == source_sha
             and not chief_verifier.get("findings")
         ),
-        "command_center_passed": (
+        "command_center": (
             command_center.get("all_checks_pass") is True
             and all(
                 item is True

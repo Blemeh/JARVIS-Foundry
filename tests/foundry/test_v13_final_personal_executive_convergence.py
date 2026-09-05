@@ -174,6 +174,10 @@ def test_receipt_validation_rejects_wrong_source() -> None:
         }
     )
 
+    checks = proof._validate_receipts(receipts, source_sha="1" * 40)
+    assert set(checks) == set(proof.RECEIPT_KEYS)
+    assert all(checks.values())
+
     try:
         proof._validate_receipts(receipts, source_sha="2" * 40)
     except proof.ProofFailure as error:
