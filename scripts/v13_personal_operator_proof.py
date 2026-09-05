@@ -763,73 +763,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     f"PDF lost DOCX-derived row {expected_line!r}"
                 )
             pdf_derived_lines.append(matched)
-        chart_path = owned_root / "assets" / "totals.png"
-        _create_chart(chart_path, derived_rows)
-        presentation = run_action(
-            "artifact.pptx.create",
-            {
-                "source": "pdf/report.pdf",
-                "target": "pptx/briefing.pptx",
-                "slides": [
-                    {
-                        "layout": "title",
-                        "title": "V13 Personal Operator",
-                        "body": [
-                            "Cross-format work packet",
-                            f"PDF text SHA-256: {parsed_pdf.details['text_sha256']}",
-                        ],
-                    },
-                    {
-                        "layout": "title_and_content",
-                        "title": "Verified totals",
-                        "body": pdf_derived_lines,
-                        "image_ref": "assets/totals.png",
-                        "image_box": {
-                            "left": 6.2,
-                            "top": 2.0,
-                            "width": 3.2,
-                        },
-                    },
-                    {
-                        "layout": "blank",
-                        "title": "Source lineage",
-                        "body": [
-                            f"PDF SHA-256: {recovered_pdf.sha256}",
-                            "Original CSV and intermediate sources preserved.",
-                        ],
-                    },
-                ],
-                "idempotency_key": "proof:pptx:create",
-            },
-        )
-        presentation_final = run_action(
-            "artifact.pptx.update",
-            {
-                "source": "pptx/briefing.pptx",
-                "target": "pptx/briefing-final.pptx",
-                "replacements": {
-                    "Cross-format work packet":
-                    "Cross-format work packet - independently verified"
-                },
-                "append_slides": [
-                    {
-                        "layout": "blank",
-                        "title": "Acceptance",
-                        "body": [
-                            "Artifact contents reopened successfully.",
-                            "No source overwrite or path escape observed.",
-                        ],
-                    }
-                ],
-                "idempotency_key": "proof:pptx:update",
-            },
-        )
 
         organized_sources = {
             "xlsx/analysis-formulas.xlsx": "organized/analysis.xlsx",
             "docx/report-final.docx": "organized/report.docx",
             "pdf/combined.pdf": "organized/report.pdf",
-            "pptx/briefing-final.pptx": "organized/briefing.pptx",
         }
         for source_ref, target_ref in organized_sources.items():
             operator_records[f"organize:{target_ref}"] = _require_receipt(
@@ -1241,22 +1179,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     ],
                 },
                 {
-                    "name": "final-presentation",
-                    "kind": "pptx",
-                    "path": "pptx/briefing-final.pptx",
-                    "slide_count": 4,
-                    "min_pictures": 1,
-                    "required_text": [
-                        "V13 Personal Operator",
-                        "independently verified",
-                        parsed_pdf.details["text_sha256"],
-                        recovered_pdf.sha256,
-                        *pdf_derived_lines,
-                        "Acceptance",
-                        "No source overwrite or path escape observed.",
-                    ],
-                },
-                {
                     "name": "organized-xlsx-hash",
                     "kind": "file_hash",
                     "path": "organized/analysis.xlsx",
@@ -1273,12 +1195,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "kind": "file_hash",
                     "path": "organized/report.pdf",
                     "sha256": combined["output_sha256"],
-                },
-                {
-                    "name": "organized-pptx-hash",
-                    "kind": "file_hash",
-                    "path": "organized/briefing.pptx",
-                    "sha256": presentation_final["output_sha256"],
                 },
                 {
                     "name": "foundry-database",
@@ -1431,12 +1347,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "derived_from_docx_sha256":
                     report_final["output_sha256"],
             },
-            "pptx": {
-                "created": presentation["target_ref"],
-                "updated": presentation_final["target_ref"],
-                "slide_count": presentation_final["readback"]["slide_count"],
-                "image_count": presentation_final["readback"]["image_count"],
-                "derived_from_pdf_sha256": recovered_pdf.sha256,
+            "excluded_formats": {
+                "pptx": "SKIPPED_BY_OWNER",
             },
             "local_system": {
                 "bounded_command": command["result"]["stdout"].strip(),
