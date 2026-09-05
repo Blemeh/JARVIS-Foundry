@@ -35,11 +35,13 @@ from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.reconcile import reconcile
 
 
-BASE_SHA = "7f153851517b5529dd1e582725a0c2a6d96ddc9b"
 V12_FINAL_CANDIDATE = "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
+BASE_SHA = V12_FINAL_CANDIDATE
 OWNER_CONTEXT_SOURCE = "41dfcd285e3fb407237a43b9c2caba47d9d6ab1b"
 OWNER_CONTEXT_FINAL = "ca3e9adb6a559f507253bdf7b70854424bc8b35d"
-EXPECTED_BRANCH = "candidate/v13-chief-of-staff-20260903"
+EXPECTED_BRANCH = (
+    "candidate/v13-final-personal-executive-convergence-20260905"
+)
 INITIAL_MAIN_SHA = "2905c206fed0461bf3085bc0cb43773be913300a"
 SECRET = b"v13-chief-of-staff-proof-secret"
 REPO_ROOT = Path(__file__).resolve().parents[1]
