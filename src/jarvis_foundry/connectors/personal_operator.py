@@ -2047,6 +2047,35 @@ class PersonalOperatorConnector:
         except PersonalOperatorError as error:
             return self._error_receipt(operation, error)
 
+    def get_validated_process_record(
+        self,
+        process_id: str,
+    ) -> dict[str, Any]:
+        """Return one live registry-owned process after exact identity readback."""
+
+        logical_id = self._validate_process_id(process_id)
+        with self._lock:
+            registry = self._load_process_registry()
+            record = registry.get(logical_id)
+            if record is None:
+                raise PersonalOperatorError(
+                    "process_not_registered",
+                    "process_id is not registry-owned",
+                )
+            matches, readback = self._record_matches_process(record)
+            if not matches:
+                classification = (
+                    "process_exited"
+                    if not readback.get("alive")
+                    else "process_identity_mismatch"
+                )
+                raise PersonalOperatorError(
+                    classification,
+                    "process record no longer matches the live exact identity",
+                    status="UNKNOWN" if readback.get("alive") else "FAILED",
+                )
+            return _json_copy(record)
+
     def reconcile_processes(self) -> dict[str, Any]:
         operation = "process.reconcile"
         with self._lock:

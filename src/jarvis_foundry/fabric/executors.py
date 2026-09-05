@@ -171,6 +171,55 @@ def filesystem_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
 
 def file_replace(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     target = str(payload["target"])
+    if payload.get("expected_source_hash") is not None:
+        from ..connectors.personal_operator import PersonalOperatorConnector
+
+        connector = PersonalOperatorConnector(ctx.owned_root)
+        receipt = connector.safe_text_edit(
+            target,
+            str(payload.get("new_text", payload.get("content", ""))),
+            expected_source_hash=str(payload["expected_source_hash"]),
+            idempotency_key=str(
+                payload.get("idempotency_key") or f"replace:{target}"
+            ),
+            preserve_original=bool(payload.get("preserve_original", True)),
+            encoding=str(payload.get("encoding") or "utf-8"),
+        )
+        target_identity = receipt.get("target_identity")
+        result = receipt.get("result")
+        completed = (
+            receipt.get("status") == "COMPLETED"
+            and isinstance(target_identity, Mapping)
+            and bool(target_identity.get("sha256"))
+        )
+        return {
+            "claimed": "COMPLETED" if completed else str(
+                receipt.get("status") or "FAILED"
+            ),
+            "target": target,
+            "path": str(ctx.owned_root / target),
+            "content_hash": (
+                target_identity.get("sha256")
+                if isinstance(target_identity, Mapping)
+                else None
+            ),
+            "exists": completed,
+            "replaced": completed,
+            "target_identity": target_identity,
+            "source_identity": receipt.get("source_identity"),
+            "result": result,
+            "readback": receipt.get("readback"),
+            "reconciled": bool(receipt.get("reconciled")),
+            "replayed": bool(receipt.get("replayed")),
+            "error_code": (
+                ""
+                if completed
+                else str(
+                    (receipt.get("error") or {}).get("classification")
+                    or "safe_replace_failed"
+                )
+            ),
+        }
     old = str(payload["old"])
     new = str(payload["new"])
     read = filesystem_read(ctx, {"target": target})

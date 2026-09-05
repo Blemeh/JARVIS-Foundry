@@ -28,7 +28,6 @@ PERSONAL_OPERATOR_ACTIONS = frozenset({
     "file.copy",
     "file.move",
     "file.rename",
-    "file.safe_edit",
     "artifact.table.transform",
     "artifact.xlsx.create",
     "artifact.xlsx.update",
@@ -40,12 +39,6 @@ PERSONAL_OPERATOR_ACTIONS = frozenset({
     "artifact.pptx.update",
     "local.system.inspect",
     "local.command.run",
-    "local.process.launch",
-    "local.process.inspect",
-    "local.process.close",
-    "desktop.open",
-    "desktop.focus",
-    "desktop.close",
 })
 
 POLICY_OVERRIDE_KEYS = frozenset({
@@ -96,16 +89,6 @@ def personal_operator_specs() -> tuple[CapabilitySpec, ...]:
             semantic=Semantic.WRITE, executor="personal_operator",
             unattended=allowed,
             limitations=("owned-root files only; exact source identity; no overwrite",),
-        ),
-        CapabilitySpec(
-            capability_id="cap.file.safe_edit", version="1.0.0",
-            kind=Kind.CONNECTOR, action_kind="file.safe_edit",
-            semantic=Semantic.WRITE, executor="personal_operator",
-            unattended=allowed,
-            limitations=(
-                "expected source hash required; original backup preserved by default; "
-                "atomic readback",
-            ),
         ),
         CapabilitySpec(
             capability_id="cap.artifact.table.transform", version="1.0.0",
@@ -197,52 +180,6 @@ def personal_operator_specs() -> tuple[CapabilitySpec, ...]:
             limitations=(
                 "no shell; exact executable allow-list; owned cwd; timeout/output bounds",
             ),
-        ),
-        CapabilitySpec(
-            capability_id="cap.local.process.launch", version="1.0.0",
-            kind=Kind.TOOL, action_kind="local.process.launch",
-            semantic=Semantic.EXECUTE, executor="personal_operator",
-            unattended=allowed,
-            limitations=(
-                "exact executable allow-list; durable PID/create-time/executable identity",
-            ),
-        ),
-        CapabilitySpec(
-            capability_id="cap.local.process.inspect", version="1.0.0",
-            kind=Kind.TOOL, action_kind="local.process.inspect",
-            semantic=Semantic.READ, executor="personal_operator",
-            unattended=allowed,
-            limitations=("registry-owned exact process identity only",),
-        ),
-        CapabilitySpec(
-            capability_id="cap.local.process.close", version="1.0.0",
-            kind=Kind.TOOL, action_kind="local.process.close",
-            semantic=Semantic.EXECUTE, executor="personal_operator",
-            unattended=allowed,
-            limitations=("PID/create-time/executable match required; never kill by name",),
-        ),
-        CapabilitySpec(
-            capability_id="cap.desktop.open", version="1.0.0",
-            kind=Kind.TOOL, action_kind="desktop.open",
-            semantic=Semantic.EXECUTE, executor="personal_operator",
-            unattended=allowed,
-            limitations=(
-                "explicit allow-listed application and owned target only; no generic RPA",
-            ),
-        ),
-        CapabilitySpec(
-            capability_id="cap.desktop.focus", version="1.0.0",
-            kind=Kind.TOOL, action_kind="desktop.focus",
-            semantic=Semantic.EXECUTE, executor="personal_operator",
-            unattended=allowed,
-            limitations=("top-level window belonging to exact registry-owned process only",),
-        ),
-        CapabilitySpec(
-            capability_id="cap.desktop.close", version="1.0.0",
-            kind=Kind.TOOL, action_kind="desktop.close",
-            semantic=Semantic.EXECUTE, executor="personal_operator",
-            unattended=allowed,
-            limitations=("owned window/process identity only; no application-name close",),
         ),
     )
 

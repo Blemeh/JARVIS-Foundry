@@ -58,7 +58,7 @@ def test_v13_specs_are_additive_and_file_effects_verify(tmp_path: Path) -> None:
     for capability_id in (
         "cap.file.inspect",
         "cap.file.copy",
-        "cap.file.safe_edit",
+        "cap.file.replace",
         "cap.artifact.xlsx.create",
         "cap.artifact.pdf.create",
         "cap.local.process.launch",
@@ -124,8 +124,8 @@ def test_v13_specs_are_additive_and_file_effects_verify(tmp_path: Path) -> None:
     edited = execute_action(
         database,
         context,
-        _intent("file.safe_edit"),
-        "file.safe_edit",
+        _intent("file.replace"),
+        "file.replace",
         {
             "target": "work/final.txt",
             "new_text": "after\n",
@@ -140,8 +140,8 @@ def test_v13_specs_are_additive_and_file_effects_verify(tmp_path: Path) -> None:
     replay = execute_action(
         database,
         context,
-        _intent("file.safe_edit"),
-        "file.safe_edit",
+        _intent("file.replace"),
+        "file.replace",
         {
             "target": "work/final.txt",
             "new_text": "after\n",
