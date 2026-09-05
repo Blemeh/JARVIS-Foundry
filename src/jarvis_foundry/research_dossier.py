@@ -25,8 +25,12 @@ from .events import canonical_json
 from .research_contract import classify_content
 
 
-DOSSIER_CONTRACT = "jarvis.v11.research-dossier.v1"
-EVIDENCE_REVISION_CONTRACT = "jarvis.v11.candidate-evidence-revision.v1"
+DOSSIER_CONTRACT = "jarvis.v13.research-dossier.v2"
+DOSSIER_SCORING_VERSION = "v13-source-quality-1"
+EVIDENCE_REVISION_CONTRACT = "jarvis.v13.candidate-evidence-revision.v2"
+_LEGACY_DOSSIER_CONTRACTS = frozenset({
+    "jarvis.v11.research-dossier.v1",
+})
 
 _STANCES = frozenset({"SUPPORTING", "CONTRADICTING", "CONTEXT"})
 _EVIDENCE_TYPES = frozenset({
@@ -37,6 +41,20 @@ _EVIDENCE_TYPES = frozenset({
     "FRESHNESS",
     "OTHER",
 })
+_SOURCE_CLASSES = frozenset({
+    "PRIMARY_OFFICIAL",
+    "UPSTREAM_TECHNICAL",
+    "HIGH_QUALITY_SECONDARY",
+    "COMMUNITY_EXPERIENCE",
+    "WEAK_UNKNOWN",
+})
+_SOURCE_CLASS_WEIGHTS = {
+    "PRIMARY_OFFICIAL": 1.00,
+    "UPSTREAM_TECHNICAL": 0.90,
+    "HIGH_QUALITY_SECONDARY": 0.72,
+    "COMMUNITY_EXPERIENCE": 0.45,
+    "WEAK_UNKNOWN": 0.20,
+}
 _TERMINAL_RESEARCH = frozenset({
     "COMPLETED", "BLOCKED", "FAILED", "UNKNOWN",
 })
@@ -74,6 +92,35 @@ def _bounded_number(value: Any, *, default: float = 0.5) -> float:
     if not math.isfinite(number):
         number = default
     return max(0.0, min(1.0, number))
+
+
+def _optional_iso(value: Any) -> str | None:
+    if value is None or not str(value).strip():
+        return None
+    return _iso(str(value))
+
+
+def _source_class(value: Mapping[str, Any], source_kind: str) -> str:
+    declared = str(value.get("source_class") or "").strip().upper()
+    aliases = {
+        "PRIMARY": "PRIMARY_OFFICIAL",
+        "OFFICIAL": "PRIMARY_OFFICIAL",
+        "UPSTREAM": "UPSTREAM_TECHNICAL",
+        "SECONDARY": "HIGH_QUALITY_SECONDARY",
+        "COMMUNITY": "COMMUNITY_EXPERIENCE",
+        "WEAK": "WEAK_UNKNOWN",
+        "UNKNOWN": "WEAK_UNKNOWN",
+    }
+    declared = aliases.get(declared, declared)
+    if declared:
+        if declared not in _SOURCE_CLASSES:
+            raise ValueError(f"unsupported research source class {declared!r}")
+        return declared
+    # Transport and hostname are not provenance. A GitHub repository may be a
+    # fork, mirror, or abandoned copy, and a page calling itself official is
+    # not independently verified by that label. Readers must declare stronger
+    # classes from evidence they can defend.
+    return "WEAK_UNKNOWN"
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,6 +247,8 @@ def candidate_evidence_revision(
         })
     material = {
         "contract": EVIDENCE_REVISION_CONTRACT,
+        "dossier_contract": DOSSIER_CONTRACT,
+        "scoring_version": DOSSIER_SCORING_VERSION,
         "candidate": identity,
         "sources": sources,
     }
@@ -237,13 +286,31 @@ def _normalize_evidence(
     if not statement:
         raise ValueError("research evidence requires a bounded statement")
     retrieved_at = _iso(value.get("retrieved_at") or generated_at)
+    published_at = _optional_iso(value.get("published_at"))
+    updated_at = _optional_iso(value.get("updated_at"))
+    time_sensitive = bool(value.get("time_sensitive", True))
     fresh_until_value = value.get("fresh_until")
     if fresh_until_value:
         fresh_until = _iso(str(fresh_until_value))
-    else:
+        freshness_known = True
+        freshness_basis = "EXPLICIT_EXPIRY"
+    elif updated_at or published_at:
+        fresh_until = _iso(
+            _utc(updated_at or published_at)
+            + timedelta(hours=policy.default_freshness_hours)
+        )
+        freshness_known = True
+        freshness_basis = "MATERIAL_DATE"
+    elif not time_sensitive:
         fresh_until = _iso(
             _utc(retrieved_at) + timedelta(hours=policy.default_freshness_hours)
         )
+        freshness_known = True
+        freshness_basis = "STATIC_RETRIEVAL"
+    else:
+        fresh_until = retrieved_at
+        freshness_known = False
+        freshness_basis = "UNKNOWN_MATERIAL_DATE"
     stance = str(value.get("stance") or "CONTEXT").upper()
     if stance not in _STANCES:
         raise ValueError(f"unsupported research evidence stance {stance!r}")
@@ -260,17 +327,32 @@ def _normalize_evidence(
     if not evidence_id:
         evidence_id = f"dossier-evidence-{_hash({'source_ref': source_ref, 'content_hash': raw_hash, 'claim_key': claim_key, 'stance': stance})[:20]}"
     classification = classify_content(statement)
+    source_class = _source_class(value, source_kind)
+    independent_source = _bounded_text(
+        value.get("independent_source") or _independent_key(source_kind, source_ref),
+        500,
+    )
+    source_group = _bounded_text(
+        value.get("syndication_key") or value.get("source_group")
+        or independent_source,
+        500,
+    )
     return {
         "evidence_id": evidence_id,
         "source_kind": source_kind,
         "source_ref": source_ref,
         "source_title": _bounded_text(value.get("source_title") or value.get("title"), 300),
-        "independent_source": _bounded_text(
-            value.get("independent_source") or _independent_key(source_kind, source_ref),
-            500,
-        ),
+        "independent_source": independent_source,
+        "source_group": source_group,
+        "source_class": source_class,
+        "source_class_weight": _SOURCE_CLASS_WEIGHTS[source_class],
+        "published_at": published_at,
+        "updated_at": updated_at,
         "retrieved_at": retrieved_at,
         "fresh_until": fresh_until,
+        "freshness_known": freshness_known,
+        "freshness_basis": freshness_basis,
+        "time_sensitive": time_sensitive,
         "content_hash": f"sha256:{raw_hash}",
         "authority": "DATA_ONLY",
         "classification": classification,
@@ -280,6 +362,7 @@ def _normalize_evidence(
         "confidence": _bounded_number(value.get("confidence"), default=0.5),
         "evidence_types": types,
         "outcome": str(value.get("outcome") or "COMPLETED").upper(),
+        "resolution_hint": _bounded_text(value.get("resolution_hint"), 600),
         "resolves_unknown_ids": sorted({
             str(item) for item in (value.get("resolves_unknown_ids") or ()) if str(item)
         }),
@@ -312,19 +395,123 @@ def _normalize_unknown(value: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _dedupe_evidence(items: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    seen: set[tuple[str, str, str]] = set()
+def _dedupe_evidence(
+    items: Sequence[dict[str, Any]],
+    *,
+    generated_at: str,
+) -> list[dict[str, Any]]:
+    strongest: dict[tuple[str, ...], dict[str, Any]] = {}
     for item in items:
-        key = (item["source_kind"], item["source_ref"], item["content_hash"])
-        if key in seen:
+        key = (
+            item["source_group"],
+            item["claim_key"],
+            item["stance"],
+        )
+        current = strongest.get(key)
+        if current is None:
+            strongest[key] = item
             continue
-        seen.add(key)
-        result.append(item)
-    return result
+        candidate_rank = (
+            _evidence_strength(item, at=generated_at),
+            _utc(item["updated_at"] or item["published_at"] or item["retrieved_at"]),
+            item["evidence_id"],
+        )
+        current_rank = (
+            _evidence_strength(current, at=generated_at),
+            _utc(
+                current["updated_at"]
+                or current["published_at"]
+                or current["retrieved_at"]
+            ),
+            current["evidence_id"],
+        )
+        if candidate_rank > current_rank:
+            strongest[key] = item
+    return [strongest[key] for key in sorted(strongest)]
 
 
-def _contradictions(items: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+def _evidence_strength(
+    item: Mapping[str, Any],
+    *,
+    at: datetime | str | None = None,
+) -> float:
+    strength = (
+        _bounded_number(item.get("confidence"))
+        * float(_SOURCE_CLASS_WEIGHTS.get(
+            str(item.get("source_class") or "WEAK_UNKNOWN"),
+            _SOURCE_CLASS_WEIGHTS["WEAK_UNKNOWN"],
+        ))
+    )
+    if at is not None:
+        if not bool(item.get("freshness_known")):
+            strength *= 0.50
+        elif _utc(item.get("fresh_until")) <= _utc(at):
+            strength *= 0.25
+    return round(strength, 4)
+
+
+def _source_quality_summary(
+    items: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    strongest_by_group: dict[str, dict[str, Any]] = {}
+    for item in items:
+        group = str(item["source_group"])
+        strength = _evidence_strength(item)
+        current = strongest_by_group.get(group)
+        if current is None or strength > float(current["strength"]):
+            strongest_by_group[group] = {
+                "source_group": group,
+                "source_class": item["source_class"],
+                "strength": strength,
+                "evidence_id": item["evidence_id"],
+            }
+    ranked = sorted(
+        strongest_by_group.values(),
+        key=lambda row: (-float(row["strength"]), str(row["source_group"])),
+    )
+    strongest = float(ranked[0]["strength"]) if ranked else 0.0
+    authoritative_bonus = min(
+        0.15,
+        sum(
+            float(row["strength"]) * 0.08
+            for row in ranked[1:]
+            if row["source_class"] in {
+                "PRIMARY_OFFICIAL", "UPSTREAM_TECHNICAL",
+                "HIGH_QUALITY_SECONDARY",
+            }
+        ),
+    )
+    weak_bonus = min(
+        0.03,
+        sum(
+            float(row["strength"]) * 0.02
+            for row in ranked[1:]
+            if row["source_class"] in {
+                "COMMUNITY_EXPERIENCE", "WEAK_UNKNOWN",
+            }
+        ),
+    )
+    by_class = {
+        source_class: sum(
+            row["source_class"] == source_class for row in ranked
+        )
+        for source_class in sorted(_SOURCE_CLASSES)
+    }
+    return {
+        "score": round(min(1.0, strongest + authoritative_bonus + weak_bonus), 4),
+        "method": "strongest-independent-source-plus-capped-corroboration",
+        "independent_source_groups": len(ranked),
+        "by_class": by_class,
+        "strongest_sources": ranked[:5],
+        "weak_source_corroboration_cap": 0.03,
+    }
+
+
+def _contradictions(
+    items: Sequence[dict[str, Any]],
+    *,
+    generated_at: str,
+) -> list[dict[str, Any]]:
     by_claim: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for item in items:
         if item["stance"] not in {"SUPPORTING", "CONTRADICTING"}:
@@ -338,11 +525,52 @@ def _contradictions(items: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
             for negative in contradicting:
                 if positive["independent_source"] == negative["independent_source"]:
                     continue
+                positive_strength = _evidence_strength(
+                    positive, at=generated_at,
+                )
+                negative_strength = _evidence_strength(
+                    negative, at=generated_at,
+                )
+                delta = positive_strength - negative_strength
+                if abs(delta) < 0.15:
+                    assessment = "BALANCED_UNRESOLVED"
+                elif delta > 0:
+                    assessment = "SUPPORTING_LEADS"
+                else:
+                    assessment = "CONTRADICTING_LEADS"
+                assessment_confidence = (
+                    "HIGH" if abs(delta) >= 0.45
+                    else "MEDIUM" if abs(delta) >= 0.25
+                    else "LOW"
+                )
+                resolution_hint = (
+                    positive.get("resolution_hint")
+                    or negative.get("resolution_hint")
+                    or (
+                        "Seek a fresh independent primary or upstream source "
+                        "that directly tests this disputed claim."
+                    )
+                )
                 records.append({
                     "contradiction_id": f"contradiction-{_hash({'claim_key': claim_key, 'positive': positive['evidence_id'], 'negative': negative['evidence_id']})[:16]}",
                     "claim_key": claim_key,
                     "supporting_evidence_id": positive["evidence_id"],
                     "contradicting_evidence_id": negative["evidence_id"],
+                    "claim_a": {
+                        "statement": positive["statement"],
+                        "evidence_id": positive["evidence_id"],
+                        "source_class": positive["source_class"],
+                        "stance": "SUPPORTING",
+                    },
+                    "claim_b": {
+                        "statement": negative["statement"],
+                        "evidence_id": negative["evidence_id"],
+                        "source_class": negative["source_class"],
+                        "stance": "CONTRADICTING",
+                    },
+                    "current_assessment": assessment,
+                    "assessment_confidence": assessment_confidence,
+                    "what_would_resolve": resolution_hint,
                     "status": "UNRESOLVED",
                 })
     return records
@@ -425,7 +653,7 @@ def build_research_dossier(
     normalized = _dedupe_evidence([
         _normalize_evidence(item, policy=bounds, generated_at=generated)
         for item in evidence[:max_items]
-    ])
+    ], generated_at=generated)
     unknowns = [
         _normalize_unknown(item)
         for item in unresolved_unknowns[:bounds.max_unresolved_unknowns]
@@ -446,23 +674,28 @@ def build_research_dossier(
     supporting = [item for item in normalized if item["stance"] == "SUPPORTING"]
     contradicting = [item for item in normalized if item["stance"] == "CONTRADICTING"]
     contextual = [item for item in normalized if item["stance"] == "CONTEXT"]
-    contradictions = _contradictions(normalized)
+    contradictions = _contradictions(normalized, generated_at=generated)
+    source_quality = _source_quality_summary(normalized)
 
+    unknown_freshness_ids = [
+        item["evidence_id"] for item in normalized
+        if not item["freshness_known"]
+    ]
     stale_ids = [
         item["evidence_id"] for item in normalized
-        if _utc(item["fresh_until"]) <= _utc(generated)
+        if item["freshness_known"]
+        and _utc(item["fresh_until"]) <= _utc(generated)
     ]
     fresh_until = (
         min(normalized, key=lambda item: _utc(item["fresh_until"]))["fresh_until"]
         if normalized else None
     )
     freshness_status = (
-        "UNKNOWN" if not normalized else "STALE" if stale_ids else "FRESH"
+        "UNKNOWN" if not normalized or unknown_freshness_ids
+        else "STALE" if stale_ids
+        else "FRESH"
     )
-    average_quality = (
-        sum(item["confidence"] for item in normalized) / len(normalized)
-        if normalized else 0.0
-    )
+    average_quality = float(source_quality["score"])
     source_diversity = min(
         1.0,
         len({item["independent_source"] for item in normalized}) / 3.0,
@@ -471,15 +704,37 @@ def build_research_dossier(
     # A record is one support/conflict relationship. Several supporting
     # receipts can point at the same contrary source, so penalize each
     # distinct material contradictor once.
-    contradiction_units = len({
+    distinct_contradictors = {
         (item["claim_key"], item["contradicting_evidence_id"])
         for item in contradictions
-    })
+    }
+    contradicting_by_id = {
+        item["evidence_id"]: item for item in contradicting
+    }
+    strong_contradiction_discount = 0.0
+    weak_contradiction_discount = 0.0
+    for _claim_key, evidence_id in distinct_contradictors:
+        item = contradicting_by_id[evidence_id]
+        # A high-quality contradiction can improve the dossier's source-quality
+        # inventory while reducing certainty in its directional conclusion.
+        # The fixed conflict component prevents that stronger source from
+        # accidentally making a mixed conclusion more confident.
+        discount = bounds.contradiction_penalty * (
+            0.25 + _evidence_strength(item, at=generated)
+        )
+        if item["source_class"] in {"COMMUNITY_EXPERIENCE", "WEAK_UNKNOWN"}:
+            weak_contradiction_discount += discount
+        else:
+            strong_contradiction_discount += discount
     contradiction_discount = min(
-        0.50, contradiction_units * bounds.contradiction_penalty,
+        0.50,
+        strong_contradiction_discount
+        + min(bounds.contradiction_penalty * 0.35, weak_contradiction_discount),
     )
     freshness_discount = (
-        bounds.stale_penalty * len(stale_ids) / len(normalized)
+        bounds.stale_penalty
+        * (len(stale_ids) + len(unknown_freshness_ids))
+        / len(normalized)
         if normalized else bounds.stale_penalty
     )
     high_unknown_count = sum(
@@ -504,12 +759,16 @@ def build_research_dossier(
     provenance = [{
         key: item[key] for key in (
             "evidence_id", "source_kind", "source_ref", "source_title",
-            "independent_source", "retrieved_at", "fresh_until",
+            "independent_source", "source_group", "source_class",
+            "source_class_weight", "published_at", "updated_at",
+            "retrieved_at", "fresh_until", "freshness_known",
+            "freshness_basis", "time_sensitive",
             "content_hash", "authority", "outcome", "classification",
         )
     } for item in normalized]
     dossier: dict[str, Any] = {
         "contract": DOSSIER_CONTRACT,
+        "scoring_version": DOSSIER_SCORING_VERSION,
         "candidate_identity": dict(candidate),
         "research_question": question,
         "source_provenance": provenance,
@@ -517,11 +776,13 @@ def build_research_dossier(
         "contradicting_evidence": contradicting,
         "contextual_evidence": contextual,
         "contradictions": contradictions,
+        "source_quality": source_quality,
         "freshness": {
             "status": freshness_status,
             "evaluated_at": generated,
             "fresh_until": fresh_until,
             "stale_evidence_ids": stale_ids,
+            "unknown_freshness_evidence_ids": unknown_freshness_ids,
         },
         "confidence": {
             "score": confidence,
@@ -531,7 +792,10 @@ def build_research_dossier(
             "freshness_penalty": round(freshness_discount, 4),
             "unknown_penalty": round(unknown_discount, 4),
             "advisory_only": True,
-            "method": "bounded-source-quality-minus-explicit-penalties",
+            "method": (
+                "strongest-independent-source-plus-capped-corroboration"
+                "-minus-explicit-penalties"
+            ),
         },
         "unresolved_unknowns": unresolved,
         "expected_benefit_evidence": _evidence_refs(normalized, "EXPECTED_BENEFIT"),
@@ -656,6 +920,8 @@ def dossier_is_fresh(
     freshness = dossier.get("freshness")
     if not isinstance(freshness, Mapping):
         return False
+    if freshness.get("status") != "FRESH":
+        return False
     fresh_until = freshness.get("fresh_until")
     if not fresh_until or freshness.get("stale_evidence_ids"):
         return False
@@ -670,7 +936,9 @@ def _row_dossier(row: Mapping[str, Any]) -> dict[str, Any] | None:
     if not isinstance(evidence, Mapping):
         return None
     dossier = evidence.get("dossier")
-    if not isinstance(dossier, Mapping) or dossier.get("contract") != DOSSIER_CONTRACT:
+    if not isinstance(dossier, Mapping) or dossier.get("contract") not in {
+        DOSSIER_CONTRACT, *_LEGACY_DOSSIER_CONTRACTS,
+    }:
         return None
     return dict(dossier)
 
@@ -712,6 +980,11 @@ def candidate_dossier_cache(
                 }
         dossier = _row_dossier(row)
         if dossier is None:
+            continue
+        if (
+            dossier.get("contract") != DOSSIER_CONTRACT
+            or dossier.get("scoring_version") != DOSSIER_SCORING_VERSION
+        ):
             continue
         revision = str(dossier.get("evidence_revision_identity") or "")
         if prior_revision is None:
@@ -1003,6 +1276,7 @@ def project_research_dossiers(
             "summary": dossier.get("human_summary"),
             "conclusion": (dossier.get("final_research_conclusion") or {}).get("verdict"),
             "confidence": (dossier.get("confidence") or {}).get("score"),
+            "source_quality": dict(dossier.get("source_quality") or {}),
             "freshness": {
                 **dict(dossier.get("freshness") or {}),
                 "currently_fresh": dossier_is_fresh(dossier, now=now),
@@ -1036,6 +1310,7 @@ def project_research_dossiers(
 
 __all__ = [
     "DOSSIER_CONTRACT",
+    "DOSSIER_SCORING_VERSION",
     "EVIDENCE_REVISION_CONTRACT",
     "ResearchDossierPolicy",
     "build_research_dossier",

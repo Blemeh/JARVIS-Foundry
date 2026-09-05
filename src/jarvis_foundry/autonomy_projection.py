@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from .database import FoundryDatabase
+from .research_dossier import DOSSIER_CONTRACT
 
 
 AUTONOMY_PROJECTION_SCHEMA = "v11.command-center-autonomy.v1"
@@ -27,7 +28,7 @@ MAX_DETAIL_ITEMS = 24
 # and the observation/research branches can publish the payloads when they are
 # present, while an older v39 ledger returns an explicit unavailable state.
 SOURCE_DIGEST_CONTRACT = "jarvis.source-digest.v1"
-RESEARCH_DOSSIER_CONTRACT = "jarvis.v11.research-dossier.v1"
+RESEARCH_DOSSIER_CONTRACT = DOSSIER_CONTRACT
 CAPABILITY_REQUIREMENTS_CONTRACT = "jarvis.v11.capability-requirements.v1"
 PROJECT_PROFILE_CONTRACT = "jarvis.project-profile.v1"
 PROJECT_CONTEXT_CONTRACT = "jarvis.actionable-project-context.v1"
@@ -503,6 +504,7 @@ def _research_projection(row: dict[str, Any] | None) -> dict[str, Any]:
         "contradicting_evidence": _compact_evidence(dossier.get("contradicting_evidence")),
         "contextual_evidence": _compact_evidence(dossier.get("contextual_evidence")),
         "contradictions": _bounded_list(dossier.get("contradictions")),
+        "source_quality": _compact_mapping(dossier.get("source_quality")),
         "freshness": _compact_mapping(freshness),
         "confidence": _compact_mapping(confidence),
         "unresolved_unknowns": _bounded_list(dossier.get("unresolved_unknowns")),

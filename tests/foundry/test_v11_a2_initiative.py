@@ -16,6 +16,7 @@ from jarvis_foundry.fabric.model import VerifyVerdict
 from jarvis_foundry.initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.research_dossier import DOSSIER_CONTRACT
 from jarvis_foundry.runtime.worker_loop import run_cycle
 
 
@@ -108,7 +109,8 @@ def test_cycle_researches_judges_waits_and_replays_without_execution(tmp_path: P
             "WHERE candidate_id IS NOT NULL ORDER BY pass_number DESC LIMIT 1"
         ).fetchone()
         dossier = json.loads(research[0])["dossier"]
-        assert dossier["contract"] == "jarvis.v11.research-dossier.v1"
+        assert dossier["contract"] == DOSSIER_CONTRACT
+        assert dossier["source_quality"]
         assert dossier["source_provenance"]
         assert dossier["authority"] == "DATA_ONLY"
         row = connection.execute(
