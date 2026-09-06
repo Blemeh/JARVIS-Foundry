@@ -10,12 +10,13 @@ Last reconciled: Sunday, September 6, 2026 for the Prompt 2 canonical source
 promotion. Exact product source `1002e991...` semantically integrates the
 accepted V13 prerequisite and lane deltas on V12 Final. Validated Audit A and
 Audit B found zero stranded accepted source deltas and zero material UNKNOWN
-items. Pre-main verification found and repaired one verifier-only branch-binding
-defect without changing product behavior, schema, authority, or live state. The
-canonical promotion remains source-only: the execution pointer stays at V11
-A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
+items. Pre-main verification repaired one verifier-only branch-binding defect,
+and the first independent final source review repaired one manifest-only
+classification defect. Neither changed product behavior, schema, authority, or
+live state. The canonical promotion remains source-only: the execution pointer
+stays at V11 A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `0c0c25ddd18512d5b8da283af63e2c09accb4921`
+DOCUMENTATION STATE BASE SHA: `006045095f6e6f4bf5ca2bb383e558c4ad81afbd`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -29,7 +30,7 @@ V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
 PROMOTION BASE MAIN:          2905c206fed0461bf3085bc0cb43773be913300a
 PROMOTION BASE ORIGIN/MAIN:   2905c206fed0461bf3085bc0cb43773be913300a
 CANONICAL PROMOTION BRANCH:   candidate/v13-canonical-source-promotion-20260906
-CANONICAL SOURCE STATE SHA:   0c0c25ddd18512d5b8da283af63e2c09accb4921
+CANONICAL SOURCE STATE SHA:   006045095f6e6f4bf5ca2bb383e558c4ad81afbd
 PROMPT 2 VERIFIER REPAIR SHA: fb0362684eb5cad9fbcf72c814dded51e6db894a
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
@@ -98,7 +99,7 @@ Audit A completed a 237-ref, 215-worktree Git inventory and conservatively
 flagged 89 records, including every one of the 30 dirty worktrees. Audit B
 classified 62 material semantic candidates and found no stranded accepted
 source. The master reconciliation manifest outside the repository contains 155
-rows: 122 `ALREADY_REPRESENTED`, 3 `PARTIALLY_ABSORBED`, 11 `SUPERSEDED`, 17
+rows: 129 `ALREADY_REPRESENTED`, 3 `PARTIALLY_ABSORBED`, 11 `SUPERSEDED`, 10
 `EVIDENCE_ONLY`, 1 `FAILED_REJECTED`, and 1 `ABANDONED_INCOMPLETE`. It contains
 zero `UNIQUE_ACCEPTED_DELTA` rows and zero material UNKNOWN rows.
 
@@ -116,6 +117,14 @@ evidence parent, and the historical proof used decorated accounting labels.
 This current-state record separates the identities, corrects the parent, and
 uses the Prompt 2 taxonomy in the external master manifest without rewriting
 the historical proof.
+
+The first independent final source review then found seven Audit A rows whose
+tip commits were documentation or evidence, but whose full histories contained
+accepted Delegation, Computer Operator, Command Center, campaign-runtime, MCP,
+or project-context product work. The repaired manifest maps all seven histories
+to `ALREADY_REPRESENTED`, names their equivalent or stronger V13
+representations, and retains their evidence/reflog provenance. No product source
+port or behavior change was required.
 
 The first exact-candidate V13 focused-matrix run at `73c624ec...` completed 553
 tests with 551 passed, 1 skipped, and 1 failed. Every world-intelligence
