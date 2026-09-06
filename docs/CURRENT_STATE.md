@@ -13,7 +13,7 @@ Audit B found zero stranded accepted source deltas and zero material UNKNOWN
 items. The canonical promotion remains source-only: the execution pointer stays
 at V11 A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `a0d3ee0eb90ae98ad1fd672f457788de65c9d203`
+DOCUMENTATION STATE BASE SHA: `5e4727c2f55676048d8c6278887bf4b578e5ac10`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -27,6 +27,7 @@ V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
 PROMOTION BASE MAIN:          2905c206fed0461bf3085bc0cb43773be913300a
 PROMOTION BASE ORIGIN/MAIN:   2905c206fed0461bf3085bc0cb43773be913300a
 CANONICAL PROMOTION BRANCH:   candidate/v13-canonical-source-promotion-20260906
+CANONICAL SOURCE STATE SHA:   5e4727c2f55676048d8c6278887bf4b578e5ac10
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
