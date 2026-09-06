@@ -541,6 +541,7 @@ def verify(
     *,
     repo_root: Path,
     source_sha: str,
+    expected_branch: str,
     proof_path: Path,
     focused_junit: Path | None,
     full_junit: Path | None,
@@ -654,10 +655,13 @@ def verify(
     )
     recorder.add(
         "proof.branch",
-        proof.get("branch") == EXPECTED_BRANCH,
-        detail="The evidence was generated on the isolated candidate branch.",
+        proof.get("branch") == expected_branch,
+        detail=(
+            "The evidence was generated on the externally declared isolated "
+            "candidate branch."
+        ),
         actual=proof.get("branch"),
-        expected=EXPECTED_BRANCH,
+        expected=expected_branch,
     )
     recorder.add(
         "proof.source-sha",
@@ -1242,6 +1246,7 @@ def _parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parents[1],
     )
     parser.add_argument("--source-sha")
+    parser.add_argument("--expected-branch", default=EXPECTED_BRANCH)
     parser.add_argument("--proof", type=Path, required=True)
     parser.add_argument("--focused-junit", type=Path)
     parser.add_argument("--full-junit", type=Path)
@@ -1266,6 +1271,7 @@ def main() -> int:
     report = verify(
         repo_root=repo_root,
         source_sha=source_sha,
+        expected_branch=args.expected_branch,
         proof_path=proof_path,
         focused_junit=(
             args.focused_junit.expanduser().resolve()

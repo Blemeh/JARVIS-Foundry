@@ -11,6 +11,17 @@ def _python(repo_root: Path) -> Path:
     return project_python if project_python.is_file() else Path(sys.executable)
 
 
+def _branch(repo_root: Path) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo_root), "branch", "--show-current"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
+    ).stdout.strip()
+
+
 def _run(
     repo_root: Path,
     *args: str,
@@ -52,6 +63,8 @@ def test_separate_process_verifier_recomputes_v13_proof(
         errors="replace",
         check=True,
     ).stdout.strip()
+    expected_branch = _branch(repo_root)
+    assert expected_branch
     verifier = _run(
         repo_root,
         str(
@@ -63,6 +76,8 @@ def test_separate_process_verifier_recomputes_v13_proof(
         str(repo_root),
         "--source-sha",
         source_sha,
+        "--expected-branch",
+        expected_branch,
         "--proof",
         str(proof_path),
         "--output",
@@ -105,6 +120,8 @@ def test_verifier_rejects_tampered_decision_evidence(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    expected_branch = _branch(repo_root)
+    assert expected_branch
 
     verifier = _run(
         repo_root,
@@ -115,6 +132,8 @@ def test_verifier_rejects_tampered_decision_evidence(
         ),
         "--repo-root",
         str(repo_root),
+        "--expected-branch",
+        expected_branch,
         "--proof",
         str(proof_path),
         "--skip-fresh-replay",
@@ -126,5 +145,9 @@ def test_verifier_rejects_tampered_decision_evidence(
     assert report["verdict"] == "FAIL"
     assert any(
         row["check_id"] == "proof.A.changed-mind"
+        for row in report["failures"]
+    )
+    assert all(
+        row["check_id"] != "proof.branch"
         for row in report["failures"]
     )
