@@ -6,13 +6,14 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-03 for the isolated V12 final product convergence
-candidate. V12 Endurance, Self-Expansion, and MCP/Effects are integrated and
-disposable A5/A6-style proof passed, but V12 is not activated and its roadmap
-gates are not closed. The execution pointer remains V11 A3/A4,
-`BLOCKED_BY_PROVIDER`; V10 remains live and unchanged.
+Last reconciled: 2026-09-06 for the isolated V13 Final Personal Executive
+Convergence candidate. Exact source `1002e991...` semantically integrates the
+accepted V13 prerequisite and lane deltas on V12 Final, preserves one authority
+spine, and passes product proofs A-F plus the required source-bound verification.
+The candidate is not activated or promoted. The execution pointer remains V11
+A3/A4, `BLOCKED_BY_PROVIDER`; V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `cba101ea6750a3822dee147d1f479462c0997cde`
+DOCUMENTATION STATE BASE SHA: `ece47826b2f502d6dd106903f5545da58bfb4ee4`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -23,7 +24,7 @@ V10 PROMOTED PRODUCT SHA:     faa861c67399d5a3755d778224ff65513bd933a1
 V10 CANONICAL LANDING SHA:    faa861c67399d5a3755d778224ff65513bd933a1
 V10 LIVE RELEASE ID:          rel-faa861c67399-5afeb024
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-CURRENT/CANDIDATE SCHEMA:     v40 (isolated V12 source candidate only)
+CURRENT/CANDIDATE SCHEMA:     v40 (isolated V13 source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
@@ -37,6 +38,21 @@ V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO (A3 real-provider and A4 endurance gates remain)
 V11 PROMOTED/LIVE:            NO
 V11 LATEST PROOF SHA:         afddb8d5ca3d5c3459a4f5394e84affb92d13738
+V13 STATUS:                   V13_PERSONAL_EXECUTIVE_CONVERGED / NOT ACTIVATED
+V13 BRANCH:                   candidate/v13-final-personal-executive-convergence-20260905
+V13 SOURCE SHA:               1002e9919258d8ded33d125cd579bbdff7091f3a
+V13 SOURCE TREE SHA:          3ff1757aabd778a25b1cabc7a96945b942ed0d34
+V13 EVIDENCE SHA:             ece47826b2f502d6dd106903f5545da58bfb4ee4
+V13 PROOF SHA-256:            fb48a986699793d11c4ff034094cee785c3d54d6e0f7ec661af1ec7e77aa7e9a
+V13 PRODUCT PROOFS A-F:       PASS
+V13 FOCUSED MATRIX:           PASS / 553 TESTS / 0 FAILURES / 1 SKIPPED
+V13 OPERATOR COMPATIBILITY:   PASS / 70 TESTS / 0 FAILURES
+V13 FULL SUITE:               PASS / 3411 TESTS / 0 FAILURES / 2 SKIPPED
+V13 FRONTEND:                 PASS / 162 TESTS + TYPE/LINT/BUILD
+V13 SOURCE-BACKED E2E:        PASS / 3 PLAYWRIGHT JOURNEYS
+V13 INDEPENDENT VERIFIER:     PASS / NO CRITICAL OR HIGH FINDINGS
+V13 PROMOTED/LIVE:            NO
+POWERPOINT ACTIONS:           EXCLUDED_BY_OWNER
 V12 STATUS:                   V12_FINAL_SOURCE_CANDIDATE / NOT ACTIVATED
 V12 BRANCH:                   candidate/v12-final-product-convergence-20260903
 V12 SOURCE SHA:               7f153851517b5529dd1e582725a0c2a6d96ddc9b
@@ -60,6 +76,66 @@ TRAINING-TIER POLICY:         OWNER_AUTHORIZED / CANONICAL CONFIG ENABLED
 GMAIL READ/SEND:              DEFERRED_BY_OWNER
 GMAIL OBSERVATION:            DISABLED
 ```
+
+## V13 final Personal Executive convergence source candidate
+
+The isolated branch
+`candidate/v13-final-personal-executive-convergence-20260905` in
+`C:\temp\JARVIS-V13-Final-Personal-Executive-Convergence-20260905` starts from
+exact V12 Final `51d2cfcce1be847fd252d1c857105f09f5f2c0e4`.
+The product source is `1002e9919258d8ded33d125cd579bbdff7091f3a`,
+tree `3ff1757aabd778a25b1cabc7a96945b942ed0d34`; the final evidence parent is
+`ece47826b2f502d6dd106903f5545da58bfb4ee4`. Schema remains one authoritative
+v40 chain. None of these commits was promoted, deployed, or applied to the
+live database or runtime.
+
+Input histories were classified and integrated semantically rather than
+blindly merged. Owner Context, Personal Operator, Delegation, AI Workforce,
+General Work, Computer Operator, World Intelligence, Chief of Staff, and
+Command Center contribute their accepted unique behavior. Lane 2 uses its
+reconstructed tested tree; Lane 6 uses the strongest repaired implementation;
+accepted UI `509e288...` is already represented more strongly by Lane 7; old
+V12 component tips are already represented by V12 Final.
+
+One authority spine remains: durable owner context -> Continuous Executive ->
+objective/campaign -> canonical `MissionLoop` -> Fabric Catalog -> canonical
+effects/evidence -> independent verifier -> outcome/learning -> retry, repair,
+replan, wait, close, or next action. Delegation admits intent, AI Workforce
+orchestrates workers, General Work composes capabilities, the Personal and
+Computer Operators implement capabilities behind Fabric, World Intelligence
+and Chief of Staff remain advisory, and Command Center remains a projection
+and canonical control transport. There is no second Executive, MissionLoop,
+scheduler, Catalog writer, provider authority, effect journal, owner-control
+service, verifier, or MCP runtime.
+
+The fresh integrated proof is
+`evidence/v13-final-personal-executive-convergence/proof/proof.json` (SHA-256
+`fb48a986699793d11c4ff034094cee785c3d54d6e0f7ec661af1ec7e77aa7e9a`).
+Proofs A-F pass for `Fix it.`, `Prepare me for tomorrow.`, `Handle this.`,
+`Find the next useful thing.`, STOP/restart/recovery, and source-backed Command
+Center truth. The shared v40 database has 313 integrity-verified events and
+SQLite quick check `ok`. Every required duplicate and integrity counter is
+zero, including owner intents, objectives, campaigns, missions, WorkPackages,
+worker attempts, effects, registrations, wakes, resumes, false successes,
+unverified consequential completions, unnecessary owner questions, and
+unrelated process impact.
+
+Verification against exact source `1002e991...` passed 553 focused tests, 262
+V12 authority/effect/provider/campaign regressions, 70 Personal/Computer
+Operator compatibility tests, 162 frontend tests plus typecheck/lint/build,
+three source-backed Playwright journeys, and the serialized 3,411-test Foundry
+and convergence suite with two expected skips. Lock validation, compileall,
+complete source diff check, wheel/sdist build, isolated wheel install, imports,
+and schema v40 also pass. The final fresh independent verifier checks the exact
+documentation-only HEAD and returns PASS with no Critical or High findings.
+
+PowerPoint deliverables and actions were excluded by owner direction; the
+document, PDF, and spreadsheet General Work paths remain proved. Gmail
+read/send/observation remains `DEFERRED_BY_OWNER` and was not authenticated,
+probed, or enabled. Voice and English/Albanian localization remain deferred.
+Provider production trust remains `SUSPENDED`. No public external mutation,
+deployment, promotion, activation, reboot, or live-runtime conversion was
+performed.
 
 ## V12 final product convergence source candidate
 
@@ -462,9 +538,11 @@ migration.
 
 ## Evidence and maintenance
 
-The current V12 convergence handoff is
-`docs/handoffs/V12_FINAL_PRODUCT_CONVERGENCE_20260903.md`. The Integration
-Base 2 handoff and exact A3 integration map are
+The current V13 convergence handoff is
+`docs/handoffs/V13_FINAL_PERSONAL_EXECUTIVE_CONVERGENCE_20260906.md`. The V12
+convergence handoff remains
+`docs/handoffs/V12_FINAL_PRODUCT_CONVERGENCE_20260903.md`. The Integration Base
+2 handoff and exact A3 integration map are
 `docs/handoffs/V11_INTEGRATION_BASE2_20260902.md`. The pre-convergence handoff
 remains `docs/handoffs/V11_PRECONVERGENCE_20260902.md`; the earlier A2 handoff is
 `docs/handoffs/V11_A2_CANDIDATE_20260902.md`. The compact V10 live-closure record is
@@ -480,10 +558,11 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-When the configured provider becomes available, restart the genuine cold A3
-flagship against the final clean proof SHA; no further owner consent is needed.
-Then run the immediate six-point A4 campaign. Only after both pass, start the
-separately prepared 48-hour runner with `--allow-48h` against that same SHA.
-Until the elapsed gate completes, V11 exit remains pending. Only a later,
-separate owner-authorized promotion gate may consider live state; this
-candidate is not promotion authority or production trust.
+This V13 convergence mission stops after the final exact-SHA verifier and
+terminal report. Do not merge, push, promote, activate, or begin V14 under this
+authorization. Separately, the frozen roadmap action remains: when the
+configured provider becomes available, restart the genuine cold V11 A3
+flagship against its final clean proof SHA, then run the immediate six-point A4
+campaign and only later the separately authorized 48-hour runner. A later,
+separate owner authorization is required for any promotion or live change;
+this candidate grants neither promotion authority nor production trust.
