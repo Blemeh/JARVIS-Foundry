@@ -51,7 +51,7 @@
     {
       "kind": "build_log",
       "path": "frontend/build.log",
-      "sha256": "acc2389e54133035b955187e0c201f3bf226b501ca642f7453a53fda089549c5"
+      "sha256": "3abdbc4b9a9ee8002b86779977f9978ce7c450728440592c8e337f8fe2988a9d"
     },
     {
       "kind": "dist_html",
