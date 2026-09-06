@@ -6,12 +6,12 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: 2026-09-06 for the isolated V13 Final Personal Executive
-Convergence candidate. Exact source `1002e991...` semantically integrates the
-accepted V13 prerequisite and lane deltas on V12 Final, preserves one authority
-spine, and passes product proofs A-F plus the required source-bound verification.
-The candidate is not activated or promoted. The execution pointer remains V11
-A3/A4, `BLOCKED_BY_PROVIDER`; V10 remains live and unchanged.
+Last reconciled: Sunday, September 6, 2026 for the Prompt 2 canonical source
+promotion. Exact product source `1002e991...` semantically integrates the
+accepted V13 prerequisite and lane deltas on V12 Final. Validated Audit A and
+Audit B found zero stranded accepted source deltas and zero material UNKNOWN
+items. The canonical promotion remains source-only: the execution pointer stays
+at V11 A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
 
 DOCUMENTATION STATE BASE SHA: `a0d3ee0eb90ae98ad1fd672f457788de65c9d203`
 
@@ -24,7 +24,10 @@ V10 PROMOTED PRODUCT SHA:     faa861c67399d5a3755d778224ff65513bd933a1
 V10 CANONICAL LANDING SHA:    faa861c67399d5a3755d778224ff65513bd933a1
 V10 LIVE RELEASE ID:          rel-faa861c67399-5afeb024
 V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
-CURRENT/CANDIDATE SCHEMA:     v40 (isolated V13 source candidate only)
+PROMOTION BASE MAIN:          2905c206fed0461bf3085bc0cb43773be913300a
+PROMOTION BASE ORIGIN/MAIN:   2905c206fed0461bf3085bc0cb43773be913300a
+CANONICAL PROMOTION BRANCH:   candidate/v13-canonical-source-promotion-20260906
+CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
@@ -38,8 +41,10 @@ V11 STARTED:                  YES (candidate only)
 V11 COMPLETE:                 NO (A3 real-provider and A4 endurance gates remain)
 V11 PROMOTED/LIVE:            NO
 V11 LATEST PROOF SHA:         afddb8d5ca3d5c3459a4f5394e84affb92d13738
-V13 STATUS:                   V13_PERSONAL_EXECUTIVE_CONVERGED / NOT ACTIVATED
-V13 BRANCH:                   candidate/v13-final-personal-executive-convergence-20260905
+V13 STATUS:                   V13_PERSONAL_EXECUTIVE_CONVERGED / SOURCE PROMOTION
+V13 FROZEN BRANCH:            candidate/v13-final-personal-executive-convergence-20260905
+V13 FROZEN FINAL SHA:         d58debf04c6f53a11dcfb071f999b5349f01c9b1
+V13 FROZEN FINAL TREE SHA:    97ff027f908202e84d2ccb11d8e3f73ffa5cefde
 V13 SOURCE SHA:               1002e9919258d8ded33d125cd579bbdff7091f3a
 V13 SOURCE TREE SHA:          3ff1757aabd778a25b1cabc7a96945b942ed0d34
 V13 EVIDENCE SHA:             a0d3ee0eb90ae98ad1fd672f457788de65c9d203
@@ -51,8 +56,12 @@ V13 FULL SUITE:               PASS / 3411 TESTS / 0 FAILURES / 2 SKIPPED
 V13 FRONTEND:                 PASS / 162 TESTS + TYPE/LINT/BUILD
 V13 SOURCE-BACKED E2E:        PASS / 3 PLAYWRIGHT JOURNEYS
 V13 INDEPENDENT VERIFIER:     PASS / NO CRITICAL OR HIGH FINDINGS
-V13 PROMOTED/LIVE:            NO
-POWERPOINT ACTIONS:           EXCLUDED_BY_OWNER
+V13 SOURCE PROMOTION:         PROMPT 2 NORMAL GIT / NO FORCE
+V13 LIVE ACTIVATION:          NO
+STRANDED ACCEPTED DELTAS:     0
+MATERIAL UNKNOWN ITEMS:       0
+POWERPOINT PROOF:             OWNER-DIRECTED OMIT
+PPTX PRODUCT CAPABILITY:      RETAINED
 V12 STATUS:                   V12_FINAL_SOURCE_CANDIDATE / NOT ACTIVATED
 V12 BRANCH:                   candidate/v12-final-product-convergence-20260903
 V12 SOURCE SHA:               7f153851517b5529dd1e582725a0c2a6d96ddc9b
@@ -75,7 +84,33 @@ EXIT-PROOF SOURCE SHA:        ea6be6ddebe21f95f10021db4b1972b2dcf2c00a
 TRAINING-TIER POLICY:         OWNER_AUTHORIZED / CANONICAL CONFIG ENABLED
 GMAIL READ/SEND:              DEFERRED_BY_OWNER
 GMAIL OBSERVATION:            DISABLED
+VOICE/LANGUAGE:               DEFERRED_BY_OWNER
+V11 48H GATE:                 NOT_STARTED
 ```
+
+## Prompt 2 canonical source reconciliation
+
+Audit A completed a 237-ref, 215-worktree Git inventory and conservatively
+flagged 89 records, including every one of the 30 dirty worktrees. Audit B
+classified 62 material semantic candidates and found no stranded accepted
+source. The master reconciliation manifest outside the repository contains 155
+rows: 122 `ALREADY_REPRESENTED`, 3 `PARTIALLY_ABSORBED`, 11 `SUPERSEDED`, 17
+`EVIDENCE_ONLY`, 1 `FAILED_REJECTED`, and 1 `ABANDONED_INCOMPLETE`. It contains
+zero `UNIQUE_ACCEPTED_DELTA` rows and zero material UNKNOWN rows.
+
+Local `main` and `origin/main` were identical at `2905c206...`, which is the
+merge base and direct ancestor of frozen V13 final `d58debf...`. The canonical
+promotion branch therefore starts at the frozen V13 final, preserves its
+history, and adds only current documentation/accounting repairs. No product
+source port, schema change, historical-evidence rewrite, or dirty-worktree
+consumption is required. Dirty owner data remains untouched.
+
+The Audit B accounting failure was evidence-only: the product tree and final
+evidence tree needed explicit separation, the V13 section below named a stale
+evidence parent, and the historical proof used decorated accounting labels.
+This current-state record separates the identities, corrects the parent, and
+uses the Prompt 2 taxonomy in the external master manifest without rewriting
+the historical proof.
 
 ## V13 final Personal Executive convergence source candidate
 
@@ -85,9 +120,10 @@ The isolated branch
 exact V12 Final `51d2cfcce1be847fd252d1c857105f09f5f2c0e4`.
 The product source is `1002e9919258d8ded33d125cd579bbdff7091f3a`,
 tree `3ff1757aabd778a25b1cabc7a96945b942ed0d34`; the final evidence parent is
-`ece47826b2f502d6dd106903f5545da58bfb4ee4`. Schema remains one authoritative
-v40 chain. None of these commits was promoted, deployed, or applied to the
-live database or runtime.
+`a0d3ee0eb90ae98ad1fd672f457788de65c9d203`. Schema remains one authoritative
+v40 chain. Prompt 2 carries this source history to canonical Git only after its
+ordered gates; it does not deploy, activate, or apply it to the live database
+or runtime.
 
 Input histories were classified and integrated semantically rather than
 blindly merged. Owner Context, Personal Operator, Delegation, AI Workforce,
@@ -133,8 +169,10 @@ findings; rebuilding from raw Git source blobs repaired the wheel and sdist
 without changing product source, and the affected package predicate passed
 before the permitted final verifier recheck.
 
-PowerPoint deliverables and actions were excluded by owner direction; the
-document, PDF, and spreadsheet General Work paths remain proved. Gmail
+PowerPoint deliverables and actions were excluded from the V13 proof by owner
+direction, but the product PPTX create/update/copy/readback capability remains
+in source. The document, PDF, and spreadsheet General Work paths remain proved.
+Gmail
 read/send/observation remains `DEFERRED_BY_OWNER` and was not authenticated,
 probed, or enabled. Voice and English/Albanian localization remain deferred.
 Provider production trust remains `SUSPENDED`. No public external mutation,
@@ -554,7 +592,9 @@ remains `docs/handoffs/V11_PRECONVERGENCE_20260902.md`; the earlier A2 handoff i
 probe scripts are retained outside the repository under
 `C:\temp\JARVIS-V10-Live-Closure-20260902`. Historical V9/V10 candidate
 handoffs remain evidence, but this file and the execution-state YAML govern
-current claims.
+current claims. The Prompt 2 master reconciliation manifest and cleanup
+inventory are retained outside the repository under
+`C:\temp\JARVIS-Prompt2-Reconciliation-20260906\writer`.
 
 Any later mission that changes HEAD, schema, live release, Supervisor/STOP,
 trust, capability state, or evidence roots must update this file. The final
@@ -562,11 +602,14 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-This V13 convergence mission stops after the final exact-SHA verifier and
-terminal report. Do not merge, push, promote, activate, or begin V14 under this
-authorization. Separately, the frozen roadmap action remains: when the
-configured provider becomes available, restart the genuine cold V11 A3
-flagship against its final clean proof SHA, then run the immediate six-point A4
-campaign and only later the separately authorized 48-hour runner. A later,
-separate owner authorization is required for any promotion or live change;
-this candidate grants neither promotion authority nor production trust.
+Prompt 2 authorizes only the normal Git source promotion of the exact verified
+documentation-only head to local `main` and `origin/main`. It does not authorize
+live deployment, CURRENT/PREVIOUS changes, Supervisor retargeting, live database
+migration, provider probing, trust restoration, Prompt 3, or V14. After Git
+parity and the terminal report are proved, stop.
+
+Separately, the frozen roadmap action remains: when the configured provider
+becomes available, restart the genuine cold V11 A3 flagship against its final
+clean proof SHA, then run the immediate six-point A4 campaign and only later
+the separately authorized 48-hour runner. Source promotion does not close those
+gates or grant production trust.
