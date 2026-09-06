@@ -1,0 +1,1766 @@
+Building source distribution...
+running egg_info
+writing src\jarvis_foundry.egg-info\PKG-INFO
+writing dependency_links to src\jarvis_foundry.egg-info\dependency_links.txt
+writing entry points to src\jarvis_foundry.egg-info\entry_points.txt
+writing requirements to src\jarvis_foundry.egg-info\requires.txt
+writing top-level names to src\jarvis_foundry.egg-info\top_level.txt
+reading manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+writing manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+running sdist
+running egg_info
+writing src\jarvis_foundry.egg-info\PKG-INFO
+writing dependency_links to src\jarvis_foundry.egg-info\dependency_links.txt
+writing entry points to src\jarvis_foundry.egg-info\entry_points.txt
+writing requirements to src\jarvis_foundry.egg-info\requires.txt
+writing top-level names to src\jarvis_foundry.egg-info\top_level.txt
+reading manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+writing manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+running check
+creating jarvis_foundry-0.1.0
+creating jarvis_foundry-0.1.0\src\jarvis_foundry
+creating jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\assets
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\capabilities
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\chief_of_staff
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\control
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\convergence
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\correlation
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\delivery
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\diagnostics
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\execution
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\gates
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\obsidian
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\platform
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\postv7
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\project_context
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\reporting
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\resilience
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+creating jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying files to jarvis_foundry-0.1.0...
+copying README.md -> jarvis_foundry-0.1.0
+copying pyproject.toml -> jarvis_foundry-0.1.0
+copying src\jarvis_foundry\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\artifacts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\autonomy_projection.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\briefing_items.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\briefing_packet.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\briefings.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\capability_requirements.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\capability_solution_discovery.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\clock.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\command_center.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\command_center_work.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\consolidation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\database.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\decision_queue.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\discovery_candidates.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\discovery_monitors.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\discovery_sources.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\domain.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\effects.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\events.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\initiative_a2.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\initiative_a3.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\installer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\integrated_rollback.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge_entities.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge_extract.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge_ingestion.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge_records.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge_retrieval.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\knowledge_snapshots.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\live_ingestion.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\migrations.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\operational_intelligence.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\owner_controls.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\owner_directives.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\paths.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\project_discovery.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\projections.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\proving.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\reconcile.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\research_contract.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\research_decision.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\research_dossier.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\research_queue.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\result_traceability.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\self_expansion.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\systems.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\trust.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\trust_states.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_cycle.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_fault.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_git.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_loop.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_outcomes.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_resources.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_scoring.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v3_teams.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\v4_schema.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\vault_indexer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\vault_retrieval.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\voice.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry\worker_context.py -> jarvis_foundry-0.1.0\src\jarvis_foundry
+copying src\jarvis_foundry.egg-info\PKG-INFO -> jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+copying src\jarvis_foundry.egg-info\SOURCES.txt -> jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+copying src\jarvis_foundry.egg-info\dependency_links.txt -> jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+copying src\jarvis_foundry.egg-info\entry_points.txt -> jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+copying src\jarvis_foundry.egg-info\requires.txt -> jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+copying src\jarvis_foundry.egg-info\top_level.txt -> jarvis_foundry-0.1.0\src\jarvis_foundry.egg-info
+copying src\jarvis_foundry\acceptance_harness\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\adversarial.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\clock.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\evidence.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\fixtures.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\observer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\runner.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\simulation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\verdict.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\adapter_factory\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\builder.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\cli.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\model.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\runtime.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\worker_bridge.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\assets\Tektur-OFL.txt -> jarvis_foundry-0.1.0\src\jarvis_foundry\assets
+copying src\jarvis_foundry\assets\Tektur.ttf -> jarvis_foundry-0.1.0\src\jarvis_foundry\assets
+copying src\jarvis_foundry\capabilities\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\capabilities
+copying src\jarvis_foundry\capabilities\registry.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\capabilities
+copying src\jarvis_foundry\chief_of_staff\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\models.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\projection.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\service.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\cli\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\hermes_env_sync.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\hermes_probe.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\main.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\masked_input.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\setup.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\cli
+copying src\jarvis_foundry\connectors\account_activation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\activation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\browser.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\communication.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\composed.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\contract.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\evidence.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\fakes.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\filesystem.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\general_work_files.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\git.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\github_research.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\github_write.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\gmail_api.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\http.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\lineage.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\local_artifacts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\operations.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\personal_operator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\registry.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\resources.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\safety.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\web_research.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\windows_operator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\connectors
+copying src\jarvis_foundry\control\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\action_envelope.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\broker.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\capabilities.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\capability_broker.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\policy.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\redaction.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\control\registration.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\control
+copying src\jarvis_foundry\convergence\briefings_l10n.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\convergence
+copying src\jarvis_foundry\correlation\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\correlation
+copying src\jarvis_foundry\correlation\entities.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\correlation
+copying src\jarvis_foundry\correlation\events.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\correlation
+copying src\jarvis_foundry\delegation\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\calibration.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\context.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\inference.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\projection.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\service.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delegation
+copying src\jarvis_foundry\delivery\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delivery
+copying src\jarvis_foundry\delivery\boundary.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\delivery
+copying src\jarvis_foundry\deployment\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\guard.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\headless_launcher.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\lab_hermes.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\launcher.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\layout.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\path_setup.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\release.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\runtime_identity.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\status.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\deployment
+copying src\jarvis_foundry\diagnostics\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\diagnostics
+copying src\jarvis_foundry\diagnostics\runtime.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\diagnostics
+copying src\jarvis_foundry\evolution\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\_authority.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\acceptance.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\bad_candidate.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\benchmark.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\builder.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\canary.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\cycle.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\detector.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\discover.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\disposable_canary.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\eligibility.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\executive_portfolio.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\feedback.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\lab.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\measurement.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\plan.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\portfolio.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\promote.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\records.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\registry.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\restore.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\scheduler.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\selector.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\shadow.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\verifier_orchestrator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\verifier_probe.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\verify.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\evolution
+copying src\jarvis_foundry\execution\pipeline.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\execution
+copying src\jarvis_foundry\executive\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\autonomy.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\calibration.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\campaign_runtime.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\campaigns.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\continuous.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\decisions.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\eligibility.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\goals.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\missions.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\new_project_factory.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\owner_context.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\portfolio_bridge.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\predictions.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\scoring.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\executive
+copying src\jarvis_foundry\fabric\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\adapter.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\artifact_trial.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\artifact_trial_verifier.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\catalog.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\compose.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\computer_operator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\executors.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\expansion.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\gap_bridge.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\general_work.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\loop.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\model.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\personal_operator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\providers.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\spine.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\fabric
+copying src\jarvis_foundry\gates\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\gates
+copying src\jarvis_foundry\gates\minigates.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\gates
+copying src\jarvis_foundry\gates\owner_families.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\gates
+copying src\jarvis_foundry\general_work\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\ledger.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\materialization.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\model.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\planner.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\verification.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\workforce.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\general_work
+copying src\jarvis_foundry\hybrid_memory\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\blocks.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\compiler.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\curation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\defense.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\lifecycle.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\procedures.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\recall.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\versioning.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\mcp_backend\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\adoption.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\client.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\config.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\fabric.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mission\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\commit.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\directives.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\lineage.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\loop.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\proposal.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\verification.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\verification_planning.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\verifier_binding.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\mission
+copying src\jarvis_foundry\obsidian\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\policy.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\snapshots.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\writer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\obsidian
+copying src\jarvis_foundry\operations\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\adversarial.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\composition.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\deployment.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\golden_journey.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\lab.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\planning.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\procedure.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\project.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\reuse.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\services.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\targets.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\operations
+copying src\jarvis_foundry\owner_context\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\compiler.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\models.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\projection.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\references.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\standing_orders.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\store.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\owner_context
+copying src\jarvis_foundry\perception\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\aggregation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\cursor.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\dedup.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\normalizer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\privacy.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\run.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\screenpipe.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\significance.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\perception
+copying src\jarvis_foundry\platform\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\platform
+copying src\jarvis_foundry\platform\windows_subprocess.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\platform
+copying src\jarvis_foundry\postv7\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\postv7
+copying src\jarvis_foundry\postv7\integration.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\postv7
+copying src\jarvis_foundry\procedural_learning\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\adapter.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\bundle.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\executor.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\process.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\registry.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\shadow.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\tier_c.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedure_library\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\definitions.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\quality.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\sandbox.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\validator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\project_context\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\inspector.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\service.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\project_context
+copying src\jarvis_foundry\reporting\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\reporting
+copying src\jarvis_foundry\reporting\briefing.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\reporting
+copying src\jarvis_foundry\resilience\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\resilience
+copying src\jarvis_foundry\resilience\core.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\resilience
+copying src\jarvis_foundry\roles\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\adapter.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\dispatcher.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\manifest.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\reaper.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\results.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\router.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\roles
+copying src\jarvis_foundry\runtime\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\_stack.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\authority.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\config.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\mission_session.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\provider_config.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\provider_registry.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\worker_loop.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\runtime
+copying src\jarvis_foundry\software_intelligence\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\context.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\knowledge_links.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\lifecycle_states.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\project_identity.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\writeback.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\supervisor\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\authority.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\console.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\control.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\controls.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\estop.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\evolution_control.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\leases.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\run.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\service.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\worker.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\supervisor
+copying src\jarvis_foundry\workers\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\envelope.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\evidence.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\isolation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\lab.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\mission_bridge.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\orchestrator.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\result_contract.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\router.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\adapters\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\base.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\fakes.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\hermes.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\openhands.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\registry.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workflow_discovery\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\bridge.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\fingerprints.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\miner.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\sessionizer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\similarity.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\tokenizer.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workforce\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\commander.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\contracts.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\convergence.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\gateway.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\observation.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\proving.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\recovery.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\runner.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\state.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\steering.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\suitability.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\worktrees.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\workforce
+copying src\jarvis_foundry\world_model\__init__.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\calibration.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\connector.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\constants.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\entities.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\facade.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\gaps.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\intelligence.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\observations.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\patterns.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\predictions.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\procedures.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\read_model.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\relationships.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\research_handoff.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\signals.py -> jarvis_foundry-0.1.0\src\jarvis_foundry\world_model
+Writing jarvis_foundry-0.1.0\setup.cfg
+Creating tar archive
+removing 'jarvis_foundry-0.1.0' (and everything under it)
+Building wheel from source distribution...
+running egg_info
+writing src\jarvis_foundry.egg-info\PKG-INFO
+writing dependency_links to src\jarvis_foundry.egg-info\dependency_links.txt
+writing entry points to src\jarvis_foundry.egg-info\entry_points.txt
+writing requirements to src\jarvis_foundry.egg-info\requires.txt
+writing top-level names to src\jarvis_foundry.egg-info\top_level.txt
+reading manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+writing manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+running bdist_wheel
+running build
+running build_py
+creating build\lib\jarvis_foundry
+copying src\jarvis_foundry\artifacts.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\autonomy_projection.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\briefings.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\briefing_items.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\briefing_packet.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\capability_requirements.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\capability_solution_discovery.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\clock.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\command_center.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\command_center_work.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\consolidation.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\database.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\decision_queue.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\discovery_candidates.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\discovery_monitors.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\discovery_sources.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\domain.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\effects.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\events.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\initiative_a2.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\initiative_a3.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\installer.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\integrated_rollback.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge_entities.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge_extract.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge_ingestion.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge_records.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge_retrieval.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\knowledge_snapshots.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\live_ingestion.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\migrations.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\operational_intelligence.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\owner_controls.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\owner_directives.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\paths.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\projections.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\project_discovery.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\proving.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\reconcile.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\research_contract.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\research_decision.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\research_dossier.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\research_queue.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\result_traceability.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\self_expansion.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\systems.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\trust.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\trust_states.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_cycle.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_fault.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_git.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_loop.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_outcomes.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_resources.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_scoring.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v3_teams.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\v4_schema.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\vault_indexer.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\vault_retrieval.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\voice.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\worker_context.py -> build\lib\jarvis_foundry
+copying src\jarvis_foundry\__init__.py -> build\lib\jarvis_foundry
+creating build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\adversarial.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\clock.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\contracts.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\evidence.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\fixtures.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\observer.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\runner.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\simulation.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\verdict.py -> build\lib\jarvis_foundry\acceptance_harness
+copying src\jarvis_foundry\acceptance_harness\__init__.py -> build\lib\jarvis_foundry\acceptance_harness
+creating build\lib\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\builder.py -> build\lib\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\cli.py -> build\lib\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\model.py -> build\lib\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\runtime.py -> build\lib\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\worker_bridge.py -> build\lib\jarvis_foundry\adapter_factory
+copying src\jarvis_foundry\adapter_factory\__init__.py -> build\lib\jarvis_foundry\adapter_factory
+creating build\lib\jarvis_foundry\capabilities
+copying src\jarvis_foundry\capabilities\registry.py -> build\lib\jarvis_foundry\capabilities
+copying src\jarvis_foundry\capabilities\__init__.py -> build\lib\jarvis_foundry\capabilities
+creating build\lib\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\models.py -> build\lib\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\projection.py -> build\lib\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\service.py -> build\lib\jarvis_foundry\chief_of_staff
+copying src\jarvis_foundry\chief_of_staff\__init__.py -> build\lib\jarvis_foundry\chief_of_staff
+creating build\lib\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\hermes_env_sync.py -> build\lib\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\hermes_probe.py -> build\lib\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\main.py -> build\lib\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\masked_input.py -> build\lib\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\setup.py -> build\lib\jarvis_foundry\cli
+copying src\jarvis_foundry\cli\__init__.py -> build\lib\jarvis_foundry\cli
+creating build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\account_activation.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\activation.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\browser.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\communication.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\composed.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\contract.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\evidence.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\fakes.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\filesystem.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\general_work_files.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\git.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\github_research.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\github_write.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\gmail_api.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\http.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\lineage.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\local_artifacts.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\operations.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\personal_operator.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\registry.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\resources.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\safety.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\web_research.py -> build\lib\jarvis_foundry\connectors
+copying src\jarvis_foundry\connectors\windows_operator.py -> build\lib\jarvis_foundry\connectors
+creating build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\action_envelope.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\broker.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\capabilities.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\capability_broker.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\policy.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\redaction.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\registration.py -> build\lib\jarvis_foundry\control
+copying src\jarvis_foundry\control\__init__.py -> build\lib\jarvis_foundry\control
+creating build\lib\jarvis_foundry\convergence
+copying src\jarvis_foundry\convergence\briefings_l10n.py -> build\lib\jarvis_foundry\convergence
+creating build\lib\jarvis_foundry\correlation
+copying src\jarvis_foundry\correlation\entities.py -> build\lib\jarvis_foundry\correlation
+copying src\jarvis_foundry\correlation\events.py -> build\lib\jarvis_foundry\correlation
+copying src\jarvis_foundry\correlation\__init__.py -> build\lib\jarvis_foundry\correlation
+creating build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\calibration.py -> build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\context.py -> build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\contracts.py -> build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\inference.py -> build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\projection.py -> build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\service.py -> build\lib\jarvis_foundry\delegation
+copying src\jarvis_foundry\delegation\__init__.py -> build\lib\jarvis_foundry\delegation
+creating build\lib\jarvis_foundry\delivery
+copying src\jarvis_foundry\delivery\boundary.py -> build\lib\jarvis_foundry\delivery
+copying src\jarvis_foundry\delivery\__init__.py -> build\lib\jarvis_foundry\delivery
+creating build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\guard.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\headless_launcher.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\lab_hermes.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\launcher.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\layout.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\path_setup.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\release.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\runtime_identity.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\status.py -> build\lib\jarvis_foundry\deployment
+copying src\jarvis_foundry\deployment\__init__.py -> build\lib\jarvis_foundry\deployment
+creating build\lib\jarvis_foundry\diagnostics
+copying src\jarvis_foundry\diagnostics\runtime.py -> build\lib\jarvis_foundry\diagnostics
+copying src\jarvis_foundry\diagnostics\__init__.py -> build\lib\jarvis_foundry\diagnostics
+creating build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\acceptance.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\bad_candidate.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\benchmark.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\builder.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\canary.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\cycle.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\detector.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\discover.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\disposable_canary.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\eligibility.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\executive_portfolio.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\feedback.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\lab.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\measurement.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\plan.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\portfolio.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\promote.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\records.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\registry.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\restore.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\scheduler.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\selector.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\shadow.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\verifier_orchestrator.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\verifier_probe.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\verify.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\_authority.py -> build\lib\jarvis_foundry\evolution
+copying src\jarvis_foundry\evolution\__init__.py -> build\lib\jarvis_foundry\evolution
+creating build\lib\jarvis_foundry\execution
+copying src\jarvis_foundry\execution\pipeline.py -> build\lib\jarvis_foundry\execution
+creating build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\autonomy.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\calibration.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\campaigns.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\campaign_runtime.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\continuous.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\decisions.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\eligibility.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\goals.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\missions.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\new_project_factory.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\owner_context.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\portfolio_bridge.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\predictions.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\scoring.py -> build\lib\jarvis_foundry\executive
+copying src\jarvis_foundry\executive\__init__.py -> build\lib\jarvis_foundry\executive
+creating build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\adapter.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\artifact_trial.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\artifact_trial_verifier.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\catalog.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\compose.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\computer_operator.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\contracts.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\executors.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\expansion.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\gap_bridge.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\general_work.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\loop.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\model.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\personal_operator.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\providers.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\spine.py -> build\lib\jarvis_foundry\fabric
+copying src\jarvis_foundry\fabric\__init__.py -> build\lib\jarvis_foundry\fabric
+creating build\lib\jarvis_foundry\gates
+copying src\jarvis_foundry\gates\minigates.py -> build\lib\jarvis_foundry\gates
+copying src\jarvis_foundry\gates\owner_families.py -> build\lib\jarvis_foundry\gates
+copying src\jarvis_foundry\gates\__init__.py -> build\lib\jarvis_foundry\gates
+creating build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\ledger.py -> build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\materialization.py -> build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\model.py -> build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\planner.py -> build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\verification.py -> build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\workforce.py -> build\lib\jarvis_foundry\general_work
+copying src\jarvis_foundry\general_work\__init__.py -> build\lib\jarvis_foundry\general_work
+creating build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\blocks.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\compiler.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\curation.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\defense.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\lifecycle.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\procedures.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\recall.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\versioning.py -> build\lib\jarvis_foundry\hybrid_memory
+copying src\jarvis_foundry\hybrid_memory\__init__.py -> build\lib\jarvis_foundry\hybrid_memory
+creating build\lib\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\adoption.py -> build\lib\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\client.py -> build\lib\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\config.py -> build\lib\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\contracts.py -> build\lib\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\fabric.py -> build\lib\jarvis_foundry\mcp_backend
+copying src\jarvis_foundry\mcp_backend\__init__.py -> build\lib\jarvis_foundry\mcp_backend
+creating build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\commit.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\contracts.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\directives.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\lineage.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\loop.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\proposal.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\verification.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\verification_planning.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\verifier_binding.py -> build\lib\jarvis_foundry\mission
+copying src\jarvis_foundry\mission\__init__.py -> build\lib\jarvis_foundry\mission
+creating build\lib\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\policy.py -> build\lib\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\snapshots.py -> build\lib\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\writer.py -> build\lib\jarvis_foundry\obsidian
+copying src\jarvis_foundry\obsidian\__init__.py -> build\lib\jarvis_foundry\obsidian
+creating build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\adversarial.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\composition.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\deployment.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\golden_journey.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\lab.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\planning.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\procedure.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\project.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\reuse.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\services.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\targets.py -> build\lib\jarvis_foundry\operations
+copying src\jarvis_foundry\operations\__init__.py -> build\lib\jarvis_foundry\operations
+creating build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\compiler.py -> build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\models.py -> build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\projection.py -> build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\references.py -> build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\standing_orders.py -> build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\store.py -> build\lib\jarvis_foundry\owner_context
+copying src\jarvis_foundry\owner_context\__init__.py -> build\lib\jarvis_foundry\owner_context
+creating build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\aggregation.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\contracts.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\cursor.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\dedup.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\normalizer.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\privacy.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\run.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\screenpipe.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\significance.py -> build\lib\jarvis_foundry\perception
+copying src\jarvis_foundry\perception\__init__.py -> build\lib\jarvis_foundry\perception
+creating build\lib\jarvis_foundry\platform
+copying src\jarvis_foundry\platform\windows_subprocess.py -> build\lib\jarvis_foundry\platform
+copying src\jarvis_foundry\platform\__init__.py -> build\lib\jarvis_foundry\platform
+creating build\lib\jarvis_foundry\postv7
+copying src\jarvis_foundry\postv7\integration.py -> build\lib\jarvis_foundry\postv7
+copying src\jarvis_foundry\postv7\__init__.py -> build\lib\jarvis_foundry\postv7
+creating build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\adapter.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\bundle.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\contracts.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\executor.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\process.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\registry.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\shadow.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\tier_c.py -> build\lib\jarvis_foundry\procedural_learning
+copying src\jarvis_foundry\procedural_learning\__init__.py -> build\lib\jarvis_foundry\procedural_learning
+creating build\lib\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\contracts.py -> build\lib\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\definitions.py -> build\lib\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\quality.py -> build\lib\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\sandbox.py -> build\lib\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\validator.py -> build\lib\jarvis_foundry\procedure_library
+copying src\jarvis_foundry\procedure_library\__init__.py -> build\lib\jarvis_foundry\procedure_library
+creating build\lib\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\contracts.py -> build\lib\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\inspector.py -> build\lib\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\service.py -> build\lib\jarvis_foundry\project_context
+copying src\jarvis_foundry\project_context\__init__.py -> build\lib\jarvis_foundry\project_context
+creating build\lib\jarvis_foundry\reporting
+copying src\jarvis_foundry\reporting\briefing.py -> build\lib\jarvis_foundry\reporting
+copying src\jarvis_foundry\reporting\__init__.py -> build\lib\jarvis_foundry\reporting
+creating build\lib\jarvis_foundry\resilience
+copying src\jarvis_foundry\resilience\core.py -> build\lib\jarvis_foundry\resilience
+copying src\jarvis_foundry\resilience\__init__.py -> build\lib\jarvis_foundry\resilience
+creating build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\adapter.py -> build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\dispatcher.py -> build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\manifest.py -> build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\reaper.py -> build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\results.py -> build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\router.py -> build\lib\jarvis_foundry\roles
+copying src\jarvis_foundry\roles\__init__.py -> build\lib\jarvis_foundry\roles
+creating build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\authority.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\config.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\mission_session.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\provider_config.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\provider_registry.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\worker_loop.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\_stack.py -> build\lib\jarvis_foundry\runtime
+copying src\jarvis_foundry\runtime\__init__.py -> build\lib\jarvis_foundry\runtime
+creating build\lib\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\context.py -> build\lib\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\knowledge_links.py -> build\lib\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\lifecycle_states.py -> build\lib\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\project_identity.py -> build\lib\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\writeback.py -> build\lib\jarvis_foundry\software_intelligence
+copying src\jarvis_foundry\software_intelligence\__init__.py -> build\lib\jarvis_foundry\software_intelligence
+creating build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\authority.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\console.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\control.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\controls.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\estop.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\evolution_control.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\leases.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\run.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\service.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\worker.py -> build\lib\jarvis_foundry\supervisor
+copying src\jarvis_foundry\supervisor\__init__.py -> build\lib\jarvis_foundry\supervisor
+creating build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\contracts.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\envelope.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\evidence.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\isolation.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\lab.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\mission_bridge.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\orchestrator.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\result_contract.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\router.py -> build\lib\jarvis_foundry\workers
+copying src\jarvis_foundry\workers\__init__.py -> build\lib\jarvis_foundry\workers
+creating build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\bridge.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\contracts.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\fingerprints.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\miner.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\sessionizer.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\similarity.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\tokenizer.py -> build\lib\jarvis_foundry\workflow_discovery
+copying src\jarvis_foundry\workflow_discovery\__init__.py -> build\lib\jarvis_foundry\workflow_discovery
+creating build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\commander.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\contracts.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\convergence.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\gateway.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\observation.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\proving.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\recovery.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\runner.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\state.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\steering.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\suitability.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\worktrees.py -> build\lib\jarvis_foundry\workforce
+copying src\jarvis_foundry\workforce\__init__.py -> build\lib\jarvis_foundry\workforce
+creating build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\calibration.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\connector.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\constants.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\entities.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\facade.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\gaps.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\intelligence.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\observations.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\patterns.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\predictions.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\procedures.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\read_model.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\relationships.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\research_handoff.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\signals.py -> build\lib\jarvis_foundry\world_model
+copying src\jarvis_foundry\world_model\__init__.py -> build\lib\jarvis_foundry\world_model
+creating build\lib\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\base.py -> build\lib\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\fakes.py -> build\lib\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\hermes.py -> build\lib\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\openhands.py -> build\lib\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\registry.py -> build\lib\jarvis_foundry\workers\adapters
+copying src\jarvis_foundry\workers\adapters\__init__.py -> build\lib\jarvis_foundry\workers\adapters
+running egg_info
+writing src\jarvis_foundry.egg-info\PKG-INFO
+writing dependency_links to src\jarvis_foundry.egg-info\dependency_links.txt
+writing entry points to src\jarvis_foundry.egg-info\entry_points.txt
+writing requirements to src\jarvis_foundry.egg-info\requires.txt
+writing top-level names to src\jarvis_foundry.egg-info\top_level.txt
+reading manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+writing manifest file 'src\jarvis_foundry.egg-info\SOURCES.txt'
+creating build\lib\jarvis_foundry\assets
+copying src\jarvis_foundry\assets\Tektur-OFL.txt -> build\lib\jarvis_foundry\assets
+copying src\jarvis_foundry\assets\Tektur.ttf -> build\lib\jarvis_foundry\assets
+installing to build\bdist.win-amd64\wheel
+running install
+running install_lib
+creating build\bdist.win-amd64\wheel
+creating build\bdist.win-amd64\wheel\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\adversarial.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\clock.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\evidence.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\fixtures.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\observer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\runner.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\simulation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\verdict.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+copying build\lib\jarvis_foundry\acceptance_harness\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\acceptance_harness
+creating build\bdist.win-amd64\wheel\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\adapter_factory\builder.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\adapter_factory\cli.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\adapter_factory\model.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\adapter_factory\runtime.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\adapter_factory\worker_bridge.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\adapter_factory\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\adapter_factory
+copying build\lib\jarvis_foundry\artifacts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\assets
+copying build\lib\jarvis_foundry\assets\Tektur-OFL.txt -> build\bdist.win-amd64\wheel\.\jarvis_foundry\assets
+copying build\lib\jarvis_foundry\assets\Tektur.ttf -> build\bdist.win-amd64\wheel\.\jarvis_foundry\assets
+copying build\lib\jarvis_foundry\autonomy_projection.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\briefings.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\briefing_items.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\briefing_packet.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\capabilities
+copying build\lib\jarvis_foundry\capabilities\registry.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\capabilities
+copying build\lib\jarvis_foundry\capabilities\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\capabilities
+copying build\lib\jarvis_foundry\capability_requirements.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\capability_solution_discovery.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\chief_of_staff
+copying build\lib\jarvis_foundry\chief_of_staff\models.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\chief_of_staff
+copying build\lib\jarvis_foundry\chief_of_staff\projection.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\chief_of_staff
+copying build\lib\jarvis_foundry\chief_of_staff\service.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\chief_of_staff
+copying build\lib\jarvis_foundry\chief_of_staff\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\chief_of_staff
+creating build\bdist.win-amd64\wheel\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\cli\hermes_env_sync.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\cli\hermes_probe.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\cli\main.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\cli\masked_input.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\cli\setup.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\cli\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\cli
+copying build\lib\jarvis_foundry\clock.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\command_center.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\command_center_work.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\account_activation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\activation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\browser.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\communication.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\composed.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\contract.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\evidence.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\fakes.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\filesystem.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\general_work_files.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\git.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\github_research.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\github_write.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\gmail_api.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\http.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\lineage.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\local_artifacts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\operations.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\personal_operator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\registry.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\resources.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\safety.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\web_research.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\connectors\windows_operator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\connectors
+copying build\lib\jarvis_foundry\consolidation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\action_envelope.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\broker.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\capabilities.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\capability_broker.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\policy.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\redaction.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\registration.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+copying build\lib\jarvis_foundry\control\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\control
+creating build\bdist.win-amd64\wheel\jarvis_foundry\convergence
+copying build\lib\jarvis_foundry\convergence\briefings_l10n.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\convergence
+creating build\bdist.win-amd64\wheel\jarvis_foundry\correlation
+copying build\lib\jarvis_foundry\correlation\entities.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\correlation
+copying build\lib\jarvis_foundry\correlation\events.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\correlation
+copying build\lib\jarvis_foundry\correlation\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\correlation
+copying build\lib\jarvis_foundry\database.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\decision_queue.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\calibration.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\context.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\inference.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\projection.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\service.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+copying build\lib\jarvis_foundry\delegation\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delegation
+creating build\bdist.win-amd64\wheel\jarvis_foundry\delivery
+copying build\lib\jarvis_foundry\delivery\boundary.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delivery
+copying build\lib\jarvis_foundry\delivery\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\delivery
+creating build\bdist.win-amd64\wheel\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\guard.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\headless_launcher.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\lab_hermes.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\launcher.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\layout.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\path_setup.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\release.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\runtime_identity.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\status.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+copying build\lib\jarvis_foundry\deployment\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\deployment
+creating build\bdist.win-amd64\wheel\jarvis_foundry\diagnostics
+copying build\lib\jarvis_foundry\diagnostics\runtime.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\diagnostics
+copying build\lib\jarvis_foundry\diagnostics\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\diagnostics
+copying build\lib\jarvis_foundry\discovery_candidates.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\discovery_monitors.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\discovery_sources.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\domain.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\effects.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\events.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\acceptance.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\bad_candidate.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\benchmark.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\builder.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\canary.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\cycle.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\detector.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\discover.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\disposable_canary.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\eligibility.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\executive_portfolio.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\feedback.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\lab.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\measurement.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\plan.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\portfolio.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\promote.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\records.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\registry.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\restore.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\scheduler.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\selector.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\shadow.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\verifier_orchestrator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\verifier_probe.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\verify.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\_authority.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+copying build\lib\jarvis_foundry\evolution\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\evolution
+creating build\bdist.win-amd64\wheel\jarvis_foundry\execution
+copying build\lib\jarvis_foundry\execution\pipeline.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\execution
+creating build\bdist.win-amd64\wheel\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\autonomy.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\calibration.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\campaigns.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\campaign_runtime.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\continuous.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\decisions.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\eligibility.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\goals.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\missions.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\new_project_factory.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\owner_context.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\portfolio_bridge.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\predictions.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\scoring.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+copying build\lib\jarvis_foundry\executive\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\executive
+creating build\bdist.win-amd64\wheel\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\adapter.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\artifact_trial.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\artifact_trial_verifier.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\catalog.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\compose.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\computer_operator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\executors.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\expansion.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\gap_bridge.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\general_work.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\loop.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\model.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\personal_operator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\providers.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\spine.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+copying build\lib\jarvis_foundry\fabric\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\fabric
+creating build\bdist.win-amd64\wheel\jarvis_foundry\gates
+copying build\lib\jarvis_foundry\gates\minigates.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\gates
+copying build\lib\jarvis_foundry\gates\owner_families.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\gates
+copying build\lib\jarvis_foundry\gates\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\gates
+creating build\bdist.win-amd64\wheel\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\ledger.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\materialization.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\model.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\planner.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\verification.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\workforce.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+copying build\lib\jarvis_foundry\general_work\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\general_work
+creating build\bdist.win-amd64\wheel\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\blocks.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\compiler.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\curation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\defense.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\lifecycle.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\procedures.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\recall.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\versioning.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\hybrid_memory\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\hybrid_memory
+copying build\lib\jarvis_foundry\initiative_a2.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\initiative_a3.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\installer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\integrated_rollback.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge_entities.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge_extract.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge_ingestion.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge_records.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge_retrieval.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\knowledge_snapshots.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\live_ingestion.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\mcp_backend\adoption.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\mcp_backend\client.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\mcp_backend\config.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\mcp_backend\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\mcp_backend\fabric.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\mcp_backend\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mcp_backend
+copying build\lib\jarvis_foundry\migrations.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\commit.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\directives.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\lineage.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\loop.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\proposal.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\verification.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\verification_planning.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\verifier_binding.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+copying build\lib\jarvis_foundry\mission\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\mission
+creating build\bdist.win-amd64\wheel\jarvis_foundry\obsidian
+copying build\lib\jarvis_foundry\obsidian\policy.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\obsidian
+copying build\lib\jarvis_foundry\obsidian\snapshots.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\obsidian
+copying build\lib\jarvis_foundry\obsidian\writer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\obsidian
+copying build\lib\jarvis_foundry\obsidian\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\obsidian
+copying build\lib\jarvis_foundry\operational_intelligence.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\adversarial.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\composition.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\deployment.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\golden_journey.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\lab.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\planning.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\procedure.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\project.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\reuse.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\services.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\targets.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+copying build\lib\jarvis_foundry\operations\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\operations
+creating build\bdist.win-amd64\wheel\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\compiler.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\models.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\projection.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\references.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\standing_orders.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\store.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_context\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\owner_context
+copying build\lib\jarvis_foundry\owner_controls.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\owner_directives.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\paths.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\aggregation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\cursor.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\dedup.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\normalizer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\privacy.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\run.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\screenpipe.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\significance.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+copying build\lib\jarvis_foundry\perception\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\perception
+creating build\bdist.win-amd64\wheel\jarvis_foundry\platform
+copying build\lib\jarvis_foundry\platform\windows_subprocess.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\platform
+copying build\lib\jarvis_foundry\platform\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\platform
+creating build\bdist.win-amd64\wheel\jarvis_foundry\postv7
+copying build\lib\jarvis_foundry\postv7\integration.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\postv7
+copying build\lib\jarvis_foundry\postv7\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\postv7
+creating build\bdist.win-amd64\wheel\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\adapter.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\bundle.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\executor.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\process.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\registry.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\shadow.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\tier_c.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+copying build\lib\jarvis_foundry\procedural_learning\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedural_learning
+creating build\bdist.win-amd64\wheel\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\procedure_library\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\procedure_library\definitions.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\procedure_library\quality.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\procedure_library\sandbox.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\procedure_library\validator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\procedure_library\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\procedure_library
+copying build\lib\jarvis_foundry\projections.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\project_context
+copying build\lib\jarvis_foundry\project_context\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\project_context
+copying build\lib\jarvis_foundry\project_context\inspector.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\project_context
+copying build\lib\jarvis_foundry\project_context\service.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\project_context
+copying build\lib\jarvis_foundry\project_context\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\project_context
+copying build\lib\jarvis_foundry\project_discovery.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\proving.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\reconcile.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\reporting
+copying build\lib\jarvis_foundry\reporting\briefing.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\reporting
+copying build\lib\jarvis_foundry\reporting\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\reporting
+copying build\lib\jarvis_foundry\research_contract.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\research_decision.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\research_dossier.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\research_queue.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\resilience
+copying build\lib\jarvis_foundry\resilience\core.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\resilience
+copying build\lib\jarvis_foundry\resilience\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\resilience
+copying build\lib\jarvis_foundry\result_traceability.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\adapter.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\dispatcher.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\manifest.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\reaper.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\results.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\router.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+copying build\lib\jarvis_foundry\roles\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\roles
+creating build\bdist.win-amd64\wheel\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\authority.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\config.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\mission_session.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\provider_config.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\provider_registry.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\worker_loop.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\_stack.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\runtime\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\runtime
+copying build\lib\jarvis_foundry\self_expansion.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\software_intelligence
+copying build\lib\jarvis_foundry\software_intelligence\context.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\software_intelligence
+copying build\lib\jarvis_foundry\software_intelligence\knowledge_links.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\software_intelligence
+copying build\lib\jarvis_foundry\software_intelligence\lifecycle_states.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\software_intelligence
+copying build\lib\jarvis_foundry\software_intelligence\project_identity.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\software_intelligence
+copying build\lib\jarvis_foundry\software_intelligence\writeback.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\software_intelligence
+copying build\lib\jarvis_foundry\software_intelligence\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\software_intelligence
+creating build\bdist.win-amd64\wheel\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\authority.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\console.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\control.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\controls.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\estop.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\evolution_control.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\leases.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\run.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\service.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\worker.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\supervisor\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\supervisor
+copying build\lib\jarvis_foundry\systems.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\trust.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\trust_states.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_cycle.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_fault.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_git.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_loop.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_outcomes.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_resources.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_scoring.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v3_teams.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\v4_schema.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\vault_indexer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\vault_retrieval.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+copying build\lib\jarvis_foundry\voice.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\workers
+creating build\bdist.win-amd64\wheel\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\adapters\base.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\adapters\fakes.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\adapters\hermes.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\adapters\openhands.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\adapters\registry.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\adapters\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers\adapters
+copying build\lib\jarvis_foundry\workers\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\envelope.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\evidence.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\isolation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\lab.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\mission_bridge.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\orchestrator.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\result_contract.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\router.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\workers\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workers
+copying build\lib\jarvis_foundry\worker_context.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+creating build\bdist.win-amd64\wheel\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\bridge.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\fingerprints.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\miner.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\sessionizer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\similarity.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\tokenizer.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+copying build\lib\jarvis_foundry\workflow_discovery\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workflow_discovery
+creating build\bdist.win-amd64\wheel\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\commander.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\contracts.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\convergence.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\gateway.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\observation.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\proving.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\recovery.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\runner.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\state.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\steering.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\suitability.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\worktrees.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+copying build\lib\jarvis_foundry\workforce\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\workforce
+creating build\bdist.win-amd64\wheel\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\calibration.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\connector.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\constants.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\entities.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\facade.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\gaps.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\intelligence.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\observations.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\patterns.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\predictions.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\procedures.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\read_model.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\relationships.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\research_handoff.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\signals.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\world_model\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry\world_model
+copying build\lib\jarvis_foundry\__init__.py -> build\bdist.win-amd64\wheel\.\jarvis_foundry
+running install_egg_info
+Copying src\jarvis_foundry.egg-info to build\bdist.win-amd64\wheel\.\jarvis_foundry-0.1.0-py3.14.egg-info
+running install_scripts
+creating build\bdist.win-amd64\wheel\jarvis_foundry-0.1.0.dist-info\WHEEL
+creating 'C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\verification\\package\\dist\\.tmp-p0hxqfa4\\jarvis_foundry-0.1.0-py3-none-any.whl' and adding 'build\\bdist.win-amd64\\wheel' to it
+adding 'jarvis_foundry/__init__.py'
+adding 'jarvis_foundry/artifacts.py'
+adding 'jarvis_foundry/autonomy_projection.py'
+adding 'jarvis_foundry/briefing_items.py'
+adding 'jarvis_foundry/briefing_packet.py'
+adding 'jarvis_foundry/briefings.py'
+adding 'jarvis_foundry/capability_requirements.py'
+adding 'jarvis_foundry/capability_solution_discovery.py'
+adding 'jarvis_foundry/clock.py'
+adding 'jarvis_foundry/command_center.py'
+adding 'jarvis_foundry/command_center_work.py'
+adding 'jarvis_foundry/consolidation.py'
+adding 'jarvis_foundry/database.py'
+adding 'jarvis_foundry/decision_queue.py'
+adding 'jarvis_foundry/discovery_candidates.py'
+adding 'jarvis_foundry/discovery_monitors.py'
+adding 'jarvis_foundry/discovery_sources.py'
+adding 'jarvis_foundry/domain.py'
+adding 'jarvis_foundry/effects.py'
+adding 'jarvis_foundry/events.py'
+adding 'jarvis_foundry/initiative_a2.py'
+adding 'jarvis_foundry/initiative_a3.py'
+adding 'jarvis_foundry/installer.py'
+adding 'jarvis_foundry/integrated_rollback.py'
+adding 'jarvis_foundry/knowledge.py'
+adding 'jarvis_foundry/knowledge_entities.py'
+adding 'jarvis_foundry/knowledge_extract.py'
+adding 'jarvis_foundry/knowledge_ingestion.py'
+adding 'jarvis_foundry/knowledge_records.py'
+adding 'jarvis_foundry/knowledge_retrieval.py'
+adding 'jarvis_foundry/knowledge_snapshots.py'
+adding 'jarvis_foundry/live_ingestion.py'
+adding 'jarvis_foundry/migrations.py'
+adding 'jarvis_foundry/operational_intelligence.py'
+adding 'jarvis_foundry/owner_controls.py'
+adding 'jarvis_foundry/owner_directives.py'
+adding 'jarvis_foundry/paths.py'
+adding 'jarvis_foundry/project_discovery.py'
+adding 'jarvis_foundry/projections.py'
+adding 'jarvis_foundry/proving.py'
+adding 'jarvis_foundry/reconcile.py'
+adding 'jarvis_foundry/research_contract.py'
+adding 'jarvis_foundry/research_decision.py'
+adding 'jarvis_foundry/research_dossier.py'
+adding 'jarvis_foundry/research_queue.py'
+adding 'jarvis_foundry/result_traceability.py'
+adding 'jarvis_foundry/self_expansion.py'
+adding 'jarvis_foundry/systems.py'
+adding 'jarvis_foundry/trust.py'
+adding 'jarvis_foundry/trust_states.py'
+adding 'jarvis_foundry/v3_cycle.py'
+adding 'jarvis_foundry/v3_fault.py'
+adding 'jarvis_foundry/v3_git.py'
+adding 'jarvis_foundry/v3_loop.py'
+adding 'jarvis_foundry/v3_outcomes.py'
+adding 'jarvis_foundry/v3_resources.py'
+adding 'jarvis_foundry/v3_scoring.py'
+adding 'jarvis_foundry/v3_teams.py'
+adding 'jarvis_foundry/v4_schema.py'
+adding 'jarvis_foundry/vault_indexer.py'
+adding 'jarvis_foundry/vault_retrieval.py'
+adding 'jarvis_foundry/voice.py'
+adding 'jarvis_foundry/worker_context.py'
+adding 'jarvis_foundry/acceptance_harness/__init__.py'
+adding 'jarvis_foundry/acceptance_harness/adversarial.py'
+adding 'jarvis_foundry/acceptance_harness/clock.py'
+adding 'jarvis_foundry/acceptance_harness/contracts.py'
+adding 'jarvis_foundry/acceptance_harness/evidence.py'
+adding 'jarvis_foundry/acceptance_harness/fixtures.py'
+adding 'jarvis_foundry/acceptance_harness/observer.py'
+adding 'jarvis_foundry/acceptance_harness/runner.py'
+adding 'jarvis_foundry/acceptance_harness/simulation.py'
+adding 'jarvis_foundry/acceptance_harness/verdict.py'
+adding 'jarvis_foundry/adapter_factory/__init__.py'
+adding 'jarvis_foundry/adapter_factory/builder.py'
+adding 'jarvis_foundry/adapter_factory/cli.py'
+adding 'jarvis_foundry/adapter_factory/model.py'
+adding 'jarvis_foundry/adapter_factory/runtime.py'
+adding 'jarvis_foundry/adapter_factory/worker_bridge.py'
+adding 'jarvis_foundry/assets/Tektur-OFL.txt'
+adding 'jarvis_foundry/assets/Tektur.ttf'
+adding 'jarvis_foundry/capabilities/__init__.py'
+adding 'jarvis_foundry/capabilities/registry.py'
+adding 'jarvis_foundry/chief_of_staff/__init__.py'
+adding 'jarvis_foundry/chief_of_staff/models.py'
+adding 'jarvis_foundry/chief_of_staff/projection.py'
+adding 'jarvis_foundry/chief_of_staff/service.py'
+adding 'jarvis_foundry/cli/__init__.py'
+adding 'jarvis_foundry/cli/hermes_env_sync.py'
+adding 'jarvis_foundry/cli/hermes_probe.py'
+adding 'jarvis_foundry/cli/main.py'
+adding 'jarvis_foundry/cli/masked_input.py'
+adding 'jarvis_foundry/cli/setup.py'
+adding 'jarvis_foundry/connectors/account_activation.py'
+adding 'jarvis_foundry/connectors/activation.py'
+adding 'jarvis_foundry/connectors/browser.py'
+adding 'jarvis_foundry/connectors/communication.py'
+adding 'jarvis_foundry/connectors/composed.py'
+adding 'jarvis_foundry/connectors/contract.py'
+adding 'jarvis_foundry/connectors/evidence.py'
+adding 'jarvis_foundry/connectors/fakes.py'
+adding 'jarvis_foundry/connectors/filesystem.py'
+adding 'jarvis_foundry/connectors/general_work_files.py'
+adding 'jarvis_foundry/connectors/git.py'
+adding 'jarvis_foundry/connectors/github_research.py'
+adding 'jarvis_foundry/connectors/github_write.py'
+adding 'jarvis_foundry/connectors/gmail_api.py'
+adding 'jarvis_foundry/connectors/http.py'
+adding 'jarvis_foundry/connectors/lineage.py'
+adding 'jarvis_foundry/connectors/local_artifacts.py'
+adding 'jarvis_foundry/connectors/operations.py'
+adding 'jarvis_foundry/connectors/personal_operator.py'
+adding 'jarvis_foundry/connectors/registry.py'
+adding 'jarvis_foundry/connectors/resources.py'
+adding 'jarvis_foundry/connectors/safety.py'
+adding 'jarvis_foundry/connectors/web_research.py'
+adding 'jarvis_foundry/connectors/windows_operator.py'
+adding 'jarvis_foundry/control/__init__.py'
+adding 'jarvis_foundry/control/action_envelope.py'
+adding 'jarvis_foundry/control/broker.py'
+adding 'jarvis_foundry/control/capabilities.py'
+adding 'jarvis_foundry/control/capability_broker.py'
+adding 'jarvis_foundry/control/policy.py'
+adding 'jarvis_foundry/control/redaction.py'
+adding 'jarvis_foundry/control/registration.py'
+adding 'jarvis_foundry/convergence/briefings_l10n.py'
+adding 'jarvis_foundry/correlation/__init__.py'
+adding 'jarvis_foundry/correlation/entities.py'
+adding 'jarvis_foundry/correlation/events.py'
+adding 'jarvis_foundry/delegation/__init__.py'
+adding 'jarvis_foundry/delegation/calibration.py'
+adding 'jarvis_foundry/delegation/context.py'
+adding 'jarvis_foundry/delegation/contracts.py'
+adding 'jarvis_foundry/delegation/inference.py'
+adding 'jarvis_foundry/delegation/projection.py'
+adding 'jarvis_foundry/delegation/service.py'
+adding 'jarvis_foundry/delivery/__init__.py'
+adding 'jarvis_foundry/delivery/boundary.py'
+adding 'jarvis_foundry/deployment/__init__.py'
+adding 'jarvis_foundry/deployment/guard.py'
+adding 'jarvis_foundry/deployment/headless_launcher.py'
+adding 'jarvis_foundry/deployment/lab_hermes.py'
+adding 'jarvis_foundry/deployment/launcher.py'
+adding 'jarvis_foundry/deployment/layout.py'
+adding 'jarvis_foundry/deployment/path_setup.py'
+adding 'jarvis_foundry/deployment/release.py'
+adding 'jarvis_foundry/deployment/runtime_identity.py'
+adding 'jarvis_foundry/deployment/status.py'
+adding 'jarvis_foundry/diagnostics/__init__.py'
+adding 'jarvis_foundry/diagnostics/runtime.py'
+adding 'jarvis_foundry/evolution/__init__.py'
+adding 'jarvis_foundry/evolution/_authority.py'
+adding 'jarvis_foundry/evolution/acceptance.py'
+adding 'jarvis_foundry/evolution/bad_candidate.py'
+adding 'jarvis_foundry/evolution/benchmark.py'
+adding 'jarvis_foundry/evolution/builder.py'
+adding 'jarvis_foundry/evolution/canary.py'
+adding 'jarvis_foundry/evolution/cycle.py'
+adding 'jarvis_foundry/evolution/detector.py'
+adding 'jarvis_foundry/evolution/discover.py'
+adding 'jarvis_foundry/evolution/disposable_canary.py'
+adding 'jarvis_foundry/evolution/eligibility.py'
+adding 'jarvis_foundry/evolution/executive_portfolio.py'
+adding 'jarvis_foundry/evolution/feedback.py'
+adding 'jarvis_foundry/evolution/lab.py'
+adding 'jarvis_foundry/evolution/measurement.py'
+adding 'jarvis_foundry/evolution/plan.py'
+adding 'jarvis_foundry/evolution/portfolio.py'
+adding 'jarvis_foundry/evolution/promote.py'
+adding 'jarvis_foundry/evolution/records.py'
+adding 'jarvis_foundry/evolution/registry.py'
+adding 'jarvis_foundry/evolution/restore.py'
+adding 'jarvis_foundry/evolution/scheduler.py'
+adding 'jarvis_foundry/evolution/selector.py'
+adding 'jarvis_foundry/evolution/shadow.py'
+adding 'jarvis_foundry/evolution/verifier_orchestrator.py'
+adding 'jarvis_foundry/evolution/verifier_probe.py'
+adding 'jarvis_foundry/evolution/verify.py'
+adding 'jarvis_foundry/execution/pipeline.py'
+adding 'jarvis_foundry/executive/__init__.py'
+adding 'jarvis_foundry/executive/autonomy.py'
+adding 'jarvis_foundry/executive/calibration.py'
+adding 'jarvis_foundry/executive/campaign_runtime.py'
+adding 'jarvis_foundry/executive/campaigns.py'
+adding 'jarvis_foundry/executive/continuous.py'
+adding 'jarvis_foundry/executive/decisions.py'
+adding 'jarvis_foundry/executive/eligibility.py'
+adding 'jarvis_foundry/executive/goals.py'
+adding 'jarvis_foundry/executive/missions.py'
+adding 'jarvis_foundry/executive/new_project_factory.py'
+adding 'jarvis_foundry/executive/owner_context.py'
+adding 'jarvis_foundry/executive/portfolio_bridge.py'
+adding 'jarvis_foundry/executive/predictions.py'
+adding 'jarvis_foundry/executive/scoring.py'
+adding 'jarvis_foundry/fabric/__init__.py'
+adding 'jarvis_foundry/fabric/adapter.py'
+adding 'jarvis_foundry/fabric/artifact_trial.py'
+adding 'jarvis_foundry/fabric/artifact_trial_verifier.py'
+adding 'jarvis_foundry/fabric/catalog.py'
+adding 'jarvis_foundry/fabric/compose.py'
+adding 'jarvis_foundry/fabric/computer_operator.py'
+adding 'jarvis_foundry/fabric/contracts.py'
+adding 'jarvis_foundry/fabric/executors.py'
+adding 'jarvis_foundry/fabric/expansion.py'
+adding 'jarvis_foundry/fabric/gap_bridge.py'
+adding 'jarvis_foundry/fabric/general_work.py'
+adding 'jarvis_foundry/fabric/loop.py'
+adding 'jarvis_foundry/fabric/model.py'
+adding 'jarvis_foundry/fabric/personal_operator.py'
+adding 'jarvis_foundry/fabric/providers.py'
+adding 'jarvis_foundry/fabric/spine.py'
+adding 'jarvis_foundry/gates/__init__.py'
+adding 'jarvis_foundry/gates/minigates.py'
+adding 'jarvis_foundry/gates/owner_families.py'
+adding 'jarvis_foundry/general_work/__init__.py'
+adding 'jarvis_foundry/general_work/ledger.py'
+adding 'jarvis_foundry/general_work/materialization.py'
+adding 'jarvis_foundry/general_work/model.py'
+adding 'jarvis_foundry/general_work/planner.py'
+adding 'jarvis_foundry/general_work/verification.py'
+adding 'jarvis_foundry/general_work/workforce.py'
+adding 'jarvis_foundry/hybrid_memory/__init__.py'
+adding 'jarvis_foundry/hybrid_memory/blocks.py'
+adding 'jarvis_foundry/hybrid_memory/compiler.py'
+adding 'jarvis_foundry/hybrid_memory/curation.py'
+adding 'jarvis_foundry/hybrid_memory/defense.py'
+adding 'jarvis_foundry/hybrid_memory/lifecycle.py'
+adding 'jarvis_foundry/hybrid_memory/procedures.py'
+adding 'jarvis_foundry/hybrid_memory/recall.py'
+adding 'jarvis_foundry/hybrid_memory/versioning.py'
+adding 'jarvis_foundry/mcp_backend/__init__.py'
+adding 'jarvis_foundry/mcp_backend/adoption.py'
+adding 'jarvis_foundry/mcp_backend/client.py'
+adding 'jarvis_foundry/mcp_backend/config.py'
+adding 'jarvis_foundry/mcp_backend/contracts.py'
+adding 'jarvis_foundry/mcp_backend/fabric.py'
+adding 'jarvis_foundry/mission/__init__.py'
+adding 'jarvis_foundry/mission/commit.py'
+adding 'jarvis_foundry/mission/contracts.py'
+adding 'jarvis_foundry/mission/directives.py'
+adding 'jarvis_foundry/mission/lineage.py'
+adding 'jarvis_foundry/mission/loop.py'
+adding 'jarvis_foundry/mission/proposal.py'
+adding 'jarvis_foundry/mission/verification.py'
+adding 'jarvis_foundry/mission/verification_planning.py'
+adding 'jarvis_foundry/mission/verifier_binding.py'
+adding 'jarvis_foundry/obsidian/__init__.py'
+adding 'jarvis_foundry/obsidian/policy.py'
+adding 'jarvis_foundry/obsidian/snapshots.py'
+adding 'jarvis_foundry/obsidian/writer.py'
+adding 'jarvis_foundry/operations/__init__.py'
+adding 'jarvis_foundry/operations/adversarial.py'
+adding 'jarvis_foundry/operations/composition.py'
+adding 'jarvis_foundry/operations/deployment.py'
+adding 'jarvis_foundry/operations/golden_journey.py'
+adding 'jarvis_foundry/operations/lab.py'
+adding 'jarvis_foundry/operations/planning.py'
+adding 'jarvis_foundry/operations/procedure.py'
+adding 'jarvis_foundry/operations/project.py'
+adding 'jarvis_foundry/operations/reuse.py'
+adding 'jarvis_foundry/operations/services.py'
+adding 'jarvis_foundry/operations/targets.py'
+adding 'jarvis_foundry/owner_context/__init__.py'
+adding 'jarvis_foundry/owner_context/compiler.py'
+adding 'jarvis_foundry/owner_context/models.py'
+adding 'jarvis_foundry/owner_context/projection.py'
+adding 'jarvis_foundry/owner_context/references.py'
+adding 'jarvis_foundry/owner_context/standing_orders.py'
+adding 'jarvis_foundry/owner_context/store.py'
+adding 'jarvis_foundry/perception/__init__.py'
+adding 'jarvis_foundry/perception/aggregation.py'
+adding 'jarvis_foundry/perception/contracts.py'
+adding 'jarvis_foundry/perception/cursor.py'
+adding 'jarvis_foundry/perception/dedup.py'
+adding 'jarvis_foundry/perception/normalizer.py'
+adding 'jarvis_foundry/perception/privacy.py'
+adding 'jarvis_foundry/perception/run.py'
+adding 'jarvis_foundry/perception/screenpipe.py'
+adding 'jarvis_foundry/perception/significance.py'
+adding 'jarvis_foundry/platform/__init__.py'
+adding 'jarvis_foundry/platform/windows_subprocess.py'
+adding 'jarvis_foundry/postv7/__init__.py'
+adding 'jarvis_foundry/postv7/integration.py'
+adding 'jarvis_foundry/procedural_learning/__init__.py'
+adding 'jarvis_foundry/procedural_learning/adapter.py'
+adding 'jarvis_foundry/procedural_learning/bundle.py'
+adding 'jarvis_foundry/procedural_learning/contracts.py'
+adding 'jarvis_foundry/procedural_learning/executor.py'
+adding 'jarvis_foundry/procedural_learning/process.py'
+adding 'jarvis_foundry/procedural_learning/registry.py'
+adding 'jarvis_foundry/procedural_learning/shadow.py'
+adding 'jarvis_foundry/procedural_learning/tier_c.py'
+adding 'jarvis_foundry/procedure_library/__init__.py'
+adding 'jarvis_foundry/procedure_library/contracts.py'
+adding 'jarvis_foundry/procedure_library/definitions.py'
+adding 'jarvis_foundry/procedure_library/quality.py'
+adding 'jarvis_foundry/procedure_library/sandbox.py'
+adding 'jarvis_foundry/procedure_library/validator.py'
+adding 'jarvis_foundry/project_context/__init__.py'
+adding 'jarvis_foundry/project_context/contracts.py'
+adding 'jarvis_foundry/project_context/inspector.py'
+adding 'jarvis_foundry/project_context/service.py'
+adding 'jarvis_foundry/reporting/__init__.py'
+adding 'jarvis_foundry/reporting/briefing.py'
+adding 'jarvis_foundry/resilience/__init__.py'
+adding 'jarvis_foundry/resilience/core.py'
+adding 'jarvis_foundry/roles/__init__.py'
+adding 'jarvis_foundry/roles/adapter.py'
+adding 'jarvis_foundry/roles/dispatcher.py'
+adding 'jarvis_foundry/roles/manifest.py'
+adding 'jarvis_foundry/roles/reaper.py'
+adding 'jarvis_foundry/roles/results.py'
+adding 'jarvis_foundry/roles/router.py'
+adding 'jarvis_foundry/runtime/__init__.py'
+adding 'jarvis_foundry/runtime/_stack.py'
+adding 'jarvis_foundry/runtime/authority.py'
+adding 'jarvis_foundry/runtime/config.py'
+adding 'jarvis_foundry/runtime/mission_session.py'
+adding 'jarvis_foundry/runtime/provider_config.py'
+adding 'jarvis_foundry/runtime/provider_registry.py'
+adding 'jarvis_foundry/runtime/worker_loop.py'
+adding 'jarvis_foundry/software_intelligence/__init__.py'
+adding 'jarvis_foundry/software_intelligence/context.py'
+adding 'jarvis_foundry/software_intelligence/knowledge_links.py'
+adding 'jarvis_foundry/software_intelligence/lifecycle_states.py'
+adding 'jarvis_foundry/software_intelligence/project_identity.py'
+adding 'jarvis_foundry/software_intelligence/writeback.py'
+adding 'jarvis_foundry/supervisor/__init__.py'
+adding 'jarvis_foundry/supervisor/authority.py'
+adding 'jarvis_foundry/supervisor/console.py'
+adding 'jarvis_foundry/supervisor/control.py'
+adding 'jarvis_foundry/supervisor/controls.py'
+adding 'jarvis_foundry/supervisor/estop.py'
+adding 'jarvis_foundry/supervisor/evolution_control.py'
+adding 'jarvis_foundry/supervisor/leases.py'
+adding 'jarvis_foundry/supervisor/run.py'
+adding 'jarvis_foundry/supervisor/service.py'
+adding 'jarvis_foundry/supervisor/worker.py'
+adding 'jarvis_foundry/workers/__init__.py'
+adding 'jarvis_foundry/workers/contracts.py'
+adding 'jarvis_foundry/workers/envelope.py'
+adding 'jarvis_foundry/workers/evidence.py'
+adding 'jarvis_foundry/workers/isolation.py'
+adding 'jarvis_foundry/workers/lab.py'
+adding 'jarvis_foundry/workers/mission_bridge.py'
+adding 'jarvis_foundry/workers/orchestrator.py'
+adding 'jarvis_foundry/workers/result_contract.py'
+adding 'jarvis_foundry/workers/router.py'
+adding 'jarvis_foundry/workers/adapters/__init__.py'
+adding 'jarvis_foundry/workers/adapters/base.py'
+adding 'jarvis_foundry/workers/adapters/fakes.py'
+adding 'jarvis_foundry/workers/adapters/hermes.py'
+adding 'jarvis_foundry/workers/adapters/openhands.py'
+adding 'jarvis_foundry/workers/adapters/registry.py'
+adding 'jarvis_foundry/workflow_discovery/__init__.py'
+adding 'jarvis_foundry/workflow_discovery/bridge.py'
+adding 'jarvis_foundry/workflow_discovery/contracts.py'
+adding 'jarvis_foundry/workflow_discovery/fingerprints.py'
+adding 'jarvis_foundry/workflow_discovery/miner.py'
+adding 'jarvis_foundry/workflow_discovery/sessionizer.py'
+adding 'jarvis_foundry/workflow_discovery/similarity.py'
+adding 'jarvis_foundry/workflow_discovery/tokenizer.py'
+adding 'jarvis_foundry/workforce/__init__.py'
+adding 'jarvis_foundry/workforce/commander.py'
+adding 'jarvis_foundry/workforce/contracts.py'
+adding 'jarvis_foundry/workforce/convergence.py'
+adding 'jarvis_foundry/workforce/gateway.py'
+adding 'jarvis_foundry/workforce/observation.py'
+adding 'jarvis_foundry/workforce/proving.py'
+adding 'jarvis_foundry/workforce/recovery.py'
+adding 'jarvis_foundry/workforce/runner.py'
+adding 'jarvis_foundry/workforce/state.py'
+adding 'jarvis_foundry/workforce/steering.py'
+adding 'jarvis_foundry/workforce/suitability.py'
+adding 'jarvis_foundry/workforce/worktrees.py'
+adding 'jarvis_foundry/world_model/__init__.py'
+adding 'jarvis_foundry/world_model/calibration.py'
+adding 'jarvis_foundry/world_model/connector.py'
+adding 'jarvis_foundry/world_model/constants.py'
+adding 'jarvis_foundry/world_model/entities.py'
+adding 'jarvis_foundry/world_model/facade.py'
+adding 'jarvis_foundry/world_model/gaps.py'
+adding 'jarvis_foundry/world_model/intelligence.py'
+adding 'jarvis_foundry/world_model/observations.py'
+adding 'jarvis_foundry/world_model/patterns.py'
+adding 'jarvis_foundry/world_model/predictions.py'
+adding 'jarvis_foundry/world_model/procedures.py'
+adding 'jarvis_foundry/world_model/read_model.py'
+adding 'jarvis_foundry/world_model/relationships.py'
+adding 'jarvis_foundry/world_model/research_handoff.py'
+adding 'jarvis_foundry/world_model/signals.py'
+adding 'jarvis_foundry-0.1.0.dist-info/METADATA'
+adding 'jarvis_foundry-0.1.0.dist-info/WHEEL'
+adding 'jarvis_foundry-0.1.0.dist-info/entry_points.txt'
+adding 'jarvis_foundry-0.1.0.dist-info/top_level.txt'
+adding 'jarvis_foundry-0.1.0.dist-info/RECORD'
+removing build\bdist.win-amd64\wheel
+Successfully built C:\temp\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\verification\package\dist\jarvis_foundry-0.1.0.tar.gz
+Successfully built C:\temp\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\verification\package\dist\jarvis_foundry-0.1.0-py3-none-any.whl

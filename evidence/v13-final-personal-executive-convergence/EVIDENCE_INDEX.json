@@ -1,22 +1,53 @@
 {
   "contract": "jarvis.v13.final-personal-executive-evidence-index.v1",
-  "generated_on": "2026-09-05",
-  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
-  "source_tree_sha": "82185f10757655f32a5d1d2d84c24edde6ea2162",
+  "generated_on": "2026-09-06",
+  "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
+  "source_tree_sha": "3ff1757aabd778a25b1cabc7a96945b942ed0d34",
   "artifacts": {
-    "proof/proof.json": "a7f54b61333863bcdd3b4f892e63ddda00a1cc7cc02026c4bb6e5e9ba15d3f20",
-    "proof/shared-spine.db": "e1f87381c35d92112f04c3577db9b73296d07edf0834c43c93a42355a558a949",
-    "verification/command-center-receipt.json": "5804eef077fe41fa0771e0a247e7bf0509adffa32a4a6958191e7a4fcfd2d544",
-    "verification/frontend-report.json": "44230a643dcf78d44c68fa537de36b38df74109249ed6cb2717177585a13be84",
-    "verification/full-suite-preclosure.junit.xml": "0e9826c1005c92ef38634e7314b4fa00402cb92b7f3c9a3bc6725cdae33323f4",
-    "verification/package-report.json": "c0aba2442d9bd55024b39ad61ffc1adf8d6690a76d8012ffc1d2c52e1a06f98f",
-    "verification/source-e2e-report.json": "348d2aa5054a707fac0a2f2498bc2289b794ef6c21003102701968a09170fd6c",
-    "verification/v12-regressions.junit.xml": "2e9d06a63e06c7d55716f58948102701e40091bab61cc064c781848cb85815c9",
-    "verification/v13-focused.junit.xml": "13fcc0f0df5e8cfd0d4e559c6a9a6513bb578ff2df1f79976c067cb3eb37a32a"
+    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "proof/proof.json": "fb48a986699793d11c4ff034094cee785c3d54d6e0f7ec661af1ec7e77aa7e9a",
+    "proof/receipts/chief_of_staff.json": "3d5187e8526e20771cd2f1850c60d1d25f2e6f04421af1b4a33b3c707a563e8e",
+    "proof/receipts/chief_verifier.json": "ef63d81fcfef73629bea453e15bb2b5fb5a563ccb19ac7321546d3a916f5267b",
+    "proof/receipts/command_center.json": "f5bd7fe83a8717c5e01997e324af26d2bdf9d37b66eaaf8b6b2039a640b939c2",
+    "proof/receipts/computer_operator.json": "2da0d276a017508b14b4e95c8842b308b472c90bef05394c0ee19bfe5593100e",
+    "proof/receipts/general_work.json": "2d3e649fb34ed61b45833429b72c0148b36362cbd0c333f8b727e51bb23d71d3",
+    "proof/receipts/owner_context.json": "69ce214b83ba1c3e741774057a11bbfb6869cac14f4d8f397fbc2aa536fb346e",
+    "proof/receipts/personal_operator.json": "42aa27f52b9fe387feaf7914f99cfef57fe5d62337cc46835d22d6c4aeb5dba8",
+    "proof/receipts/world_intelligence.json": "97c6eb6d47baa2ed2527e231db039d0eb30b1c76a3360e15204b4da406fde043",
+    "proof/receipts/world_verifier.json": "6345638458c4756767543dc2c5d686a0ead8edcc8fcfd32acfda5b1f96e4bf7a",
+    "proof/shared-spine.db": "43e50e663e2648680763112b3cb307c29de52f9ffc9ca39de77ad688ff4c543b",
+    "verification/command-center-receipt.json": "d237c3aa780a256b4dfcdb10140e39d1ecfa18f41acf2d662439bcd5eb21c8af",
+    "verification/frontend-report.json": "072ac8969419261cb0d9430ef74c4c4b3067ae3c73e8636b08637cf4238a5dc1",
+    "verification/frontend/build.log": "acc2389e54133035b955187e0c201f3bf226b501ca642f7453a53fda089549c5",
+    "verification/frontend/dist/assets/index-DJBqPEYC.css": "b5c9057f0ba8811f6665c1aa58ae6633431867be0ea6b6576609c4a4b0f7ffca",
+    "verification/frontend/dist/assets/index-a3N0iWdt.js": "29d85b1f8ef7d5883ff0e5ad2426cf723c83645598f2099ab2b73022024b0cdc",
+    "verification/frontend/dist/index.html": "dc8f1127f44760d050fe7a368f6016e0d6f041f00ff899e7afb0a627e6cdb26a",
+    "verification/frontend/lint.log": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "verification/frontend/typecheck.log": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "verification/frontend/vitest-results.json": "58ffc8a206e223bb2e9ee809b0925841e0718ec6c70aec1700cc6f0a6ac11718",
+    "verification/full-suite-preclosure.junit.xml": "ed038c196d5cbcc5170e7bf4996d65c3e10b0bfa607cf38605436cd4fb638f77",
+    "verification/operator-compatibility.junit.xml": "dc2827d4ebd63e3e288e2a95577aedd65773de28f8edc8761ad01f9cca459674",
+    "verification/package-report.json": "69d1eff777d6ae8a3adc48f48a6583ba7fc8082d9ca3331b490111713adbc988",
+    "verification/package/build.log": "01c2880e5bce031ae8096075d4bb94d9c975c52313cdfd9d04d433cc9fafbe3b",
+    "verification/package/compileall.log": "8007622e31889d5be02225175d9e322e386f63c5fb8e191322fe7104d748e95a",
+    "verification/package/diff-check.log": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "verification/package/dist/jarvis_foundry-0.1.0-py3-none-any.whl": "920015062c9c89d61df5b7d468f0d382975ef8ba62992994ef42ca2189d67bd1",
+    "verification/package/dist/jarvis_foundry-0.1.0.tar.gz": "9af0ea11e3b28241c4f8edebdc1fb054fec55e3da3b0ad18d35630ad80fe82be",
+    "verification/package/install.log": "a4e73d3a41b50787a48dff1318652da540ccb775c050aa4e4a4ce58ab549080b",
+    "verification/package/uv-lock-check.log": "9389e1da9508a9a7e8eb9f28ac2074cd370f58690efe392741d66e115535d710",
+    "verification/source-binding.json": "af2a943e16c28285dc8e61d11f2ad14cffe9e3d27f6c8ff8a3d63616c62afc18",
+    "verification/source-e2e-report.json": "b37332c4baebf31df09dad1753ac19afdf94bb8f9a964271831cf313ddabab11",
+    "verification/source-e2e/autonomy-proof.json": "a5814f56560cdcc2ef0a5c294d1a241b8fc27d83fed40abfa8cbdecf20fe0ed3",
+    "verification/source-e2e/foundry.db": "e7ecc9f936afa17af42e1c9603c7e43badad509ff7c7873b169eae8c16b3864e",
+    "verification/source-e2e/screenshots/live-mission-detail-1600x1280.png": "cf1d088a49a7684fa5fe493a015ab8a62b7c99ce613236d9d56b3928500c5d61",
+    "verification/source-e2e/screenshots/live-overview-1600x1280.png": "865f5b411ab7f6f29bba28de407052f2a956e29209a1d0ed7af69b2a51291d2e",
+    "verification/source-e2e/screenshots/live-work-390x844.png": "669be5f3252efafeb3ba77b10c1c7a6f884125930491094c39d30d2463ec6b44",
+    "verification/v12-regressions.junit.xml": "e3629988e49dad0e47d2def7c9a0f368d2a0564b305567cc75d19a0fb947719b",
+    "verification/v13-focused.junit.xml": "fce213d161a34c8eaa3d64245cadc84c7c25f6c2beaa56e003c2b79e9f2c0228"
   },
   "test_totals": {
     "v13_focused": {
-      "tests": 549,
+      "tests": 553,
       "failures": 0,
       "errors": 0,
       "skipped": 1
@@ -27,11 +58,35 @@
       "errors": 0,
       "skipped": 0
     },
+    "operator_compatibility": {
+      "tests": 70,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
     "full_foundry_and_convergence_preclosure": {
-      "tests": 3407,
+      "tests": 3411,
       "failures": 0,
       "errors": 0,
       "skipped": 2
+    },
+    "frontend_vitest": {
+      "tests": 162,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "source_backed_e2e": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
     }
-  }
+  },
+  "limitations": [
+    "PowerPoint deliverables and actions were excluded by owner direction.",
+    "Gmail, voice, and English/Albanian localization remain deferred.",
+    "Provider production trust remains SUSPENDED outside this candidate.",
+    "No public external mutation, deploy, promotion, or activation was exercised."
+  ]
 }

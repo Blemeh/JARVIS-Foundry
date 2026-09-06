@@ -13,8 +13,8 @@
   "final_status": "REAL_PROOF_PASS",
   "fixture": {
     "compiler": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe",
-    "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
-    "executable_sha256": "daf573f7e652b6ca527802b4da80f29bd4b8edb957569f21db9f11323ced0ca3",
+    "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
+    "executable_sha256": "7d09f93c82751e200de58fcc4c3edef7cab9403ef1285b7c88c628e7f76b2d71",
     "source": "scripts/v13_operator_fixture.cs",
     "source_sha256": "80cccce0150d3ce9968ed03f57b0d2dbcca79b792d5fbdf9b3355a6699475f7f"
   },
@@ -68,7 +68,7 @@
       "action_kind": "desktop.control.inspect",
       "capability_id": "cap.desktop.control.inspect",
       "claimed": "COMPLETED",
-      "effect_id": "effect:4c37d28b356f4f42e49835d4ab195a19dfd6c518f65a7c59969a54877e4b4273",
+      "effect_id": "effect:f4b2e7459e1c85eff5485c7cd24b4830f2e97b165b886342c345da13f11c96c4",
       "error_code": "",
       "journal_state": null,
       "performed": null,
@@ -81,7 +81,7 @@
       "action_kind": "desktop.open",
       "capability_id": "cap.desktop.open",
       "claimed": "COMPLETED",
-      "effect_id": "effect:b2da1e9b2f4c68583d3fb0409d79d336cda64e42670a284d5b7cf843f3b01513",
+      "effect_id": "effect:8ed89d8405fed6e5378f522304048be9eb74984ead07f1fc732cc00dd46b3cb4",
       "error_code": "",
       "journal_state": "COMPLETED",
       "performed": true,
@@ -95,11 +95,11 @@
         "action_kind": "browser.web.execute",
         "capability_id": "cap.browser.web.execute",
         "claimed": "COMPLETED",
-        "effect_id": "effect:0fd8ac308dc6a2e531a4c4c0ab544f986164ce4cb1dd86523f0f044ca6461327",
+        "effect_id": "effect:0a003250a1f66d42ded1b925cdb3b972915b10622ec3224e1304be47dea7d2a2",
         "error_code": "",
         "journal_state": "COMPLETED",
         "performed": true,
-        "provider_ref": "http://127.0.0.1:55538/",
+        "provider_ref": "http://127.0.0.1:56385/",
         "replayed": false,
         "success": true,
         "verified": "MATCH"
@@ -108,11 +108,11 @@
         "action_kind": "browser.web.execute",
         "capability_id": "cap.browser.web.execute",
         "claimed": "COMPLETED",
-        "effect_id": "effect:0fd8ac308dc6a2e531a4c4c0ab544f986164ce4cb1dd86523f0f044ca6461327",
+        "effect_id": "effect:0a003250a1f66d42ded1b925cdb3b972915b10622ec3224e1304be47dea7d2a2",
         "error_code": "",
         "journal_state": "COMPLETED",
         "performed": false,
-        "provider_ref": "http://127.0.0.1:55538/",
+        "provider_ref": "http://127.0.0.1:56385/",
         "replayed": true,
         "success": true,
         "verified": "MATCH"
@@ -141,17 +141,17 @@
       },
       "terminated_process": {
         "captured_tree_size": 4,
-        "create_time": 134330969781716209,
+        "create_time": 134331185341943115,
         "exe": "C:\\Users\\b\\AppData\\Local\\ms-playwright\\chromium_headless_shell-1234\\chrome-headless-shell-win64\\chrome-headless-shell.exe",
-        "pid": 28652,
+        "pid": 41124,
         "termination_readback": {
-          "create_time": 134330969781716209,
+          "create_time": 134331185341943115,
           "exe": "C:\\Users\\b\\AppData\\Local\\ms-playwright\\chromium_headless_shell-1234\\chrome-headless-shell-win64\\chrome-headless-shell.exe",
           "exit_code": 259,
           "exit_code_after": 0,
           "live": true,
           "live_after": false,
-          "pid": 28652,
+          "pid": 41124,
           "via": "windows_handle"
         }
       }
@@ -172,18 +172,18 @@
         "action_kind": "browser.web.execute",
         "capability_id": "cap.browser.web.execute",
         "claimed": "UNKNOWN",
-        "effect_id": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+        "effect_id": "effect:dfab678684a661d852d3aa4e6936aae2a7ff70e3dbf556ad841b395551cfc6ea",
         "error_code": "stop_after_effect",
         "journal_state": "FROZEN",
         "performed": true,
-        "provider_ref": "http://127.0.0.1:55538/",
+        "provider_ref": "http://127.0.0.1:56385/",
         "replayed": false,
         "success": false,
         "verified": "UNKNOWN"
       },
       "effect_state": {
         "accepted": true,
-        "action_key": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+        "action_key": "effect:dfab678684a661d852d3aa4e6936aae2a7ff70e3dbf556ad841b395551cfc6ea",
         "before_state": {
           "action": "upload",
           "authority": "DATA_ONLY",
@@ -205,11 +205,11 @@
           "role": "button",
           "target_id": "upload-edited-report",
           "upload_source": "downloads/report.csv",
-          "url": "http://127.0.0.1:55538/"
+          "url": "http://127.0.0.1:56385/"
         },
         "claim_active": false,
-        "claim_expires_at": 1788623697.8920052,
-        "claimed_at": 1788623397.8920052,
+        "claim_expires_at": 1788645252.892551,
+        "claimed_at": 1788644952.892551,
         "expected_effects": [
           "bounded browser action"
         ],
@@ -225,18 +225,18 @@
           "contract_version": "jarvis.v10.adapter.v1",
           "credential_refs": [],
           "effect_class": "REVERSIBLE_EXTERNAL",
-          "effect_id": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
-          "idempotency_key": "idempotency:e97e5929a548a5aef50a77a61eb559e079fcea14e6a61f8c004c90446aeac1e3",
-          "input_hash": "f880dbb759b32978b22c305f8ca810b159e6d2b25728f4bfac3542165470fad3",
+          "effect_id": "effect:dfab678684a661d852d3aa4e6936aae2a7ff70e3dbf556ad841b395551cfc6ea",
+          "idempotency_key": "idempotency:fb2b64e9b7e5ea8c4c494668920c512a347abf7f05d82c99d302051904aee668",
+          "input_hash": "98a0f4a4588391166d6423bd8f662e77c410ee046100b69897eb7d35eb5ff2ac",
           "mission_id": "v13.operator.browser-upload",
-          "request_id": "request:effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51:attempt:1",
+          "request_id": "request:effect:dfab678684a661d852d3aa4e6936aae2a7ff70e3dbf556ad841b395551cfc6ea:attempt:1",
           "step_id": "browser_upload",
           "step_version": 1,
           "stop_scope": [
             "GLOBAL",
             "v13.operator.browser-upload"
           ],
-          "target_ref": "http://127.0.0.1:55538/",
+          "target_ref": "http://127.0.0.1:56385/",
           "workflow_id": "v13.operator.real-proof"
         },
         "status": "FROZEN",
@@ -246,11 +246,11 @@
         "action_kind": "browser.web.reconcile",
         "capability_id": "cap.browser.web.reconcile",
         "claimed": "COMPLETED",
-        "effect_id": "effect:139735251d7b50ddc40bedac532677d452d4dfd32b1ab89bf5aa4f8667de17cf",
+        "effect_id": "effect:bfb9a75a44bbceb21a3b462cc6546da0bbe214d81805c9737794662a168985a1",
         "error_code": "",
         "journal_state": "FROZEN",
         "performed": true,
-        "provider_ref": "http://127.0.0.1:55538/",
+        "provider_ref": "http://127.0.0.1:56385/",
         "replayed": false,
         "success": true,
         "verified": "MATCH"
@@ -259,11 +259,11 @@
         "action_kind": "browser.web.execute",
         "capability_id": "cap.browser.web.execute",
         "claimed": "COMPLETED",
-        "effect_id": "effect:90f69f174711d68c60d3b47e6c2adbe56991d92f32467812e3ebb6cb7af0eb51",
+        "effect_id": "effect:dfab678684a661d852d3aa4e6936aae2a7ff70e3dbf556ad841b395551cfc6ea",
         "error_code": "",
         "journal_state": "FROZEN",
         "performed": false,
-        "provider_ref": "http://127.0.0.1:55538/",
+        "provider_ref": "http://127.0.0.1:56385/",
         "replayed": true,
         "success": true,
         "verified": "MATCH"
@@ -275,7 +275,7 @@
         "action_kind": "browser.web.reconcile",
         "capability_id": "cap.browser.web.reconcile",
         "claimed": "BLOCKED",
-        "effect_id": "effect:9823d88bb412cd1f456759cda905177bcf94169cc46273d176b15a4e4d98421e",
+        "effect_id": "effect:d9ea8a9931442ad3225079c827845ba72532ca2673eed2cfc1bfadb19d43343a",
         "error_code": "effect_identity_mismatch",
         "journal_state": null,
         "performed": null,
@@ -288,7 +288,7 @@
         "action_kind": "browser.web.reconcile",
         "capability_id": "cap.browser.web.reconcile",
         "claimed": "BLOCKED",
-        "effect_id": "effect:5326904aab97ad498fd7464749a7f70596e3fb869234945284e0465699b9cb77",
+        "effect_id": "effect:0cc5383a6abe08412f29436621d297aeeb5055ac50c1a669fd1b021dfa497cca",
         "error_code": "effect_identity_mismatch",
         "journal_state": null,
         "performed": null,
@@ -302,11 +302,11 @@
       "action_kind": "browser.web.wait",
       "capability_id": "cap.browser.web.wait",
       "claimed": "COMPLETED",
-      "effect_id": "effect:05b6661f1e907cf6acf1411fc273ae03746cf24f40fb9ed72b30ea4678cdd850",
+      "effect_id": "effect:075b32e11bc19699b4f99da2d4b4e4f24a2ac5bb4c3fbe412550cf4981aff585",
       "error_code": "",
       "journal_state": null,
       "performed": true,
-      "provider_ref": "http://127.0.0.1:55538/",
+      "provider_ref": "http://127.0.0.1:56385/",
       "replayed": null,
       "success": true,
       "verified": "MATCH"
@@ -328,11 +328,11 @@
       "action_kind": "desktop.control.replace_text",
       "capability_id": "cap.desktop.control.replace_text",
       "claimed": "COMPLETED",
-      "effect_id": "effect:2d0fa3da3b513459cd43fd2a63a4c2e52c60c34e307d2ca0bccc3437d8e5026e",
+      "effect_id": "effect:1fd08a055ff6188930ea3e3b6cbaaea5a18134adf607399e98a5c9eda0edcf79",
       "error_code": "",
       "journal_state": "COMPLETED",
       "performed": true,
-      "provider_ref": "computer:52760:134330969917241463:60360790",
+      "provider_ref": "computer:2204:134331185470675161:18549302",
       "replayed": false,
       "success": true,
       "verified": "MATCH"
@@ -438,7 +438,7 @@
             "name": "Crash fixture",
             "runtime_id": [
               42,
-              37751488
+              33427634
             ]
           },
           "value": null,
@@ -448,17 +448,17 @@
           "window": {
             "automation_id": "OperatorFixtureWindow",
             "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
-            "hwnd": 60360790,
+            "hwnd": 18549302,
             "observation_generation": 8,
             "process": {
-              "create_time": 134330969917241463,
-              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "create_time": 134331185470675161,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
               "logical_id": "fixture-main",
-              "pid": 52760
+              "pid": 2204
             },
             "runtime_id": [
               42,
-              60360790
+              18549302
             ],
             "title": "JARVIS V13 Main Editor"
           }
@@ -470,34 +470,34 @@
           "name": null,
           "runtime_id": []
         },
-        "detail": "PID 52760 could not be verified",
+        "detail": "PID 2204 could not be verified",
         "dialog": null,
         "effect_possible": true,
         "error_code": "process_identity_unavailable",
         "kind": "click",
         "outcome": "UNKNOWN",
         "process": {
-          "create_time": 134330969917241463,
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "create_time": 134331185470675161,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
           "logical_id": "fixture-main",
-          "pid": 52760
+          "pid": 2204
         },
         "reconciled": false,
         "reconciliation_required": true,
         "window": {
           "automation_id": "OperatorFixtureWindow",
           "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
-          "hwnd": 60360790,
+          "hwnd": 18549302,
           "observation_generation": 1,
           "process": {
-            "create_time": 134330969917241463,
-            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "create_time": 134331185470675161,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
             "logical_id": "fixture-main",
-            "pid": 52760
+            "pid": 2204
           },
           "runtime_id": [
             42,
-            60360790
+            18549302
           ],
           "title": "JARVIS V13 Main Editor"
         }
@@ -505,47 +505,47 @@
       "decoy_survived": true,
       "logical_id_policy": "immutable per process generation",
       "new_process": {
-        "create_time": 134330970049191775,
-        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+        "create_time": 134331185593431204,
+        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
         "logical_id": "fixture-restarted",
-        "pid": 37604
+        "pid": 35724
       },
       "old_process_after_restart": {
         "before": {
           "args": [
             "JARVIS V13 Main Editor",
-            "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv"
+            "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\downloads\\report.csv"
           ],
           "before": {
             "process_id": "fixture-main",
             "registered": false
           },
-          "command_identity": "sha256:a3750dac4a8f347f94109139fe338ea86f0325b59c7a7e9018b0c5c3c6300eb2",
+          "command_identity": "sha256:7e4b077ba74e285ee3a127ee39465e9f99704656864ba9da3f5b2f095f8c3026",
           "creation_identity": {
-            "create_time": 134330969917241463,
-            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
-            "pid": 52760
+            "create_time": 134331185470675161,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
+            "pid": 2204
           },
-          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned",
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
-          "idempotency_key": "idempotency:05d69e644d8ac308f81c44048e2e19eb43543d7d62eaf1f5dbcbfa9ae52b3a7e",
-          "launched_at": "2026-09-05T15:49:51.739408Z",
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
+          "idempotency_key": "idempotency:1f1d9304c0db960a4207f0d3740e710b75d6d55f173fc1bb9f5eee29f24136fd",
+          "launched_at": "2026-09-05T21:49:07.082414Z",
           "opened_identity": {
             "exists": true,
             "kind": "file",
-            "mtime_ns": 1788623390038538600,
-            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv",
+            "mtime_ns": 1788644945493174500,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\downloads\\report.csv",
             "ref": "downloads/report.csv",
             "sha256": "sha256:a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132",
             "size_bytes": 31
           },
           "operation": "desktop.open",
           "owned_descendants": [
-            52760
+            2204
           ],
-          "pid": 52760,
+          "pid": 2204,
           "process_id": "fixture-main",
-          "request_fingerprint": "sha256:4d931b6cd43115aeeca2781ceea6325626bd31bf67945f893173489c10438e46",
+          "request_fingerprint": "sha256:4f98bf21c88fa18b5d227b5564855f4b07fce705d3b5a0f1eb4bb82c62f1e2ab",
           "show_window": true,
           "state": "running"
         },
@@ -554,13 +554,13 @@
         "readback": {
           "alive": false,
           "observed_identity": {
-            "create_time": 134330969917241463,
-            "pid": 52760
+            "create_time": 134331185470675161,
+            "pid": 2204
           }
         },
         "reconciled": true,
         "replayed": false,
-        "request_id": "operator-d7a1123bb3904a1a919d04dbcfb8cee7",
+        "request_id": "operator-e2bc56a3f36443eebbbb6394b8d57a2c",
         "result": {
           "matches": false,
           "process_id": "fixture-main",
@@ -572,38 +572,38 @@
         "target_identity": {
           "args": [
             "JARVIS V13 Main Editor",
-            "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv"
+            "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\downloads\\report.csv"
           ],
           "before": {
             "process_id": "fixture-main",
             "registered": false
           },
-          "command_identity": "sha256:a3750dac4a8f347f94109139fe338ea86f0325b59c7a7e9018b0c5c3c6300eb2",
+          "command_identity": "sha256:7e4b077ba74e285ee3a127ee39465e9f99704656864ba9da3f5b2f095f8c3026",
           "creation_identity": {
-            "create_time": 134330969917241463,
-            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
-            "pid": 52760
+            "create_time": 134331185470675161,
+            "exe": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
+            "pid": 2204
           },
-          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned",
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
-          "idempotency_key": "idempotency:05d69e644d8ac308f81c44048e2e19eb43543d7d62eaf1f5dbcbfa9ae52b3a7e",
-          "launched_at": "2026-09-05T15:49:51.739408Z",
+          "cwd": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned",
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
+          "idempotency_key": "idempotency:1f1d9304c0db960a4207f0d3740e710b75d6d55f173fc1bb9f5eee29f24136fd",
+          "launched_at": "2026-09-05T21:49:07.082414Z",
           "opened_identity": {
             "exists": true,
             "kind": "file",
-            "mtime_ns": 1788623390038538600,
-            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\downloads\\report.csv",
+            "mtime_ns": 1788644945493174500,
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\downloads\\report.csv",
             "ref": "downloads/report.csv",
             "sha256": "sha256:a2ed76e8c77615b617c73d9c6fb7bf0d783f929c8bc4aa1d41cc20159d76f132",
             "size_bytes": 31
           },
           "operation": "desktop.open",
           "owned_descendants": [
-            52760
+            2204
           ],
-          "pid": 52760,
+          "pid": 2204,
           "process_id": "fixture-main",
-          "request_fingerprint": "sha256:4d931b6cd43115aeeca2781ceea6325626bd31bf67945f893173489c10438e46",
+          "request_fingerprint": "sha256:4f98bf21c88fa18b5d227b5564855f4b07fce705d3b5a0f1eb4bb82c62f1e2ab",
           "show_window": true,
           "state": "running"
         }
@@ -626,27 +626,27 @@
         "kind": "click",
         "outcome": "FAILED",
         "process": {
-          "create_time": 134330970049191775,
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "create_time": 134331185593431204,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
           "logical_id": "fixture-restarted",
-          "pid": 37604
+          "pid": 35724
         },
         "reconciled": false,
         "reconciliation_required": false,
         "window": {
           "automation_id": "OperatorFixtureWindow",
           "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
-          "hwnd": 60360790,
+          "hwnd": 18549302,
           "observation_generation": 1,
           "process": {
-            "create_time": 134330969917241463,
-            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "create_time": 134331185470675161,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
             "logical_id": "fixture-main",
-            "pid": 52760
+            "pid": 2204
           },
           "runtime_id": [
             42,
-            60360790
+            18549302
           ],
           "title": "JARVIS V13 Main Editor"
         }
@@ -657,22 +657,22 @@
         "action_kind": "desktop.control.click",
         "capability_id": "cap.desktop.control.click",
         "claimed": "UNKNOWN",
-        "effect_id": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+        "effect_id": "effect:57ab0543aca28981bbafc5c1e672f0e2af9bd129cf768f468a2ec6bf96bfea0a",
         "error_code": "stop_after_possible_effect",
         "journal_state": "FROZEN",
         "performed": true,
-        "provider_ref": "computer:52760:134330969917241463:60360790",
+        "provider_ref": "computer:2204:134331185470675161:18549302",
         "replayed": false,
         "success": false,
         "verified": "UNKNOWN"
       },
       "effect_state": {
         "accepted": true,
-        "action_key": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+        "action_key": "effect:57ab0543aca28981bbafc5c1e672f0e2af9bd129cf768f468a2ec6bf96bfea0a",
         "before_state": {},
         "claim_active": false,
-        "claim_expires_at": 1788623695.6426604,
-        "claimed_at": 1788623395.6426604,
+        "claim_expires_at": 1788645250.7697575,
+        "claimed_at": 1788644950.7697575,
         "expected_effects": [
           "desktop.control.click"
         ],
@@ -688,11 +688,11 @@
           "contract_version": "jarvis.v10.adapter.v1",
           "credential_refs": [],
           "effect_class": "REVERSIBLE_LOCAL",
-          "effect_id": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
-          "idempotency_key": "idempotency:59842ba73d7d88b628f7f596c23e3861bc0a71f6cd6c7e79106e3e6f704c98ce",
-          "input_hash": "78658e27ff3d2d3c524155522a096380b4530975c825fefc9aa9a4d0a6a320ce",
+          "effect_id": "effect:57ab0543aca28981bbafc5c1e672f0e2af9bd129cf768f468a2ec6bf96bfea0a",
+          "idempotency_key": "idempotency:ea3b2642b7d0202546dbfbc708ed0688c0c7cfb1b293adf96c7d96f940454c20",
+          "input_hash": "bd2aca4c7a787cfdc32ff1e32bc13ddc5db91a462b31968a939ab3af8e2c8bc3",
           "mission_id": "v13.operator.save-reconcile",
-          "request_id": "request:effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb:attempt:1",
+          "request_id": "request:effect:57ab0543aca28981bbafc5c1e672f0e2af9bd129cf768f468a2ec6bf96bfea0a:attempt:1",
           "step_id": "save_reconcile",
           "step_version": 1,
           "stop_scope": [
@@ -709,11 +709,11 @@
         "action_kind": "desktop.action.reconcile",
         "capability_id": "cap.desktop.action.reconcile",
         "claimed": "COMPLETED",
-        "effect_id": "effect:57c5c2357ea5f9ca0b611d3b89ae72c9ba5133c3160aa06abbf8c197683348af",
+        "effect_id": "effect:789143046d377188ba14d0c8921f2f7a1176f3048b3cdda66b5801b9a74b99d3",
         "error_code": "",
         "journal_state": "FROZEN",
         "performed": true,
-        "provider_ref": "computer:52760:134330969917241463:60360790",
+        "provider_ref": "computer:2204:134331185470675161:18549302",
         "replayed": null,
         "success": true,
         "verified": "MATCH"
@@ -722,11 +722,11 @@
         "action_kind": "desktop.control.click",
         "capability_id": "cap.desktop.control.click",
         "claimed": "COMPLETED",
-        "effect_id": "effect:b4f76433934f7cb5b2780f36c58d7e9f06650d86f30a25db61528a8ee9d63bcb",
+        "effect_id": "effect:57ab0543aca28981bbafc5c1e672f0e2af9bd129cf768f468a2ec6bf96bfea0a",
         "error_code": "",
         "journal_state": "FROZEN",
         "performed": false,
-        "provider_ref": "computer:52760:134330969917241463:60360790",
+        "provider_ref": "computer:2204:134331185470675161:18549302",
         "replayed": true,
         "success": true,
         "verified": "MATCH"
@@ -761,7 +761,7 @@
             "name": "Open unexpected dialog",
             "runtime_id": [
               42,
-              76746222
+              21499948
             ]
           },
           "value": null,
@@ -771,17 +771,17 @@
           "window": {
             "automation_id": "OperatorFixtureWindow",
             "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
-            "hwnd": 60360790,
+            "hwnd": 18549302,
             "observation_generation": 2,
             "process": {
-              "create_time": 134330969917241463,
-              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "create_time": 134331185470675161,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
               "logical_id": "fixture-main",
-              "pid": 52760
+              "pid": 2204
             },
             "runtime_id": [
               42,
-              60360790
+              18549302
             ],
             "title": "JARVIS V13 Main Editor"
           }
@@ -799,17 +799,17 @@
           "identity": {
             "automation_id": "",
             "class_name": "#32770",
-            "hwnd": 34078976,
+            "hwnd": 11142364,
             "observation_generation": 4,
             "process": {
-              "create_time": 134330969917241463,
-              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "create_time": 134331185470675161,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
               "logical_id": "fixture-main",
-              "pid": 52760
+              "pid": 2204
             },
             "runtime_id": [
               42,
-              34078976
+              11142364
             ],
             "title": "JARVIS V13 Unexpected Dialog"
           },
@@ -821,27 +821,27 @@
         "kind": "click",
         "outcome": "UNKNOWN",
         "process": {
-          "create_time": 134330969917241463,
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "create_time": 134331185470675161,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
           "logical_id": "fixture-main",
-          "pid": 52760
+          "pid": 2204
         },
         "reconciled": false,
         "reconciliation_required": true,
         "window": {
           "automation_id": "OperatorFixtureWindow",
           "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
-          "hwnd": 60360790,
+          "hwnd": 18549302,
           "observation_generation": 1,
           "process": {
-            "create_time": 134330969917241463,
-            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "create_time": 134331185470675161,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
             "logical_id": "fixture-main",
-            "pid": 52760
+            "pid": 2204
           },
           "runtime_id": [
             42,
-            60360790
+            18549302
           ],
           "title": "JARVIS V13 Main Editor"
         }
@@ -856,7 +856,7 @@
         "readback": null,
         "reconciled": false,
         "replayed": false,
-        "request_id": "operator-3a04fd423f704d87af3d05e94b6889d0",
+        "request_id": "operator-38982a98037e4512acd7bf993d0bf089",
         "result": null,
         "schema": "jarvis.personal_operator.receipt.v1",
         "source_identity": null,
@@ -877,7 +877,7 @@
             "name": "OK",
             "runtime_id": [
               42,
-              3084462
+              84149444
             ]
           },
           "value": null,
@@ -887,17 +887,17 @@
           "window": {
             "automation_id": "",
             "class_name": "#32770",
-            "hwnd": 34078976,
+            "hwnd": 11142364,
             "observation_generation": 6,
             "process": {
-              "create_time": 134330969917241463,
-              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+              "create_time": 134331185470675161,
+              "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
               "logical_id": "fixture-main",
-              "pid": 52760
+              "pid": 2204
             },
             "runtime_id": [
               42,
-              34078976
+              11142364
             ],
             "title": "JARVIS V13 Unexpected Dialog"
           }
@@ -916,27 +916,27 @@
         "kind": "click",
         "outcome": "COMPLETED",
         "process": {
-          "create_time": 134330969917241463,
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "create_time": 134331185470675161,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
           "logical_id": "fixture-main",
-          "pid": 52760
+          "pid": 2204
         },
         "reconciled": true,
         "reconciliation_required": false,
         "window": {
           "automation_id": "",
           "class_name": "#32770",
-          "hwnd": 34078976,
+          "hwnd": 11142364,
           "observation_generation": 5,
           "process": {
-            "create_time": 134330969917241463,
-            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+            "create_time": 134331185470675161,
+            "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
             "logical_id": "fixture-main",
-            "pid": 52760
+            "pid": 2204
           },
           "runtime_id": [
             42,
-            34078976
+            11142364
           ],
           "title": "JARVIS V13 Unexpected Dialog"
         }
@@ -960,27 +960,27 @@
       "kind": "click",
       "outcome": "FAILED",
       "process": {
-        "create_time": 134330969917241463,
-        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+        "create_time": 134331185470675161,
+        "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
         "logical_id": "fixture-main",
-        "pid": 52760
+        "pid": 2204
       },
       "reconciled": false,
       "reconciliation_required": false,
       "window": {
         "automation_id": "OperatorFixtureWindow",
         "class_name": "WindowsForms10.Window.8.app.0.34f5582_r6_ad1",
-        "hwnd": 62325368,
+        "hwnd": 82774524,
         "observation_generation": 1,
         "process": {
-          "create_time": 134330969911155622,
-          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\computer\\runtime-web\\owned\\bin\\v13-operator-fixture.exe",
+          "create_time": 134331185464768334,
+          "executable": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\computer\\owned\\bin\\v13-operator-fixture.exe",
           "logical_id": "fixture-decoy",
-          "pid": 23592
+          "pid": 40240
         },
         "runtime_id": [
           42,
-          62325368
+          82774524
         ],
         "title": "JARVIS V13 Decoy Editor"
       }
@@ -989,7 +989,7 @@
   "source": {
     "base_sha": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
     "branch": "candidate/v13-final-personal-executive-convergence-20260905",
-    "head": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "head": "1002e9919258d8ded33d125cd579bbdff7091f3a",
     "main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",
     "merge_base": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
     "origin_main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",

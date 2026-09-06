@@ -1,0 +1,79 @@
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 1751 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) C:/temp/JARVIS-V13-Final-Personal-Executive-Convergence-20260905/ui/command-center/src/lib/obsidianVault.ts is dynamically imported by C:/temp/JARVIS-V13-Final-Personal-Executive-Convergence-20260905/ui/command-center/src/lib/mockClient.ts but also statically imported by C:/temp/JARVIS-V13-Final-Personal-Executive-Convergence-20260905/ui/command-center/src/lib/overviewLoader.ts, C:/temp/JARVIS-V13-Final-Personal-Executive-Convergence-20260905/ui/command-center/src/lib/realClient.ts, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                                     2.03 kB │ gzip:   1.12 kB
+dist/assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2           7.42 kB
+dist/assets/jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2    7.50 kB
+dist/assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2             8.00 kB
+dist/assets/jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2         9.00 kB
+dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+dist/assets/jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2     12.11 kB
+dist/assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2              15.08 kB
+dist/assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2    15.20 kB
+dist/assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2             16.51 kB
+dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+dist/assets/geist-latin-wght-normal-BgDaEnEv.woff2                 29.40 kB
+dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2        40.40 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+dist/assets/index-DJBqPEYC.css                                    193.10 kB │ gzip:  36.36 kB
+dist/assets/plus-DPb3_fGE.js                                        0.15 kB │ gzip:   0.15 kB
+dist/assets/terminal-DUG7onII.js                                    0.16 kB │ gzip:   0.16 kB
+dist/assets/clock-3-Dwo3hgBx.js                                     0.17 kB │ gzip:   0.16 kB
+dist/assets/arrow-up-right-BOXYfFtu.js                              0.17 kB │ gzip:   0.16 kB
+dist/assets/link-2-BCCS34-Y.js                                      0.24 kB │ gzip:   0.20 kB
+dist/assets/list-checks-CxRW_9Pv.js                                 0.28 kB │ gzip:   0.18 kB
+dist/assets/lightbulb-BtAwLzCp.js                                   0.28 kB │ gzip:   0.22 kB
+dist/assets/flask-conical-Dfp8rnvE.js                               0.30 kB │ gzip:   0.23 kB
+dist/assets/heart-pulse-ltBkLl7g.js                                 0.32 kB │ gzip:   0.25 kB
+dist/assets/mail-x-BOt8yE0s.js                                      0.32 kB │ gzip:   0.23 kB
+dist/assets/file-search-BKDsFgKw.js                                 0.33 kB │ gzip:   0.24 kB
+dist/assets/server-DChRf2BV.js                                      0.34 kB │ gzip:   0.22 kB
+dist/assets/layers-hF0XaU29.js                                      0.42 kB │ gzip:   0.24 kB
+dist/assets/MetricCard-D8qwwPiK.js                                  0.45 kB │ gzip:   0.26 kB
+dist/assets/routeResilience-Cb2marsB.js                             0.47 kB │ gzip:   0.32 kB
+dist/assets/radar-GPPeggcl.js                                       0.50 kB │ gzip:   0.30 kB
+dist/assets/radio-H4NXxbgL.js                                       0.58 kB │ gzip:   0.32 kB
+dist/assets/RouteQueryGate-ClbvIrNY.js                              0.66 kB │ gzip:   0.35 kB
+dist/assets/Pagination-CP-XSu2K.js                                  0.81 kB │ gzip:   0.41 kB
+dist/assets/DetailRouteQueryGate-DQu0yD2m.js                        0.83 kB │ gzip:   0.45 kB
+dist/assets/fingerprint-DcH6AKHG.js                                 0.85 kB │ gzip:   0.44 kB
+dist/assets/shield-alert-BRkPRnAK.js                                0.95 kB │ gzip:   0.44 kB
+dist/assets/Drawer-B0pqEP9E.js                                      1.00 kB │ gzip:   0.54 kB
+dist/assets/JarvisScene-BHFNF5O0.js                                 1.10 kB │ gzip:   0.52 kB
+dist/assets/Lineage-BQl9hs7J.js                                     1.53 kB │ gzip:   0.76 kB
+dist/assets/OperationsHub-aWt_5jAa.js                               2.53 kB │ gzip:   1.06 kB
+dist/assets/Notifications-C510k8l7.js                               2.55 kB │ gzip:   1.25 kB
+dist/assets/Settings-i01707uu.js                                    3.10 kB │ gzip:   1.32 kB
+dist/assets/overviewLoader-Cj_gkRmb.js                              3.38 kB │ gzip:   1.40 kB
+dist/assets/ForensicRecordDetail-DId7LpGH.js                        3.70 kB │ gzip:   1.37 kB
+dist/assets/Evolution-CbJdKaeh.js                                   4.45 kB │ gzip:   1.76 kB
+dist/assets/SystemDetail-Cel-CU3A.js                                5.69 kB │ gzip:   1.71 kB
+dist/assets/EvidenceDetail-BNhNlP9F.js                              5.94 kB │ gzip:   1.70 kB
+dist/assets/Agents-uryCBq5y.js                                      7.04 kB │ gzip:   2.66 kB
+dist/assets/Evidence-m8Ks5A6m.js                                    7.28 kB │ gzip:   2.72 kB
+dist/assets/You-DtST-cNO.js                                         7.67 kB │ gzip:   2.83 kB
+dist/assets/AgentDetail-favio7qh.js                                 7.77 kB │ gzip:   2.02 kB
+dist/assets/SectionHeader-A7qc7KAf.js                               7.84 kB │ gzip:   3.01 kB
+dist/assets/World-DgzAccFB.js                                       8.07 kB │ gzip:   2.78 kB
+dist/assets/Timeline-CyHLartn.js                                    8.71 kB │ gzip:   3.10 kB
+dist/assets/Work-DivVtQpz.js                                        9.22 kB │ gzip:   3.14 kB
+dist/assets/Capabilities-B_dJQ5Xu.js                                9.43 kB │ gzip:   3.61 kB
+dist/assets/Systems-BhqFNbqB.js                                     9.77 kB │ gzip:   3.02 kB
+dist/assets/Missions-DIlO5pBM.js                                   12.67 kB │ gzip:   4.28 kB
+dist/assets/Memory-B-Y5DlUa.js                                     13.18 kB │ gzip:   4.51 kB
+dist/assets/OwnerManagement-DmiLxJTo.js                            13.34 kB │ gzip:   3.91 kB
+dist/assets/Discovery-C4FrhSmI.js                                  15.75 kB │ gzip:   4.47 kB
+dist/assets/MissionDetail-DcRK5iFS.js                              19.95 kB │ gzip:   5.37 kB
+dist/assets/Overview-D51k4YsX.js                                   20.24 kB │ gzip:   6.17 kB
+dist/assets/Autonomy-DScnFLNY.js                                   28.95 kB │ gzip:   7.22 kB
+dist/assets/index-a3N0iWdt.js                                     434.26 kB │ gzip: 130.58 kB
+✓ built in 7.91s

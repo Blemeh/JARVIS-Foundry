@@ -399,11 +399,11 @@
         "replayed": false,
         "resource_id": "initiative-resource:cand-a2-c647647621f5",
         "status": "ADMITTED",
-        "worktree": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-v13-world-proof-9fiob05q\\a3-worktrees\\a3-a2-c647647621f53"
+        "worktree": "C:\\Users\\b\\AppData\\Local\\Temp\\jarvis-v13-world-proof-bqfathmi\\a3-worktrees\\a3-a2-c647647621f53"
       },
       "bounded_mission": {
         "ephemeral_worktree": true,
-        "mission_id": "mission-1247bad0caa1",
+        "mission_id": "mission-38bf36d46e26",
         "objective_id": "initiative-objective:cand-a2-c647647621f5",
         "resource_id": "initiative-resource:cand-a2-c647647621f5",
         "state": "READY"
@@ -3432,6 +3432,6 @@
     }
   },
   "schema": 40,
-  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
   "v12_final_candidate": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
 }

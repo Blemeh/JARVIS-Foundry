@@ -1,5 +1,5 @@
 {
-  "authenticated_owner_factor_event_id": "853db290-8d67-49c9-8df5-a2395c83edc3",
+  "authenticated_owner_factor_event_id": "a72b23b4-6e70-4a5c-b76d-b44b37a0442c",
   "checks": {
     "all_priority_factors_and_unknowns_are_explicit": true,
     "branch_and_base_match": true,
@@ -57,21 +57,21 @@
     "world_observations": 4
   },
   "contract": "jarvis.v13.chief-of-staff-independent-verifier.v2",
-  "database": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\chief\\runtime\\run-a4fd977898d7\\foundry.db",
+  "database": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\chief\\runtime\\run-0b1c8f9610d2\\foundry.db",
   "false_standing_order_triggers": [],
   "findings": [],
   "full_suite": {
-    "bytes": 458671,
+    "bytes": 459326,
     "errors": 0,
     "failed_cases": [],
     "failures": 0,
     "ok": true,
-    "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\full-suite-green.xml",
-    "sha256": "0e9826c1005c92ef38634e7314b4fa00402cb92b7f3c9a3bc6725cdae33323f4",
+    "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\verification\\full-suite-green.xml",
+    "sha256": "ed038c196d5cbcc5170e7bf4996d65c3e10b0bfa607cf38605436cd4fb638f77",
     "skipped": 2,
-    "tests": 3407
+    "tests": 3411
   },
-  "generated_at": "2026-09-05T21:03:06.253508+00:00",
+  "generated_at": "2026-09-06T02:43:49.860896+00:00",
   "historical_standing_order_matches": {
     "change-jarvis-dependency-wait": [
       "directive:standing-jarvis-blocked"
@@ -113,9 +113,9 @@
     "routes_before": 1,
     "status": "BLOCKED_BY_OWNER_CONTROL"
   },
-  "priority_cutoff_event_id": "267c3e4f-b610-4fe9-b906-3678946f7706",
-  "proof": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\chief\\chief-proof.json",
-  "proof_sha256": "56afea20eeaa3c2312faa6c9d37f348c3f031700bfb9f999b3ff293371472981",
+  "priority_cutoff_event_id": "5bf18f4a-cad5-41ec-9356-006e89b624c8",
+  "proof": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\chief\\chief-proof.json",
+  "proof_sha256": "a9fbdfd9925e0a795e88818019a8073f2ae3cf70814a13660f4f4b421a78ef44",
   "recomputed_counts": {
     "candidate_routed": 1,
     "candidates": 1,
@@ -156,11 +156,11 @@
   ],
   "runtime_lifecycle_wait_id": "cos-wait-be0e876125cbfeaf2186bcdf",
   "runtime_lifecycle_world_event_ids": [
-    "143dadfa-f06f-41fe-94ba-419f95658024",
-    "188fc1c9-bcaa-43c4-85d0-854be4399d48",
-    "5e17faaf-f2d6-4715-9171-f9d8dc463575"
+    "3d112bbf-8b05-4af4-810e-8172a2248485",
+    "4d9d3c15-c8fa-4d56-bd11-83fe87930574",
+    "a19e0574-61e2-40a3-8aca-acd43a3f36b2"
   ],
   "scope": "DISPOSABLE_DATABASE_AND_SOURCE_IDENTITY",
-  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
   "verdict": "PASS"
 }

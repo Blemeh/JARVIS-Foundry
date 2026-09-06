@@ -13,6 +13,26 @@
     "evidence/lane3-product-truth/screenshots/live-overview-1600x1280.png",
     "evidence/lane3-product-truth/screenshots/live-work-390x844.png",
     "evidence/overnight/command-center-truth/PRODUCT_VERIFY_RESULT.json",
+    "evidence/v13-final-personal-executive-convergence/EVIDENCE_INDEX.json",
+    "evidence/v13-final-personal-executive-convergence/proof/proof.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/chief_of_staff.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/chief_verifier.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/command_center.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/computer_operator.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/general_work.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/owner_context.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/personal_operator.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/world_intelligence.json",
+    "evidence/v13-final-personal-executive-convergence/proof/receipts/world_verifier.json",
+    "evidence/v13-final-personal-executive-convergence/proof/shared-spine.db",
+    "evidence/v13-final-personal-executive-convergence/verification/command-center-receipt.json",
+    "evidence/v13-final-personal-executive-convergence/verification/frontend-report.json",
+    "evidence/v13-final-personal-executive-convergence/verification/full-suite-preclosure.junit.xml",
+    "evidence/v13-final-personal-executive-convergence/verification/package-report.json",
+    "evidence/v13-final-personal-executive-convergence/verification/source-binding.json",
+    "evidence/v13-final-personal-executive-convergence/verification/source-e2e-report.json",
+    "evidence/v13-final-personal-executive-convergence/verification/v12-regressions.junit.xml",
+    "evidence/v13-final-personal-executive-convergence/verification/v13-focused.junit.xml",
     "pyproject.toml",
     "scripts/lane3_autonomy_fixture_server.py",
     "scripts/v13_chief_of_staff_independent_verifier.py",
@@ -245,10 +265,10 @@
   ],
   "checks": [
     {
-      "actual": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+      "actual": "1002e9919258d8ded33d125cd579bbdff7091f3a",
       "check_id": "git.source-commit-exists",
       "detail": "The declared source SHA resolves to a Git commit.",
-      "expected": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+      "expected": "1002e9919258d8ded33d125cd579bbdff7091f3a",
       "status": "PASS"
     },
     {
@@ -282,6 +302,26 @@
           "evidence/lane3-product-truth/screenshots/live-overview-1600x1280.png",
           "evidence/lane3-product-truth/screenshots/live-work-390x844.png",
           "evidence/overnight/command-center-truth/PRODUCT_VERIFY_RESULT.json",
+          "evidence/v13-final-personal-executive-convergence/EVIDENCE_INDEX.json",
+          "evidence/v13-final-personal-executive-convergence/proof/proof.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/chief_of_staff.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/chief_verifier.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/command_center.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/computer_operator.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/general_work.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/owner_context.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/personal_operator.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/world_intelligence.json",
+          "evidence/v13-final-personal-executive-convergence/proof/receipts/world_verifier.json",
+          "evidence/v13-final-personal-executive-convergence/proof/shared-spine.db",
+          "evidence/v13-final-personal-executive-convergence/verification/command-center-receipt.json",
+          "evidence/v13-final-personal-executive-convergence/verification/frontend-report.json",
+          "evidence/v13-final-personal-executive-convergence/verification/full-suite-preclosure.junit.xml",
+          "evidence/v13-final-personal-executive-convergence/verification/package-report.json",
+          "evidence/v13-final-personal-executive-convergence/verification/source-binding.json",
+          "evidence/v13-final-personal-executive-convergence/verification/source-e2e-report.json",
+          "evidence/v13-final-personal-executive-convergence/verification/v12-regressions.junit.xml",
+          "evidence/v13-final-personal-executive-convergence/verification/v13-focused.junit.xml",
           "pyproject.toml",
           "scripts/lane3_autonomy_fixture_server.py",
           "scripts/v13_chief_of_staff_independent_verifier.py",
@@ -594,10 +634,10 @@
       "status": "PASS"
     },
     {
-      "actual": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+      "actual": "1002e9919258d8ded33d125cd579bbdff7091f3a",
       "check_id": "proof.source-sha",
       "detail": "The proof is pinned to the declared source commit.",
-      "expected": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+      "expected": "1002e9919258d8ded33d125cd579bbdff7091f3a",
       "status": "PASS"
     },
     {
@@ -673,7 +713,7 @@
           "recommendation_id": "decision-recommendation-cc679167b57f7fa11b5d0002",
           "result_id": "decision-result-45be8a7748b27f7708cf0745"
         },
-        "mission_id": "mission-1247bad0caa1"
+        "mission_id": "mission-38bf36d46e26"
       },
       "check_id": "proof.A.canonical-executive-bridge",
       "detail": "The advisory result crosses A2, A3, and the existing Executive before one bounded mission exists.",
@@ -852,9 +892,9 @@
     },
     {
       "actual": {
-        "proof_sha256": "311ffdede2b916153af15f3a44c22e42a6782f759b08d260e4779664d6a26f10",
+        "proof_sha256": "46873a0ac2927fd05dde0f850011e20c4f0f69d5f13df139e1448a9f56b0d082",
         "semantic_match": true,
-        "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+        "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
         "stage": "semantic-comparison",
         "status": "PASS"
       },
@@ -866,9 +906,9 @@
   "contract": "jarvis.v13.world-intelligence-verifier.v1",
   "failures": [],
   "fresh_replay": {
-    "proof_sha256": "311ffdede2b916153af15f3a44c22e42a6782f759b08d260e4779664d6a26f10",
+    "proof_sha256": "46873a0ac2927fd05dde0f850011e20c4f0f69d5f13df139e1448a9f56b0d082",
     "semantic_match": true,
-    "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+    "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
     "stage": "semantic-comparison",
     "status": "PASS",
     "summary": {
@@ -967,10 +1007,10 @@
         "source_quality_present": true
       },
       "schema": 40,
-      "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a"
+      "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a"
     }
   },
-  "generated_at": "2026-09-05T15:48:13Z",
+  "generated_at": "2026-09-05T21:49:56Z",
   "junit": {
     "focused": {
       "status": "NOT_SUPPLIED"
@@ -985,10 +1025,10 @@
   ],
   "proof": {
     "contract": "jarvis.v13.world-intelligence-proof.v1",
-    "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\world\\world-proof.json",
-    "sha256": "fbf446ebbf6f9f2566cc2572723b18be2d2f79a1c9c705eaea5a4cc68a662b49"
+    "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\world\\world-proof.json",
+    "sha256": "66a115f5c53a215d37a93c05e0a48dda757071a3f41f4fdc00d9372ec16f0d5c"
   },
   "repo_root": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905",
-  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
   "verdict": "PASS"
 }

@@ -1,7 +1,9 @@
 {
   "contract": "jarvis.v13.frontend-verification.v1",
-  "generated_at": "2026-09-05T17:01:10.6545187Z",
-  "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
+  "generated_at": "2026-09-05T22:59:53.1709658Z",
+  "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
+  "source_tree_sha": "3ff1757aabd778a25b1cabc7a96945b942ed0d34",
+  "ui_tree_sha": "1bf1db370a82706f193fa0895ffa19653e030c17",
   "tests": 162,
   "failures": 0,
   "errors": 0,
@@ -12,21 +14,58 @@
     "production_build_pass": true,
     "source_bound": true
   },
+  "commands": {
+    "unit_tests": {
+      "command": "node node_modules/vitest/vitest.mjs run --reporter=json --outputFile=verification/frontend/vitest-results.json",
+      "exit_code": 0
+    },
+    "typecheck": {
+      "command": "node node_modules/typescript/bin/tsc -b --noEmit",
+      "exit_code": 0
+    },
+    "lint": {
+      "command": "node node_modules/eslint/bin/eslint.js src e2e --max-warnings 0",
+      "exit_code": 0
+    },
+    "production_build": {
+      "command": "node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
+      "exit_code": 0
+    }
+  },
   "artifacts": [
     {
-      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\verification\\frontend\\vitest-results.json",
-      "sha256": "d9c36ceb54ea554ce492f0ca9a8add535671c7e4d8fe625ee40345cc0a051b13"
+      "kind": "vitest_json",
+      "path": "frontend/vitest-results.json",
+      "sha256": "58ffc8a206e223bb2e9ee809b0925841e0718ec6c70aec1700cc6f0a6ac11718"
     },
     {
-      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\ui\\command-center\\dist\\index.html",
-      "sha256": "b553ecb69bce284441e39b51dbf2d93ba2cb769bf7cbf27fe4edb51f6f7a8b44"
+      "kind": "typecheck_log",
+      "path": "frontend/typecheck.log",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
     },
     {
-      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\ui\\command-center\\dist\\assets\\index-a3N0iWdt.js",
+      "kind": "lint_log",
+      "path": "frontend/lint.log",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "kind": "build_log",
+      "path": "frontend/build.log",
+      "sha256": "acc2389e54133035b955187e0c201f3bf226b501ca642f7453a53fda089549c5"
+    },
+    {
+      "kind": "dist_html",
+      "path": "frontend/dist/index.html",
+      "sha256": "dc8f1127f44760d050fe7a368f6016e0d6f041f00ff899e7afb0a627e6cdb26a"
+    },
+    {
+      "kind": "dist_javascript",
+      "path": "frontend/dist/assets/index-a3N0iWdt.js",
       "sha256": "29d85b1f8ef7d5883ff0e5ad2426cf723c83645598f2099ab2b73022024b0cdc"
     },
     {
-      "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\ui\\command-center\\dist\\assets\\index-DJBqPEYC.css",
+      "kind": "dist_css",
+      "path": "frontend/dist/assets/index-DJBqPEYC.css",
       "sha256": "b5c9057f0ba8811f6665c1aa58ae6633431867be0ea6b6576609c4a4b0f7ffca"
     }
   ],

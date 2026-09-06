@@ -106,6 +106,7 @@
   "limitations": [
     "Provider production trust remains SUSPENDED outside this candidate.",
     "Gmail, voice, and English/Albanian localization remain deferred.",
+    "PowerPoint deliverables and actions were excluded by owner direction.",
     "No public external mutation, deploy, promotion, or activation was exercised."
   ],
   "live_mutated": false,
@@ -154,13 +155,13 @@
             "kind": "file_hash",
             "name": "repair-target",
             "pass": false,
-            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-a-owned\\defect.txt"
           }
         ],
         "root": ".",
         "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
         "verdict": "FAIL",
-        "verified_at": "2026-09-05T21:04:31.740348Z",
+        "verified_at": "2026-09-06T02:49:53.081186Z",
         "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
       },
       "verifier_pass": {
@@ -176,21 +177,21 @@
             "kind": "file_hash",
             "name": "repair-target",
             "pass": true,
-            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-a-owned\\defect.txt"
           }
         ],
         "root": ".",
         "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
         "verdict": "PASS",
-        "verified_at": "2026-09-05T21:04:35.299746Z",
+        "verified_at": "2026-09-06T02:49:56.629154Z",
         "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
       }
     },
     "B": {
-      "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json",
-      "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+      "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-b-artifact.json",
+      "artifact_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
       "outcome": {
-        "acceptance_identity": "39c09aca-32d3-4549-9240-9f704225eb89",
+        "acceptance_identity": "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
         "acceptance_kind": "verification.accepted",
         "actual_observed": {
           "failure_reason": null,
@@ -200,9 +201,9 @@
           "repair_count": 0,
           "verifier_evidence": {
             "artifact": "proof-b-artifact.json",
-            "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+            "artifact_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
             "verification": "proof-b-verification.json",
-            "verification_sha256": "6f5d79c91e61765f8eaab869b4ba716fcb589ea1cc5e6b15502917834476ae61"
+            "verification_sha256": "5d3473494594a789cb03496e5b8bd3c56ca0423656a94cac4ea90804d6b7f707"
           },
           "verifier_status": "PASS"
         },
@@ -215,7 +216,7 @@
           "result": "SUCCEEDED",
           "verification": {
             "acceptance": "ACCEPTED",
-            "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+            "acceptance_event_id": "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
             "builder_run_id": "builder:B",
             "checks": {
               "artifact_matches": true,
@@ -237,17 +238,17 @@
         "decision_id": null,
         "estimated_outcome": {},
         "evidence_refs": [
-          "39c09aca-32d3-4549-9240-9f704225eb89",
+          "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
           "verdict:B:pass",
-          "5726724a-a76a-47b9-860d-84a5fb91e792",
-          "a769b26c-904a-4ddd-82e4-f943d0551386"
+          "a1105c1d-06c2-4537-8375-67e75d6e8cdb",
+          "ee936100-eda7-4341-a766-060d9dc3014e"
         ],
         "failure_reason": null,
         "finalized": true,
         "mission_id": "mission:v13-final-proof-b",
         "objective_id": "objective:v13-final-proof-b",
-        "outcome_event_id": "bb40daf7-a0e6-48cb-ae65-4c74f2ca69f9",
-        "outcome_id": "outcome-01269e916c2bd76221173d3f",
+        "outcome_event_id": "d380eea7-4cc1-4011-b30d-c0247d51930b",
+        "outcome_id": "outcome-ca49e20757aac544e21459ac",
         "outcome_sequence": 152,
         "outcome_source_id": "outcome-reconciler",
         "outcome_source_type": "supervisor",
@@ -258,13 +259,13 @@
           "reconciler": "v13-final-convergence-proof",
           "source": null,
           "source_event_ids": [
-            "39c09aca-32d3-4549-9240-9f704225eb89",
+            "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
             "verdict:B:pass",
-            "5726724a-a76a-47b9-860d-84a5fb91e792",
-            "a769b26c-904a-4ddd-82e4-f943d0551386"
+            "a1105c1d-06c2-4537-8375-67e75d6e8cdb",
+            "ee936100-eda7-4341-a766-060d9dc3014e"
           ]
         },
-        "recorded_at": "2026-09-05T21:04:38.133814Z",
+        "recorded_at": "2026-09-06T02:49:59.379522Z",
         "repair_attempts": [],
         "resource_id": null,
         "revision": 1,
@@ -272,13 +273,13 @@
         "status": "SUCCEEDED",
         "system_target": null,
         "timestamps": {
-          "finality_occurred_at": "2026-09-05T21:04:37.984832Z",
-          "mission_updated_at": "2026-09-05T21:04:38.023506Z"
+          "finality_occurred_at": "2026-09-06T02:49:59.233806Z",
+          "mission_updated_at": "2026-09-06T02:49:59.274348Z"
         },
         "truth_accepted": true,
         "verification": {
           "acceptance": "ACCEPTED",
-          "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+          "acceptance_event_id": "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
           "builder_run_id": "builder:B",
           "checks": {
             "artifact_matches": true,
@@ -297,22 +298,22 @@
         "checks_passed": 1,
         "checks_total": 1,
         "manifest": "proof-b-manifest.json",
-        "manifest_sha256": "6a8b1481748af44999d7998279d8c777a3d8ec21dceb2ea4948be197119e5214",
+        "manifest_sha256": "15c50ecf5caad1e557aad8250c52c23acf25017eb4af17c50714cc973bccde09",
         "process_returncode": 0,
         "results": [
           {
-            "actual_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
-            "expected_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+            "actual_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
+            "expected_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
             "kind": "file_hash",
             "name": "proof-B-artifact-hash",
             "pass": true,
-            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json"
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-b-artifact.json"
           }
         ],
         "root": ".",
         "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
         "verdict": "PASS",
-        "verified_at": "2026-09-05T21:04:37.865664Z",
+        "verified_at": "2026-09-06T02:49:59.109581Z",
         "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
       }
     },
@@ -347,13 +348,13 @@
         "branch_name": "candidate/v13-final-proof-worker",
         "effect_id": "effect:a344bc5ca444fd647b6d52d42e6bedc97888995f7afd2a9d5bae3b90ed93defe",
         "final_sha256": "b46ca3c64b1fdc4222ee5d778cc317ef534d54a8a18546fe3d56cd90c33342a9",
-        "package_hash": "d4c1d18ff9b0ba581859f24f97ebbac3d6bd06e2bb70099b3dc75eaf81bcc5f1",
+        "package_hash": "00781aeaa4a03ca695c887ca443c9019be3defb9b0876426f962438db9269a3a",
         "package_id": "work-package:v13-final-proof-c",
         "package_status": "ACCEPTED",
         "replayed": true,
         "session_id": "workforce:work-package:v13-final-proof-c:a1",
         "session_status": "COMPLETED",
-        "source_sha": "5d47c0f04ad90471624871f44fe1794302b54156",
+        "source_sha": "6fc1ed2b19757b73b9fd3ffbc86e5881b9155286",
         "worker_runs": [
           {
             "mission_id": "mission:v13-final-proof-c",
@@ -374,14 +375,14 @@
             "step_id": "step:v13-final-proof-c"
           }
         ],
-        "worktree_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\worker-worktree"
+        "worktree_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\worker-worktree"
       }
     },
     "D": {
-      "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json",
+      "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-d-artifact.json",
       "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
       "outcome": {
-        "acceptance_identity": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+        "acceptance_identity": "d7754519-317d-4eae-a20a-2efff19e29b0",
         "acceptance_kind": "verification.accepted",
         "actual_observed": {
           "failure_reason": null,
@@ -393,7 +394,7 @@
             "artifact": "proof-d-artifact.json",
             "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
             "verification": "proof-d-verification.json",
-            "verification_sha256": "9dacf43e0e431bd5d7c3e1b3ae148a4aafb66601679d68eeb467554ba4a445d7"
+            "verification_sha256": "c8716043cf911b9052f577b64d92d5585317f772dab5ee3eaa99f3fc994e5c76"
           },
           "verifier_status": "PASS"
         },
@@ -406,7 +407,7 @@
           "result": "SUCCEEDED",
           "verification": {
             "acceptance": "ACCEPTED",
-            "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "acceptance_event_id": "d7754519-317d-4eae-a20a-2efff19e29b0",
             "builder_run_id": "builder:D",
             "checks": {
               "artifact_matches": true,
@@ -428,17 +429,17 @@
         "decision_id": null,
         "estimated_outcome": {},
         "evidence_refs": [
-          "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+          "d7754519-317d-4eae-a20a-2efff19e29b0",
           "verdict:D:pass",
-          "099351c3-07f3-4e3c-8dac-a6781bed9786",
-          "56719131-8950-4470-a744-30b75030f517"
+          "8e9d1850-8cf7-4426-a53d-1f328ede9ae3",
+          "afb2edfd-0168-4a81-9cb9-261b93735520"
         ],
         "failure_reason": null,
         "finalized": true,
         "mission_id": "mission:v13-final-proof-d",
         "objective_id": "objective:v13-final-proof-d",
-        "outcome_event_id": "bd94dc7f-cd49-4bf9-ac3a-50423752f6ce",
-        "outcome_id": "outcome-5034892762ab1f530a6c3ced",
+        "outcome_event_id": "17f37dac-e4bf-4084-aa3e-defcb4ed2187",
+        "outcome_id": "outcome-c5d280729ccd46c6b340ba57",
         "outcome_sequence": 264,
         "outcome_source_id": "outcome-reconciler",
         "outcome_source_type": "supervisor",
@@ -449,13 +450,13 @@
           "reconciler": "v13-final-convergence-proof",
           "source": null,
           "source_event_ids": [
-            "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "d7754519-317d-4eae-a20a-2efff19e29b0",
             "verdict:D:pass",
-            "099351c3-07f3-4e3c-8dac-a6781bed9786",
-            "56719131-8950-4470-a744-30b75030f517"
+            "8e9d1850-8cf7-4426-a53d-1f328ede9ae3",
+            "afb2edfd-0168-4a81-9cb9-261b93735520"
           ]
         },
-        "recorded_at": "2026-09-05T21:04:59.184072Z",
+        "recorded_at": "2026-09-06T02:50:25.929382Z",
         "repair_attempts": [],
         "resource_id": null,
         "revision": 1,
@@ -463,13 +464,13 @@
         "status": "SUCCEEDED",
         "system_target": null,
         "timestamps": {
-          "finality_occurred_at": "2026-09-05T21:04:59.022932Z",
-          "mission_updated_at": "2026-09-05T21:04:59.069929Z"
+          "finality_occurred_at": "2026-09-06T02:50:25.782837Z",
+          "mission_updated_at": "2026-09-06T02:50:25.820948Z"
         },
         "truth_accepted": true,
         "verification": {
           "acceptance": "ACCEPTED",
-          "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+          "acceptance_event_id": "d7754519-317d-4eae-a20a-2efff19e29b0",
           "builder_run_id": "builder:D",
           "checks": {
             "artifact_matches": true,
@@ -497,22 +498,22 @@
             "kind": "file_hash",
             "name": "proof-D-artifact-hash",
             "pass": true,
-            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json"
+            "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-d-artifact.json"
           }
         ],
         "root": ".",
         "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
         "verdict": "PASS",
-        "verified_at": "2026-09-05T21:04:58.885148Z",
+        "verified_at": "2026-09-06T02:50:25.659138Z",
         "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
       }
     },
     "E": {
       "artifact": {
-        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json",
-        "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-e-artifact.json",
+        "artifact_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
         "outcome": {
-          "acceptance_identity": "7180b409-2f58-461b-9240-9c1072006342",
+          "acceptance_identity": "db6af80e-69ae-446a-8fea-c346c103fa68",
           "acceptance_kind": "verification.accepted",
           "actual_observed": {
             "failure_reason": null,
@@ -522,9 +523,9 @@
             "repair_count": 0,
             "verifier_evidence": {
               "artifact": "proof-e-artifact.json",
-              "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+              "artifact_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
               "verification": "proof-e-verification.json",
-              "verification_sha256": "77efd7fd6eacd47a77739079a63b7318f5e72d859a673dc20cb1b6ea9929133d"
+              "verification_sha256": "276f5d44afbfdeff202981665978fd30d8404618dcc5d81fdf1b4844d65a5e42"
             },
             "verifier_status": "PASS"
           },
@@ -537,7 +538,7 @@
             "result": "SUCCEEDED",
             "verification": {
               "acceptance": "ACCEPTED",
-              "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+              "acceptance_event_id": "db6af80e-69ae-446a-8fea-c346c103fa68",
               "builder_run_id": "builder:E",
               "checks": {
                 "artifact_matches": true,
@@ -559,17 +560,17 @@
           "decision_id": null,
           "estimated_outcome": {},
           "evidence_refs": [
-            "7180b409-2f58-461b-9240-9c1072006342",
+            "db6af80e-69ae-446a-8fea-c346c103fa68",
             "verdict:E:pass",
-            "528d5f72-da15-47a4-ac40-a26d6668af7b",
-            "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+            "21450b26-d598-41b7-9015-36ed92c7f004",
+            "cfe158ec-052d-4b27-a1ae-a56a3fde49dc"
           ],
           "failure_reason": null,
           "finalized": true,
           "mission_id": "mission:v13-final-proof-e",
           "objective_id": "objective:v13-final-proof-e",
-          "outcome_event_id": "19859876-7937-47c4-a397-93c5a752d289",
-          "outcome_id": "outcome-dd9689c7648ceddad218f3c2",
+          "outcome_event_id": "f4659548-f588-43fa-aec9-bc0f7ea2a321",
+          "outcome_id": "outcome-50aeb4c73a2b00fa20e677ac",
           "outcome_sequence": 306,
           "outcome_source_id": "outcome-reconciler",
           "outcome_source_type": "supervisor",
@@ -580,13 +581,13 @@
             "reconciler": "v13-final-convergence-proof",
             "source": null,
             "source_event_ids": [
-              "7180b409-2f58-461b-9240-9c1072006342",
+              "db6af80e-69ae-446a-8fea-c346c103fa68",
               "verdict:E:pass",
-              "528d5f72-da15-47a4-ac40-a26d6668af7b",
-              "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+              "21450b26-d598-41b7-9015-36ed92c7f004",
+              "cfe158ec-052d-4b27-a1ae-a56a3fde49dc"
             ]
           },
-          "recorded_at": "2026-09-05T21:05:03.258797Z",
+          "recorded_at": "2026-09-06T02:50:30.043174Z",
           "repair_attempts": [],
           "resource_id": "resource:v13-final-proof-e",
           "revision": 1,
@@ -594,13 +595,13 @@
           "status": "SUCCEEDED",
           "system_target": null,
           "timestamps": {
-            "finality_occurred_at": "2026-09-05T21:05:02.957411Z",
-            "mission_updated_at": "2026-09-05T21:05:03.148016Z"
+            "finality_occurred_at": "2026-09-06T02:50:29.742190Z",
+            "mission_updated_at": "2026-09-06T02:50:29.929638Z"
           },
           "truth_accepted": true,
           "verification": {
             "acceptance": "ACCEPTED",
-            "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+            "acceptance_event_id": "db6af80e-69ae-446a-8fea-c346c103fa68",
             "builder_run_id": "builder:E",
             "checks": {
               "artifact_matches": true,
@@ -619,22 +620,22 @@
           "checks_passed": 1,
           "checks_total": 1,
           "manifest": "proof-e-manifest.json",
-          "manifest_sha256": "037904bd406d2882e326c4ba6c52fa8da68133b57fa39e90cb8680765d9019e7",
+          "manifest_sha256": "3a4d94a304e8cc1bbd90e3320854f582c211e52029e97705378fa9bfc3b6f5b7",
           "process_returncode": 0,
           "results": [
             {
-              "actual_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
-              "expected_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+              "actual_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
+              "expected_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
               "kind": "file_hash",
               "name": "proof-E-artifact-hash",
               "pass": true,
-              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json"
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-e-artifact.json"
             }
           ],
           "root": ".",
           "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
           "verdict": "PASS",
-          "verified_at": "2026-09-05T21:05:02.787838Z",
+          "verified_at": "2026-09-06T02:50:29.617282Z",
           "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
         }
       },
@@ -657,7 +658,7 @@
       "replay_performed": false,
       "replayed": true,
       "resume_event_ids": [
-        "7d0468c6-3cb6-4807-861f-776aceacc225"
+        "6a415879-e065-4345-a3e9-cb57256190fd"
       ],
       "status": "PASS",
       "stop_directive_id": "stop:v13-final-proof",
@@ -671,9 +672,9 @@
           "reason": "STOP the active convergence recovery proof",
           "record": {
             "reason": "STOP the active convergence recovery proof",
-            "requested_at": "2026-09-05T21:05:01.399566Z",
+            "requested_at": "2026-09-06T02:50:28.297797Z",
             "source": "authenticated-owner",
-            "stop_id": "2a9627b4-aaf1-4370-9394-97a4993d3f42"
+            "stop_id": "7baec047-6c5f-4b19-b0cb-36ee3812974d"
           },
           "source": "sentinel_or_durable_control"
         }
@@ -687,7 +688,7 @@
         "Handle this.",
         "Prepare me for tomorrow."
       ],
-      "fresh_process_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+      "fresh_process_digest": "cd89769e106f80838da0ec82e9a4babd27f874758697b05ff4ea1dc5e41b218f",
       "missions": [
         {
           "mission_id": "mission:v13-final-proof-e",
@@ -715,8 +716,8 @@
           "state": "COMPLETE"
         }
       ],
-      "projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
-      "rebuilt_projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+      "projection_digest": "cd89769e106f80838da0ec82e9a4babd27f874758697b05ff4ea1dc5e41b218f",
+      "rebuilt_projection_digest": "cd89769e106f80838da0ec82e9a4babd27f874758697b05ff4ea1dc5e41b218f",
       "status": "PASS",
       "verification": [
         {
@@ -735,7 +736,7 @@
           "acceptance_status": "ACCEPTED",
           "mission_id": "mission:v13-final-proof-c",
           "status": "PASS",
-          "verdict_id": "verdict-v2-905920981cd0963fc6e27b3e"
+          "verdict_id": "verdict-v2-03fc6c4a7bcb384511d51451"
         },
         {
           "acceptance_status": "ACCEPTED",
@@ -775,67 +776,67 @@
     }
   },
   "receipt_checks": {
-    "chief_of_staff_passed": true,
-    "chief_verifier_passed": true,
-    "command_center_passed": true,
-    "computer_operator_passed": true,
-    "general_work_passed": true,
-    "owner_context_passed": true,
-    "personal_operator_passed": true,
-    "world_intelligence_passed": true,
-    "world_verifier_passed": true
+    "chief_of_staff": true,
+    "chief_verifier": true,
+    "command_center": true,
+    "computer_operator": true,
+    "general_work": true,
+    "owner_context": true,
+    "personal_operator": true,
+    "world_intelligence": true,
+    "world_verifier": true
   },
   "receipts": {
     "chief_of_staff": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\chief_of_staff.json",
-      "sha256": "56afea20eeaa3c2312faa6c9d37f348c3f031700bfb9f999b3ff293371472981",
-      "size_bytes": 214762
+      "sha256": "3d5187e8526e20771cd2f1850c60d1d25f2e6f04421af1b4a33b3c707a563e8e",
+      "size_bytes": 209244
     },
     "chief_verifier": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\chief_verifier.json",
-      "sha256": "f39bdd300cdc1a2534993a066a91ffdc959a5e64d966fd7c5d8882dd02741c09",
-      "size_bytes": 6119
+      "sha256": "ef63d81fcfef73629bea453e15bb2b5fb5a563ccb19ac7321546d3a916f5267b",
+      "size_bytes": 5971
     },
     "command_center": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\command_center.json",
-      "sha256": "5804eef077fe41fa0771e0a247e7bf0509adffa32a4a6958191e7a4fcfd2d544",
-      "size_bytes": 1791
+      "sha256": "f5bd7fe83a8717c5e01997e324af26d2bdf9d37b66eaaf8b6b2039a640b939c2",
+      "size_bytes": 1703
     },
     "computer_operator": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\computer_operator.json",
-      "sha256": "366757c8732d38ca1f9a59fbeb796335751e5a4ef21024a7e04804df72b02f4c",
-      "size_bytes": 38156
+      "sha256": "2da0d276a017508b14b4e95c8842b308b472c90bef05394c0ee19bfe5593100e",
+      "size_bytes": 36946
     },
     "general_work": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\general_work.json",
-      "sha256": "e98fc7031a61b2d025f5ed0d50323421183dd4275c8ebfea3f8ca75e71a91abf",
-      "size_bytes": 81097
+      "sha256": "2d3e649fb34ed61b45833429b72c0148b36362cbd0c333f8b727e51bb23d71d3",
+      "size_bytes": 79048
     },
     "owner_context": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\owner_context.json",
-      "sha256": "4cc79d7eafac0667bc44a76a57f05411d0a0773eeef3db9cd91a5a8c9d9645e6",
-      "size_bytes": 68442
+      "sha256": "69ce214b83ba1c3e741774057a11bbfb6869cac14f4d8f397fbc2aa536fb346e",
+      "size_bytes": 66495
     },
     "personal_operator": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\personal_operator.json",
-      "sha256": "b9d4d937cee7f5fbf5be51dbcbfb460f44ce22edd59ab92d63b95ce7143a241e",
-      "size_bytes": 171754
+      "sha256": "42aa27f52b9fe387feaf7914f99cfef57fe5d62337cc46835d22d6c4aeb5dba8",
+      "size_bytes": 168497
     },
     "world_intelligence": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\world_intelligence.json",
-      "sha256": "fbf446ebbf6f9f2566cc2572723b18be2d2f79a1c9c705eaea5a4cc68a662b49",
-      "size_bytes": 152514
+      "sha256": "97c6eb6d47baa2ed2527e231db039d0eb30b1c76a3360e15204b4da406fde043",
+      "size_bytes": 149077
     },
     "world_verifier": {
       "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\receipts\\world_verifier.json",
-      "sha256": "7b9286406120e63ae05605e2e1cf8afc71b1e5cabd3a317fd0ce30e565a6b116",
-      "size_bytes": 46587
+      "sha256": "6345638458c4756767543dc2c5d686a0ead8edcc8fcfd32acfda5b1f96e4bf7a",
+      "size_bytes": 49353
     }
   },
   "remaining_blockers": [],
   "shared_spine": {
     "database": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905\\evidence\\v13-final-personal-executive-convergence\\proof\\shared-spine.db",
-    "database_sha256": "e1f87381c35d92112f04c3577db9b73296d07edf0834c43c93a42355a558a949",
+    "database_sha256": "43e50e663e2648680763112b3cb307c29de52f9ffc9ca39de77ad688ff4c543b",
     "duplicate_counters": {
       "campaigns": 0,
       "effects": 0,
@@ -900,13 +901,13 @@
               "kind": "file_hash",
               "name": "repair-target",
               "pass": false,
-              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-a-owned\\defect.txt"
             }
           ],
           "root": ".",
           "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
           "verdict": "FAIL",
-          "verified_at": "2026-09-05T21:04:31.740348Z",
+          "verified_at": "2026-09-06T02:49:53.081186Z",
           "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
         },
         "verifier_pass": {
@@ -922,21 +923,21 @@
               "kind": "file_hash",
               "name": "repair-target",
               "pass": true,
-              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-a-owned\\defect.txt"
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-a-owned\\defect.txt"
             }
           ],
           "root": ".",
           "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
           "verdict": "PASS",
-          "verified_at": "2026-09-05T21:04:35.299746Z",
+          "verified_at": "2026-09-06T02:49:56.629154Z",
           "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
         }
       },
       "B": {
-        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json",
-        "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-b-artifact.json",
+        "artifact_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
         "outcome": {
-          "acceptance_identity": "39c09aca-32d3-4549-9240-9f704225eb89",
+          "acceptance_identity": "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
           "acceptance_kind": "verification.accepted",
           "actual_observed": {
             "failure_reason": null,
@@ -946,9 +947,9 @@
             "repair_count": 0,
             "verifier_evidence": {
               "artifact": "proof-b-artifact.json",
-              "artifact_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+              "artifact_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
               "verification": "proof-b-verification.json",
-              "verification_sha256": "6f5d79c91e61765f8eaab869b4ba716fcb589ea1cc5e6b15502917834476ae61"
+              "verification_sha256": "5d3473494594a789cb03496e5b8bd3c56ca0423656a94cac4ea90804d6b7f707"
             },
             "verifier_status": "PASS"
           },
@@ -961,7 +962,7 @@
             "result": "SUCCEEDED",
             "verification": {
               "acceptance": "ACCEPTED",
-              "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+              "acceptance_event_id": "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
               "builder_run_id": "builder:B",
               "checks": {
                 "artifact_matches": true,
@@ -983,17 +984,17 @@
           "decision_id": null,
           "estimated_outcome": {},
           "evidence_refs": [
-            "39c09aca-32d3-4549-9240-9f704225eb89",
+            "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
             "verdict:B:pass",
-            "5726724a-a76a-47b9-860d-84a5fb91e792",
-            "a769b26c-904a-4ddd-82e4-f943d0551386"
+            "a1105c1d-06c2-4537-8375-67e75d6e8cdb",
+            "ee936100-eda7-4341-a766-060d9dc3014e"
           ],
           "failure_reason": null,
           "finalized": true,
           "mission_id": "mission:v13-final-proof-b",
           "objective_id": "objective:v13-final-proof-b",
-          "outcome_event_id": "bb40daf7-a0e6-48cb-ae65-4c74f2ca69f9",
-          "outcome_id": "outcome-01269e916c2bd76221173d3f",
+          "outcome_event_id": "d380eea7-4cc1-4011-b30d-c0247d51930b",
+          "outcome_id": "outcome-ca49e20757aac544e21459ac",
           "outcome_sequence": 152,
           "outcome_source_id": "outcome-reconciler",
           "outcome_source_type": "supervisor",
@@ -1004,13 +1005,13 @@
             "reconciler": "v13-final-convergence-proof",
             "source": null,
             "source_event_ids": [
-              "39c09aca-32d3-4549-9240-9f704225eb89",
+              "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
               "verdict:B:pass",
-              "5726724a-a76a-47b9-860d-84a5fb91e792",
-              "a769b26c-904a-4ddd-82e4-f943d0551386"
+              "a1105c1d-06c2-4537-8375-67e75d6e8cdb",
+              "ee936100-eda7-4341-a766-060d9dc3014e"
             ]
           },
-          "recorded_at": "2026-09-05T21:04:38.133814Z",
+          "recorded_at": "2026-09-06T02:49:59.379522Z",
           "repair_attempts": [],
           "resource_id": null,
           "revision": 1,
@@ -1018,13 +1019,13 @@
           "status": "SUCCEEDED",
           "system_target": null,
           "timestamps": {
-            "finality_occurred_at": "2026-09-05T21:04:37.984832Z",
-            "mission_updated_at": "2026-09-05T21:04:38.023506Z"
+            "finality_occurred_at": "2026-09-06T02:49:59.233806Z",
+            "mission_updated_at": "2026-09-06T02:49:59.274348Z"
           },
           "truth_accepted": true,
           "verification": {
             "acceptance": "ACCEPTED",
-            "acceptance_event_id": "39c09aca-32d3-4549-9240-9f704225eb89",
+            "acceptance_event_id": "d667a3c6-5f21-4943-a683-3ffe28e4e8f4",
             "builder_run_id": "builder:B",
             "checks": {
               "artifact_matches": true,
@@ -1043,22 +1044,22 @@
           "checks_passed": 1,
           "checks_total": 1,
           "manifest": "proof-b-manifest.json",
-          "manifest_sha256": "6a8b1481748af44999d7998279d8c777a3d8ec21dceb2ea4948be197119e5214",
+          "manifest_sha256": "15c50ecf5caad1e557aad8250c52c23acf25017eb4af17c50714cc973bccde09",
           "process_returncode": 0,
           "results": [
             {
-              "actual_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
-              "expected_sha256": "355b39abec8754a5cacaf08a985de72ab1ace0a69000ee73bf3aa6bd6b006bba",
+              "actual_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
+              "expected_sha256": "e25a66ee8e3760b3d63c4f506ae6b1adb5a3eb8d702958d8685795e781e7b5ed",
               "kind": "file_hash",
               "name": "proof-B-artifact-hash",
               "pass": true,
-              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-b-artifact.json"
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-b-artifact.json"
             }
           ],
           "root": ".",
           "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
           "verdict": "PASS",
-          "verified_at": "2026-09-05T21:04:37.865664Z",
+          "verified_at": "2026-09-06T02:49:59.109581Z",
           "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
         }
       },
@@ -1093,13 +1094,13 @@
           "branch_name": "candidate/v13-final-proof-worker",
           "effect_id": "effect:a344bc5ca444fd647b6d52d42e6bedc97888995f7afd2a9d5bae3b90ed93defe",
           "final_sha256": "b46ca3c64b1fdc4222ee5d778cc317ef534d54a8a18546fe3d56cd90c33342a9",
-          "package_hash": "d4c1d18ff9b0ba581859f24f97ebbac3d6bd06e2bb70099b3dc75eaf81bcc5f1",
+          "package_hash": "00781aeaa4a03ca695c887ca443c9019be3defb9b0876426f962438db9269a3a",
           "package_id": "work-package:v13-final-proof-c",
           "package_status": "ACCEPTED",
           "replayed": true,
           "session_id": "workforce:work-package:v13-final-proof-c:a1",
           "session_status": "COMPLETED",
-          "source_sha": "5d47c0f04ad90471624871f44fe1794302b54156",
+          "source_sha": "6fc1ed2b19757b73b9fd3ffbc86e5881b9155286",
           "worker_runs": [
             {
               "mission_id": "mission:v13-final-proof-c",
@@ -1120,14 +1121,14 @@
               "step_id": "step:v13-final-proof-c"
             }
           ],
-          "worktree_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\worker-worktree"
+          "worktree_path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\worker-worktree"
         }
       },
       "D": {
-        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json",
+        "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-d-artifact.json",
         "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
         "outcome": {
-          "acceptance_identity": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+          "acceptance_identity": "d7754519-317d-4eae-a20a-2efff19e29b0",
           "acceptance_kind": "verification.accepted",
           "actual_observed": {
             "failure_reason": null,
@@ -1139,7 +1140,7 @@
               "artifact": "proof-d-artifact.json",
               "artifact_sha256": "9eaaaf8fd90f9ed81a0b81ad665caf411d7e28d576e8db1cbff2e2e723e04f27",
               "verification": "proof-d-verification.json",
-              "verification_sha256": "9dacf43e0e431bd5d7c3e1b3ae148a4aafb66601679d68eeb467554ba4a445d7"
+              "verification_sha256": "c8716043cf911b9052f577b64d92d5585317f772dab5ee3eaa99f3fc994e5c76"
             },
             "verifier_status": "PASS"
           },
@@ -1152,7 +1153,7 @@
             "result": "SUCCEEDED",
             "verification": {
               "acceptance": "ACCEPTED",
-              "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+              "acceptance_event_id": "d7754519-317d-4eae-a20a-2efff19e29b0",
               "builder_run_id": "builder:D",
               "checks": {
                 "artifact_matches": true,
@@ -1174,17 +1175,17 @@
           "decision_id": null,
           "estimated_outcome": {},
           "evidence_refs": [
-            "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "d7754519-317d-4eae-a20a-2efff19e29b0",
             "verdict:D:pass",
-            "099351c3-07f3-4e3c-8dac-a6781bed9786",
-            "56719131-8950-4470-a744-30b75030f517"
+            "8e9d1850-8cf7-4426-a53d-1f328ede9ae3",
+            "afb2edfd-0168-4a81-9cb9-261b93735520"
           ],
           "failure_reason": null,
           "finalized": true,
           "mission_id": "mission:v13-final-proof-d",
           "objective_id": "objective:v13-final-proof-d",
-          "outcome_event_id": "bd94dc7f-cd49-4bf9-ac3a-50423752f6ce",
-          "outcome_id": "outcome-5034892762ab1f530a6c3ced",
+          "outcome_event_id": "17f37dac-e4bf-4084-aa3e-defcb4ed2187",
+          "outcome_id": "outcome-c5d280729ccd46c6b340ba57",
           "outcome_sequence": 264,
           "outcome_source_id": "outcome-reconciler",
           "outcome_source_type": "supervisor",
@@ -1195,13 +1196,13 @@
             "reconciler": "v13-final-convergence-proof",
             "source": null,
             "source_event_ids": [
-              "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+              "d7754519-317d-4eae-a20a-2efff19e29b0",
               "verdict:D:pass",
-              "099351c3-07f3-4e3c-8dac-a6781bed9786",
-              "56719131-8950-4470-a744-30b75030f517"
+              "8e9d1850-8cf7-4426-a53d-1f328ede9ae3",
+              "afb2edfd-0168-4a81-9cb9-261b93735520"
             ]
           },
-          "recorded_at": "2026-09-05T21:04:59.184072Z",
+          "recorded_at": "2026-09-06T02:50:25.929382Z",
           "repair_attempts": [],
           "resource_id": null,
           "revision": 1,
@@ -1209,13 +1210,13 @@
           "status": "SUCCEEDED",
           "system_target": null,
           "timestamps": {
-            "finality_occurred_at": "2026-09-05T21:04:59.022932Z",
-            "mission_updated_at": "2026-09-05T21:04:59.069929Z"
+            "finality_occurred_at": "2026-09-06T02:50:25.782837Z",
+            "mission_updated_at": "2026-09-06T02:50:25.820948Z"
           },
           "truth_accepted": true,
           "verification": {
             "acceptance": "ACCEPTED",
-            "acceptance_event_id": "07837d42-0c8f-40a7-ad91-da98bc7f00a5",
+            "acceptance_event_id": "d7754519-317d-4eae-a20a-2efff19e29b0",
             "builder_run_id": "builder:D",
             "checks": {
               "artifact_matches": true,
@@ -1243,22 +1244,22 @@
               "kind": "file_hash",
               "name": "proof-D-artifact-hash",
               "pass": true,
-              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-d-artifact.json"
+              "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-d-artifact.json"
             }
           ],
           "root": ".",
           "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
           "verdict": "PASS",
-          "verified_at": "2026-09-05T21:04:58.885148Z",
+          "verified_at": "2026-09-06T02:50:25.659138Z",
           "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
         }
       },
       "E": {
         "artifact": {
-          "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json",
-          "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+          "artifact": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-e-artifact.json",
+          "artifact_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
           "outcome": {
-            "acceptance_identity": "7180b409-2f58-461b-9240-9c1072006342",
+            "acceptance_identity": "db6af80e-69ae-446a-8fea-c346c103fa68",
             "acceptance_kind": "verification.accepted",
             "actual_observed": {
               "failure_reason": null,
@@ -1268,9 +1269,9 @@
               "repair_count": 0,
               "verifier_evidence": {
                 "artifact": "proof-e-artifact.json",
-                "artifact_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+                "artifact_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
                 "verification": "proof-e-verification.json",
-                "verification_sha256": "77efd7fd6eacd47a77739079a63b7318f5e72d859a673dc20cb1b6ea9929133d"
+                "verification_sha256": "276f5d44afbfdeff202981665978fd30d8404618dcc5d81fdf1b4844d65a5e42"
               },
               "verifier_status": "PASS"
             },
@@ -1283,7 +1284,7 @@
               "result": "SUCCEEDED",
               "verification": {
                 "acceptance": "ACCEPTED",
-                "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+                "acceptance_event_id": "db6af80e-69ae-446a-8fea-c346c103fa68",
                 "builder_run_id": "builder:E",
                 "checks": {
                   "artifact_matches": true,
@@ -1305,17 +1306,17 @@
             "decision_id": null,
             "estimated_outcome": {},
             "evidence_refs": [
-              "7180b409-2f58-461b-9240-9c1072006342",
+              "db6af80e-69ae-446a-8fea-c346c103fa68",
               "verdict:E:pass",
-              "528d5f72-da15-47a4-ac40-a26d6668af7b",
-              "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+              "21450b26-d598-41b7-9015-36ed92c7f004",
+              "cfe158ec-052d-4b27-a1ae-a56a3fde49dc"
             ],
             "failure_reason": null,
             "finalized": true,
             "mission_id": "mission:v13-final-proof-e",
             "objective_id": "objective:v13-final-proof-e",
-            "outcome_event_id": "19859876-7937-47c4-a397-93c5a752d289",
-            "outcome_id": "outcome-dd9689c7648ceddad218f3c2",
+            "outcome_event_id": "f4659548-f588-43fa-aec9-bc0f7ea2a321",
+            "outcome_id": "outcome-50aeb4c73a2b00fa20e677ac",
             "outcome_sequence": 306,
             "outcome_source_id": "outcome-reconciler",
             "outcome_source_type": "supervisor",
@@ -1326,13 +1327,13 @@
               "reconciler": "v13-final-convergence-proof",
               "source": null,
               "source_event_ids": [
-                "7180b409-2f58-461b-9240-9c1072006342",
+                "db6af80e-69ae-446a-8fea-c346c103fa68",
                 "verdict:E:pass",
-                "528d5f72-da15-47a4-ac40-a26d6668af7b",
-                "ecdf7a71-479b-4109-b636-1dfb5a41f9fc"
+                "21450b26-d598-41b7-9015-36ed92c7f004",
+                "cfe158ec-052d-4b27-a1ae-a56a3fde49dc"
               ]
             },
-            "recorded_at": "2026-09-05T21:05:03.258797Z",
+            "recorded_at": "2026-09-06T02:50:30.043174Z",
             "repair_attempts": [],
             "resource_id": "resource:v13-final-proof-e",
             "revision": 1,
@@ -1340,13 +1341,13 @@
             "status": "SUCCEEDED",
             "system_target": null,
             "timestamps": {
-              "finality_occurred_at": "2026-09-05T21:05:02.957411Z",
-              "mission_updated_at": "2026-09-05T21:05:03.148016Z"
+              "finality_occurred_at": "2026-09-06T02:50:29.742190Z",
+              "mission_updated_at": "2026-09-06T02:50:29.929638Z"
             },
             "truth_accepted": true,
             "verification": {
               "acceptance": "ACCEPTED",
-              "acceptance_event_id": "7180b409-2f58-461b-9240-9c1072006342",
+              "acceptance_event_id": "db6af80e-69ae-446a-8fea-c346c103fa68",
               "builder_run_id": "builder:E",
               "checks": {
                 "artifact_matches": true,
@@ -1365,22 +1366,22 @@
             "checks_passed": 1,
             "checks_total": 1,
             "manifest": "proof-e-manifest.json",
-            "manifest_sha256": "037904bd406d2882e326c4ba6c52fa8da68133b57fa39e90cb8680765d9019e7",
+            "manifest_sha256": "3a4d94a304e8cc1bbd90e3320854f582c211e52029e97705378fa9bfc3b6f5b7",
             "process_returncode": 0,
             "results": [
               {
-                "actual_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
-                "expected_sha256": "6188a248fe0120f5623da72a19e402af8dc0315873cc2995ef87a2dbf496943d",
+                "actual_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
+                "expected_sha256": "31f795a749584abec99763eb9d080ff8ae6b9b7ab09801ba37a47047f1fc2ce5",
                 "kind": "file_hash",
                 "name": "proof-E-artifact-hash",
                 "pass": true,
-                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx\\final\\spine-work\\proof-e-artifact.json"
+                "path": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\convergence-work-final\\proof-e-artifact.json"
               }
             ],
             "root": ".",
             "schema": "jarvis.v13.personal_operator.independent_verifier.v2",
             "verdict": "PASS",
-            "verified_at": "2026-09-05T21:05:02.787838Z",
+            "verified_at": "2026-09-06T02:50:29.617282Z",
             "verifier_sha256": "477f80e1084611fc1f0faad0a3bcc1833b2807b0c09915152fbc7ec51da0424b"
           }
         },
@@ -1403,7 +1404,7 @@
         "replay_performed": false,
         "replayed": true,
         "resume_event_ids": [
-          "7d0468c6-3cb6-4807-861f-776aceacc225"
+          "6a415879-e065-4345-a3e9-cb57256190fd"
         ],
         "status": "PASS",
         "stop_directive_id": "stop:v13-final-proof",
@@ -1417,9 +1418,9 @@
             "reason": "STOP the active convergence recovery proof",
             "record": {
               "reason": "STOP the active convergence recovery proof",
-              "requested_at": "2026-09-05T21:05:01.399566Z",
+              "requested_at": "2026-09-06T02:50:28.297797Z",
               "source": "authenticated-owner",
-              "stop_id": "2a9627b4-aaf1-4370-9394-97a4993d3f42"
+              "stop_id": "7baec047-6c5f-4b19-b0cb-36ee3812974d"
             },
             "source": "sentinel_or_durable_control"
           }
@@ -1433,7 +1434,7 @@
           "Handle this.",
           "Prepare me for tomorrow."
         ],
-        "fresh_process_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+        "fresh_process_digest": "cd89769e106f80838da0ec82e9a4babd27f874758697b05ff4ea1dc5e41b218f",
         "missions": [
           {
             "mission_id": "mission:v13-final-proof-e",
@@ -1461,8 +1462,8 @@
             "state": "COMPLETE"
           }
         ],
-        "projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
-        "rebuilt_projection_digest": "16f335ef9d674c667631b4d37639167a0d8d4a1622d738f0c6aa0c01c7da3b53",
+        "projection_digest": "cd89769e106f80838da0ec82e9a4babd27f874758697b05ff4ea1dc5e41b218f",
+        "rebuilt_projection_digest": "cd89769e106f80838da0ec82e9a4babd27f874758697b05ff4ea1dc5e41b218f",
         "status": "PASS",
         "verification": [
           {
@@ -1481,7 +1482,7 @@
             "acceptance_status": "ACCEPTED",
             "mission_id": "mission:v13-final-proof-c",
             "status": "PASS",
-            "verdict_id": "verdict-v2-905920981cd0963fc6e27b3e"
+            "verdict_id": "verdict-v2-03fc6c4a7bcb384511d51451"
           },
           {
             "acceptance_status": "ACCEPTED",
@@ -1529,8 +1530,8 @@
     "merge_base": "51d2cfcce1be847fd252d1c857105f09f5f2c0e4",
     "origin_main_sha": "2905c206fed0461bf3085bc0cb43773be913300a",
     "schema": 40,
-    "source_sha": "bb55b8ebde0b25e3c69fd4a32fda4889c3351e5a",
-    "source_tree_sha": "82185f10757655f32a5d1d2d84c24edde6ea2162",
+    "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
+    "source_tree_sha": "3ff1757aabd778a25b1cabc7a96945b942ed0d34",
     "worktree": "C:\\temp\\JARVIS-V13-Final-Personal-Executive-Convergence-20260905",
     "worktree_clean": true
   },
