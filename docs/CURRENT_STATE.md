@@ -13,7 +13,7 @@ spine, and passes product proofs A-F plus the required source-bound verification
 The candidate is not activated or promoted. The execution pointer remains V11
 A3/A4, `BLOCKED_BY_PROVIDER`; V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `ece47826b2f502d6dd106903f5545da58bfb4ee4`
+DOCUMENTATION STATE BASE SHA: `a0d3ee0eb90ae98ad1fd672f457788de65c9d203`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -42,7 +42,7 @@ V13 STATUS:                   V13_PERSONAL_EXECUTIVE_CONVERGED / NOT ACTIVATED
 V13 BRANCH:                   candidate/v13-final-personal-executive-convergence-20260905
 V13 SOURCE SHA:               1002e9919258d8ded33d125cd579bbdff7091f3a
 V13 SOURCE TREE SHA:          3ff1757aabd778a25b1cabc7a96945b942ed0d34
-V13 EVIDENCE SHA:             ece47826b2f502d6dd106903f5545da58bfb4ee4
+V13 EVIDENCE SHA:             a0d3ee0eb90ae98ad1fd672f457788de65c9d203
 V13 PROOF SHA-256:            fb48a986699793d11c4ff034094cee785c3d54d6e0f7ec661af1ec7e77aa7e9a
 V13 PRODUCT PROOFS A-F:       PASS
 V13 FOCUSED MATRIX:           PASS / 553 TESTS / 0 FAILURES / 1 SKIPPED
@@ -128,6 +128,10 @@ and convergence suite with two expected skips. Lock validation, compileall,
 complete source diff check, wheel/sdist build, isolated wheel install, imports,
 and schema v40 also pass. The final fresh independent verifier checks the exact
 documentation-only HEAD and returns PASS with no Critical or High findings.
+Its first exact-final run found one package byte-identity High and no Critical
+findings; rebuilding from raw Git source blobs repaired the wheel and sdist
+without changing product source, and the affected package predicate passed
+before the permitted final verifier recheck.
 
 PowerPoint deliverables and actions were excluded by owner direction; the
 document, PDF, and spreadsheet General Work paths remain proved. Gmail
