@@ -15,7 +15,7 @@ defect without changing product behavior, schema, authority, or live state. The
 canonical promotion remains source-only: the execution pointer stays at V11
 A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `fb0362684eb5cad9fbcf72c814dded51e6db894a`
+DOCUMENTATION STATE BASE SHA: `0c0c25ddd18512d5b8da283af63e2c09accb4921`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -29,7 +29,7 @@ V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
 PROMOTION BASE MAIN:          2905c206fed0461bf3085bc0cb43773be913300a
 PROMOTION BASE ORIGIN/MAIN:   2905c206fed0461bf3085bc0cb43773be913300a
 CANONICAL PROMOTION BRANCH:   candidate/v13-canonical-source-promotion-20260906
-CANONICAL SOURCE STATE SHA:   fb0362684eb5cad9fbcf72c814dded51e6db894a
+CANONICAL SOURCE STATE SHA:   0c0c25ddd18512d5b8da283af63e2c09accb4921
 PROMPT 2 VERIFIER REPAIR SHA: fb0362684eb5cad9fbcf72c814dded51e6db894a
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
