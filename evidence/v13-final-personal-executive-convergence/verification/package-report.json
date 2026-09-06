@@ -1,6 +1,6 @@
 {
   "contract": "jarvis.v13.package-verification.v1",
-  "generated_at": "2026-09-06T02:47:43.7107098Z",
+  "generated_at": "2026-09-06T03:12:16.630Z",
   "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
   "source_tree_sha": "3ff1757aabd778a25b1cabc7a96945b942ed0d34",
   "tests": 0,
@@ -30,11 +30,11 @@
       "exit_code": 0
     },
     "build": {
-      "command": "uv build --out-dir verification/package/dist",
+      "command": "uv build --out-dir C:\\temp\\JARVIS-V13-Package-Exact-Evidence-20260906-1002e99-r4\\dist",
       "exit_code": 0
     },
     "isolated_wheel_install": {
-      "command": "uv pip install --python C:\\temp\\JARVIS-V13-Package-Install-20260906-1002e99\\Scripts\\python.exe jarvis_foundry-0.1.0-py3-none-any.whl",
+      "command": "uv pip install --python C:\\temp\\JARVIS-V13-Package-Exact-Install-20260906-1002e99-r4\\Scripts\\python.exe C:\\temp\\JARVIS-V13-Package-Exact-Evidence-20260906-1002e99-r4\\dist\\jarvis_foundry-0.1.0-py3-none-any.whl",
       "exit_code": 0
     }
   },
@@ -42,12 +42,12 @@
     {
       "kind": "uv_lock_log",
       "path": "package/uv-lock-check.log",
-      "sha256": "9389e1da9508a9a7e8eb9f28ac2074cd370f58690efe392741d66e115535d710"
+      "sha256": "76f7e36e33712d95381a23eda68288e1361003aad774e9e71ff325090e19c287"
     },
     {
       "kind": "compileall_log",
       "path": "package/compileall.log",
-      "sha256": "8007622e31889d5be02225175d9e322e386f63c5fb8e191322fe7104d748e95a"
+      "sha256": "feeefd5ec97d566c3835ab12d8f2e6c2fbacc5aa0839813b97496c5884270c7f"
     },
     {
       "kind": "diff_check_log",
@@ -57,22 +57,29 @@
     {
       "kind": "build_log",
       "path": "package/build.log",
-      "sha256": "01c2880e5bce031ae8096075d4bb94d9c975c52313cdfd9d04d433cc9fafbe3b"
+      "sha256": "f0700c43e1bdbaf915d9343d058c92e64654c4bc426dc25350f076ad45376a2c"
     },
     {
       "kind": "install_log",
       "path": "package/install.log",
-      "sha256": "a4e73d3a41b50787a48dff1318652da540ccb775c050aa4e4a4ce58ab549080b"
+      "sha256": "583da0cb7c6b9d04b3ea54a0d108d321ecd1b072ccc37412504ce675093fd87c"
     },
     {
       "kind": "wheel",
       "path": "package/dist/jarvis_foundry-0.1.0-py3-none-any.whl",
-      "sha256": "920015062c9c89d61df5b7d468f0d382975ef8ba62992994ef42ca2189d67bd1"
+      "sha256": "2353e6a8c39741df1475d995b0ec7f7a71df1c194a10d42e89031fe0210fccee"
     },
     {
       "kind": "sdist",
       "path": "package/dist/jarvis_foundry-0.1.0.tar.gz",
-      "sha256": "9af0ea11e3b28241c4f8edebdc1fb054fec55e3da3b0ad18d35630ad80fe82be"
+      "sha256": "7e64973ea6b7eabdc737d8c113ef9aac64956ea0440b512d9bcaa598dbda2283"
     }
-  ]
+  ],
+  "source_materialization": {
+    "method": "git archive plus raw Git blob materialization for tracked src files",
+    "archive": "C:\\temp\\JARVIS-V13-Package-Exact-Evidence-20260906-1002e99-r4\\source-tree.tar",
+    "source_sha": "1002e9919258d8ded33d125cd579bbdff7091f3a",
+    "source_tree_sha": "3ff1757aabd778a25b1cabc7a96945b942ed0d34",
+    "sampled_blob_hashes_match": true
+  }
 }

@@ -1364,7 +1364,7 @@ running install_egg_info
 Copying src\jarvis_foundry.egg-info to build\bdist.win-amd64\wheel\.\jarvis_foundry-0.1.0-py3.14.egg-info
 running install_scripts
 creating build\bdist.win-amd64\wheel\jarvis_foundry-0.1.0.dist-info\WHEEL
-creating 'C:\\temp\\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\\verification\\package\\dist\\.tmp-p0hxqfa4\\jarvis_foundry-0.1.0-py3-none-any.whl' and adding 'build\\bdist.win-amd64\\wheel' to it
+creating 'C:\\temp\\JARVIS-V13-Package-Exact-Evidence-20260906-1002e99-r4\\dist\\.tmp-f7r005aj\\jarvis_foundry-0.1.0-py3-none-any.whl' and adding 'build\\bdist.win-amd64\\wheel' to it
 adding 'jarvis_foundry/__init__.py'
 adding 'jarvis_foundry/artifacts.py'
 adding 'jarvis_foundry/autonomy_projection.py'
@@ -1762,5 +1762,5 @@ adding 'jarvis_foundry-0.1.0.dist-info/entry_points.txt'
 adding 'jarvis_foundry-0.1.0.dist-info/top_level.txt'
 adding 'jarvis_foundry-0.1.0.dist-info/RECORD'
 removing build\bdist.win-amd64\wheel
-Successfully built C:\temp\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\verification\package\dist\jarvis_foundry-0.1.0.tar.gz
-Successfully built C:\temp\JARVIS-V13-Final-Personal-Executive-Evidence-20260905-no-pptx-final\verification\package\dist\jarvis_foundry-0.1.0-py3-none-any.whl
+Successfully built C:\temp\JARVIS-V13-Package-Exact-Evidence-20260906-1002e99-r4\dist\jarvis_foundry-0.1.0.tar.gz
+Successfully built C:\temp\JARVIS-V13-Package-Exact-Evidence-20260906-1002e99-r4\dist\jarvis_foundry-0.1.0-py3-none-any.whl

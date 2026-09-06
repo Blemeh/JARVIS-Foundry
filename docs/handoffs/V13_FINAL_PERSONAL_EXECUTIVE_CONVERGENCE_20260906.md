@@ -188,6 +188,22 @@ Verification ran in the required serialized order against exact source
   external receipt is `verification/final-verifier.json` under the final
   external evidence root.
 
+The first exact-final verifier run at pre-repair docs SHA `ca87fa754a65d34c353f21404179300ef81e88ff`
+returned no Critical findings and one High:
+`top.compile_and_package_green`. The archives had been built from a Windows
+checkout where repository EOL attributes materialized Python as CRLF, while the
+package predicate correctly compares archive members to exact Git blob bytes.
+No source behavior was wrong and the predicate was not weakened. The repair
+rebuilt from a disposable Git archive snapshot with every tracked `src/` file
+rematerialized directly from its raw source blob, then repeated lock,
+compileall, complete source diff, build, isolated install, import, and schema
+checks. The repaired wheel is SHA-256
+`2353e6a8c39741df1475d995b0ec7f7a71df1c194a10d42e89031fe0210fccee`;
+the repaired sdist is
+`7e64973ea6b7eabdc737d8c113ef9aac64956ea0440b512d9bcaa598dbda2283`.
+The affected package predicate then passed, including exact wheel/sdist member
+identity, before the permitted final verifier recheck.
+
 The first disposable full-suite attempt failed five clone-identity checks
 because the fresh clone lacked a local `main` ref and used a verification-only
 branch label. Creating local `main` at canonical SHA `2905c206...` and aligning
