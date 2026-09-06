@@ -10,10 +10,12 @@ Last reconciled: Sunday, September 6, 2026 for the Prompt 2 canonical source
 promotion. Exact product source `1002e991...` semantically integrates the
 accepted V13 prerequisite and lane deltas on V12 Final. Validated Audit A and
 Audit B found zero stranded accepted source deltas and zero material UNKNOWN
-items. The canonical promotion remains source-only: the execution pointer stays
-at V11 A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
+items. Pre-main verification found and repaired one verifier-only branch-binding
+defect without changing product behavior, schema, authority, or live state. The
+canonical promotion remains source-only: the execution pointer stays at V11
+A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `5e4727c2f55676048d8c6278887bf4b578e5ac10`
+DOCUMENTATION STATE BASE SHA: `fb0362684eb5cad9fbcf72c814dded51e6db894a`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -27,7 +29,8 @@ V10 ROADMAP AUTHORITY SHA:    e9b2155bd669887c4778db0b16a4ef7861d2c9ff
 PROMOTION BASE MAIN:          2905c206fed0461bf3085bc0cb43773be913300a
 PROMOTION BASE ORIGIN/MAIN:   2905c206fed0461bf3085bc0cb43773be913300a
 CANONICAL PROMOTION BRANCH:   candidate/v13-canonical-source-promotion-20260906
-CANONICAL SOURCE STATE SHA:   5e4727c2f55676048d8c6278887bf4b578e5ac10
+CANONICAL SOURCE STATE SHA:   fb0362684eb5cad9fbcf72c814dded51e6db894a
+PROMPT 2 VERIFIER REPAIR SHA: fb0362684eb5cad9fbcf72c814dded51e6db894a
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
@@ -102,9 +105,10 @@ zero `UNIQUE_ACCEPTED_DELTA` rows and zero material UNKNOWN rows.
 Local `main` and `origin/main` were identical at `2905c206...`, which is the
 merge base and direct ancestor of frozen V13 final `d58debf...`. The canonical
 promotion branch therefore starts at the frozen V13 final, preserves its
-history, and adds only current documentation/accounting repairs. No product
-source port, schema change, historical-evidence rewrite, or dirty-worktree
-consumption is required. Dirty owner data remains untouched.
+history, and adds current documentation/accounting repairs plus one bounded
+verifier branch-binding repair. No product source port, product behavior change,
+schema change, historical-evidence rewrite, or dirty-worktree consumption is
+required. Dirty owner data remains untouched.
 
 The Audit B accounting failure was evidence-only: the product tree and final
 evidence tree needed explicit separation, the V13 section below named a stale
@@ -112,6 +116,17 @@ evidence parent, and the historical proof used decorated accounting labels.
 This current-state record separates the identities, corrects the parent, and
 uses the Prompt 2 taxonomy in the external master manifest without rewriting
 the historical proof.
+
+The first exact-candidate V13 focused-matrix run at `73c624ec...` completed 553
+tests with 551 passed, 1 skipped, and 1 failed. Every world-intelligence
+semantic, source-SHA, ancestry, main/origin preservation, and fresh detached
+replay check passed; only the verifier's frozen branch-name default rejected the
+new canonical promotion branch. Repair `fb036268...` keeps the frozen V13 branch
+as the default, accepts an externally declared expected branch, and preserves
+strict proof/source binding. Its focused proof, replay, and tamper-rejection
+tests pass 3/3. The failed JUnit remains retained outside the repository and
+does not count as a passing gate; the full V13 matrix requires a fresh rerun on
+the final docs-pinned candidate.
 
 ## V13 final Personal Executive convergence source candidate
 
@@ -604,7 +619,7 @@ documentation staleness check must remain green.
 ## Next authorized action
 
 Prompt 2 authorizes only the normal Git source promotion of the exact verified
-documentation-only head to local `main` and `origin/main`. It does not authorize
+source head to local `main` and `origin/main`. It does not authorize
 live deployment, CURRENT/PREVIOUS changes, Supervisor retargeting, live database
 migration, provider probing, trust restoration, Prompt 3, or V14. After Git
 parity and the terminal report are proved, stop.

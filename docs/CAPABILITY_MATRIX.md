@@ -14,6 +14,7 @@ Allowed states:
 |---|---|
 | Promotion base | local `main` = `origin/main` = `2905c206fed0461bf3085bc0cb43773be913300a` before Prompt 2 promotion |
 | Canonical promotion branch | `candidate/v13-canonical-source-promotion-20260906` |
+| Prompt 2 verifier repair | `fb0362684eb5cad9fbcf72c814dded51e6db894a`; branch binding only, with product tree, schema, and authority unchanged |
 | Frozen V13 final input | `d58debf04c6f53a11dcfb071f999b5349f01c9b1`, tree `97ff027f908202e84d2ccb11d8e3f73ffa5cefde` |
 | Canonical product source | `1002e9919258d8ded33d125cd579bbdff7091f3a`, tree `3ff1757aabd778a25b1cabc7a96945b942ed0d34` |
 | Candidate schema | v40, one additive migration chain |
