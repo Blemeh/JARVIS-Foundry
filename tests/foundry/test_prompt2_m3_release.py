@@ -8,7 +8,12 @@ import pytest
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.deployment.lab_hermes import LabHermesAdapter
-from jarvis_foundry.deployment.layout import current_pointer, launcher_cmd, release_dir
+from jarvis_foundry.deployment.layout import (
+    current_pointer,
+    launcher_cmd,
+    release_dir,
+    rollback_runtime_marker,
+)
 from jarvis_foundry.deployment.release import (
     ReleaseError,
     migrate_clone,
@@ -256,6 +261,42 @@ def test_rollback_swaps_current_and_previous(tmp_path):
     restored = rollback_current(root=root, foundry_home=home)
     assert restored["current"] == second
     assert restored["previous"] == first
+
+
+def test_new_activation_retires_completed_cross_schema_runtime_marker(tmp_path):
+    first, second = "1" * 40, "2" * 40
+    _fake_release(tmp_path, first)
+    _fake_release(tmp_path, second, previous=first)
+    root = tmp_path / "JARVIS"
+    set_current(first, root=root)
+    marker = rollback_runtime_marker(root)
+    marker.write_text(json.dumps({
+        "contract": "jarvis.cross-schema-rollback-runtime.v1",
+        "source_sha": first,
+        "status": "COMPLETE_FROZEN_RUNTIME",
+    }), encoding="utf-8")
+
+    set_current(second, root=root)
+
+    assert current_pointer(root).read_text(encoding="utf-8").strip() == second
+    assert not marker.exists()
+
+
+def test_invalid_runtime_marker_refuses_before_pointer_mutation(tmp_path):
+    first, second = "5" * 40, "6" * 40
+    _fake_release(tmp_path, first)
+    _fake_release(tmp_path, second, previous=first)
+    root = tmp_path / "JARVIS"
+    set_current(first, root=root)
+    marker = rollback_runtime_marker(root)
+    marker.write_text("{not-json", encoding="utf-8")
+
+    with pytest.raises(ReleaseError, match="marker is unreadable"):
+        set_current(second, root=root)
+
+    assert current_pointer(root).read_text(encoding="utf-8").strip() == first
+    assert not (root / "PREVIOUS").exists()
+    assert marker.is_file()
 
 
 def test_rollback_refuses_schema_mismatch(tmp_path):

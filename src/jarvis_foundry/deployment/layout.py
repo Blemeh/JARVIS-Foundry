@@ -34,6 +34,16 @@ def headless_launcher_cmd(root: Path | None = None) -> Path:
     return install_root(root) / "bin" / "jarvis-supervisor-headless.vbs"
 
 
+def rollback_runtime_marker(root: Path | None = None) -> Path:
+    """Durable marker for a schema-neutral frozen predecessor launch."""
+    return install_root(root) / "ROLLBACK_RUNTIME.json"
+
+
+def rollback_runtime_shim_dir(root: Path | None = None) -> Path:
+    """Stable import-only directory used by the scheduled launcher."""
+    return install_root(root) / "rollback-runtime" / "active"
+
+
 def current_release_pythonw(root: Path | None = None) -> Path:
     """Resolve ``pythonw.exe`` for the immutable CURRENT release."""
     sha = current_pointer(root).read_text(encoding="utf-8").strip().splitlines()[0].strip()

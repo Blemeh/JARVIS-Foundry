@@ -244,6 +244,7 @@ def _run_frozen_supervisor(
     spawn_worker_loop: bool,
     worker_loop_config: Path | None,
     once: bool,
+    interval: float = 5.0,
     command_center_port: int | None = None,
     owner_secret_path: Path | None = None,
 ) -> int:
@@ -267,6 +268,7 @@ def _run_frozen_supervisor(
         if once:
             print(json.dumps({"heartbeat": supervisor.heartbeat()}), flush=True)
             return 0
+        return _heartbeat_loop(supervisor, interval)
     finally:
         supervisor.stop()
         console_handler.uninstall()
@@ -316,6 +318,7 @@ def main(argv: list[str] | None = None) -> int:
             spawn_worker_loop=bool(args.spawn_worker_loop),
             worker_loop_config=getattr(args, "worker_loop_config", None),
             once=bool(args.once),
+            interval=float(args.interval),
             command_center_port=getattr(args, "command_center_port", None),
             owner_secret_path=getattr(args, "owner_secret_path", None),
         )

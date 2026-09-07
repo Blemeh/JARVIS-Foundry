@@ -81,6 +81,76 @@ def test_duplicate_supervisor_launcher_exits_without_heartbeat_loop(
     }
 
 
+def test_frozen_supervisor_keeps_heartbeat_loop_alive(
+    tmp_path,
+    monkeypatch,
+):
+    from types import SimpleNamespace
+
+    from jarvis_foundry.supervisor import run as supervisor_run
+
+    calls: list[object] = []
+
+    class FakeSupervisor:
+        def __init__(self, *args, **kwargs):
+            calls.append(("init", args, kwargs))
+
+        def start(self):
+            calls.append("start")
+            return "FROZEN"
+
+        def stop(self):
+            calls.append("stop")
+
+    class FakeConsoleHandler:
+        def install(self):
+            calls.append("install")
+
+        def uninstall(self):
+            calls.append("uninstall")
+
+    fake_supervisor = FakeSupervisor()
+    monkeypatch.setattr(
+        supervisor_run,
+        "FoundryDatabase",
+        lambda path: object(),
+    )
+    monkeypatch.setattr(
+        supervisor_run,
+        "Supervisor",
+        lambda *args, **kwargs: fake_supervisor,
+    )
+    monkeypatch.setattr(
+        supervisor_run,
+        "make_console_handler",
+        lambda supervisor: FakeConsoleHandler(),
+    )
+    monkeypatch.setattr(
+        supervisor_run,
+        "_heartbeat_loop",
+        lambda supervisor, interval: calls.append(
+            ("heartbeat_loop", supervisor, interval)
+        ) or 17,
+    )
+    paths = SimpleNamespace(
+        database=tmp_path / "foundry.db",
+        emergency_stop=tmp_path / "EMERGENCY_STOP",
+        home=tmp_path,
+    )
+
+    result = supervisor_run._run_frozen_supervisor(
+        paths,
+        spawn_worker_loop=False,
+        worker_loop_config=None,
+        once=False,
+        interval=0.25,
+    )
+
+    assert result == 17
+    assert ("heartbeat_loop", fake_supervisor, 0.25) in calls
+    assert calls[-2:] == ["stop", "uninstall"]
+
+
 def test_supervisor_takeover_during_active_stop_does_not_collide(tmp_path):
     """A fresh supervisor instance taking over WHILE the STOP sentinel is
     active must be able to heartbeat (frozen watchdog) — the

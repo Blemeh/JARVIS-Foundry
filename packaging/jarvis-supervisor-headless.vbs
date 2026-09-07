@@ -4,6 +4,7 @@ Option Explicit
 
 Dim fso, shell, environment, installRoot, scriptInstallRoot, configuredRoot
 Dim currentFile, sha, release, pyw, args, i, arg, cmd, exitCode
+Dim rollbackMarker, rollbackShim
 
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
@@ -48,10 +49,32 @@ environment("JARVIS_INSTALL_ROOT") = installRoot
 environment("JARVIS_RELEASE_ID") = sha
 environment("JARVIS_RELEASE_SHA") = sha
 environment("PLAYWRIGHT_BROWSERS_PATH") = release & "\.pw"
+environment("PYTHONPATH") = ""
+environment("PYTHONHOME") = ""
+environment("JARVIS_ROLLBACK_RUNTIME_MARKER") = ""
+
+' A completed cross-schema rollback may need to keep an older immutable
+' Supervisor frozen under STOP. The marker and shim are written only by the
+' guarded rollback controller. sitecustomize validates CURRENT, home, STOP,
+' and its own hash before patching the predecessor's known STOP-loop defect.
+rollbackMarker = installRoot & "\ROLLBACK_RUNTIME.json"
+rollbackShim = installRoot & "\rollback-runtime\active"
+If fso.FileExists(rollbackMarker) Then
+  If Not fso.FileExists(rollbackShim & "\sitecustomize.py") Then
+    WScript.Echo "FAIL_CLOSED: rollback runtime shim missing"
+    WScript.Quit 2
+  End If
+  environment("PYTHONPATH") = rollbackShim
+  environment("JARVIS_ROLLBACK_RUNTIME_MARKER") = rollbackMarker
+  environment("PYTHONDONTWRITEBYTECODE") = "1"
+End If
 
 args = ""
 For i = 0 To WScript.Arguments.Count - 1
   arg = WScript.Arguments(i)
+  If LCase(arg) = "--home" And i + 1 < WScript.Arguments.Count Then
+    environment("JARVIS_HOME") = fso.GetAbsolutePathName(WScript.Arguments(i + 1))
+  End If
   If InStr(arg, " ") > 0 Or InStr(arg, """") > 0 Then
     args = args & " " & """" & Replace(arg, """", """""") & """"
   Else

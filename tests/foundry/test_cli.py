@@ -89,3 +89,59 @@ def test_status_without_database_does_not_create_one(tmp_path, capsys):
     assert code == 1
     assert payload["error"] == "database_not_initialized"
     assert not (tmp_path / "foundry.db").exists()
+
+
+def test_cross_schema_rollback_cli_requires_explicit_frozen_inputs(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    from jarvis_foundry.cli.main import main
+
+    captured = {}
+
+    def fake_run(request):
+        captured["request"] = request
+        return {
+            "status": "ROLLBACK_COMPLETE",
+            "transaction_id": request.transaction_id,
+        }
+
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.run_cross_schema_rollback",
+        fake_run,
+    )
+    home = tmp_path / "foundry"
+    install = tmp_path / "JARVIS"
+    snapshot = tmp_path / "v38.db"
+
+    code = main([
+        "release",
+        "--home",
+        str(home),
+        "rollback-cross-schema",
+        "--transaction-id",
+        "tx-cli",
+        "--install-root",
+        str(install),
+        "--snapshot",
+        str(snapshot),
+        "--snapshot-sha256",
+        "0" * 64,
+        "--failed-sha",
+        "a" * 40,
+        "--predecessor-sha",
+        "b" * 40,
+        "--task-name",
+        "JARVIS-Foundry-Supervisor-Rehearsal",
+        "--health-timeout-seconds",
+        "12.5",
+    ])
+
+    assert code == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "ROLLBACK_COMPLETE"
+    request = captured["request"]
+    assert request.install_root == install.resolve()
+    assert request.foundry_home == home.resolve()
+    assert request.snapshot_path == snapshot.resolve()
+    assert request.health_timeout_seconds == 12.5

@@ -92,6 +92,16 @@ def _parser() -> argparse.ArgumentParser:
     )
     rollback = release_sub.add_parser("rollback")
     rollback.add_argument("--install-root", type=Path, default=None)
+    cross_schema = release_sub.add_parser("rollback-cross-schema")
+    cross_schema.add_argument("--transaction-id", required=True)
+    cross_schema.add_argument("--install-root", type=Path, required=True)
+    cross_schema.add_argument("--snapshot", type=Path, required=True)
+    cross_schema.add_argument("--snapshot-sha256", required=True)
+    cross_schema.add_argument("--failed-sha", required=True)
+    cross_schema.add_argument("--predecessor-sha", required=True)
+    cross_schema.add_argument("--task-name", default=V1_TASK_NAME)
+    cross_schema.add_argument(
+        "--health-timeout-seconds", type=float, default=90.0)
     setup = sub.add_parser("setup", help="configure machine-local LLM provider")
     setup.add_argument("--show", action="store_true", help="show current provider config")
     setup.add_argument("--test", action="store_true", help="test current provider config")
@@ -484,6 +494,29 @@ def _release_command(args, paths: FoundryPaths) -> int:
         return 0
     if args.release_command == "rollback":
         print(json.dumps(rollback_current(root=root, foundry_home=paths.home), indent=2))
+        return 0
+    if args.release_command == "rollback-cross-schema":
+        from ..deployment.rollback_controller import (
+            RollbackRequest,
+            run_cross_schema_rollback,
+        )
+
+        request = RollbackRequest(
+            transaction_id=args.transaction_id,
+            install_root=args.install_root,
+            foundry_home=paths.home,
+            snapshot_path=args.snapshot,
+            snapshot_sha256=args.snapshot_sha256,
+            failed_source_sha=args.failed_sha,
+            predecessor_source_sha=args.predecessor_sha,
+            task_name=args.task_name,
+            health_timeout_seconds=args.health_timeout_seconds,
+        )
+        print(json.dumps(
+            run_cross_schema_rollback(request),
+            indent=2,
+            default=str,
+        ))
         return 0
     if args.release_command == "backup-db":
         print(json.dumps({"backup": str(backup_database(paths.database, args.destination))}, indent=2))

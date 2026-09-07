@@ -57,6 +57,11 @@ def test_stable_launchers_install_cmd_and_vbs(tmp_path):
     assert "pythonw.exe" in text
     assert "jarvis_foundry.deployment.headless_launcher" in text
     assert "CURRENT" in text
+    assert "ROLLBACK_RUNTIME.json" in text
+    assert "rollback-runtime\\active" in text
+    assert 'environment("PYTHONPATH") = ""' in text
+    assert 'environment("JARVIS_HOME")' in text
+    assert "FAIL_CLOSED: rollback runtime shim missing" in text
 
 
 def test_headless_task_command_points_at_wscript_and_vbs(tmp_path, monkeypatch):

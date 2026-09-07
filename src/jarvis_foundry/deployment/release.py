@@ -28,6 +28,7 @@ from .layout import (
     launcher_cmd,
     previous_pointer,
     release_dir,
+    rollback_runtime_marker,
 )
 
 RELEASE_BROWSER_ASSET_DIR = ".pw"
@@ -123,6 +124,56 @@ def write_pointer(path: Path, sha: str) -> None:
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(sha.strip() + "\n", encoding="utf-8")
     os.replace(temporary, path)
+
+
+def _rollback_runtime_retirement_plan(
+    root: Path | None, *, target_source_sha: str,
+) -> dict[str, str] | None:
+    """Validate a bridge before authority or pointer state can be changed."""
+    marker = rollback_runtime_marker(root)
+    if not marker.is_file():
+        return None
+    try:
+        marker_bytes = marker.read_bytes()
+        payload = json.loads(marker_bytes)
+    except (OSError, ValueError) as error:
+        raise ReleaseError(
+            f"rollback runtime marker is unreadable: {marker}") from error
+    if not isinstance(payload, dict):
+        raise ReleaseError(
+            f"rollback runtime marker is not an object: {marker}")
+    if payload.get("contract") != "jarvis.cross-schema-rollback-runtime.v1":
+        raise ReleaseError(
+            f"rollback runtime marker contract is invalid: {marker}")
+    marker_sha = str(payload.get("source_sha") or "").strip()
+    if not _GIT_OBJECT_RE.fullmatch(marker_sha):
+        raise ReleaseError(
+            f"rollback runtime marker source_sha is invalid: {marker}")
+    if marker_sha == target_source_sha.strip():
+        return None
+    return {
+        "path": str(marker.resolve()),
+        "sha256": hashlib.sha256(marker_bytes).hexdigest(),
+        "source_sha": marker_sha,
+    }
+
+
+def _retire_obsolete_rollback_runtime(
+    plan: dict[str, str] | None,
+) -> None:
+    """Remove the exact preflighted bridge after CURRENT moved away from it."""
+    if plan is None:
+        return
+    marker = Path(plan["path"])
+    try:
+        observed_hash = hashlib.sha256(marker.read_bytes()).hexdigest()
+    except OSError as error:
+        raise ReleaseError(
+            f"rollback runtime marker changed before retirement: {marker}") from error
+    if observed_hash != plan["sha256"]:
+        raise ReleaseError(
+            f"rollback runtime marker changed before retirement: {marker}")
+    marker.unlink()
 
 
 def _transition_marker(root: Path | None) -> Path:
@@ -1020,6 +1071,8 @@ def set_current(
         if candidate_previous != previous_identity:
             raise ReleaseError(
                 "candidate previous_runtime does not match the CURRENT release")
+    rollback_runtime_retirement = _rollback_runtime_retirement_plan(
+        root, target_source_sha=source_sha)
     marker = None
     if database is not None:
         transition_id = uuid.uuid4().hex
@@ -1036,6 +1089,7 @@ def set_current(
         if previous and previous != source_sha:
             write_pointer(previous_pointer(root), previous)
         write_pointer(current_pointer(root), source_sha)
+        _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
         if marker is not None:
             marker.unlink(missing_ok=True)
     except BaseException:
@@ -1080,6 +1134,8 @@ def recover_release_transition(
         raise ReleaseError("release transition marker has no target source SHA")
     transition_id = str(payload.get("transition_id") or uuid.uuid4().hex)
     validate_release(target, root=root, require_schema_match=False)
+    rollback_runtime_retirement = _rollback_runtime_retirement_plan(
+        root, target_source_sha=target)
     authority_database = database
     if authority_database is None and foundry_home is not None:
         authority_database = FoundryDatabase(Path(foundry_home) / "foundry.db")
@@ -1091,6 +1147,7 @@ def recover_release_transition(
     if previous_sha and previous_sha != target:
         write_pointer(previous_pointer(root), previous_sha)
     write_pointer(current_pointer(root), target)
+    _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
     marker.unlink(missing_ok=True)
     return {
         "current": target,
@@ -1327,6 +1384,8 @@ def rollback_current(
     )
     if current:
         validate_release(current, root=root, require_schema_match=False)
+    rollback_runtime_retirement = _rollback_runtime_retirement_plan(
+        root, target_source_sha=previous)
     authority_database = database
     if authority_database is None and foundry_home is not None:
         authority_database = FoundryDatabase(Path(foundry_home) / "foundry.db")
@@ -1353,6 +1412,7 @@ def rollback_current(
         write_pointer(current_pointer(root), previous)
         if current:
             write_pointer(previous_pointer(root), current)
+        _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
         if marker is not None:
             marker.unlink(missing_ok=True)
     except BaseException:
