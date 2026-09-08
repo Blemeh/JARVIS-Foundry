@@ -541,6 +541,7 @@ def verify(
     *,
     repo_root: Path,
     source_sha: str,
+    expected_main: str,
     expected_branch: str,
     proof_path: Path,
     focused_junit: Path | None,
@@ -580,17 +581,17 @@ def verify(
     origin_main_sha = _git_text(repo_root, "rev-parse", "origin/main")
     recorder.add(
         "git.main-preserved",
-        main_sha == EXPECTED_MAIN,
+        main_sha == expected_main,
         detail="Local main remains at the captured canonical SHA.",
         actual=main_sha,
-        expected=EXPECTED_MAIN,
+        expected=expected_main,
     )
     recorder.add(
         "git.origin-main-preserved",
-        origin_main_sha == EXPECTED_MAIN,
+        origin_main_sha == expected_main,
         detail="origin/main remains at the captured canonical SHA.",
         actual=origin_main_sha,
-        expected=EXPECTED_MAIN,
+        expected=expected_main,
     )
     changed_result = _git(
         repo_root,
@@ -1135,8 +1136,8 @@ def verify(
             boundaries.get("live_mutated") is False
             and boundaries.get("main_mutated") is False
             and boundaries.get("origin_main_mutated") is False
-            and boundaries.get("main_sha") == EXPECTED_MAIN
-            and boundaries.get("origin_main_sha") == EXPECTED_MAIN
+            and boundaries.get("main_sha") == expected_main
+            and boundaries.get("origin_main_sha") == expected_main
             and boundaries.get("disposable_database") is True
             and boundaries.get("disposable_a3_repository") is True
             and boundaries.get("voice_albanian") == "DEFERRED"
@@ -1246,6 +1247,7 @@ def _parse_args() -> argparse.Namespace:
         default=Path(__file__).resolve().parents[1],
     )
     parser.add_argument("--source-sha")
+    parser.add_argument("--expected-main", default=EXPECTED_MAIN)
     parser.add_argument("--expected-branch", default=EXPECTED_BRANCH)
     parser.add_argument("--proof", type=Path, required=True)
     parser.add_argument("--focused-junit", type=Path)
@@ -1271,6 +1273,7 @@ def main() -> int:
     report = verify(
         repo_root=repo_root,
         source_sha=source_sha,
+        expected_main=args.expected_main,
         expected_branch=args.expected_branch,
         proof_path=proof_path,
         focused_junit=(

@@ -22,6 +22,17 @@ def _branch(repo_root: Path) -> str:
     ).stdout.strip()
 
 
+def _git_sha(repo_root: Path, ref: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", ref],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
+    ).stdout.strip()
+
+
 def _run(
     repo_root: Path,
     *args: str,
@@ -55,14 +66,8 @@ def test_separate_process_verifier_recomputes_v13_proof(
     )
     assert proof.returncode == 0, proof.stderr
 
-    source_sha = subprocess.run(
-        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=True,
-    ).stdout.strip()
+    source_sha = _git_sha(repo_root, "HEAD")
+    expected_main = _git_sha(repo_root, "main")
     expected_branch = _branch(repo_root)
     assert expected_branch
     verifier = _run(
@@ -76,6 +81,8 @@ def test_separate_process_verifier_recomputes_v13_proof(
         str(repo_root),
         "--source-sha",
         source_sha,
+        "--expected-main",
+        expected_main,
         "--expected-branch",
         expected_branch,
         "--proof",
@@ -121,6 +128,7 @@ def test_verifier_rejects_tampered_decision_evidence(
         encoding="utf-8",
     )
     expected_branch = _branch(repo_root)
+    expected_main = _git_sha(repo_root, "main")
     assert expected_branch
 
     verifier = _run(
@@ -132,6 +140,8 @@ def test_verifier_rejects_tampered_decision_evidence(
         ),
         "--repo-root",
         str(repo_root),
+        "--expected-main",
+        expected_main,
         "--expected-branch",
         expected_branch,
         "--proof",
