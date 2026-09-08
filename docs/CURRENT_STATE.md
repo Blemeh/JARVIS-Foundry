@@ -6,17 +6,19 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Sunday, September 6, 2026 for the Prompt 2 canonical source
-promotion. Exact product source `1002e991...` semantically integrates the
-accepted V13 prerequisite and lane deltas on V12 Final. Validated Audit A and
-Audit B found zero stranded accepted source deltas and zero material UNKNOWN
-items. Pre-main verification repaired one verifier-only branch-binding defect,
-and the first independent final source review repaired one manifest-only
-classification defect. Neither changed product behavior, schema, authority, or
-live state. The canonical promotion remains source-only: the execution pointer
-stays at V11 A3/A4, `BLOCKED_BY_PROVIDER`, and V10 remains live and unchanged.
+Last reconciled: Tuesday, September 8, 2026 for the source-only cross-schema
+rollback-controller repair. Runtime repair `ba422d2...` adds schema-neutral,
+freeze-guarded, crash-resumable rollback from a failed v40 release to the
+frozen faa861/v38 predecessor. Validation-only source `b52c2e5...` stabilizes
+one pre-existing A3 staleness test against the current clock. The exact
+disposable baseline plus all nine interruption/re-entry paths pass with
+`live_mutated: false`. This work does not deploy or promote a release, retarget
+the live Supervisor or Scheduler, migrate the live database, run a fresh
+provider/A3/A4/48h gate, or restore production trust. Prompt 3 remains blocked
+until a fresh independent preflight validates this repair against the final
+canonical source. V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `006045095f6e6f4bf5ca2bb383e558c4ad81afbd`
+DOCUMENTATION STATE BASE SHA: `b52c2e57444bb7702d10b13ea5ef8890a76c3942`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -32,6 +34,16 @@ PROMOTION BASE ORIGIN/MAIN:   2905c206fed0461bf3085bc0cb43773be913300a
 CANONICAL PROMOTION BRANCH:   candidate/v13-canonical-source-promotion-20260906
 CANONICAL SOURCE STATE SHA:   006045095f6e6f4bf5ca2bb383e558c4ad81afbd
 PROMPT 2 VERIFIER REPAIR SHA: fb0362684eb5cad9fbcf72c814dded51e6db894a
+ROLLBACK REPAIR BASE MAIN:    ecbd5d5a0482ad17040c768eca49ba0105610f9e
+ROLLBACK RUNTIME SOURCE SHA:  ba422d2643fc45bcd23023915d5d02d11383944c
+ROLLBACK RUNTIME TREE SHA:    e129dcb340bf911a48cf997596f19dbb6e382871
+ROLLBACK TEST FIX SHA:        b52c2e57444bb7702d10b13ea5ef8890a76c3942
+ROLLBACK TEST FIX TREE SHA:   a6fae17ed3006d7ee3dd559b4341f7863ae369db
+ROLLBACK CONTROLLER:          REPAIRED / SOURCE ONLY / NOT LIVE
+ROLLBACK REHEARSAL:           PASS / 10 PATHS / LIVE MUTATED NO
+ROLLBACK REVIEW:              PASS / CRITICAL 0 / HIGH 0
+PROMPT 3 ENTRY:               BLOCKED / FRESH INDEPENDENT PREFLIGHT REQUIRED
+FRESH PROVIDER/A3/A4/48H:     NOT_STARTED
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
@@ -513,6 +525,83 @@ Fabric remains the sole readiness authority. The real proof is
 SHA are recorded in
 `docs/handoffs/V12_CAPABILITY_DISCOVERY_20260902.md`.
 
+## Cross-schema rollback controller repair
+
+Runtime repair `ba422d2643fc45bcd23023915d5d02d11383944c`, tree
+`e129dcb340bf911a48cf997596f19dbb6e382871`, starts from canonical
+`ecbd5d5a0482ad17040c768eca49ba0105610f9e`. It adds
+`RollbackRequest`, `CrossSchemaRollbackController`, and
+`run_cross_schema_rollback` under the existing deployment authority. The
+explicit CLI is `jarvis release rollback-cross-schema`; every source,
+manifest, package, snapshot, install root, home, task, and health input is
+required or bounded. The existing `jarvis release rollback` same-schema path
+is retained and its swap/restore and schema-mismatch tests pass.
+
+The durable transaction phases are `PREPARED`, `PRECONDITIONS_VERIFIED`,
+`SNAPSHOT_VALIDATED`, `FORENSIC_CAPTURED`, `DATABASE_RESTORE_PENDING`,
+`DATABASE_RESTORED`, `DB_AUTHORITY_RESTORED`, `POINTER_RESTORE_PENDING`,
+`POINTERS_RESTORED`, `PARITY_VERIFIED`, `PREDECESSOR_VALIDATED`,
+`SUPERVISOR_START_PENDING`, `SUPERVISOR_STARTED`, `HEALTH_ACCEPTED`,
+`POST_START_VERIFIED`, `SCHEDULER_ENABLE_PENDING`, `SCHEDULER_ENABLED`, and
+`COMPLETE`. Re-entry resumes from durable transaction state and fails closed
+on changed inputs, split-brain authority, process-identity uncertainty,
+continuity loss, unverified health, or incomplete finalization.
+
+C-01 is closed by an exact all-column event-prefix digest, bounded and
+identity-validated activation suffix, exact durable-table continuity, and
+specialized release-projection checks that preserve candidate, quarantine, and
+every non-live/non-previous slot. H-01 is closed by full creation-identity
+checks for Supervisor, wrapper, adapter, root, and descendant processes, plus a
+second census before any owned termination. H-02 is closed by full failed and
+predecessor package digests, immediate failed-package revalidation before its
+isolated migration runtime, durable forensic v40 capture, exact v38 restore,
+ordered database/pointer authority restoration, and completion ordering that
+withholds owner resume until durable evidence and final marker publication
+agree.
+
+The exact disposable rehearsal used frozen predecessor
+`faa861c67399d5a3755d778224ff65513bd933a1`, predecessor package SHA-256
+`f9445bd1af1add8f4a2e4d3332ab13a9d5f321fa52e82dae1d7f2c3eaffc0c36`,
+and v38 snapshot SHA-256
+`d96e4f0d4351ed86bd466e6b51ef650adf9e4ddaeceab28321f88ad5fcba3794`.
+Baseline plus all nine hard-interruption points passed v38 -> v40 -> v38 with
+one healthy predecessor Supervisor, schema/release parity, SQLite checks,
+Command Center health, Scheduler containment, zero duplicate effects, zero
+unresolved effects, and `live_mutated: false`. The report is
+`C:\temp\JARVIS-Cross-Schema-Rollback-Rehearsal-20260908-ba422d2-final\evidence\REHEARSAL_REPORT.json`,
+SHA-256
+`e8a7ae44f4931a8a63b5b6276e96b51f1811987f1521decf9afca18a81c70394`.
+
+Focused controller/CLI verification passed 61/61; affected deployment,
+release, installer, Scheduler, migration, Supervisor, STOP/control,
+effects/reconciliation, and release-authority regressions passed 160/160.
+Clean-source packaging/adoption passed 21/21. The fresh V13 matrix passed 537
+and skipped 16 of 553 with zero failures. The isolated package report is
+`C:\temp\JARVIS-Cross-Schema-Rollback-Package-20260908-ba422d2-final\evidence\PACKAGE_CONTENT_REPORT.json`,
+SHA-256
+`054ba600576fbefa0a2d2e1177ecfe78cde94333341d83fbd6c2873e6d0df97c`;
+392/392 wheel members, 394/394 tracked sdist members, all eight expected
+generated metadata members, and 392/392 installed members byte-match.
+
+The one permitted full Foundry/convergence execution completed all 3,468 tests
+with 3,436 passed, 29 skipped, and three pre-final failures. Two were the
+expected stale `CURRENT_STATE.md` pin predicates before this final docs-only
+commit. The third was a pre-existing A3 test whose fixed September 1 timestamp
+expired against the real September 8 clock before reaching its intended
+169-hour admission assertion. Validation-only commit
+`b52c2e57444bb7702d10b13ea5ef8890a76c3942` anchors that test to current UTC;
+the complete A3 bridge file then passed 9/9. The full suite was not repeated,
+honoring the explicit exactly-once limit; the three failed predicates require
+targeted final closure after this docs-only commit.
+
+Independent semantic review of exact runtime source `ba422d2...` found zero
+Critical and zero High defects, and no actionable finding at any severity.
+This is source repair and disposable evidence only. Prompt 3 remains blocked
+until a fresh independent preflight validates the final canonical state. No
+fresh provider call, A3 flagship, A4 campaign, 48-hour run, live release
+promotion, live database migration, Supervisor retarget, Scheduler mutation, or
+trust restoration was started.
+
 ## Live release and rollback authority
 
 ```text
@@ -627,14 +716,14 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-Prompt 2 authorizes only the normal Git source promotion of the exact verified
-source head to local `main` and `origin/main`. It does not authorize
-live deployment, CURRENT/PREVIOUS changes, Supervisor retargeting, live database
-migration, provider probing, trust restoration, Prompt 3, or V14. After Git
-parity and the terminal report are proved, stop.
+This repair mission authorizes only the normal Git merge or fast-forward of the
+exact verified source through local `main` and `origin/main`. It does not
+authorize live deployment, CURRENT/PREVIOUS changes, Supervisor retargeting,
+live database migration, provider probing, trust restoration, Prompt 3, or
+V14. After Git parity and the terminal report are proved, stop.
 
-Separately, the frozen roadmap action remains: when the configured provider
-becomes available, restart the genuine cold V11 A3 flagship against its final
-clean proof SHA, then run the immediate six-point A4 campaign and only later
-the separately authorized 48-hour runner. Source promotion does not close those
-gates or grant production trust.
+Prompt 3 remains blocked until a fresh independent preflight validates this
+repair from the final canonical source. That preflight has not started. No
+fresh provider run, genuine cold V11 A3 flagship, immediate A4 campaign, or
+separately guarded 48-hour runner was started by this repair. Source promotion
+does not close those gates or grant production trust.
