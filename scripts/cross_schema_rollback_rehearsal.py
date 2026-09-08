@@ -882,8 +882,29 @@ def _verify_completion(
     )
     state = _read_json(state_path)
     database = inspect_database(request.foundry_home / "foundry.db")
-    scheduler = WindowsRollbackHost().scheduler_contract(request)
-    processes = WindowsRollbackHost().owned_processes(request)
+    host = WindowsRollbackHost()
+    scheduler = host.scheduler_contract(request)
+    process_samples: list[dict[str, Any]] = []
+    stable_process_censuses = 0
+    processes: list[dict[str, Any]] = []
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        processes = host.owned_processes(request)
+        process_samples.append({
+            "observed_at": _now(),
+            "processes": processes,
+        })
+        exact = bool(
+            len(processes) == 1
+            and processes[0].get("kind") == "supervisor"
+            and processes[0].get("release_sha") == PREDECESSOR_SHA
+        )
+        stable_process_censuses = (
+            stable_process_censuses + 1 if exact else 0
+        )
+        if stable_process_censuses >= 3:
+            break
+        time.sleep(0.2)
     forensic = inspect_database(
         Path(state["evidence"]["forensic_database"]["path"]))
     marker = _read_json(request.install_root / "ROLLBACK_RUNTIME.json")
@@ -931,9 +952,7 @@ def _verify_completion(
         ),
         "scheduler_enabled_after_health": scheduler.get("enabled") is True,
         "one_predecessor_supervisor": (
-            len(processes) == 1
-            and processes[0].get("kind") == "supervisor"
-            and processes[0].get("release_sha") == PREDECESSOR_SHA
+            stable_process_censuses >= 3
         ),
         "stop_retained": EmergencyStop(
             request.foundry_home / "EMERGENCY_STOP").active(),
@@ -964,6 +983,8 @@ def _verify_completion(
         "database": database,
         "scheduler": scheduler,
         "processes": processes,
+        "process_samples": process_samples[-25:],
+        "stable_process_censuses": stable_process_censuses,
         "forensic_database": forensic,
         "runtime_bridge": marker,
         "health": state["evidence"]["final_health"],
