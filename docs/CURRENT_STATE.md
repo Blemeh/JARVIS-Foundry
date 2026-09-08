@@ -18,7 +18,7 @@ provider/A3/A4/48h gate, or restore production trust. Prompt 3 remains blocked
 until a fresh independent preflight validates this repair against the final
 canonical source. V10 remains live and unchanged.
 
-DOCUMENTATION STATE BASE SHA: `b52c2e57444bb7702d10b13ea5ef8890a76c3942`
+DOCUMENTATION STATE BASE SHA: `0bdb980f90ade765ddfd385d464731b94a265f52`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -41,7 +41,7 @@ ROLLBACK TEST FIX SHA:        b52c2e57444bb7702d10b13ea5ef8890a76c3942
 ROLLBACK TEST FIX TREE SHA:   a6fae17ed3006d7ee3dd559b4341f7863ae369db
 ROLLBACK CONTROLLER:          REPAIRED / SOURCE ONLY / NOT LIVE
 ROLLBACK REHEARSAL:           PASS / 10 PATHS / LIVE MUTATED NO
-ROLLBACK REVIEW:              PASS / CRITICAL 0 / HIGH 0
+ROLLBACK REVIEW:              PASS / CRITICAL 0 / HIGH 0 / 1 KNOWN MEDIUM
 PROMPT 3 ENTRY:               BLOCKED / FRESH INDEPENDENT PREFLIGHT REQUIRED
 FRESH PROVIDER/A3/A4/48H:     NOT_STARTED
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
@@ -572,11 +572,25 @@ unresolved effects, and `live_mutated: false`. The report is
 SHA-256
 `e8a7ae44f4931a8a63b5b6276e96b51f1811987f1521decf9afca18a81c70394`.
 
-Focused controller/CLI verification passed 61/61; affected deployment,
-release, installer, Scheduler, migration, Supervisor, STOP/control,
-effects/reconciliation, and release-authority regressions passed 160/160.
-Clean-source packaging/adoption passed 21/21. The fresh V13 matrix passed 537
-and skipped 16 of 553 with zero failures. The isolated package report is
+Focused controller/CLI verification passed 61/61 in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\focused-ba422d2-clean.xml`,
+SHA-256
+`d2eac57b25a87dbdad48a27f73c823e69363a79ab9abc7eed8fffb7369d345b4`.
+Affected deployment, release, installer, Scheduler, migration, Supervisor,
+STOP/control, effects/reconciliation, and release-authority regressions passed
+160/160 in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\affected-precommit.xml`,
+SHA-256
+`a57b31b00198623b0a7b1c3aa9be8bb7afc2dd15d6548993aa0945269551d06d`.
+Clean-source packaging/adoption passed 21/21 in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\packaging-adoption-ba422d2.xml`,
+SHA-256
+`b11c014d65b6c2003b3e65f5b2b2e75104e5d2126f57cbc7415f9440b8605305`.
+The fresh V13 matrix passed 537 and skipped 16 of 553 with zero failures in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\V13_FOCUSED_BA422D2.junit.xml`,
+SHA-256
+`ba5455527ec1883f71fe69b4778560955d2e51bcc038dd3fe6f3bb18da0bb416`.
+The isolated package report is
 `C:\temp\JARVIS-Cross-Schema-Rollback-Package-20260908-ba422d2-final\evidence\PACKAGE_CONTENT_REPORT.json`,
 SHA-256
 `054ba600576fbefa0a2d2e1177ecfe78cde94333341d83fbd6c2873e6d0df97c`;
@@ -584,23 +598,38 @@ SHA-256
 generated metadata members, and 392/392 installed members byte-match.
 
 The one permitted full Foundry/convergence execution completed all 3,468 tests
-with 3,436 passed, 29 skipped, and three pre-final failures. Two were the
-expected stale `CURRENT_STATE.md` pin predicates before this final docs-only
-commit. The third was a pre-existing A3 test whose fixed September 1 timestamp
-expired against the real September 8 clock before reaching its intended
-169-hour admission assertion. Validation-only commit
-`b52c2e57444bb7702d10b13ea5ef8890a76c3942` anchors that test to current UTC;
-the complete A3 bridge file then passed 9/9. The full suite was not repeated,
-honoring the explicit exactly-once limit; the three failed predicates require
-targeted final closure after this docs-only commit.
+with 3,436 passed, 29 skipped, and three pre-final failures in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\FULL_SUITE_BA422D2.junit.xml`,
+SHA-256
+`7e141458d83549b595b1c122055a441cfaf46ae4d2ae9c6fde2c60bd65d6ce41`.
+Two were the expected stale `CURRENT_STATE.md` pin predicates before the final
+docs-only commit. The third exposed a pre-existing mixed-clock contract: A2
+observation accepts injected `now`, while executive candidate expiry still
+uses wall-clock UTC. This fails closed through premature `STALE` rejection; it
+does not admit work or dispatch an effect. Validation-only commit
+`b52c2e57444bb7702d10b13ea5ef8890a76c3942` aligns this A3-specific staleness
+test with wall-clock UTC so it reaches its intended 169-hour admission
+assertion; it does not claim to repair historical A2 replay-time semantics.
+The complete A3 bridge file then passed 9/9 in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\A3_CLOCK_REPAIR.junit.xml`,
+SHA-256
+`ba72540cc568038dbe3534bb89b7f750faec069de6f3c1bbb4b64f84d6d2658a`.
+After the first docs-only commit, the exact three full-suite failure predicates
+passed 3/3 in
+`C:\temp\JARVIS-Cross-Schema-Rollback-Repair-20260908-evidence-c999644\FULL_SUITE_FAILURES_CLOSED_0BDB980.junit.xml`,
+SHA-256
+`a60df609776a9af26a8fa62633af72d7f7b8c1cba024732437798ba5b28dc77a`.
+The full suite was not repeated, honoring the explicit exactly-once limit.
 
 Independent semantic review of exact runtime source `ba422d2...` found zero
-Critical and zero High defects, and no actionable finding at any severity.
-This is source repair and disposable evidence only. Prompt 3 remains blocked
-until a fresh independent preflight validates the final canonical state. No
-fresh provider call, A3 flagship, A4 campaign, 48-hour run, live release
-promotion, live database migration, Supervisor retarget, Scheduler mutation, or
-trust restoration was started.
+Critical and zero High defects. Final review of validation/docs source
+`0bdb980...` retained Critical 0 and High 0, disclosed the fail-closed
+mixed-clock A2 residual above as Medium, and requested the evidence bindings
+now recorded here. This is source repair and disposable evidence only. Prompt
+3 remains blocked until a fresh independent preflight validates the final
+canonical state. No fresh provider call, A3 flagship, A4 campaign, 48-hour
+run, live release promotion, live database migration, Supervisor retarget,
+Scheduler mutation, or trust restoration was started.
 
 ## Live release and rollback authority
 
