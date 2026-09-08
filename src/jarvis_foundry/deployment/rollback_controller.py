@@ -37,7 +37,6 @@ from ..platform.windows_subprocess import (
 )
 from ..supervisor.estop import EmergencyStop
 from ..supervisor.worker import (
-    load_adapter_pids,
     pid_alive,
     process_creation_identity,
     terminate_owned_tree,
@@ -166,6 +165,23 @@ _WORK_CONTINUITY_TABLES = (
     "work_packages",
     "worker_manifests",
 )
+_CONTINUITY_EXCLUDED_TABLES = frozenset({
+    "events",
+    "leases",
+    "release_manifests",
+    "release_slots",
+    "schema_migrations",
+    "supervisor_state",
+})
+_CONTINUITY_ALLOWED_EVENT_TYPES = (
+    "emergency_stop.frozen",
+    "release.manifest_recorded",
+    "release.slot_changed",
+    "runtime.control.claiming",
+    "runtime.control.resolved",
+    "supervisor.stopped",
+    "worker_loop.lease_reclaimed",
+)
 
 
 class RollbackControllerError(RuntimeError):
@@ -273,6 +289,17 @@ class RollbackHost(Protocol):
 
     def validate_release_launcher(
         self, request: RollbackRequest, source_sha: str,
+    ) -> dict[str, Any]:
+        ...
+
+    def build_continuity_baseline(
+        self,
+        request: RollbackRequest,
+        *,
+        source_sha: str,
+        snapshot_path: Path,
+        destination_path: Path,
+        expected_schema: int,
     ) -> dict[str, Any]:
         ...
 
@@ -424,6 +451,32 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise RollbackRefusal(f"JSON record is not an object: {path}")
     return payload
+
+
+def _load_adapter_pids_strict(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    if not path.is_file():
+        raise RollbackRefusal(
+            f"adapter PID registry is not a file: {path}")
+    payload = _read_json(path)
+    records: dict[str, dict[str, Any]] = {}
+    for raw_run_id, raw_record in payload.items():
+        run_id = str(raw_run_id).strip()
+        if not run_id or not isinstance(raw_record, Mapping):
+            raise RollbackRefusal(
+                "adapter PID registry contains an invalid record")
+        try:
+            pid = int(raw_record["pid"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise RollbackRefusal(
+                f"adapter PID registry record {run_id!r} has no valid PID"
+            ) from error
+        if pid <= 0:
+            raise RollbackRefusal(
+                f"adapter PID registry record {run_id!r} has no valid PID")
+        records[run_id] = dict(raw_record)
+    return records
 
 
 class _RollbackFileLock:
@@ -732,6 +785,97 @@ def _table_continuity_digest(
     }
 
 
+def _protected_event_continuity_digest(
+    connection: sqlite3.Connection,
+) -> dict[str, Any]:
+    if not _table_exists(connection, "events"):
+        return {
+            "present": False,
+            "row_count": 0,
+            "sha256": None,
+            "event_types": {},
+        }
+    columns = [
+        str(column[1])
+        for column in connection.execute("PRAGMA table_info(events)").fetchall()
+    ]
+    placeholders = ", ".join(
+        "?" for _ in _CONTINUITY_ALLOWED_EVENT_TYPES)
+    predicate = (
+        f"WHERE event_type NOT IN ({placeholders})"
+        if placeholders else ""
+    )
+    digest = hashlib.sha256()
+    _feed_digest_value(digest, "events")
+    for column in columns:
+        _feed_digest_value(digest, column)
+    row_count = 0
+    event_types: dict[str, int] = {}
+    cursor = connection.execute(
+        f"SELECT * FROM events {predicate} ORDER BY sequence",
+        _CONTINUITY_ALLOWED_EVENT_TYPES,
+    )
+    while True:
+        rows = cursor.fetchmany(512)
+        if not rows:
+            break
+        for row in rows:
+            digest.update(b"R")
+            for value in row:
+                _feed_digest_value(digest, value)
+            event_type = str(row[columns.index("event_type")])
+            event_types[event_type] = event_types.get(event_type, 0) + 1
+            row_count += 1
+    return {
+        "present": True,
+        "row_count": row_count,
+        "sha256": digest.hexdigest(),
+        "event_types": event_types,
+        "excluded_event_types": list(_CONTINUITY_ALLOWED_EVENT_TYPES),
+    }
+
+
+def database_rollback_continuity(path: Path) -> dict[str, Any]:
+    """Fingerprint every durable authority not owned by rollback bookkeeping."""
+    database_path = Path(path).expanduser().resolve()
+    if not database_path.is_file():
+        raise RollbackRefusal(f"database missing: {database_path}")
+    connection = sqlite3.connect(
+        f"file:{database_path.as_posix()}?mode=ro",
+        uri=True,
+        timeout=10,
+    )
+    try:
+        quick_check = str(connection.execute("PRAGMA quick_check").fetchone()[0])
+        integrity_check = str(
+            connection.execute("PRAGMA integrity_check").fetchone()[0])
+        table_names = [
+            str(row[0])
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' "
+                "ORDER BY name"
+            ).fetchall()
+            if str(row[0]) not in _CONTINUITY_EXCLUDED_TABLES
+        ]
+        tables = {
+            table_name: _table_continuity_digest(connection, table_name)
+            for table_name in table_names
+        }
+        return {
+            "path": str(database_path),
+            "file_sha256": _sha256_file(database_path),
+            "schema": _schema_version(connection),
+            "quick_check": quick_check,
+            "integrity_check": integrity_check,
+            "tables": tables,
+            "protected_events": _protected_event_continuity_digest(connection),
+            "excluded_tables": sorted(_CONTINUITY_EXCLUDED_TABLES),
+        }
+    finally:
+        connection.close()
+
+
 def _schema_version(connection: sqlite3.Connection) -> int:
     if not _table_exists(connection, "schema_migrations"):
         return 0
@@ -1019,6 +1163,32 @@ def _retire_completed_marker(marker_path, *, root, home, source_sha, shim_hash):
         or payload.get("sitecustomize_sha256") != shim_hash
     ):
         _abort("completed marker changed before owner RESUME")
+    transaction_id = str(payload.get("transaction_id") or "")
+    state_path = Path(
+        str(payload.get("transaction_state_path") or "")
+    ).expanduser().resolve()
+    expected_state = (
+        root / "rollback-transactions" / transaction_id / "STATE.json"
+    ).resolve()
+    if not transaction_id or not _same_path(state_path, expected_state):
+        _abort("completed rollback transaction state path is invalid")
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception as error:
+        _abort("completed rollback transaction state is unreadable: " + type(error).__name__)
+    if not isinstance(state, dict):
+        _abort("completed rollback transaction state is not an object")
+    request = state.get("request")
+    if (
+        state.get("contract") != "jarvis.cross-schema-rollback.v1"
+        or state.get("transaction_id") != transaction_id
+        or state.get("phase") != "COMPLETE"
+        or not isinstance(request, dict)
+        or request.get("predecessor_source_sha") != source_sha
+        or not _same_path(request.get("install_root", ""), root)
+        or not _same_path(request.get("foundry_home", ""), home)
+    ):
+        _abort("completed rollback transaction is not durably COMPLETE")
     try:
         marker_path.unlink()
     except Exception as error:
@@ -1303,9 +1473,15 @@ class WindowsRollbackHost:
         description = task.findtext(f"{namespace}RegistrationInfo/{namespace}Description")
         policy = task.findtext(f"{namespace}Settings/{namespace}MultipleInstancesPolicy")
         enabled_text = task.findtext(f"{namespace}Settings/{namespace}Enabled")
-        action = task.find(f"{namespace}Actions/{namespace}Exec")
-        if action is None:
-            raise RollbackRefusal("owned Scheduler task has no Exec action")
+        actions = task.find(f"{namespace}Actions")
+        action_nodes = list(actions) if actions is not None else []
+        if (
+            len(action_nodes) != 1
+            or action_nodes[0].tag != f"{namespace}Exec"
+        ):
+            raise RollbackRefusal(
+                "owned Scheduler task must contain exactly one Exec action")
+        action = action_nodes[0]
         command = str(action.findtext(f"{namespace}Command") or "").strip()
         raw_arguments = str(
             action.findtext(f"{namespace}Arguments") or "").strip()
@@ -1475,12 +1651,6 @@ class WindowsRollbackHost:
         for raw in raw_processes:
             command_line = str(
                 raw.get("CommandLine") or raw.get("command_line") or "")
-            try:
-                pid = int(raw.get("ProcessId", raw.get("pid")))
-            except (TypeError, ValueError):
-                continue
-            if pid <= 0 or not pid_alive(pid):
-                continue
             executable = str(
                 raw.get("ExecutablePath")
                 or raw.get("executable_path")
@@ -1492,21 +1662,58 @@ class WindowsRollbackHost:
             )
             is_scheduler_wrapper = False
             if (
-                Path(executable).name.casefold()
-                in {"wscript.exe", "cscript.exe"}
+                expected_vbs.name.casefold() in command_line.casefold()
                 and process_matches_home(raw, request.foundry_home)
             ):
                 try:
                     tokens = _split_windows_arguments(command_line)
-                    is_scheduler_wrapper = any(
-                        _same_path(token, expected_vbs)
-                        for token in tokens
-                        if Path(token).name.casefold()
-                        == expected_vbs.name.casefold()
+                except (OSError, ValueError) as error:
+                    raise RollbackRefusal(
+                        "matching Scheduler wrapper command line is invalid"
+                    ) from error
+                wrapper_tokens = [
+                    token for token in tokens
+                    if Path(token).name.casefold()
+                    == expected_vbs.name.casefold()
+                ]
+                executable_names = {
+                    Path(value).name.casefold()
+                    for value in (executable, tokens[0] if tokens else "")
+                    if value
+                }
+                command_executable = (
+                    Path(tokens[0]).name.casefold() if tokens else "")
+                census_executable = (
+                    Path(executable).name.casefold() if executable else "")
+                if (
+                    len(wrapper_tokens) != 1
+                    or not _same_path(wrapper_tokens[0], expected_vbs)
+                    or not executable_names
+                    or not executable_names <= {"wscript.exe", "cscript.exe"}
+                    or (
+                        command_executable
+                        and census_executable
+                        and command_executable != census_executable
                     )
-                except (OSError, ValueError):
-                    is_scheduler_wrapper = False
+                ):
+                    raise RollbackRefusal(
+                        "matching Scheduler wrapper identity is uncertain")
+                is_scheduler_wrapper = any(
+                        _same_path(token, expected_vbs)
+                        for token in wrapper_tokens
+                    )
             if not is_worker and not is_scheduler_wrapper:
+                continue
+            try:
+                pid = int(raw.get("ProcessId", raw.get("pid")))
+            except (TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "matching owned process census row has no valid PID"
+                ) from error
+            if pid <= 0:
+                raise RollbackRefusal(
+                    "matching owned process census row has no valid PID")
+            if not pid_alive(pid):
                 continue
             try:
                 creation_identity = process_creation_identity(pid)
@@ -1523,9 +1730,11 @@ class WindowsRollbackHost:
                     "create_time": creation_identity.get("create_time"),
                     "exe": executable,
                 },
-                creation_identity,
+                    creation_identity,
             ):
-                continue
+                raise RollbackRefusal(
+                    "matching owned process executable identity changed "
+                    "during census")
             observed.append({
                 "kind": (
                     "scheduler_wrapper"
@@ -1539,13 +1748,26 @@ class WindowsRollbackHost:
             })
 
         adapter_table = request.foundry_home / "adapter_worker_pids.json"
-        for run_id, record in load_adapter_pids(adapter_table).items():
-            try:
-                pid = int(record["pid"])
-            except (KeyError, TypeError, ValueError):
-                continue
+        for run_id, record in _load_adapter_pids_strict(adapter_table).items():
+            pid = int(record["pid"])
             if not pid_alive(pid):
                 continue
+            recorded_identity = record.get("creation_identity")
+            if (
+                not isinstance(recorded_identity, Mapping)
+                or recorded_identity.get("create_time") is None
+            ):
+                raise RollbackRefusal(
+                    "live adapter stored creation identity is unavailable")
+            try:
+                recorded_pid = int(recorded_identity.get("pid"))
+            except (TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "live adapter stored creation identity is unavailable"
+                ) from error
+            if recorded_pid != pid:
+                raise RollbackRefusal(
+                    "live adapter stored creation identity does not match PID")
             try:
                 observed_identity = process_creation_identity(pid)
             except (OSError, TypeError, ValueError) as error:
@@ -1556,7 +1778,7 @@ class WindowsRollbackHost:
                     "live adapter creation identity is unavailable")
             if (
                 _creation_identity_matches(
-                    record.get("creation_identity"), observed_identity)
+                    recorded_identity, observed_identity)
             ):
                 observed.append({
                     "kind": "adapter",
@@ -1634,6 +1856,116 @@ class WindowsRollbackHost:
             raise RollbackRefusal(
                 f"release {source_sha} did not validate itself")
         return dict(payload)
+
+    def build_continuity_baseline(
+        self,
+        request: RollbackRequest,
+        *,
+        source_sha: str,
+        snapshot_path: Path,
+        destination_path: Path,
+        expected_schema: int,
+    ) -> dict[str, Any]:
+        python_exe = release_dir(
+            source_sha, request.install_root,
+        ) / ".venv" / "Scripts" / "python.exe"
+        destination = Path(destination_path).resolve()
+        temporary = destination.with_name(
+            f".{destination.name}.{uuid.uuid4().hex}.tmp")
+        code = """
+import json
+import sqlite3
+import sys
+
+from jarvis_foundry.migrations import SCHEMA_VERSION, migrate
+
+path = sys.argv[1]
+expected = int(sys.argv[2])
+if SCHEMA_VERSION != expected:
+    raise SystemExit(
+        f"release schema {SCHEMA_VERSION} does not match expected {expected}"
+    )
+connection = sqlite3.connect(path)
+try:
+    connection.execute("BEGIN IMMEDIATE")
+    observed = migrate(
+        connection,
+        "rollback-continuity-baseline",
+        target=expected,
+    )
+    quick_check = str(connection.execute("PRAGMA quick_check").fetchone()[0])
+    integrity_check = str(
+        connection.execute("PRAGMA integrity_check").fetchone()[0]
+    )
+    if observed != expected or quick_check != "ok" or integrity_check != "ok":
+        raise RuntimeError("migrated continuity baseline failed validation")
+    connection.commit()
+finally:
+    connection.close()
+print(json.dumps({
+    "schema": observed,
+    "quick_check": quick_check,
+    "integrity_check": integrity_check,
+}, sort_keys=True))
+"""
+        try:
+            _atomic_copy_file(Path(snapshot_path).resolve(), temporary)
+            environment = sanitized_env()
+            environment["PYTHONDONTWRITEBYTECODE"] = "1"
+            result = subprocess.run(
+                [
+                    str(python_exe),
+                    "-I",
+                    "-B",
+                    "-c",
+                    code,
+                    str(temporary),
+                    str(expected_schema),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=False,
+                cwd=request.foundry_home,
+                env=environment,
+                **headless_run_kwargs(),
+            )
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout).strip()
+                raise RollbackRefusal(
+                    "failed release could not migrate the rollback continuity "
+                    f"baseline: {detail[:500]}")
+            try:
+                payload = json.loads(result.stdout)
+            except (TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "failed release returned invalid continuity baseline JSON"
+                ) from error
+            if (
+                not isinstance(payload, Mapping)
+                or payload.get("schema") != expected_schema
+                or payload.get("quick_check") != "ok"
+                or payload.get("integrity_check") != "ok"
+            ):
+                raise RollbackRefusal(
+                    "failed release did not validate the continuity baseline")
+            with temporary.open("r+b") as handle:
+                handle.flush()
+                os.fsync(handle.fileno())
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(temporary, destination)
+            return {
+                **dict(payload),
+                "path": str(destination),
+                "file_sha256": _sha256_file(destination),
+                "source_sha": source_sha,
+            }
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise RollbackRefusal(
+                "failed release continuity baseline migration could not run"
+            ) from error
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def validate_release_launcher(
         self, request: RollbackRequest, source_sha: str,
@@ -2038,6 +2370,9 @@ class CrossSchemaRollbackController:
         self.owned_snapshot_path = self.evidence_dir / (
             f"snapshot-{request.snapshot_sha256[:16]}.db"
         )
+        self.continuity_baseline_path = self.evidence_dir / (
+            f"snapshot-migrated-{request.failed_source_sha[:12]}.db"
+        )
         self.log_path = self.transaction_dir / "predecessor-supervisor.log"
         self.state: dict[str, Any] = {}
 
@@ -2051,9 +2386,6 @@ class CrossSchemaRollbackController:
                 initial_evidence = self._initial_preconditions()
             self.state = self._load_or_create_state(
                 initial_evidence=initial_evidence)
-            if self.state["phase"] == COMPLETE:
-                self._clear_active_marker()
-                return self._completion_report()
             try:
                 return self._execute()
             except RollbackInterruption:
@@ -2423,20 +2755,25 @@ class CrossSchemaRollbackController:
                     expected_identity=self.state[
                         "evidence"]["predecessor_identity"],
                 )
-                bridge = self._mark_runtime_bridge_complete()
                 self._record(
                     phase=COMPLETE,
-                    event="rollback_transaction_completed",
+                    event="rollback_transaction_durably_completed",
                     evidence={
                         "final_verification": final,
                         "final_health": health,
-                        "runtime_bridge": bridge,
                     },
                 )
-                self._clear_active_marker()
-                return self._completion_report()
+                continue
 
             if phase == COMPLETE:
+                bridge = self._mark_runtime_bridge_complete()
+                if self.state.get("evidence", {}).get(
+                    "runtime_bridge"
+                ) != bridge:
+                    self._record(
+                        event="rollback_runtime_bridge_completed",
+                        evidence={"runtime_bridge": bridge},
+                    )
                 self._clear_active_marker()
                 return self._completion_report()
 
@@ -2630,67 +2967,40 @@ class CrossSchemaRollbackController:
 
     @staticmethod
     def _require_rollback_continuity(
-        snapshot: Mapping[str, Any],
+        baseline: Mapping[str, Any],
         failed_database: Mapping[str, Any],
     ) -> dict[str, Any]:
-        snapshot_effects = snapshot.get("effects") or {}
-        failed_effects = failed_database.get("effects") or {}
-        effect_fields = (
-            "event_count",
-            "event_sha256",
-            "journal_continuity",
-        )
-        effect_mismatches = [
-            field for field in effect_fields
-            if snapshot_effects.get(field) != failed_effects.get(field)
+        if baseline.get("schema") != failed_database.get("schema"):
+            raise RollbackRefusal(
+                "rollback continuity baseline schema does not match failed database")
+        baseline_tables = baseline.get("tables") or {}
+        failed_tables = failed_database.get("tables") or {}
+        table_mismatches = [
+            table_name
+            for table_name in sorted(set(baseline_tables) | set(failed_tables))
+            if baseline_tables.get(table_name) != failed_tables.get(table_name)
         ]
-
-        snapshot_tables = (
-            (snapshot.get("work") or {}).get("continuity_tables") or {}
-        )
-        failed_tables = (
-            (failed_database.get("work") or {}).get(
-                "continuity_tables") or {}
-        )
-        work_mismatches: list[str] = []
-        preserved_work: dict[str, Any] = {}
-        for table_name in sorted(
-            set(snapshot_tables) | set(failed_tables)
-        ):
-            before = snapshot_tables.get(table_name) or {
-                "present": False,
-                "row_count": 0,
-                "sha256": None,
-            }
-            after = failed_tables.get(table_name) or {
-                "present": False,
-                "row_count": 0,
-                "sha256": None,
-            }
-            before_count = int(before.get("row_count") or 0)
-            after_count = int(after.get("row_count") or 0)
-            if before_count == 0 and after_count == 0:
-                continue
-            if before != after:
-                work_mismatches.append(table_name)
-                continue
-            preserved_work[table_name] = {
-                "row_count": before_count,
-                "sha256": before.get("sha256"),
-            }
-        if effect_mismatches or work_mismatches:
+        baseline_events = baseline.get("protected_events") or {}
+        failed_events = failed_database.get("protected_events") or {}
+        event_fields = ("present", "row_count", "sha256", "event_types")
+        event_mismatches = [
+            field for field in event_fields
+            if baseline_events.get(field) != failed_events.get(field)
+        ]
+        if table_mismatches or event_mismatches:
             raise RollbackRefusal(
                 "rollback snapshot would discard post-snapshot effect/work "
                 "idempotency evidence: "
-                f"effects={effect_mismatches}, work={work_mismatches}"
+                f"events={event_mismatches}, tables={table_mismatches}"
             )
         return {
             "status": "PRESERVED",
-            "effect_event_count": snapshot_effects.get("event_count"),
-            "effect_event_sha256": snapshot_effects.get("event_sha256"),
-            "system_actions": snapshot_effects.get(
-                "journal_continuity"),
-            "work_tables": preserved_work,
+            "schema": baseline.get("schema"),
+            "protected_event_count": baseline_events.get("row_count"),
+            "protected_event_sha256": baseline_events.get("sha256"),
+            "protected_table_count": len(baseline_tables),
+            "protected_tables": baseline_tables,
+            "excluded_tables": baseline.get("excluded_tables"),
         }
 
     def _validate_snapshot(self) -> dict[str, Any]:
@@ -2729,10 +3039,37 @@ class CrossSchemaRollbackController:
         self._require_authority(snapshot, expected)
         snapshot["source_path"] = str(self.request.snapshot_path)
         snapshot["owned_copy"] = True
+        failed_identity = self.state["evidence"]["failed_identity"]
+        baseline_migration = self.host.build_continuity_baseline(
+            self.request,
+            source_sha=self.request.failed_source_sha,
+            snapshot_path=self.owned_snapshot_path,
+            destination_path=self.continuity_baseline_path,
+            expected_schema=int(failed_identity["schema"]),
+        )
+        baseline_continuity = database_rollback_continuity(
+            self.continuity_baseline_path)
+        if (
+            baseline_continuity["file_sha256"]
+            != baseline_migration.get("file_sha256")
+            or baseline_continuity["schema"] != failed_identity["schema"]
+        ):
+            raise RollbackRefusal(
+                "transaction-owned rollback continuity baseline changed")
+        failed_continuity = database_rollback_continuity(
+            self.request.foundry_home / "foundry.db")
+        if failed_continuity["schema"] != failed_identity["schema"]:
+            raise RollbackRefusal(
+                "failed database schema changed during snapshot validation")
+        snapshot["continuity_baseline"] = {
+            **baseline_migration,
+            "continuity": baseline_continuity,
+        }
+        snapshot["failed_continuity"] = failed_continuity
         snapshot["rollback_continuity"] = (
             self._require_rollback_continuity(
-                snapshot,
-                self.state["evidence"]["initial_database"],
+                baseline_continuity,
+                failed_continuity,
             )
         )
         return snapshot
@@ -2753,6 +3090,23 @@ class CrossSchemaRollbackController:
         if observed_hash != self.request.snapshot_sha256:
             raise RollbackRefusal(
                 "transaction-owned rollback snapshot SHA-256 changed")
+        baseline = recorded.get("continuity_baseline")
+        if not isinstance(baseline, Mapping):
+            raise RollbackRefusal(
+                "validated rollback continuity baseline evidence is missing")
+        recorded_baseline_path = Path(str(baseline.get("path") or "")).resolve()
+        if not _same_path(
+            recorded_baseline_path, self.continuity_baseline_path
+        ):
+            raise RollbackRefusal(
+                "rollback continuity baseline is outside the transaction")
+        if (
+            not self.continuity_baseline_path.is_file()
+            or _sha256_file(self.continuity_baseline_path)
+            != baseline.get("file_sha256")
+        ):
+            raise RollbackRefusal(
+                "transaction-owned rollback continuity baseline changed")
         observed = inspect_database(self.owned_snapshot_path)
         if (
             observed.get("logical", {}).get("sha256")
@@ -2978,6 +3332,7 @@ class CrossSchemaRollbackController:
             "foundry_home": str(self.request.foundry_home),
             "sitecustomize_path": str(shim_path.resolve()),
             "sitecustomize_sha256": shim_hash,
+            "transaction_state_path": str(self.state_path.resolve()),
             "recorded_at": isoformat(),
         }
         if marker_path.exists():
@@ -2991,6 +3346,7 @@ class CrossSchemaRollbackController:
                     "install_root",
                     "foundry_home",
                     "sitecustomize_sha256",
+                    "transaction_state_path",
                 )
             }
             expected = {
@@ -3004,15 +3360,25 @@ class CrossSchemaRollbackController:
         return marker
 
     def _mark_runtime_bridge_complete(self) -> dict[str, Any]:
+        if self.state.get("phase") != COMPLETE:
+            raise RollbackRefusal(
+                "rollback runtime bridge cannot complete before transaction")
         marker_path = rollback_runtime_marker(self.request.install_root)
         marker = _read_json(marker_path)
         if (
             marker.get("transaction_id") != self.request.transaction_id
             or marker.get("source_sha")
             != self.request.predecessor_source_sha
+            or not _same_path(
+                marker.get("transaction_state_path", ""), self.state_path)
         ):
             raise RollbackRefusal(
                 "rollback runtime marker changed before completion")
+        if marker.get("status") == "COMPLETE_FROZEN_RUNTIME":
+            return marker
+        if marker.get("status") != "ACTIVE":
+            raise RollbackRefusal(
+                "rollback runtime marker has an invalid completion state")
         marker["status"] = "COMPLETE_FROZEN_RUNTIME"
         marker["completed_at"] = isoformat()
         _atomic_write_json(marker_path, marker)
@@ -3291,6 +3657,7 @@ class CrossSchemaRollbackController:
                 POST_START_VERIFIED,
                 SCHEDULER_ENABLE_PENDING,
                 SCHEDULER_ENABLED,
+                COMPLETE,
             }
             and read_current(self.request.install_root)
             == self.request.predecessor_source_sha
