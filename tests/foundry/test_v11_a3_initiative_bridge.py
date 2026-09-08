@@ -251,7 +251,7 @@ def test_wait_stop_stale_equivalent_and_missing_capability_never_admit(tmp_path:
     stale_root = tmp_path / "stale" / "repo"
     _repo(stale_root)
     stale_db = _ready_database(tmp_path / "stale")
-    observed = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    observed = datetime.now(timezone.utc).replace(microsecond=0)
     stale_decision = _a2(stale_db, stale_root, now=observed)
     stale = _authority(stale_db, tmp_path / "stale", stale_root).admit(
         stale_decision,
