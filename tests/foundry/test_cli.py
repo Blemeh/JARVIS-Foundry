@@ -130,6 +130,10 @@ def test_cross_schema_rollback_cli_requires_explicit_frozen_inputs(
         "0" * 64,
         "--failed-sha",
         "a" * 40,
+        "--failed-manifest-sha256",
+        "3" * 64,
+        "--failed-package-sha256",
+        "4" * 64,
         "--predecessor-sha",
         "b" * 40,
         "--predecessor-manifest-sha256",
@@ -148,6 +152,8 @@ def test_cross_schema_rollback_cli_requires_explicit_frozen_inputs(
     assert request.install_root == install.resolve()
     assert request.foundry_home == home.resolve()
     assert request.snapshot_path == snapshot.resolve()
+    assert request.failed_manifest_sha256 == "3" * 64
+    assert request.failed_package_sha256 == "4" * 64
     assert request.predecessor_manifest_sha256 == "1" * 64
     assert request.predecessor_package_sha256 == "2" * 64
     assert request.health_timeout_seconds == 12.5

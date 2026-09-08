@@ -117,6 +117,9 @@ def _write_release(
 def _record_database_authority(
     database_path: Path,
     identity: Mapping[str, Any],
+    *,
+    previous_identity: Mapping[str, Any] | None = None,
+    manifest_sha256: str | None = None,
 ) -> None:
     connection = sqlite3.connect(database_path)
     try:
@@ -126,10 +129,15 @@ def _record_database_authority(
             "runtime_identity_json, parent_release_id, improvement_id, risk_class,"
             "migrations_json, verdicts_json, rollback_target, created_at,"
             "last_event_id, updated_at"
-            ") VALUES (?, ?, '{}', '[]', ?, NULL, ?, 'R0', ?, '[]', NULL, ?, ?, ?)",
+            ") VALUES (?, ?, ?, '[]', ?, NULL, ?, 'R0', ?, '[]', NULL, ?, ?, ?)",
             (
                 identity["release_id"],
                 identity["source_sha"],
+                json.dumps(
+                    {"RELEASE.json": manifest_sha256}
+                    if manifest_sha256 is not None else {},
+                    sort_keys=True,
+                ),
                 json.dumps(dict(identity), sort_keys=True),
                 f"deployment:{identity['source_sha']}",
                 json.dumps([identity["schema"]]),
@@ -148,6 +156,17 @@ def _record_database_authority(
                 f"live:{identity['release_id']}",
             ),
         )
+        if previous_identity is not None:
+            connection.execute(
+                "INSERT OR REPLACE INTO release_slots("
+                "slot, release_id, updated_at, last_event_id"
+                ") VALUES ('previous', ?, ?, ?)",
+                (
+                    previous_identity["release_id"],
+                    "2026-09-07T00:00:00Z",
+                    f"previous:{previous_identity['release_id']}",
+                ),
+            )
         connection.commit()
     finally:
         connection.close()
@@ -431,7 +450,7 @@ def _rollback_sandbox(tmp_path: Path) -> RollbackSandbox:
         PREDECESSOR_IDENTITY,
         previous_runtime=None,
     )
-    _write_release(
+    failed_dir = _write_release(
         install_root,
         FAILED_IDENTITY,
         previous_runtime=PREDECESSOR_IDENTITY,
@@ -439,13 +458,26 @@ def _rollback_sandbox(tmp_path: Path) -> RollbackSandbox:
 
     live_database = FoundryDatabase(home / "foundry.db")
     live_database.initialize(target=38)
-    _record_database_authority(live_database.path, PREDECESSOR_IDENTITY)
+    _record_database_authority(
+        live_database.path,
+        PREDECESSOR_IDENTITY,
+        manifest_sha256=hashlib.sha256(
+            (predecessor_dir / "RELEASE.json").read_bytes()
+        ).hexdigest(),
+    )
     snapshot_path = tmp_path / "pre-migration-v38.db"
     live_database.backup_to(snapshot_path)
     snapshot_report = inspect_database(snapshot_path)
 
     live_database.initialize(target=40)
-    _record_database_authority(live_database.path, FAILED_IDENTITY)
+    _record_database_authority(
+        live_database.path,
+        FAILED_IDENTITY,
+        previous_identity=PREDECESSOR_IDENTITY,
+        manifest_sha256=hashlib.sha256(
+            (failed_dir / "RELEASE.json").read_bytes()
+        ).hexdigest(),
+    )
     write_pointer(install_root / "CURRENT", FAILED_SHA)
     write_pointer(install_root / "PREVIOUS", PREDECESSOR_SHA)
     EmergencyStop(home / "EMERGENCY_STOP").activate(
@@ -459,6 +491,11 @@ def _rollback_sandbox(tmp_path: Path) -> RollbackSandbox:
         snapshot_path=snapshot_path,
         snapshot_sha256=snapshot_hash,
         failed_source_sha=FAILED_SHA,
+        failed_manifest_sha256=hashlib.sha256(
+            (failed_dir / "RELEASE.json").read_bytes()
+        ).hexdigest(),
+        failed_package_sha256=release_package_digest(
+            failed_dir)["sha256"],
         predecessor_source_sha=PREDECESSOR_SHA,
         predecessor_manifest_sha256=hashlib.sha256(
             (predecessor_dir / "RELEASE.json").read_bytes()
@@ -474,6 +511,119 @@ def _rollback_sandbox(tmp_path: Path) -> RollbackSandbox:
         initial_failed_report=initial_failed_report,
         snapshot_report=snapshot_report,
     )
+
+
+def _refresh_sandbox_reports(sandbox: RollbackSandbox) -> None:
+    sandbox.request = replace(
+        sandbox.request,
+        snapshot_sha256=hashlib.sha256(
+            sandbox.request.snapshot_path.read_bytes()
+        ).hexdigest(),
+    )
+    sandbox.snapshot_report = inspect_database(
+        sandbox.request.snapshot_path)
+    sandbox.initial_failed_report = inspect_database(
+        sandbox.request.foundry_home / "foundry.db")
+
+
+def _seed_runtime_control_history(
+    sandbox: RollbackSandbox,
+    *,
+    terminal: bool,
+) -> tuple[str, str]:
+    request_id = "already-resolved-owner-restart"
+    instance_id = "supervisor-failed-activation"
+    shared_events = [
+        Event.create(
+            "runtime.control.requested",
+            {
+                "action": "RESTART",
+                "expected_release": PREDECESSOR_SHA,
+                "expires_at": "2026-09-08T00:00:01Z",
+                "request_id": request_id,
+                "requested_at": "2026-09-08T00:00:00Z",
+                "requested_by": "owner",
+            },
+            source_type="owner",
+            source_id="owner",
+            idempotency_key=f"runtime.control.requested:{request_id}",
+            occurred_at="2026-09-08T00:00:00Z",
+        ),
+    ]
+    if terminal:
+        shared_events.append(Event.create(
+            "runtime.control.resolved",
+            {
+                "action": "RESTART",
+                "attempt": 0,
+                "instance_id": "supervisor-predecessor",
+                "phase": "started",
+                "release_id": PREDECESSOR_SHA,
+                "request_id": request_id,
+                "request_status": None,
+                "status": "RUNNING",
+            },
+            source_type="supervisor",
+            source_id="supervisor-predecessor",
+            idempotency_key=(
+                f"runtime.control.resolved:{request_id}:started:RUNNING"
+            ),
+            occurred_at="2026-09-08T00:00:00.500000Z",
+        ))
+    for path in (
+        sandbox.request.snapshot_path,
+        sandbox.request.foundry_home / "foundry.db",
+    ):
+        FoundryDatabase(path).append_events(shared_events)
+    failed_database = FoundryDatabase(
+        sandbox.request.foundry_home / "foundry.db")
+    failed_database.append(Event.create(
+        "runtime.control.claiming",
+        {
+            "creation_identity": {
+                "pid": 9001,
+                "create_time": 1,
+                "exe": r"C:\Python\python.exe",
+            },
+            "generation": 1,
+            "instance_id": instance_id,
+            "pid": 9001,
+            "release_id": FAILED_SHA,
+            "request_id": None,
+        },
+        source_type="supervisor",
+        source_id=instance_id,
+        idempotency_key=f"runtime.control.claiming:{instance_id}:1",
+        occurred_at="2026-09-08T00:01:00Z",
+    ))
+    failed_database.append(Event.create(
+        "runtime.control.resolved",
+        {
+            "action": "RESTART",
+            "attempt": 0,
+            "creation_identity": {
+                "pid": 9001,
+                "create_time": 1,
+                "exe": r"C:\Python\python.exe",
+            },
+            "instance_id": instance_id,
+            "phase": "stale_request",
+            "pid": 9001,
+            "reason": "owner request expired before application",
+            "release_id": FAILED_SHA,
+            "request_id": request_id,
+            "request_status": "STALE",
+            "status": "RUNNING",
+        },
+        source_type="supervisor",
+        source_id=instance_id,
+        idempotency_key=(
+            f"runtime.control.resolved:{request_id}:stale_request:RUNNING"
+        ),
+        occurred_at="2026-09-08T00:02:00Z",
+    ))
+    _refresh_sandbox_reports(sandbox)
+    return request_id, instance_id
 
 
 def _assert_completed(sandbox: RollbackSandbox, report: Mapping[str, Any]) -> None:
@@ -510,10 +660,16 @@ def _assert_completed(sandbox: RollbackSandbox, report: Mapping[str, Any]) -> No
         ).read_text(encoding="utf-8")
     )
     assert state["phase"] == COMPLETE
+    assert state["resume_authorized"] is True
     runtime_marker = json.loads(
         (request.install_root / "ROLLBACK_RUNTIME.json").read_text(
             encoding="utf-8"))
     assert runtime_marker["status"] == "COMPLETE_FROZEN_RUNTIME"
+    assert state["evidence"]["runtime_bridge_completion"] == runtime_marker
+    assert (
+        state["evidence"]["completion_report"]["status"]
+        == "ROLLBACK_COMPLETE"
+    )
     assert Path(runtime_marker["transaction_state_path"]).resolve() == (
         request.install_root
         / "rollback-transactions"
@@ -558,6 +714,8 @@ def test_runtime_bridge_completion_follows_durable_complete(
         state = json.loads(controller.state_path.read_text(encoding="utf-8"))
         observed_phases.append(str(state["phase"]))
         assert state["phase"] == COMPLETE
+        assert state["resume_authorized"] is True
+        assert not controller.active_path.exists()
         return original()
 
     monkeypatch.setattr(
@@ -567,6 +725,75 @@ def test_runtime_bridge_completion_follows_durable_complete(
 
     _assert_completed(sandbox, report)
     assert observed_phases == [COMPLETE]
+
+
+def test_runtime_bridge_publish_failure_blocks_resume_and_reenters(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    controller = CrossSchemaRollbackController(
+        sandbox.request,
+        host=sandbox.host,
+    )
+
+    def fail_publication():
+        raise OSError("injected final marker publication failure")
+
+    monkeypatch.setattr(
+        controller, "_mark_runtime_bridge_complete", fail_publication)
+
+    with pytest.raises(
+        RollbackControllerError,
+        match="final marker publication failure",
+    ):
+        controller.run()
+
+    marker_path = (
+        sandbox.request.install_root / "ROLLBACK_RUNTIME.json"
+    )
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    assert marker["status"] == "ACTIVE"
+    state = json.loads(controller.state_path.read_text(encoding="utf-8"))
+    assert state["phase"] == "PREDECESSOR_VALIDATED"
+    assert state["resume_authorized"] is False
+    assert "completion_report" not in state["evidence"]
+    assert "runtime_bridge_completion" not in state["evidence"]
+    assert sandbox.host.scheduler_enabled is False
+    assert sandbox.host.processes == []
+
+    EmergencyStop(
+        sandbox.request.foundry_home / "EMERGENCY_STOP").clear()
+    shim_dir = Path(marker["sitecustomize_path"]).parent
+    environment = os.environ.copy()
+    environment.update({
+        "JARVIS_HOME": str(sandbox.request.foundry_home),
+        "JARVIS_INSTALL_ROOT": str(sandbox.request.install_root),
+        "JARVIS_RELEASE_SHA": PREDECESSOR_SHA,
+        "JARVIS_ROLLBACK_RUNTIME_MARKER": str(marker_path),
+        "PYTHONPATH": str(shim_dir),
+    })
+    environment.pop("PYTHONHOME", None)
+    result = subprocess.run(
+        [sys.executable, "-c", "print('unsafe owner resume started')"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+        env=environment,
+    )
+    assert result.returncode == 2
+    assert "durable STOP is not active" in result.stderr
+    assert marker_path.is_file()
+
+    EmergencyStop(
+        sandbox.request.foundry_home / "EMERGENCY_STOP").activate(
+            "resume finalization test containment")
+    report = CrossSchemaRollbackController(
+        sandbox.request,
+        host=sandbox.host,
+    ).run()
+    _assert_completed(sandbox, report)
 
 
 @pytest.mark.parametrize("fault_point", FAULT_POINTS)
@@ -824,6 +1051,47 @@ def test_windows_owned_process_census_uses_wrapper_command_when_exe_missing(
     assert observed[0]["pid"] == 3212
 
 
+def test_windows_owned_process_census_refuses_wrapper_creation_exe_mismatch(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    wrapper = sandbox.request.install_root / "bin" / (
+        "jarvis-supervisor-headless.vbs")
+    executable = r"C:\Windows\System32\wscript.exe"
+    raw = {
+        "ProcessId": 3213,
+        "ParentProcessId": 100,
+        "ExecutablePath": None,
+        "CommandLine": (
+            f'"{executable}" //B //Nologo "{wrapper}" '
+            f'--home "{sandbox.request.foundry_home}"'
+        ),
+    }
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.query_processes_strict",
+        lambda: [raw],
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.pid_alive",
+        lambda pid: pid == 3213,
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.process_creation_identity",
+        lambda pid: {
+            "pid": pid,
+            "create_time": 123459,
+            "exe": r"C:\Windows\System32\cscript.exe",
+        },
+    )
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="wrapper executable identity is uncertain",
+    ):
+        WindowsRollbackHost().owned_processes(sandbox.request)
+
+
 def test_windows_owned_process_census_refuses_live_wrapper_without_identity(
     tmp_path,
     monkeypatch,
@@ -901,6 +1169,93 @@ def test_windows_owned_process_census_refuses_live_adapter_without_identity(
     with pytest.raises(
         RollbackRefusal,
         match="stored creation identity is unavailable",
+    ):
+        WindowsRollbackHost().owned_processes(sandbox.request)
+
+
+def test_windows_owned_process_census_refuses_live_adapter_identity_change(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    (
+        sandbox.request.foundry_home / "adapter_worker_pids.json"
+    ).write_text(
+        json.dumps({
+            "adapter-run": {
+                "pid": 4322,
+                "creation_identity": {
+                    "pid": 4322,
+                    "create_time": 10,
+                    "exe": r"C:\Python\python.exe",
+                },
+                "owned_descendants": [4322],
+            },
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.query_processes_strict",
+        lambda: [],
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.pid_alive",
+        lambda pid: pid == 4322,
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.process_creation_identity",
+        lambda pid: {
+            "pid": pid,
+            "create_time": 10,
+            "exe": r"C:\OtherPython\python.exe",
+        },
+    )
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="creation identity changed during census",
+    ):
+        WindowsRollbackHost().owned_processes(sandbox.request)
+
+
+def test_windows_owned_process_census_refuses_dead_adapter_live_descendant(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    (
+        sandbox.request.foundry_home / "adapter_worker_pids.json"
+    ).write_text(
+        json.dumps({
+            "adapter-run": {
+                "pid": 5000,
+                "creation_identity": {
+                    "pid": 5000,
+                    "create_time": 10,
+                    "exe": r"C:\Python\python.exe",
+                },
+                "owned_descendants": [5000, 5001],
+            },
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.query_processes_strict",
+        lambda: [{
+            "ProcessId": 5001,
+            "ParentProcessId": 5000,
+            "ExecutablePath": r"C:\Tools\child.exe",
+            "CommandLine": r"C:\Tools\child.exe",
+        }],
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.pid_alive",
+        lambda pid: pid == 5001,
+    )
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="dead adapter root retains live or uncertain descendants",
     ):
         WindowsRollbackHost().owned_processes(sandbox.request)
 
@@ -1132,6 +1487,172 @@ def test_snapshot_refuses_provider_dispatch_attempt_evidence_loss(tmp_path):
         ).run()
 
 
+def test_snapshot_accepts_exact_failed_activation_release_suffix(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+    database = FoundryDatabase(
+        sandbox.request.foundry_home / "foundry.db")
+    database.append(Event.create(
+        "release.manifest_recorded",
+        {
+            "artifact_hashes": {
+                "RELEASE.json": sandbox.request.failed_manifest_sha256,
+            },
+            "authority_kind": "immutable_installed_release",
+            "dependencies": [],
+            "improvement_id": f"deployment:{FAILED_SHA}",
+            "migrations": [40],
+            "parent_release_id": None,
+            "release_id": FAILED_IDENTITY["release_id"],
+            "risk_class": "R0",
+            "rollback_target": None,
+            "runtime_identity": FAILED_IDENTITY,
+            "source_commit": FAILED_SHA,
+            "verdicts": [],
+        },
+        source_type="supervisor",
+        source_id="deployment-authority",
+        idempotency_key=(
+            f"release.manifest_recorded:{FAILED_IDENTITY['release_id']}"
+        ),
+    ))
+    database.append(Event.create(
+        "release.slot_changed",
+        {
+            "controller": "supervisor",
+            "previous_release_id": None,
+            "reason": "test activation",
+            "release_id": PREDECESSOR_IDENTITY["release_id"],
+            "slot": "previous",
+        },
+        source_type="supervisor",
+        source_id="deployment-authority",
+        idempotency_key="release.slot_changed:test-previous",
+    ))
+    database.append(Event.create(
+        "release.slot_changed",
+        {
+            "controller": "supervisor",
+            "previous_release_id": PREDECESSOR_IDENTITY["release_id"],
+            "reason": "test activation",
+            "release_id": FAILED_IDENTITY["release_id"],
+            "slot": "live",
+        },
+        source_type="supervisor",
+        source_id="deployment-authority",
+        idempotency_key="release.slot_changed:test-live",
+    ))
+    _refresh_sandbox_reports(sandbox)
+
+    report = CrossSchemaRollbackController(
+        sandbox.request,
+        host=sandbox.host,
+    ).run()
+
+    _assert_completed(sandbox, report)
+    continuity = report["snapshot"]["rollback_continuity"]
+    assert (
+        continuity["event_continuity"]["suffix_event_types"]
+        == {
+            "release.manifest_recorded": 1,
+            "release.slot_changed": 2,
+        }
+    )
+
+
+def test_snapshot_refuses_protected_release_slot_loss(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+    connection = sqlite3.connect(
+        sandbox.request.foundry_home / "foundry.db")
+    try:
+        connection.execute(
+            "INSERT INTO release_slots("
+            "slot, release_id, updated_at, last_event_id"
+            ") VALUES ('candidate', ?, ?, ?)",
+            (
+                FAILED_IDENTITY["release_id"],
+                "2026-09-08T00:00:00Z",
+                "candidate-after-snapshot",
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="protected release slots",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+
+def test_snapshot_refuses_unbound_runtime_control_resolution(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+    FoundryDatabase(
+        sandbox.request.foundry_home / "foundry.db"
+    ).append(Event.create(
+        "runtime.control.resolved",
+        {
+            "action": "RESTART",
+            "attempt": 0,
+            "instance_id": "unbound-supervisor",
+            "phase": "stale_request",
+            "release_id": FAILED_SHA,
+            "request_id": "new-owner-request",
+            "request_status": "STALE",
+            "status": "RUNNING",
+        },
+        source_type="supervisor",
+        source_id="unbound-supervisor",
+        idempotency_key="runtime.control.resolved:new-owner-request:stale",
+    ))
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="no exact Supervisor claim",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+
+def test_snapshot_accepts_redundant_stale_resolution_after_terminal_request(
+    tmp_path,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    request_id, _ = _seed_runtime_control_history(
+        sandbox, terminal=True)
+
+    report = CrossSchemaRollbackController(
+        sandbox.request,
+        host=sandbox.host,
+    ).run()
+
+    _assert_completed(sandbox, report)
+    assert report["snapshot"]["rollback_continuity"][
+        "event_continuity"
+    ]["stale_terminal_request_ids"] == [request_id]
+
+
+def test_snapshot_refuses_stale_resolution_without_prior_terminal_request(
+    tmp_path,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    _seed_runtime_control_history(sandbox, terminal=False)
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="unproven runtime-control resolution",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+
 def test_effect_barrier_uses_latest_reconciliation_evidence(tmp_path):
     sandbox = _rollback_sandbox(tmp_path)
     database = FoundryDatabase(
@@ -1326,6 +1847,90 @@ def test_predecessor_external_anchor_refuses_tampering(tmp_path, target):
     ).exists()
 
 
+@pytest.mark.parametrize("target", ["manifest", "package"])
+def test_failed_release_external_anchor_refuses_tampering(tmp_path, target):
+    sandbox = _rollback_sandbox(tmp_path)
+    failed = sandbox.request.install_root / "releases" / FAILED_SHA
+    if target == "manifest":
+        manifest = failed / "RELEASE.json"
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload["package_version"] = "tampered"
+        manifest.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        message = "manifest SHA-256"
+    else:
+        (
+            failed / ".venv" / "Scripts" / "python.exe"
+        ).write_text("tampered failed release python", encoding="utf-8")
+        message = "package SHA-256"
+
+    with pytest.raises(RollbackRefusal, match=message):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+    assert not (
+        sandbox.request.install_root / "rollback-transactions"
+    ).exists()
+
+
+def test_failed_release_package_is_revalidated_before_baseline_migration(
+    tmp_path,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    mutated = False
+
+    def mutate_before_snapshot(
+        point: str,
+        state: Mapping[str, Any],
+    ) -> None:
+        nonlocal mutated
+        if point == "before_snapshot_validation" and not mutated:
+            mutated = True
+            (
+                sandbox.request.install_root
+                / "releases"
+                / FAILED_SHA
+                / ".venv"
+                / "Scripts"
+                / "python.exe"
+            ).write_text(
+                "tampered after preconditions",
+                encoding="utf-8",
+            )
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="package SHA-256",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+            fault_injector=mutate_before_snapshot,
+        ).run()
+
+    assert mutated is True
+    state = json.loads(
+        (
+            sandbox.request.install_root
+            / "rollback-transactions"
+            / sandbox.request.transaction_id
+            / "STATE.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert state["phase"] == "PRECONDITIONS_VERIFIED"
+    assert not (
+        sandbox.request.install_root
+        / "rollback-transactions"
+        / sandbox.request.transaction_id
+        / "evidence"
+        / f"snapshot-migrated-{FAILED_SHA[:12]}.db"
+    ).exists()
+
+
 def test_conflicting_transaction_is_refused(tmp_path):
     sandbox = _rollback_sandbox(tmp_path)
 
@@ -1376,6 +1981,14 @@ def test_controller_refuses_same_schema_pair_without_creating_state(tmp_path):
     )
     sandbox.request = replace(
         sandbox.request,
+        failed_manifest_sha256=hashlib.sha256(
+            failed_manifest.read_bytes()
+        ).hexdigest(),
+        failed_package_sha256=release_package_digest(
+            sandbox.request.install_root
+            / "releases"
+            / FAILED_SHA
+        )["sha256"],
         predecessor_manifest_sha256=hashlib.sha256(
             (predecessor_dir / "RELEASE.json").read_bytes()
         ).hexdigest(),
@@ -1464,33 +2077,42 @@ def test_completed_runtime_bridge_retires_on_owner_resume(tmp_path):
         / "STATE.json"
     )
     state_path.parent.mkdir(parents=True)
+    marker_path = install_root / "ROLLBACK_RUNTIME.json"
+    completed_marker = {
+        "contract": "jarvis.cross-schema-rollback-runtime.v1",
+        "status": "COMPLETE_FROZEN_RUNTIME",
+        "transaction_id": transaction_id,
+        "source_sha": PREDECESSOR_SHA,
+        "install_root": str(install_root.resolve()),
+        "foundry_home": str(foundry_home.resolve()),
+        "transaction_state_path": str(state_path.resolve()),
+        "sitecustomize_sha256": hashlib.sha256(
+            shim_path.read_bytes()
+        ).hexdigest(),
+    }
     state_path.write_text(
         json.dumps({
             "contract": "jarvis.cross-schema-rollback.v1",
             "transaction_id": transaction_id,
             "phase": "COMPLETE",
+            "resume_authorized": True,
             "request": {
                 "install_root": str(install_root.resolve()),
                 "foundry_home": str(foundry_home.resolve()),
                 "predecessor_source_sha": PREDECESSOR_SHA,
             },
+            "evidence": {
+                "runtime_bridge_completion": completed_marker,
+                "completion_report": {
+                    "status": "ROLLBACK_COMPLETE",
+                    "phase": "COMPLETE",
+                },
+            },
         }),
         encoding="utf-8",
     )
-    marker_path = install_root / "ROLLBACK_RUNTIME.json"
     marker_path.write_text(
-        json.dumps({
-            "contract": "jarvis.cross-schema-rollback-runtime.v1",
-            "status": "COMPLETE_FROZEN_RUNTIME",
-            "transaction_id": transaction_id,
-            "source_sha": PREDECESSOR_SHA,
-            "install_root": str(install_root.resolve()),
-            "foundry_home": str(foundry_home.resolve()),
-            "transaction_state_path": str(state_path.resolve()),
-            "sitecustomize_sha256": hashlib.sha256(
-                shim_path.read_bytes()
-            ).hexdigest(),
-        }),
+        json.dumps(completed_marker),
         encoding="utf-8",
     )
     environment = os.environ.copy()
@@ -1585,6 +2207,6 @@ def test_completed_runtime_bridge_refuses_resume_before_durable_complete(
     )
 
     assert result.returncode == 2
-    assert "not durably COMPLETE" in result.stderr
+    assert "not durably finalized" in result.stderr
     assert "unsafe owner resume started" not in result.stdout
     assert marker_path.is_file()

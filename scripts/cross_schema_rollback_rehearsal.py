@@ -464,6 +464,8 @@ def _prepare_root(
         != PREDECESSOR_SHA
     ):
         raise RuntimeError("candidate immutable release identity is not exact")
+    candidate_release = install_root / "releases" / source_sha
+    candidate_package = _release_package_digest(candidate_release)
     marker = {
         "contract": "jarvis.cross-schema-rollback-rehearsal-root.v1",
         "created_at": _now(),
@@ -480,6 +482,8 @@ def _prepare_root(
         "foundry_home": str(output_root / "home"),
         "candidate_release": build,
         "candidate_manifest_sha256": _sha256(candidate_manifest),
+        "candidate_package": candidate_package,
+        "candidate_package_sha256": candidate_package["sha256"],
     }
     _write_json(marker_path, marker)
     return marker
@@ -492,6 +496,8 @@ def _request_record(
     home: Path,
     snapshot: Path,
     source_sha: str,
+    failed_manifest_sha256: str,
+    failed_package_sha256: str,
     task_name: str,
 ) -> dict[str, Any]:
     return {
@@ -501,6 +507,8 @@ def _request_record(
         "snapshot_path": str(snapshot),
         "snapshot_sha256": SNAPSHOT_SHA256,
         "failed_source_sha": source_sha,
+        "failed_manifest_sha256": failed_manifest_sha256,
+        "failed_package_sha256": failed_package_sha256,
         "predecessor_source_sha": PREDECESSOR_SHA,
         "predecessor_manifest_sha256": PREDECESSOR_MANIFEST_SHA256,
         "predecessor_package_sha256": PREDECESSOR_PACKAGE_SHA256,
@@ -1083,6 +1091,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             home=home,
             snapshot=copied_snapshot,
             source_sha=source_sha,
+            failed_manifest_sha256=str(
+                root["candidate_manifest_sha256"]),
+            failed_package_sha256=str(
+                root["candidate_package_sha256"]),
             task_name=task_name,
         )
         report["root"] = root
@@ -1115,6 +1127,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 home=home,
                 snapshot=copied_snapshot,
                 source_sha=source_sha,
+                failed_manifest_sha256=str(
+                    root["candidate_manifest_sha256"]),
+                failed_package_sha256=str(
+                    root["candidate_package_sha256"]),
                 task_name=task_name,
             )
             latest_request = request_record

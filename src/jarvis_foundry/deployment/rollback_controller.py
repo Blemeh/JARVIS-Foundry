@@ -173,14 +173,30 @@ _CONTINUITY_EXCLUDED_TABLES = frozenset({
     "schema_migrations",
     "supervisor_state",
 })
-_CONTINUITY_ALLOWED_EVENT_TYPES = (
-    "emergency_stop.frozen",
-    "release.manifest_recorded",
-    "release.slot_changed",
-    "runtime.control.claiming",
-    "runtime.control.resolved",
-    "supervisor.stopped",
-    "worker_loop.lease_reclaimed",
+_EVENT_COLUMNS = (
+    "sequence",
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "recorded_at",
+    "source_type",
+    "source_id",
+    "correlation_id",
+    "causation_id",
+    "idempotency_key",
+    "schema_version",
+    "payload_json",
+    "payload_hash",
+)
+_TERMINAL_CONTROL_RESOLUTIONS = frozenset({
+    ("recovered", "RUNNING"),
+    ("started", "RUNNING"),
+    ("stopped", "STOPPED"),
+    ("stopped_for_restart", "STOPPED"),
+})
+_MAX_ACTIVATION_SUFFIX_EVENTS = 128
+_LEGACY_LEASE_RECLAIM_REASON = (
+    "legacy worker-loop lease expired without process identity"
 )
 
 
@@ -204,6 +220,8 @@ class RollbackRequest:
     snapshot_path: Path
     snapshot_sha256: str
     failed_source_sha: str
+    failed_manifest_sha256: str
+    failed_package_sha256: str
     predecessor_source_sha: str
     predecessor_manifest_sha256: str
     predecessor_package_sha256: str
@@ -220,6 +238,8 @@ class RollbackRequest:
             object.__setattr__(self, field_name, value)
         for field_name in (
             "snapshot_sha256",
+            "failed_manifest_sha256",
+            "failed_package_sha256",
             "predecessor_manifest_sha256",
             "predecessor_package_sha256",
         ):
@@ -254,6 +274,8 @@ class RollbackRequest:
             "snapshot_path": str(self.snapshot_path),
             "snapshot_sha256": self.snapshot_sha256,
             "failed_source_sha": self.failed_source_sha,
+            "failed_manifest_sha256": self.failed_manifest_sha256,
+            "failed_package_sha256": self.failed_package_sha256,
             "predecessor_source_sha": self.predecessor_source_sha,
             "predecessor_manifest_sha256": (
                 self.predecessor_manifest_sha256
@@ -545,7 +567,7 @@ def _manifest_identity(
     ):
         raise RollbackRefusal(
             f"release {source_sha} manifest SHA-256 does not match "
-            "the frozen predecessor input")
+            "the frozen rollback input")
     try:
         manifest = read_release_json(manifest_path)
     except (OSError, ValueError) as error:
@@ -583,7 +605,7 @@ def _manifest_identity(
         if package["sha256"] != expected_package_sha256:
             raise RollbackRefusal(
                 f"release {source_sha} package SHA-256 does not match "
-                "the frozen predecessor input")
+                "the frozen rollback input")
     python_exe = directory / ".venv" / "Scripts" / "python.exe"
     if not python_exe.is_file():
         raise RollbackRefusal(f"release Python missing: {python_exe}")
@@ -785,35 +807,46 @@ def _table_continuity_digest(
     }
 
 
-def _protected_event_continuity_digest(
+def _event_ledger_digest(
     connection: sqlite3.Connection,
+    *,
+    maximum_sequence: int | None = None,
 ) -> dict[str, Any]:
     if not _table_exists(connection, "events"):
         return {
             "present": False,
             "row_count": 0,
             "sha256": None,
+            "minimum_sequence": None,
+            "maximum_sequence": None,
             "event_types": {},
         }
-    columns = [
+    observed_columns = [
         str(column[1])
         for column in connection.execute("PRAGMA table_info(events)").fetchall()
     ]
-    placeholders = ", ".join(
-        "?" for _ in _CONTINUITY_ALLOWED_EVENT_TYPES)
-    predicate = (
-        f"WHERE event_type NOT IN ({placeholders})"
-        if placeholders else ""
+    if not set(_EVENT_COLUMNS) <= set(observed_columns):
+        raise RollbackRefusal(
+            "events table does not expose the durable ledger contract")
+    columns = list(_EVENT_COLUMNS)
+    predicate = "WHERE sequence <= ?" if maximum_sequence is not None else ""
+    parameters: tuple[Any, ...] = (
+        (int(maximum_sequence),)
+        if maximum_sequence is not None else ()
     )
     digest = hashlib.sha256()
     _feed_digest_value(digest, "events")
     for column in columns:
         _feed_digest_value(digest, column)
     row_count = 0
+    minimum_observed: int | None = None
+    maximum_observed: int | None = None
     event_types: dict[str, int] = {}
     cursor = connection.execute(
-        f"SELECT * FROM events {predicate} ORDER BY sequence",
-        _CONTINUITY_ALLOWED_EVENT_TYPES,
+        "SELECT "
+        + ", ".join(_quoted_identifier(column) for column in columns)
+        + f" FROM events {predicate} ORDER BY sequence",
+        parameters,
     )
     while True:
         rows = cursor.fetchmany(512)
@@ -823,6 +856,10 @@ def _protected_event_continuity_digest(
             digest.update(b"R")
             for value in row:
                 _feed_digest_value(digest, value)
+            sequence = int(row[0])
+            if minimum_observed is None:
+                minimum_observed = sequence
+            maximum_observed = sequence
             event_type = str(row[columns.index("event_type")])
             event_types[event_type] = event_types.get(event_type, 0) + 1
             row_count += 1
@@ -830,8 +867,542 @@ def _protected_event_continuity_digest(
         "present": True,
         "row_count": row_count,
         "sha256": digest.hexdigest(),
+        "minimum_sequence": minimum_observed,
+        "maximum_sequence": maximum_observed,
         "event_types": event_types,
-        "excluded_event_types": list(_CONTINUITY_ALLOWED_EVENT_TYPES),
+    }
+
+
+def _row_digest(columns: Sequence[str], row: Sequence[Any]) -> str:
+    digest = hashlib.sha256()
+    for column in columns:
+        _feed_digest_value(digest, column)
+    for value in row:
+        _feed_digest_value(digest, value)
+    return digest.hexdigest()
+
+
+def _release_projection(connection: sqlite3.Connection) -> dict[str, Any]:
+    projection: dict[str, Any] = {}
+    for table_name, key_name in (
+        ("release_manifests", "release_id"),
+        ("release_slots", "slot"),
+    ):
+        if not _table_exists(connection, table_name):
+            projection[table_name] = {
+                "present": False,
+                "columns": [],
+                "rows": {},
+            }
+            continue
+        columns = [
+            str(column[1])
+            for column in connection.execute(
+                f"PRAGMA table_info({_quoted_identifier(table_name)})"
+            ).fetchall()
+        ]
+        if key_name not in columns:
+            raise RollbackRefusal(
+                f"{table_name} has no {key_name} authority key")
+        key_index = columns.index(key_name)
+        rows: dict[str, Any] = {}
+        cursor = connection.execute(
+            "SELECT "
+            + ", ".join(_quoted_identifier(column) for column in columns)
+            + f" FROM {_quoted_identifier(table_name)} "
+            + f"ORDER BY {_quoted_identifier(key_name)}"
+        )
+        for row in cursor.fetchall():
+            key = str(row[key_index] or "")
+            if not key or key in rows:
+                raise RollbackRefusal(
+                    f"{table_name} contains an invalid authority key")
+            rows[key] = {
+                "sha256": _row_digest(columns, row),
+                "values": dict(zip(columns, row, strict=True)),
+            }
+        projection[table_name] = {
+            "present": True,
+            "columns": columns,
+            "rows": rows,
+        }
+    return projection
+
+
+def _event_payload(row: Mapping[str, Any]) -> dict[str, Any]:
+    try:
+        payload = json.loads(str(row.get("payload_json") or ""))
+    except (TypeError, ValueError) as error:
+        raise RollbackRefusal(
+            "activation suffix contains invalid event payload JSON") from error
+    if not isinstance(payload, dict):
+        raise RollbackRefusal(
+            "activation suffix event payload is not an object")
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    observed_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    if observed_hash != row.get("payload_hash"):
+        raise RollbackRefusal(
+            "activation suffix event payload hash is invalid")
+    return payload
+
+
+def _baseline_control_history(
+    connection: sqlite3.Connection,
+) -> dict[str, dict[str, Any]]:
+    history: dict[str, dict[str, Any]] = {}
+    if not _table_exists(connection, "events"):
+        return history
+    rows = connection.execute(
+        "SELECT sequence, event_type, occurred_at, payload_json "
+        "FROM events WHERE event_type IN "
+        "('runtime.control.requested', 'runtime.control.resolved') "
+        "ORDER BY sequence"
+    ).fetchall()
+    for sequence, event_type, occurred_at, payload_json in rows:
+        try:
+            payload = json.loads(str(payload_json or ""))
+        except (TypeError, ValueError) as error:
+            raise RollbackRefusal(
+                "baseline runtime-control event payload is invalid") from error
+        if not isinstance(payload, Mapping):
+            raise RollbackRefusal(
+                "baseline runtime-control event payload is not an object")
+        request_id = str(payload.get("request_id") or "")
+        if not request_id:
+            continue
+        record = history.setdefault(request_id, {
+            "requested": None,
+            "terminal_resolutions": [],
+        })
+        if event_type == "runtime.control.requested":
+            record["requested"] = {
+                "sequence": int(sequence),
+                "occurred_at": str(occurred_at),
+                "payload": dict(payload),
+            }
+            continue
+        phase = str(payload.get("phase") or "")
+        status = str(payload.get("status") or "").upper()
+        if (phase, status) in _TERMINAL_CONTROL_RESOLUTIONS:
+            record["terminal_resolutions"].append({
+                "sequence": int(sequence),
+                "occurred_at": str(occurred_at),
+                "payload": dict(payload),
+            })
+    return history
+
+
+def _validate_stale_resolution(
+    row: Mapping[str, Any],
+    payload: Mapping[str, Any],
+    *,
+    control_history: Mapping[str, Mapping[str, Any]],
+    failed_identity: Mapping[str, Any],
+    supervisor_instance: str,
+) -> None:
+    request_id = str(payload.get("request_id") or "")
+    record = control_history.get(request_id)
+    requested = record.get("requested") if isinstance(record, Mapping) else None
+    terminal = (
+        record.get("terminal_resolutions")
+        if isinstance(record, Mapping) else None
+    )
+    if (
+        not request_id
+        or not isinstance(requested, Mapping)
+        or not isinstance(terminal, list)
+        or not terminal
+        or payload.get("phase") != "stale_request"
+        or payload.get("request_status") != "STALE"
+        or str(payload.get("status") or "").upper() != "RUNNING"
+        or payload.get("release_id") != failed_identity.get("source_sha")
+        or payload.get("instance_id") != supervisor_instance
+        or row.get("source_id") != supervisor_instance
+    ):
+        raise RollbackRefusal(
+            "activation suffix contains an unproven runtime-control resolution")
+    requested_payload = requested.get("payload")
+    if (
+        not isinstance(requested_payload, Mapping)
+        or requested_payload.get("action") != payload.get("action")
+    ):
+        raise RollbackRefusal(
+            "stale runtime-control resolution does not match its request")
+    expires_at = str(requested_payload.get("expires_at") or "")
+    try:
+        if parse(expires_at) > parse(str(row.get("occurred_at") or "")):
+            raise RollbackRefusal(
+                "stale runtime-control resolution predates request expiry")
+    except (TypeError, ValueError) as error:
+        raise RollbackRefusal(
+            "runtime-control request expiry evidence is invalid") from error
+
+
+def _validate_activation_event_suffix(
+    baseline_path: Path,
+    failed_path: Path,
+    *,
+    baseline_events: Mapping[str, Any],
+    failed_identity: Mapping[str, Any],
+    predecessor_identity: Mapping[str, Any],
+    failed_manifest_sha256: str,
+    stop_record: Mapping[str, Any],
+) -> dict[str, Any]:
+    baseline_connection = sqlite3.connect(
+        f"file:{Path(baseline_path).resolve().as_posix()}?mode=ro",
+        uri=True,
+        timeout=10,
+    )
+    failed_connection = sqlite3.connect(
+        f"file:{Path(failed_path).resolve().as_posix()}?mode=ro",
+        uri=True,
+        timeout=10,
+    )
+    try:
+        maximum_sequence = baseline_events.get("maximum_sequence")
+        prefix = _event_ledger_digest(
+            failed_connection,
+            maximum_sequence=(
+                int(maximum_sequence)
+                if maximum_sequence is not None else -1
+            ),
+        )
+        for field in (
+            "present",
+            "row_count",
+            "sha256",
+            "minimum_sequence",
+            "maximum_sequence",
+            "event_types",
+        ):
+            if prefix.get(field) != baseline_events.get(field):
+                raise RollbackRefusal(
+                    "failed database no longer preserves the migrated "
+                    "snapshot event prefix")
+        control_history = _baseline_control_history(baseline_connection)
+        start_sequence = int(maximum_sequence or 0)
+        cursor = failed_connection.execute(
+            "SELECT "
+            + ", ".join(
+                _quoted_identifier(column) for column in _EVENT_COLUMNS
+            )
+            + " FROM events WHERE sequence > ? ORDER BY sequence",
+            (start_sequence,),
+        )
+        raw_rows = cursor.fetchmany(_MAX_ACTIVATION_SUFFIX_EVENTS + 1)
+        if len(raw_rows) > _MAX_ACTIVATION_SUFFIX_EVENTS:
+            raise RollbackRefusal(
+                "activation event suffix exceeds the bounded rollback contract")
+        rows = [
+            dict(zip(_EVENT_COLUMNS, row, strict=True))
+            for row in raw_rows
+        ]
+        payloads = [_event_payload(row) for row in rows]
+        event_types: dict[str, int] = {}
+        for row in rows:
+            event_type = str(row["event_type"])
+            event_types[event_type] = event_types.get(event_type, 0) + 1
+            if (
+                row.get("source_type") != "supervisor"
+                or int(row.get("schema_version") or 0) != 1
+            ):
+                raise RollbackRefusal(
+                    "activation suffix contains an event outside Supervisor "
+                    "release authority")
+
+        claims = [
+            (row, payload)
+            for row, payload in zip(rows, payloads, strict=True)
+            if row["event_type"] == "runtime.control.claiming"
+        ]
+        if len(claims) > 1:
+            raise RollbackRefusal(
+                "activation suffix contains multiple Supervisor claims")
+        supervisor_instance = ""
+        if claims:
+            claim_row, claim = claims[0]
+            supervisor_instance = str(claim.get("instance_id") or "")
+            if (
+                not supervisor_instance
+                or claim.get("request_id") is not None
+                or claim.get("release_id") != failed_identity.get("source_sha")
+                or claim_row.get("source_id") != supervisor_instance
+            ):
+                raise RollbackRefusal(
+                    "activation suffix Supervisor claim is not release-bound")
+
+        manifest_count = 0
+        slot_names: set[str] = set()
+        stopped_count = 0
+        stale_request_ids: set[str] = set()
+        allowed_types = {
+            "emergency_stop.frozen",
+            "release.manifest_recorded",
+            "release.slot_changed",
+            "runtime.control.claiming",
+            "runtime.control.resolved",
+            "supervisor.stopped",
+            "worker_loop.lease_reclaimed",
+        }
+        for row, payload in zip(rows, payloads, strict=True):
+            event_type = str(row["event_type"])
+            if event_type not in allowed_types:
+                raise RollbackRefusal(
+                    "activation suffix contains post-snapshot authority: "
+                    f"{event_type}")
+            if event_type == "release.manifest_recorded":
+                manifest_count += 1
+                runtime_identity = payload.get("runtime_identity")
+                artifact_hashes = payload.get("artifact_hashes")
+                if (
+                    manifest_count > 1
+                    or row.get("source_id") != "deployment-authority"
+                    or payload.get("release_id")
+                    != failed_identity.get("release_id")
+                    or payload.get("source_commit")
+                    != failed_identity.get("source_sha")
+                    or _identity_fields(runtime_identity)
+                    != _identity_fields(failed_identity)
+                    or not isinstance(artifact_hashes, Mapping)
+                    or artifact_hashes.get("RELEASE.json")
+                    != failed_manifest_sha256
+                ):
+                    raise RollbackRefusal(
+                        "activation suffix release manifest is not the failed "
+                        "immutable release")
+                continue
+            if event_type == "release.slot_changed":
+                slot = str(payload.get("slot") or "")
+                if (
+                    slot not in {"live", "previous"}
+                    or slot in slot_names
+                    or row.get("source_id") != "deployment-authority"
+                ):
+                    raise RollbackRefusal(
+                        "activation suffix changed an unapproved release slot")
+                slot_names.add(slot)
+                expected_release_id = (
+                    failed_identity.get("release_id")
+                    if slot == "live"
+                    else predecessor_identity.get("release_id")
+                )
+                if payload.get("release_id") != expected_release_id:
+                    raise RollbackRefusal(
+                        "activation suffix release slot has the wrong identity")
+                if (
+                    slot == "live"
+                    and payload.get("previous_release_id")
+                    != predecessor_identity.get("release_id")
+                ):
+                    raise RollbackRefusal(
+                        "activation live-slot event lost predecessor authority")
+                continue
+            if event_type == "worker_loop.lease_reclaimed":
+                expires_at = str(payload.get("lease_expires_at") or "")
+                if (
+                    row.get("source_id") != "worker-loop-recovery"
+                    or payload.get("pid") is not None
+                    or payload.get("reason") != _LEGACY_LEASE_RECLAIM_REASON
+                    or not str(payload.get("instance_id") or "")
+                ):
+                    raise RollbackRefusal(
+                        "activation suffix contains an unproven lease reclaim")
+                try:
+                    if parse(expires_at) > parse(str(row["occurred_at"])):
+                        raise RollbackRefusal(
+                            "activation suffix reclaimed a live worker lease")
+                except (TypeError, ValueError) as error:
+                    raise RollbackRefusal(
+                        "activation suffix lease expiry is invalid") from error
+                continue
+            if event_type == "runtime.control.claiming":
+                continue
+            if not supervisor_instance:
+                raise RollbackRefusal(
+                    "activation lifecycle event has no exact Supervisor claim")
+            if (
+                row.get("source_id") != supervisor_instance
+                or payload.get("instance_id") != supervisor_instance
+            ):
+                raise RollbackRefusal(
+                    "activation lifecycle event changed Supervisor identity")
+            if event_type == "runtime.control.resolved":
+                request_id = str(payload.get("request_id") or "")
+                if request_id in stale_request_ids:
+                    raise RollbackRefusal(
+                        "activation suffix repeats a stale request resolution")
+                _validate_stale_resolution(
+                    row,
+                    payload,
+                    control_history=control_history,
+                    failed_identity=failed_identity,
+                    supervisor_instance=supervisor_instance,
+                )
+                stale_request_ids.add(request_id)
+                continue
+            if event_type == "emergency_stop.frozen":
+                if payload.get("stop_id") != stop_record.get("stop_id"):
+                    raise RollbackRefusal(
+                        "activation freeze event does not match durable STOP")
+                if (
+                    payload.get("release_id") is not None
+                    and payload.get("release_id")
+                    != failed_identity.get("source_sha")
+                ):
+                    raise RollbackRefusal(
+                        "activation freeze event has the wrong release")
+                if payload.get("control_request_id") is not None:
+                    raise RollbackRefusal(
+                        "activation freeze event consumed an owner request")
+                continue
+            if event_type == "supervisor.stopped":
+                stopped_count += 1
+                if (
+                    stopped_count > 1
+                    or payload.get("release_id")
+                    != failed_identity.get("source_sha")
+                    or payload.get("control_request_id") is not None
+                ):
+                    raise RollbackRefusal(
+                        "activation stop event is not failed-release cleanup")
+                continue
+        return {
+            "status": "PRESERVED_WITH_BOUND_ACTIVATION_SUFFIX",
+            "prefix_row_count": prefix["row_count"],
+            "prefix_sha256": prefix["sha256"],
+            "suffix_row_count": len(rows),
+            "suffix_event_types": event_types,
+            "stale_terminal_request_ids": sorted(stale_request_ids),
+        }
+    finally:
+        failed_connection.close()
+        baseline_connection.close()
+
+
+def _validate_release_projection_continuity(
+    baseline: Mapping[str, Any],
+    failed: Mapping[str, Any],
+    *,
+    failed_identity: Mapping[str, Any],
+    predecessor_identity: Mapping[str, Any],
+    failed_manifest_sha256: str,
+) -> dict[str, Any]:
+    baseline_manifests = (
+        (baseline.get("release_manifests") or {}).get("rows") or {}
+    )
+    failed_manifests = (
+        (failed.get("release_manifests") or {}).get("rows") or {}
+    )
+    if not isinstance(baseline_manifests, Mapping) or not isinstance(
+        failed_manifests, Mapping
+    ):
+        raise RollbackRefusal(
+            "release manifest continuity projection is invalid")
+    changed_manifests = [
+        release_id
+        for release_id, row in baseline_manifests.items()
+        if failed_manifests.get(release_id) != row
+    ]
+    new_manifests = set(failed_manifests) - set(baseline_manifests)
+    failed_release_id = str(failed_identity.get("release_id") or "")
+    if (
+        changed_manifests
+        or new_manifests - {failed_release_id}
+        or set(baseline_manifests) - set(failed_manifests)
+    ):
+        raise RollbackRefusal(
+            "failed activation changed unrelated release manifest authority")
+    failed_manifest = failed_manifests.get(failed_release_id)
+    failed_values = (
+        failed_manifest.get("values")
+        if isinstance(failed_manifest, Mapping) else None
+    )
+    if not isinstance(failed_values, Mapping):
+        raise RollbackRefusal(
+            "failed release manifest projection is missing")
+    try:
+        runtime_identity = json.loads(
+            str(failed_values.get("runtime_identity_json") or ""))
+        artifact_hashes = json.loads(
+            str(failed_values.get("artifact_hashes_json") or ""))
+    except (TypeError, ValueError) as error:
+        raise RollbackRefusal(
+            "failed release manifest projection is invalid") from error
+    if (
+        failed_values.get("source_commit") != failed_identity.get("source_sha")
+        or _identity_fields(runtime_identity) != _identity_fields(failed_identity)
+        or not isinstance(artifact_hashes, Mapping)
+        or artifact_hashes.get("RELEASE.json")
+        not in {None, failed_manifest_sha256}
+    ):
+        raise RollbackRefusal(
+            "failed release manifest projection does not match its package")
+
+    baseline_slots = (
+        (baseline.get("release_slots") or {}).get("rows") or {}
+    )
+    failed_slots = (
+        (failed.get("release_slots") or {}).get("rows") or {}
+    )
+    if not isinstance(baseline_slots, Mapping) or not isinstance(
+        failed_slots, Mapping
+    ):
+        raise RollbackRefusal(
+            "release slot continuity projection is invalid")
+    protected_slots = (
+        set(baseline_slots) | set(failed_slots)
+    ) - {"live", "previous"}
+    changed_slots = [
+        slot
+        for slot in sorted(protected_slots)
+        if baseline_slots.get(slot) != failed_slots.get(slot)
+    ]
+    if changed_slots:
+        raise RollbackRefusal(
+            "failed activation changed protected release slots: "
+            + ", ".join(changed_slots)
+        )
+    baseline_live = baseline_slots.get("live")
+    failed_live = failed_slots.get("live")
+    failed_previous = failed_slots.get("previous")
+    baseline_live_values = (
+        baseline_live.get("values")
+        if isinstance(baseline_live, Mapping) else None
+    )
+    failed_live_values = (
+        failed_live.get("values")
+        if isinstance(failed_live, Mapping) else None
+    )
+    failed_previous_values = (
+        failed_previous.get("values")
+        if isinstance(failed_previous, Mapping) else None
+    )
+    if (
+        not isinstance(baseline_live_values, Mapping)
+        or baseline_live_values.get("release_id")
+        != predecessor_identity.get("release_id")
+        or not isinstance(failed_live_values, Mapping)
+        or failed_live_values.get("release_id")
+        != failed_identity.get("release_id")
+        or not isinstance(failed_previous_values, Mapping)
+        or failed_previous_values.get("release_id")
+        != predecessor_identity.get("release_id")
+    ):
+        raise RollbackRefusal(
+            "failed activation release slot pair is not exact")
+    return {
+        "status": "PRESERVED_WITH_EXACT_RUNTIME_SLOT_TRANSITION",
+        "unchanged_manifest_count": len(baseline_manifests),
+        "new_manifest_ids": sorted(new_manifests),
+        "protected_slots": sorted(protected_slots),
+        "baseline_live_release_id": baseline_live_values.get("release_id"),
+        "failed_previous_release_id": failed_previous_values.get("release_id"),
+        "failed_live_release_id": failed_live_values.get("release_id"),
     }
 
 
@@ -869,7 +1440,8 @@ def database_rollback_continuity(path: Path) -> dict[str, Any]:
             "quick_check": quick_check,
             "integrity_check": integrity_check,
             "tables": tables,
-            "protected_events": _protected_event_continuity_digest(connection),
+            "events": _event_ledger_digest(connection),
+            "release_projection": _release_projection(connection),
             "excluded_tables": sorted(_CONTINUITY_EXCLUDED_TABLES),
         }
     finally:
@@ -1179,16 +1751,33 @@ def _retire_completed_marker(marker_path, *, root, home, source_sha, shim_hash):
     if not isinstance(state, dict):
         _abort("completed rollback transaction state is not an object")
     request = state.get("request")
+    evidence = state.get("evidence")
+    prepared_marker = (
+        evidence.get("runtime_bridge_completion")
+        if isinstance(evidence, dict) else None
+    )
+    completion_report = (
+        evidence.get("completion_report")
+        if isinstance(evidence, dict) else None
+    )
+    active_path = root / "rollback-transactions" / "ACTIVE.json"
     if (
         state.get("contract") != "jarvis.cross-schema-rollback.v1"
         or state.get("transaction_id") != transaction_id
         or state.get("phase") != "COMPLETE"
+        or state.get("resume_authorized") is not True
         or not isinstance(request, dict)
         or request.get("predecessor_source_sha") != source_sha
         or not _same_path(request.get("install_root", ""), root)
         or not _same_path(request.get("foundry_home", ""), home)
+        or active_path.exists()
+        or not isinstance(prepared_marker, dict)
+        or prepared_marker != payload
+        or not isinstance(completion_report, dict)
+        or completion_report.get("status") != "ROLLBACK_COMPLETE"
+        or completion_report.get("phase") != "COMPLETE"
     ):
-        _abort("completed rollback transaction is not durably COMPLETE")
+        _abort("completed rollback transaction is not durably finalized")
     try:
         marker_path.unlink()
     except Exception as error:
@@ -1452,6 +2041,65 @@ def _creation_identity_matches(
     )
 
 
+def _exact_creation_identity_matches(
+    expected: Mapping[str, Any] | None,
+    observed: Mapping[str, Any] | None,
+) -> bool:
+    if not isinstance(expected, Mapping) or not isinstance(observed, Mapping):
+        return False
+    try:
+        expected_pid = int(expected["pid"])
+        observed_pid = int(observed["pid"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if (
+        expected_pid != observed_pid
+        or expected.get("create_time") is None
+        or observed.get("create_time") is None
+        or expected.get("create_time") != observed.get("create_time")
+    ):
+        return False
+    expected_exe = str(expected.get("exe") or "")
+    observed_exe = str(observed.get("exe") or "")
+    if expected_exe and (
+        not observed_exe
+        or os.path.normcase(str(Path(expected_exe).resolve()))
+        != os.path.normcase(str(Path(observed_exe).resolve()))
+    ):
+        return False
+    return True
+
+
+def _process_parent_map(
+    raw_processes: Sequence[Mapping[str, Any]],
+) -> dict[int, int]:
+    parents: dict[int, int] = {}
+    for raw in raw_processes:
+        try:
+            pid = int(raw.get("ProcessId", raw.get("pid")))
+            parent = int(raw.get("ParentProcessId", raw.get("parent_pid", 0)))
+        except (TypeError, ValueError):
+            continue
+        if pid > 0 and parent >= 0:
+            parents[pid] = parent
+    return parents
+
+
+def _descendant_pids(root_pid: int, parents: Mapping[int, int]) -> set[int]:
+    descendants: set[int] = set()
+    frontier = {int(root_pid)}
+    while frontier:
+        next_frontier = {
+            pid
+            for pid, parent in parents.items()
+            if parent in frontier and pid not in descendants
+        }
+        descendants.update(next_frontier)
+        frontier = next_frontier
+    descendants.discard(int(root_pid))
+    return descendants
+
+
 class WindowsRollbackHost:
     """Concrete Windows adapter for the one owned production task and process tree."""
 
@@ -1584,6 +2232,7 @@ class WindowsRollbackHost:
         except ProcessQueryError as error:
             raise RollbackRefusal(
                 f"authoritative owned-process census failed: {error}") from error
+        process_parents = _process_parent_map(raw_processes)
 
         supervisor_pattern = re.compile(
             r"(?:^|\s)-m\s+[\"']?jarvis_foundry\."
@@ -1661,6 +2310,7 @@ class WindowsRollbackHost:
                 and process_matches_home(raw, request.foundry_home)
             )
             is_scheduler_wrapper = False
+            command_interpreter: str | None = None
             if (
                 expected_vbs.name.casefold() in command_line.casefold()
                 and process_matches_home(raw, request.foundry_home)
@@ -1683,6 +2333,7 @@ class WindowsRollbackHost:
                 }
                 command_executable = (
                     Path(tokens[0]).name.casefold() if tokens else "")
+                command_interpreter = tokens[0] if tokens else None
                 census_executable = (
                     Path(executable).name.casefold() if executable else "")
                 if (
@@ -1724,6 +2375,16 @@ class WindowsRollbackHost:
             if creation_identity.get("create_time") is None:
                 raise RollbackRefusal(
                     "matching owned process creation identity is unavailable")
+            if is_scheduler_wrapper:
+                observed_executable = str(creation_identity.get("exe") or "")
+                if (
+                    not command_interpreter
+                    or not observed_executable
+                    or not _same_path(command_interpreter, observed_executable)
+                ):
+                    raise RollbackRefusal(
+                        "matching Scheduler wrapper executable identity "
+                        "is uncertain")
             if executable and not _creation_identity_matches(
                 {
                     "pid": pid,
@@ -1751,11 +2412,39 @@ class WindowsRollbackHost:
         for run_id, record in _load_adapter_pids_strict(adapter_table).items():
             pid = int(record["pid"])
             if not pid_alive(pid):
+                raw_descendants = _descendant_pids(pid, process_parents)
+                recorded_raw = record.get("owned_descendants", ())
+                if not isinstance(recorded_raw, (list, tuple)):
+                    raise RollbackRefusal(
+                        "adapter PID registry has invalid descendant evidence")
+                try:
+                    recorded_descendants = {
+                        int(value) for value in recorded_raw
+                        if int(value) > 0 and int(value) != pid
+                    }
+                except (TypeError, ValueError) as error:
+                    raise RollbackRefusal(
+                        "adapter PID registry has invalid descendant evidence"
+                    ) from error
+                live_descendants = sorted({
+                    descendant
+                    for descendant in (
+                        raw_descendants | recorded_descendants
+                    )
+                    if pid_alive(descendant)
+                })
+                if live_descendants:
+                    raise RollbackRefusal(
+                        "dead adapter root retains live or uncertain "
+                        f"descendants: run_id={run_id!r}, "
+                        f"pids={live_descendants}"
+                    )
                 continue
             recorded_identity = record.get("creation_identity")
             if (
                 not isinstance(recorded_identity, Mapping)
                 or recorded_identity.get("create_time") is None
+                or not str(recorded_identity.get("exe") or "")
             ):
                 raise RollbackRefusal(
                     "live adapter stored creation identity is unavailable")
@@ -1776,17 +2465,18 @@ class WindowsRollbackHost:
             if observed_identity.get("create_time") is None:
                 raise RollbackRefusal(
                     "live adapter creation identity is unavailable")
-            if (
-                _creation_identity_matches(
-                    recorded_identity, observed_identity)
+            if not _exact_creation_identity_matches(
+                recorded_identity, observed_identity
             ):
-                observed.append({
-                    "kind": "adapter",
-                    "pid": pid,
-                    "run_id": run_id,
-                    "creation_identity": observed_identity,
-                    "live": True,
-                })
+                raise RollbackRefusal(
+                    "live adapter creation identity changed during census")
+            observed.append({
+                "kind": "adapter",
+                "pid": pid,
+                "run_id": run_id,
+                "creation_identity": observed_identity,
+                "live": True,
+            })
         return sorted(
             {
                 (str(item.get("kind")), int(item.get("pid") or 0)): item
@@ -2494,6 +3184,7 @@ class CrossSchemaRollbackController:
             ],
             "evidence": dict(initial_evidence),
             "process": None,
+            "resume_authorized": False,
             "errors": [],
             "containment": [],
         }
@@ -2766,16 +3457,37 @@ class CrossSchemaRollbackController:
                 continue
 
             if phase == COMPLETE:
-                bridge = self._mark_runtime_bridge_complete()
-                if self.state.get("evidence", {}).get(
-                    "runtime_bridge"
-                ) != bridge:
+                evidence = self.state.setdefault("evidence", {})
+                report = evidence.get("completion_report")
+                prepared_bridge = evidence.get(
+                    "runtime_bridge_completion")
+                if (
+                    not isinstance(report, Mapping)
+                    or not isinstance(prepared_bridge, Mapping)
+                ):
+                    report = self._completion_report()
+                    prepared_bridge = (
+                        self._prepare_runtime_bridge_completion())
+                    self.state["resume_authorized"] = False
                     self._record(
-                        event="rollback_runtime_bridge_completed",
-                        evidence={"runtime_bridge": bridge},
+                        event="rollback_completion_prepared",
+                        evidence={
+                            "completion_report": report,
+                            "runtime_bridge_completion": prepared_bridge,
+                        },
                     )
-                self._clear_active_marker()
-                return self._completion_report()
+                    continue
+                if self.active_path.is_file():
+                    self._clear_active_marker()
+                    continue
+                if self.state.get("resume_authorized") is not True:
+                    self.state["resume_authorized"] = True
+                    self._record(
+                        event="rollback_owner_resume_authority_finalized")
+                    continue
+                final_report = report
+                self._mark_runtime_bridge_complete()
+                return final_report
 
             raise RollbackRefusal(f"unsupported rollback phase: {phase}")
 
@@ -2881,6 +3593,8 @@ class CrossSchemaRollbackController:
         failed_identity = _manifest_identity(
             self.request.install_root,
             self.request.failed_source_sha,
+            expected_manifest_sha256=self.request.failed_manifest_sha256,
+            expected_package_sha256=self.request.failed_package_sha256,
         )
         predecessor_identity = _manifest_identity(
             self.request.install_root,
@@ -2954,6 +3668,28 @@ class CrossSchemaRollbackController:
                 predecessor_validation),
         }
 
+    def _validate_failed_release_package(self) -> dict[str, Any]:
+        anchored_identity = _manifest_identity(
+            self.request.install_root,
+            self.request.failed_source_sha,
+            expected_manifest_sha256=self.request.failed_manifest_sha256,
+            expected_package_sha256=self.request.failed_package_sha256,
+        )
+        expected = self.state["evidence"]["failed_identity"]
+        if (
+            _identity_fields(anchored_identity) != _identity_fields(expected)
+            or anchored_identity.get("manifest_sha256")
+            != expected.get("manifest_sha256")
+            or (
+                anchored_identity.get("package") or {}
+            ).get("sha256") != (
+                expected.get("package") or {}
+            ).get("sha256")
+        ):
+            raise RollbackRefusal(
+                "failed release package identity changed after preconditions")
+        return anchored_identity
+
     @staticmethod
     def _validation_summary(validation: Mapping[str, Any]) -> dict[str, Any]:
         return {
@@ -2965,8 +3701,8 @@ class CrossSchemaRollbackController:
             "legacy_identity": validation.get("legacy_identity"),
         }
 
-    @staticmethod
     def _require_rollback_continuity(
+        self,
         baseline: Mapping[str, Any],
         failed_database: Mapping[str, Any],
     ) -> dict[str, Any]:
@@ -2980,24 +3716,41 @@ class CrossSchemaRollbackController:
             for table_name in sorted(set(baseline_tables) | set(failed_tables))
             if baseline_tables.get(table_name) != failed_tables.get(table_name)
         ]
-        baseline_events = baseline.get("protected_events") or {}
-        failed_events = failed_database.get("protected_events") or {}
-        event_fields = ("present", "row_count", "sha256", "event_types")
-        event_mismatches = [
-            field for field in event_fields
-            if baseline_events.get(field) != failed_events.get(field)
-        ]
-        if table_mismatches or event_mismatches:
+        if table_mismatches:
             raise RollbackRefusal(
                 "rollback snapshot would discard post-snapshot effect/work "
                 "idempotency evidence: "
-                f"events={event_mismatches}, tables={table_mismatches}"
+                f"tables={table_mismatches}"
             )
+        failed_identity = self.state["evidence"]["failed_identity"]
+        predecessor_identity = self.state["evidence"]["predecessor_identity"]
+        try:
+            release_projection = _validate_release_projection_continuity(
+                baseline.get("release_projection") or {},
+                failed_database.get("release_projection") or {},
+                failed_identity=failed_identity,
+                predecessor_identity=predecessor_identity,
+                failed_manifest_sha256=self.request.failed_manifest_sha256,
+            )
+            event_continuity = _validate_activation_event_suffix(
+                Path(str(baseline.get("path") or "")).resolve(),
+                Path(str(failed_database.get("path") or "")).resolve(),
+                baseline_events=baseline.get("events") or {},
+                failed_identity=failed_identity,
+                predecessor_identity=predecessor_identity,
+                failed_manifest_sha256=self.request.failed_manifest_sha256,
+                stop_record=self.state["evidence"]["stop"],
+            )
+        except RollbackRefusal as error:
+            raise RollbackRefusal(
+                "rollback snapshot would discard post-snapshot effect/work "
+                f"idempotency evidence: {error}"
+            ) from error
         return {
             "status": "PRESERVED",
             "schema": baseline.get("schema"),
-            "protected_event_count": baseline_events.get("row_count"),
-            "protected_event_sha256": baseline_events.get("sha256"),
+            "event_continuity": event_continuity,
+            "release_projection": release_projection,
             "protected_table_count": len(baseline_tables),
             "protected_tables": baseline_tables,
             "excluded_tables": baseline.get("excluded_tables"),
@@ -3040,6 +3793,7 @@ class CrossSchemaRollbackController:
         snapshot["source_path"] = str(self.request.snapshot_path)
         snapshot["owned_copy"] = True
         failed_identity = self.state["evidence"]["failed_identity"]
+        self._validate_failed_release_package()
         baseline_migration = self.host.build_continuity_baseline(
             self.request,
             source_sha=self.request.failed_source_sha,
@@ -3359,10 +4113,10 @@ class CrossSchemaRollbackController:
         _atomic_write_json(marker_path, marker)
         return marker
 
-    def _mark_runtime_bridge_complete(self) -> dict[str, Any]:
+    def _prepare_runtime_bridge_completion(self) -> dict[str, Any]:
         if self.state.get("phase") != COMPLETE:
             raise RollbackRefusal(
-                "rollback runtime bridge cannot complete before transaction")
+                "rollback runtime bridge cannot prepare before transaction")
         marker_path = rollback_runtime_marker(self.request.install_root)
         marker = _read_json(marker_path)
         if (
@@ -3374,15 +4128,64 @@ class CrossSchemaRollbackController:
         ):
             raise RollbackRefusal(
                 "rollback runtime marker changed before completion")
-        if marker.get("status") == "COMPLETE_FROZEN_RUNTIME":
-            return marker
         if marker.get("status") != "ACTIVE":
             raise RollbackRefusal(
-                "rollback runtime marker has an invalid completion state")
+                "rollback runtime marker is not active during preparation")
         marker["status"] = "COMPLETE_FROZEN_RUNTIME"
         marker["completed_at"] = isoformat()
-        _atomic_write_json(marker_path, marker)
         return marker
+
+    def _mark_runtime_bridge_complete(self) -> dict[str, Any]:
+        if (
+            self.state.get("phase") != COMPLETE
+            or self.state.get("resume_authorized") is not True
+            or self.active_path.exists()
+        ):
+            raise RollbackRefusal(
+                "rollback runtime bridge cannot complete before finalization")
+        prepared = self.state.get("evidence", {}).get(
+            "runtime_bridge_completion")
+        if not isinstance(prepared, Mapping):
+            raise RollbackRefusal(
+                "prepared runtime bridge completion evidence is missing")
+        expected = dict(prepared)
+        marker_path = rollback_runtime_marker(self.request.install_root)
+        observed = _read_json(marker_path)
+        if observed == expected:
+            return observed
+        immutable_fields = (
+            "contract",
+            "transaction_id",
+            "source_sha",
+            "release_id",
+            "schema",
+            "install_root",
+            "foundry_home",
+            "sitecustomize_path",
+            "sitecustomize_sha256",
+            "transaction_state_path",
+            "recorded_at",
+        )
+        if (
+            observed.get("status") != "ACTIVE"
+            or expected.get("status") != "COMPLETE_FROZEN_RUNTIME"
+            or any(
+                observed.get(field) != expected.get(field)
+                for field in immutable_fields
+            )
+        ):
+            raise RollbackRefusal(
+                "rollback runtime marker changed before final publication")
+        try:
+            _atomic_write_json(marker_path, expected)
+        except Exception:
+            try:
+                if _read_json(marker_path) == expected:
+                    return expected
+            except RollbackRefusal:
+                pass
+            raise
+        return expected
 
     def _assert_frozen_runtime_absent(self) -> None:
         self._stop_record()
@@ -3667,6 +4470,10 @@ class CrossSchemaRollbackController:
             self.state["evidence"][
                 "scheduler_enable_command_started"
             ] = False
+            self.state["evidence"].pop("completion_report", None)
+            self.state["evidence"].pop(
+                "runtime_bridge_completion", None)
+            self.state["resume_authorized"] = False
         self._persist()
         return record
 

@@ -98,6 +98,10 @@ def _parser() -> argparse.ArgumentParser:
     cross_schema.add_argument("--snapshot", type=Path, required=True)
     cross_schema.add_argument("--snapshot-sha256", required=True)
     cross_schema.add_argument("--failed-sha", required=True)
+    cross_schema.add_argument(
+        "--failed-manifest-sha256", required=True)
+    cross_schema.add_argument(
+        "--failed-package-sha256", required=True)
     cross_schema.add_argument("--predecessor-sha", required=True)
     cross_schema.add_argument(
         "--predecessor-manifest-sha256", required=True)
@@ -512,6 +516,8 @@ def _release_command(args, paths: FoundryPaths) -> int:
             snapshot_path=args.snapshot,
             snapshot_sha256=args.snapshot_sha256,
             failed_source_sha=args.failed_sha,
+            failed_manifest_sha256=args.failed_manifest_sha256,
+            failed_package_sha256=args.failed_package_sha256,
             predecessor_source_sha=args.predecessor_sha,
             predecessor_manifest_sha256=(
                 args.predecessor_manifest_sha256
