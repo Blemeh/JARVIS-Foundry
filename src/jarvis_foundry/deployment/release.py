@@ -149,8 +149,9 @@ def _rollback_runtime_retirement_plan(
     if not _GIT_OBJECT_RE.fullmatch(marker_sha):
         raise ReleaseError(
             f"rollback runtime marker source_sha is invalid: {marker}")
-    if marker_sha == target_source_sha.strip():
-        return None
+    if payload.get("status") != "COMPLETE_FROZEN_RUNTIME":
+        raise ReleaseError(
+            f"rollback runtime marker is not complete: {marker}")
     return {
         "path": str(marker.resolve()),
         "sha256": hashlib.sha256(marker_bytes).hexdigest(),
@@ -1054,7 +1055,10 @@ def set_current(
 ) -> dict[str, str | None]:
     candidate = validate_release(source_sha, root=root, require_schema_match=False)
     previous = read_current(root)
+    rollback_runtime_retirement = _rollback_runtime_retirement_plan(
+        root, target_source_sha=source_sha)
     if previous == source_sha and database is None:
+        _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
         return {"current": source_sha, "previous": read_previous(root)}
     candidate_previous = candidate["manifest"].get("previous_runtime")
     if previous is None:
@@ -1071,8 +1075,6 @@ def set_current(
         if candidate_previous != previous_identity:
             raise ReleaseError(
                 "candidate previous_runtime does not match the CURRENT release")
-    rollback_runtime_retirement = _rollback_runtime_retirement_plan(
-        root, target_source_sha=source_sha)
     marker = None
     if database is not None:
         transition_id = uuid.uuid4().hex

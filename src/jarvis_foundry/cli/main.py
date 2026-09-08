@@ -99,6 +99,10 @@ def _parser() -> argparse.ArgumentParser:
     cross_schema.add_argument("--snapshot-sha256", required=True)
     cross_schema.add_argument("--failed-sha", required=True)
     cross_schema.add_argument("--predecessor-sha", required=True)
+    cross_schema.add_argument(
+        "--predecessor-manifest-sha256", required=True)
+    cross_schema.add_argument(
+        "--predecessor-package-sha256", required=True)
     cross_schema.add_argument("--task-name", default=V1_TASK_NAME)
     cross_schema.add_argument(
         "--health-timeout-seconds", type=float, default=90.0)
@@ -509,6 +513,12 @@ def _release_command(args, paths: FoundryPaths) -> int:
             snapshot_sha256=args.snapshot_sha256,
             failed_source_sha=args.failed_sha,
             predecessor_source_sha=args.predecessor_sha,
+            predecessor_manifest_sha256=(
+                args.predecessor_manifest_sha256
+            ),
+            predecessor_package_sha256=(
+                args.predecessor_package_sha256
+            ),
             task_name=args.task_name,
             health_timeout_seconds=args.health_timeout_seconds,
         )

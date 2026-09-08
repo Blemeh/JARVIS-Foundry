@@ -27,6 +27,9 @@ PREDECESSOR_TREE = "6d66b73a75a07a95360cfa2a9c7bbfa72821137b"
 PREDECESSOR_MANIFEST_SHA256 = (
     "97f8f510e9f8a02eae8dd5d63586309bcdacaa0d4268e777ec23644e41894726"
 )
+PREDECESSOR_PACKAGE_SHA256 = (
+    "f9445bd1af1add8f4a2e4d3332ab13a9d5f321fa52e82dae1d7f2c3eaffc0c36"
+)
 SNAPSHOT_SHA256 = (
     "d96e4f0d4351ed86bd466e6b51ef650adf9e4ddaeceab28321f88ad5fcba3794"
 )
@@ -98,6 +101,39 @@ def _sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _release_package_digest(path: Path) -> dict[str, Any]:
+    root = path.resolve()
+    digest = hashlib.sha256(b"jarvis.release-package.v1\0")
+    file_count = 0
+    total_bytes = 0
+    for entry in sorted(
+        root.rglob("*"),
+        key=lambda item: item.relative_to(root).as_posix(),
+    ):
+        if entry.is_symlink():
+            raise RuntimeError(
+                f"predecessor package contains a symbolic link: {entry}")
+        if entry.is_dir():
+            continue
+        if not entry.is_file():
+            raise RuntimeError(
+                f"predecessor package contains an unsupported entry: {entry}")
+        relative = entry.relative_to(root).as_posix().encode("utf-8")
+        size = entry.stat().st_size
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(int(size).to_bytes(8, "big"))
+        digest.update(bytes.fromhex(_sha256(entry)))
+        file_count += 1
+        total_bytes += int(size)
+    return {
+        "contract": "jarvis.release-package.v1",
+        "sha256": digest.hexdigest(),
+        "file_count": file_count,
+        "total_bytes": total_bytes,
+    }
 
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
@@ -364,6 +400,10 @@ def _prepare_root(
             f"predecessor RELEASE.json missing: {predecessor_manifest}")
     if _sha256(predecessor_manifest) != PREDECESSOR_MANIFEST_SHA256:
         raise RuntimeError("predecessor RELEASE.json hash is not the frozen input")
+    predecessor_package = _release_package_digest(predecessor_release)
+    if predecessor_package["sha256"] != PREDECESSOR_PACKAGE_SHA256:
+        raise RuntimeError(
+            "predecessor package hash is not the frozen input")
     predecessor = _read_json(predecessor_manifest)
     if (
         predecessor.get("source_sha") != PREDECESSOR_SHA
@@ -387,6 +427,9 @@ def _prepare_root(
     shutil.copytree(predecessor_release, copied_predecessor)
     if _sha256(copied_predecessor / "RELEASE.json") != PREDECESSOR_MANIFEST_SHA256:
         raise RuntimeError("copied predecessor package identity changed")
+    copied_package = _release_package_digest(copied_predecessor)
+    if copied_package != predecessor_package:
+        raise RuntimeError("copied predecessor package bytes changed")
 
     (install_root / "CURRENT").write_text(
         PREDECESSOR_SHA + "\n", encoding="utf-8")
@@ -429,6 +472,8 @@ def _prepare_root(
         "predecessor_sha": PREDECESSOR_SHA,
         "predecessor_tree": PREDECESSOR_TREE,
         "predecessor_manifest_sha256": PREDECESSOR_MANIFEST_SHA256,
+        "predecessor_package": predecessor_package,
+        "predecessor_package_sha256": PREDECESSOR_PACKAGE_SHA256,
         "snapshot_sha256": SNAPSHOT_SHA256,
         "snapshot_path": str(copied_snapshot),
         "install_root": str(install_root),
@@ -457,6 +502,8 @@ def _request_record(
         "snapshot_sha256": SNAPSHOT_SHA256,
         "failed_source_sha": source_sha,
         "predecessor_source_sha": PREDECESSOR_SHA,
+        "predecessor_manifest_sha256": PREDECESSOR_MANIFEST_SHA256,
+        "predecessor_package_sha256": PREDECESSOR_PACKAGE_SHA256,
         "task_name": task_name,
         "health_timeout_seconds": 150.0,
     }
@@ -551,16 +598,9 @@ def _terminate_staging_runtime(request_record: Mapping[str, Any]) -> dict[str, A
     host = WindowsRollbackHost()
     processes = host.owned_processes(request)
     terminations: list[dict[str, Any]] = []
-    for process in processes:
-        if process.get("kind") != "supervisor":
-            raise RuntimeError(
-                f"unexpected staging-owned process cannot be auto-removed: {process}")
-        record = {
-            "root_pid": process.get("pid"),
-            "root_creation_identity": process.get("creation_identity"),
-            "supervisor_processes": [process],
-        }
-        terminations.append(host.terminate_started_process(request, record))
+    if processes:
+        terminations.append(
+            host.terminate_owned_processes(request, processes))
     remaining = host.owned_processes(request)
     if remaining:
         raise RuntimeError(
@@ -864,6 +904,22 @@ def _verify_completion(
         "restored_schema_38": database["schema"] == 38,
         "restored_snapshot_logical_match": (
             restored["logical"]["sha256"] == snapshot["logical"]["sha256"]
+        ),
+        "snapshot_pinned_inside_transaction": (
+            snapshot.get("owned_copy") is True
+            and Path(snapshot["path"]).is_relative_to(state_path.parent)
+            and _sha256(Path(snapshot["path"])) == SNAPSHOT_SHA256
+        ),
+        "effect_work_continuity_preserved": (
+            snapshot.get("rollback_continuity", {}).get("status")
+            == "PRESERVED"
+        ),
+        "predecessor_package_anchored": (
+            state["evidence"]["predecessor_identity"]
+            .get("manifest_sha256") == PREDECESSOR_MANIFEST_SHA256
+            and state["evidence"]["predecessor_identity"]
+            .get("package", {}).get("sha256")
+            == PREDECESSOR_PACKAGE_SHA256
         ),
         "forensic_failed_logical_match": (
             forensic["logical"]["sha256"]

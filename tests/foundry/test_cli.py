@@ -132,6 +132,10 @@ def test_cross_schema_rollback_cli_requires_explicit_frozen_inputs(
         "a" * 40,
         "--predecessor-sha",
         "b" * 40,
+        "--predecessor-manifest-sha256",
+        "1" * 64,
+        "--predecessor-package-sha256",
+        "2" * 64,
         "--task-name",
         "JARVIS-Foundry-Supervisor-Rehearsal",
         "--health-timeout-seconds",
@@ -144,4 +148,6 @@ def test_cross_schema_rollback_cli_requires_explicit_frozen_inputs(
     assert request.install_root == install.resolve()
     assert request.foundry_home == home.resolve()
     assert request.snapshot_path == snapshot.resolve()
+    assert request.predecessor_manifest_sha256 == "1" * 64
+    assert request.predecessor_package_sha256 == "2" * 64
     assert request.health_timeout_seconds == 12.5

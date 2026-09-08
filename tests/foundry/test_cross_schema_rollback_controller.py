@@ -6,7 +6,7 @@ import os
 import sqlite3
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -28,8 +28,11 @@ from jarvis_foundry.deployment.rollback_controller import (
     RollbackInterruption,
     RollbackRefusal,
     RollbackRequest,
+    WindowsRollbackHost,
     inspect_database,
+    release_package_digest,
 )
+from jarvis_foundry.deployment.runtime_identity import ProcessQueryError
 from jarvis_foundry.events import Event
 from jarvis_foundry.supervisor.estop import EmergencyStop
 
@@ -75,7 +78,7 @@ def _write_release(
     identity: Mapping[str, Any],
     *,
     previous_runtime: Mapping[str, Any] | None,
-) -> None:
+) -> Path:
     directory = install_root / "releases" / str(identity["source_sha"])
     scripts = directory / ".venv" / "Scripts"
     scripts.mkdir(parents=True)
@@ -108,6 +111,7 @@ def _write_release(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    return directory
 
 
 def _record_database_authority(
@@ -157,7 +161,9 @@ class FakeRollbackHost:
         self.enable_count = 0
         self.disable_count = 0
         self.termination_count = 0
+        self.owned_termination_count = 0
         self.fail_enable_once = False
+        self.spawn_wrapper_on_enable = False
 
     def scheduler_contract(self, request: RollbackRequest) -> dict[str, Any]:
         return {
@@ -184,6 +190,17 @@ class FakeRollbackHost:
         self.scheduler_enabled = enabled
         if enabled:
             self.enable_count += 1
+            if self.spawn_wrapper_on_enable:
+                self.processes.append({
+                    "kind": "scheduler_wrapper",
+                    "pid": 9900 + self.enable_count,
+                    "creation_identity": {
+                        "pid": 9900 + self.enable_count,
+                        "create_time": float(self.enable_count),
+                    },
+                    "live": True,
+                })
+                self.spawn_wrapper_on_enable = False
             if self.fail_enable_once:
                 self.fail_enable_once = False
                 raise RuntimeError("injected Scheduler enable failure")
@@ -294,9 +311,35 @@ class FakeRollbackHost:
         request: RollbackRequest,
         process_record: Mapping[str, Any],
     ) -> dict[str, Any]:
-        targeted = [item["pid"] for item in self.processes]
-        self.processes = []
+        targeted = [
+            item["pid"] for item in self.processes
+            if item.get("kind") == "supervisor"
+        ]
+        self.processes = [
+            item for item in self.processes
+            if item.get("kind") != "supervisor"
+        ]
         self.termination_count += 1
+        return {"targeted_pids": targeted, "remaining": []}
+
+    def terminate_owned_processes(
+        self,
+        request: RollbackRequest,
+        processes: list[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        keys = {
+            (str(item.get("kind")), int(item.get("pid") or 0))
+            for item in processes
+        }
+        targeted = [
+            int(item["pid"]) for item in self.processes
+            if (str(item.get("kind")), int(item.get("pid") or 0)) in keys
+        ]
+        self.processes = [
+            item for item in self.processes
+            if (str(item.get("kind")), int(item.get("pid") or 0)) not in keys
+        ]
+        self.owned_termination_count += 1
         return {"targeted_pids": targeted, "remaining": []}
 
     def probe_predecessor(
@@ -355,7 +398,7 @@ def _rollback_sandbox(tmp_path: Path) -> RollbackSandbox:
     install_root = tmp_path / "JARVIS"
     home = tmp_path / "foundry"
     home.mkdir(parents=True)
-    _write_release(
+    predecessor_dir = _write_release(
         install_root,
         PREDECESSOR_IDENTITY,
         previous_runtime=None,
@@ -389,6 +432,11 @@ def _rollback_sandbox(tmp_path: Path) -> RollbackSandbox:
         snapshot_sha256=snapshot_hash,
         failed_source_sha=FAILED_SHA,
         predecessor_source_sha=PREDECESSOR_SHA,
+        predecessor_manifest_sha256=hashlib.sha256(
+            (predecessor_dir / "RELEASE.json").read_bytes()
+        ).hexdigest(),
+        predecessor_package_sha256=release_package_digest(
+            predecessor_dir)["sha256"],
         task_name="JARVIS-Foundry-Supervisor-Rehearsal",
         health_timeout_seconds=1.0,
     )
@@ -520,6 +568,37 @@ def test_scheduler_enable_failure_is_contained_before_retry(tmp_path):
     assert sandbox.host.termination_count >= 1
 
 
+def test_uncertain_scheduler_enable_contains_exact_wrapper_process(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+    sandbox.host.spawn_wrapper_on_enable = True
+    injected = False
+
+    def interrupt(point: str, state: Mapping[str, Any]) -> None:
+        nonlocal injected
+        if point == "during_scheduler_reenable" and not injected:
+            injected = True
+            raise RollbackInterruption(point)
+
+    with pytest.raises(
+        RollbackInterruption,
+        match="during_scheduler_reenable",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+            fault_injector=interrupt,
+        ).run()
+
+    report = CrossSchemaRollbackController(
+        sandbox.request,
+        host=sandbox.host,
+    ).run()
+
+    _assert_completed(sandbox, report)
+    assert injected is True
+    assert sandbox.host.owned_termination_count >= 1
+
+
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
@@ -569,6 +648,113 @@ def test_entry_refusals_leave_no_transaction_files(
     assert after_database["logical"] == before_database["logical"]
 
 
+def test_windows_owned_process_census_refuses_unknown_provider(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+
+    def fail_query():
+        raise ProcessQueryError("CIM and WMIC unavailable")
+
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.query_processes_strict",
+        fail_query,
+    )
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="authoritative owned-process census failed",
+    ):
+        WindowsRollbackHost().owned_processes(sandbox.request)
+
+
+def test_windows_owned_process_census_includes_scheduler_wrapper(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    wrapper = sandbox.request.install_root / "bin" / (
+        "jarvis-supervisor-headless.vbs")
+    executable = r"C:\Windows\System32\wscript.exe"
+    raw = {
+        "ProcessId": 3210,
+        "ParentProcessId": 100,
+        "ExecutablePath": executable,
+        "CommandLine": (
+            f'"{executable}" //B //Nologo "{wrapper}" '
+            f'--home "{sandbox.request.foundry_home}" '
+            "--interval 5 --command-center-port 8767"
+        ),
+    }
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.query_processes_strict",
+        lambda: [raw],
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.pid_alive",
+        lambda pid: pid == 3210,
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.process_creation_identity",
+        lambda pid: {
+            "pid": pid,
+            "create_time": 123456,
+            "exe": executable,
+        },
+    )
+
+    assert WindowsRollbackHost().owned_processes(sandbox.request) == [{
+        "kind": "scheduler_wrapper",
+        "pid": 3210,
+        "executable": executable,
+        "command_line": raw["CommandLine"],
+        "creation_identity": {
+            "pid": 3210,
+            "create_time": 123456,
+            "exe": executable,
+        },
+        "live": True,
+    }]
+
+
+def test_windows_owned_process_census_refuses_live_wrapper_without_identity(
+    tmp_path,
+    monkeypatch,
+):
+    sandbox = _rollback_sandbox(tmp_path)
+    wrapper = sandbox.request.install_root / "bin" / (
+        "jarvis-supervisor-headless.vbs")
+    executable = r"C:\Windows\System32\wscript.exe"
+    raw = {
+        "ProcessId": 3211,
+        "ParentProcessId": 100,
+        "ExecutablePath": executable,
+        "CommandLine": (
+            f'"{executable}" //B //Nologo "{wrapper}" '
+            f'--home "{sandbox.request.foundry_home}"'
+        ),
+    }
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.query_processes_strict",
+        lambda: [raw],
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.pid_alive",
+        lambda pid: True,
+    )
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.rollback_controller.process_creation_identity",
+        lambda pid: {"pid": pid},
+    )
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="creation identity is unavailable",
+    ):
+        WindowsRollbackHost().owned_processes(sandbox.request)
+
+
 def test_unresolved_effect_refuses_before_transaction_creation(tmp_path):
     sandbox = _rollback_sandbox(tmp_path)
     connection = sqlite3.connect(
@@ -597,6 +783,71 @@ def test_unresolved_effect_refuses_before_transaction_creation(tmp_path):
     ).exists()
     assert sandbox.host.scheduler_enabled is False
     assert sandbox.host.processes == []
+
+
+def test_snapshot_refuses_completed_effect_identity_loss(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+    connection = sqlite3.connect(
+        sandbox.request.foundry_home / "foundry.db")
+    try:
+        connection.execute(
+            "INSERT INTO system_actions("
+            "action_key, system_id, target_ref, payload_hash, kind, status,"
+            "last_event_id, updated_at"
+            ") VALUES ('post-snapshot-effect', 'github', 'repo', ?, "
+            "'write', 'COMPLETED', 'post-snapshot-event', "
+            "'2026-09-08T00:00:00Z')",
+            ("3" * 64,),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="discard post-snapshot effect/work idempotency evidence",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+    assert read_current(sandbox.request.install_root) == FAILED_SHA
+    assert inspect_database(
+        sandbox.request.foundry_home / "foundry.db"
+    )["schema"] == 40
+
+
+def test_snapshot_refuses_completed_work_identity_loss(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+    connection = sqlite3.connect(
+        sandbox.request.foundry_home / "foundry.db")
+    try:
+        connection.execute(
+            "INSERT INTO missions("
+            "mission_id, objective, resource_id, state, acceptance_json, "
+            "next_action, last_event_id, updated_at, created_from"
+            ") VALUES ('post-snapshot-mission', 'completed after snapshot', "
+            "NULL, 'COMPLETE', '[]', NULL, 'post-snapshot-mission-event', "
+            "'2026-09-08T00:00:00Z', 'test')"
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="discard post-snapshot effect/work idempotency evidence",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+    assert read_current(sandbox.request.install_root) == FAILED_SHA
+    assert inspect_database(
+        sandbox.request.foundry_home / "foundry.db"
+    )["schema"] == 40
 
 
 def test_effect_barrier_uses_latest_reconciliation_evidence(tmp_path):
@@ -697,6 +948,102 @@ def test_bad_snapshot_refuses_and_retains_frozen_containment(tmp_path):
     assert state["phase"] == "PRECONDITIONS_VERIFIED"
 
 
+def test_snapshot_is_pinned_before_external_source_changes(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+
+    def interrupt(point: str, state: Mapping[str, Any]) -> None:
+        if point == "after_forensic_capture":
+            raise RollbackInterruption(point)
+
+    with pytest.raises(RollbackInterruption, match="after_forensic_capture"):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+            fault_injector=interrupt,
+        ).run()
+
+    sandbox.request.snapshot_path.write_bytes(b"external snapshot replaced")
+    report = CrossSchemaRollbackController(
+        sandbox.request,
+        host=sandbox.host,
+    ).run()
+
+    _assert_completed(sandbox, report)
+    assert report["snapshot"]["owned_copy"] is True
+    assert Path(report["snapshot"]["path"]).is_relative_to(
+        sandbox.request.install_root / "rollback-transactions")
+
+
+def test_owned_snapshot_tamper_refuses_before_database_restore(tmp_path):
+    sandbox = _rollback_sandbox(tmp_path)
+
+    def interrupt(point: str, state: Mapping[str, Any]) -> None:
+        if point == "after_forensic_capture":
+            raise RollbackInterruption(point)
+
+    with pytest.raises(RollbackInterruption, match="after_forensic_capture"):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+            fault_injector=interrupt,
+        ).run()
+    state_path = (
+        sandbox.request.install_root
+        / "rollback-transactions"
+        / sandbox.request.transaction_id
+        / "STATE.json"
+    )
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    Path(state["evidence"]["snapshot"]["path"]).write_bytes(
+        b"tampered transaction snapshot")
+
+    with pytest.raises(
+        RollbackRefusal,
+        match="transaction-owned rollback snapshot SHA-256 changed",
+    ):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+    assert read_current(sandbox.request.install_root) == FAILED_SHA
+    assert inspect_database(
+        sandbox.request.foundry_home / "foundry.db"
+    )["schema"] == 40
+
+
+@pytest.mark.parametrize("target", ["manifest", "package"])
+def test_predecessor_external_anchor_refuses_tampering(tmp_path, target):
+    sandbox = _rollback_sandbox(tmp_path)
+    predecessor = (
+        sandbox.request.install_root / "releases" / PREDECESSOR_SHA
+    )
+    if target == "manifest":
+        manifest = predecessor / "RELEASE.json"
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload["package_version"] = "tampered"
+        manifest.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        message = "manifest SHA-256"
+    else:
+        (
+            predecessor / ".venv" / "Scripts" / "python.exe"
+        ).write_text("tampered release python", encoding="utf-8")
+        message = "package SHA-256"
+
+    with pytest.raises(RollbackRefusal, match=message):
+        CrossSchemaRollbackController(
+            sandbox.request,
+            host=sandbox.host,
+        ).run()
+
+    assert not (
+        sandbox.request.install_root / "rollback-transactions"
+    ).exists()
+
+
 def test_conflicting_transaction_is_refused(tmp_path):
     sandbox = _rollback_sandbox(tmp_path)
 
@@ -742,6 +1089,17 @@ def test_controller_refuses_same_schema_pair_without_creating_state(tmp_path):
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    predecessor_dir = (
+        sandbox.request.install_root / "releases" / PREDECESSOR_SHA
+    )
+    sandbox.request = replace(
+        sandbox.request,
+        predecessor_manifest_sha256=hashlib.sha256(
+            (predecessor_dir / "RELEASE.json").read_bytes()
+        ).hexdigest(),
+        predecessor_package_sha256=release_package_digest(
+            predecessor_dir)["sha256"],
+    )
     live = FoundryDatabase(sandbox.request.foundry_home / "foundry.db")
     live.restore_from(sandbox.request.snapshot_path)
     _record_database_authority(live.path, {
@@ -761,6 +1119,53 @@ def test_controller_refuses_same_schema_pair_without_creating_state(tmp_path):
 
 
 def test_runtime_bridge_refuses_to_launch_without_durable_stop(tmp_path):
+    install_root = tmp_path / "JARVIS"
+    foundry_home = tmp_path / "foundry"
+    shim_dir = install_root / "rollback-runtime" / "active"
+    shim_dir.mkdir(parents=True)
+    foundry_home.mkdir()
+    write_pointer(install_root / "CURRENT", PREDECESSOR_SHA)
+    shim_path = shim_dir / "sitecustomize.py"
+    shim_path.write_text(FROZEN_SITE_CUSTOMIZE, encoding="utf-8")
+    marker_path = install_root / "ROLLBACK_RUNTIME.json"
+    marker_path.write_text(
+        json.dumps({
+            "contract": "jarvis.cross-schema-rollback-runtime.v1",
+            "status": "ACTIVE",
+            "source_sha": PREDECESSOR_SHA,
+            "install_root": str(install_root.resolve()),
+            "foundry_home": str(foundry_home.resolve()),
+            "sitecustomize_sha256": hashlib.sha256(
+                shim_path.read_bytes()
+            ).hexdigest(),
+        }),
+        encoding="utf-8",
+    )
+    environment = os.environ.copy()
+    environment.update({
+        "JARVIS_HOME": str(foundry_home.resolve()),
+        "JARVIS_INSTALL_ROOT": str(install_root.resolve()),
+        "JARVIS_RELEASE_SHA": PREDECESSOR_SHA,
+        "JARVIS_ROLLBACK_RUNTIME_MARKER": str(marker_path.resolve()),
+        "PYTHONPATH": str(shim_dir.resolve()),
+    })
+    environment.pop("PYTHONHOME", None)
+
+    result = subprocess.run(
+        [sys.executable, "-c", "print('unsafe runtime started')"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 2
+    assert "durable STOP is not active" in result.stderr
+    assert "unsafe runtime started" not in result.stdout
+
+
+def test_completed_runtime_bridge_retires_on_owner_resume(tmp_path):
     install_root = tmp_path / "JARVIS"
     foundry_home = tmp_path / "foundry"
     shim_dir = install_root / "rollback-runtime" / "active"
@@ -794,7 +1199,7 @@ def test_runtime_bridge_refuses_to_launch_without_durable_stop(tmp_path):
     environment.pop("PYTHONHOME", None)
 
     result = subprocess.run(
-        [sys.executable, "-c", "print('unsafe runtime started')"],
+        [sys.executable, "-c", "print('owner resume started')"],
         capture_output=True,
         text=True,
         timeout=30,
@@ -802,6 +1207,6 @@ def test_runtime_bridge_refuses_to_launch_without_durable_stop(tmp_path):
         env=environment,
     )
 
-    assert result.returncode == 2
-    assert "durable STOP is not active" in result.stderr
-    assert "unsafe runtime started" not in result.stdout
+    assert result.returncode == 0
+    assert result.stdout.strip() == "owner resume started"
+    assert not marker_path.exists()

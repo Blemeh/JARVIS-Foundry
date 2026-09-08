@@ -282,6 +282,24 @@ def test_new_activation_retires_completed_cross_schema_runtime_marker(tmp_path):
     assert not marker.exists()
 
 
+def test_same_release_activation_retires_completed_runtime_marker(tmp_path):
+    sha = "3" * 40
+    _fake_release(tmp_path, sha)
+    root = tmp_path / "JARVIS"
+    set_current(sha, root=root)
+    marker = rollback_runtime_marker(root)
+    marker.write_text(json.dumps({
+        "contract": "jarvis.cross-schema-rollback-runtime.v1",
+        "source_sha": sha,
+        "status": "COMPLETE_FROZEN_RUNTIME",
+    }), encoding="utf-8")
+
+    result = set_current(sha, root=root)
+
+    assert result["current"] == sha
+    assert not marker.exists()
+
+
 def test_invalid_runtime_marker_refuses_before_pointer_mutation(tmp_path):
     first, second = "5" * 40, "6" * 40
     _fake_release(tmp_path, first)

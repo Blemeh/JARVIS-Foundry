@@ -33,6 +33,10 @@ _RELEASE_PATH_RE = re.compile(
     r"[\\/]releases[\\/]([0-9a-f]{40,64})(?:[\\/]|$)", re.IGNORECASE)
 
 
+class ProcessQueryError(RuntimeError):
+    """The host process census could not establish authoritative truth."""
+
+
 def _powershell_executable() -> str:
     """Prefer Windows PowerShell for CIM compatibility.
 
@@ -51,12 +55,16 @@ def _powershell_executable() -> str:
     return candidates[0]
 
 
-def query_processes() -> list[dict[str, Any]]:
-    """Return raw process identity records from the host without name hacks."""
+def _query_processes(*, strict: bool) -> list[dict[str, Any]]:
+    """Return raw process records, optionally refusing an unknown census."""
     if os.name != "nt":
         # Linux/macOS test lanes can provide an explicit query function; the
         # production Windows path below is the only source of live truth.
+        if strict:
+            raise ProcessQueryError(
+                "authoritative process census is available only on Windows")
         return []
+    failures: list[str] = []
     script = (
         "$ErrorActionPreference='Stop'; "
         "Get-CimInstance Win32_Process | "
@@ -70,17 +78,33 @@ def query_processes() -> list[dict[str, Any]]:
             env=sanitized_env(),
             **headless_run_kwargs(),
         )
-    except (OSError, subprocess.TimeoutExpired):
-        return []
-    if result.returncode == 0 and (result.stdout or "").strip():
+    except (OSError, subprocess.TimeoutExpired) as error:
+        failures.append(f"CIM invocation failed: {type(error).__name__}")
+        result = None
+    if result is not None and result.returncode == 0 and (
+        result.stdout or ""
+    ).strip():
         try:
             payload = json.loads(result.stdout)
-        except (TypeError, ValueError):
-            payload = None
-        if isinstance(payload, Mapping):
-            return [dict(payload)]
-        if isinstance(payload, list):
-            return [dict(item) for item in payload if isinstance(item, Mapping)]
+        except (TypeError, ValueError) as error:
+            failures.append(f"CIM JSON was invalid: {type(error).__name__}")
+        else:
+            if isinstance(payload, Mapping):
+                return [dict(payload)]
+            if isinstance(payload, list):
+                records = [
+                    dict(item) for item in payload
+                    if isinstance(item, Mapping)
+                ]
+                if records:
+                    return records
+                failures.append("CIM returned no process records")
+            else:
+                failures.append("CIM returned an unsupported JSON shape")
+    elif result is not None:
+        detail = (result.stderr or result.stdout or "").strip()
+        failures.append(
+            f"CIM query failed with exit {result.returncode}: {detail[:300]}")
 
     # Some Windows images expose CIM as a discoverable command but cannot
     # load the CimCmdlets module (the exact failure seen on the recovery host).
@@ -88,6 +112,10 @@ def query_processes() -> list[dict[str, Any]]:
     # use it only as a read-only compatibility provider.
     wmic = shutil.which("wmic.exe") or shutil.which("wmic")
     if not wmic:
+        if strict:
+            raise ProcessQueryError(
+                "authoritative process census failed: "
+                + "; ".join(failures + ["WMIC is unavailable"]))
         return []
     try:
         legacy = subprocess.run(
@@ -96,9 +124,21 @@ def query_processes() -> list[dict[str, Any]]:
             env=sanitized_env(),
             **headless_run_kwargs(),
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired) as error:
+        failures.append(f"WMIC invocation failed: {type(error).__name__}")
+        if strict:
+            raise ProcessQueryError(
+                "authoritative process census failed: "
+                + "; ".join(failures)) from error
         return []
     if legacy.returncode != 0:
+        detail = (legacy.stderr or legacy.stdout or "").strip()
+        failures.append(
+            f"WMIC query failed with exit {legacy.returncode}: {detail[:300]}")
+        if strict:
+            raise ProcessQueryError(
+                "authoritative process census failed: "
+                + "; ".join(failures))
         return []
     records: list[dict[str, Any]] = []
     current: dict[str, Any] = {}
@@ -133,7 +173,25 @@ def query_processes() -> list[dict[str, Any]]:
             current[last_key] = f"{current.get(last_key, '')} {line}".strip()
     if current:
         records.append(current)
+    if strict and not records:
+        raise ProcessQueryError(
+            "authoritative process census failed: "
+            + "; ".join(failures + ["WMIC returned no process records"]))
     return records
+
+
+def query_processes() -> list[dict[str, Any]]:
+    """Return raw process records for read-only diagnostics.
+
+    Existing status surfaces intentionally retain their historical
+    best-effort behavior. Deployment controllers must use the strict variant.
+    """
+    return _query_processes(strict=False)
+
+
+def query_processes_strict() -> list[dict[str, Any]]:
+    """Return an authoritative process census or raise instead of failing open."""
+    return _query_processes(strict=True)
 
 
 def _module_for(command_line: str) -> str | None:
@@ -635,9 +693,10 @@ def parity_state(
 
 
 __all__ = [
-    "SUPERVISOR_MODULES", "normalize_process", "parity_state",
+    "ProcessQueryError", "SUPERVISOR_MODULES", "normalize_process", "parity_state",
     "process_home", "process_matches_home",
-    "query_processes", "release_sha_for_id", "supervisor_processes",
+    "query_processes", "query_processes_strict", "release_sha_for_id",
+    "supervisor_processes",
     "supervisor_process_census",
     "with_creation_identity",
 ]

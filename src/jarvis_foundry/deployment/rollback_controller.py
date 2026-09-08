@@ -13,6 +13,7 @@ import math
 import os
 import re
 import shlex
+import shutil
 import sqlite3
 import struct
 import subprocess
@@ -57,8 +58,9 @@ from .release import (
     write_pointer,
 )
 from .runtime_identity import (
+    ProcessQueryError,
     process_matches_home,
-    query_processes,
+    query_processes_strict,
     supervisor_processes,
 )
 
@@ -152,6 +154,18 @@ _EFFECT_EVENT_TYPES = (
     "system.action_failed",
     "system.action_started",
 )
+_WORK_CONTINUITY_TABLES = (
+    "action_decisions",
+    "agent_runs",
+    "candidate_outcomes",
+    "evidence_bundles",
+    "final_outcomes",
+    "mission_step_contracts",
+    "missions",
+    "verification_verdicts",
+    "work_packages",
+    "worker_manifests",
+)
 
 
 class RollbackControllerError(RuntimeError):
@@ -175,6 +189,8 @@ class RollbackRequest:
     snapshot_sha256: str
     failed_source_sha: str
     predecessor_source_sha: str
+    predecessor_manifest_sha256: str
+    predecessor_package_sha256: str
     task_name: str = V1_TASK_NAME
     health_timeout_seconds: float = 90.0
 
@@ -186,10 +202,16 @@ class RollbackRequest:
         for field_name in ("install_root", "foundry_home", "snapshot_path"):
             value = Path(getattr(self, field_name)).expanduser().resolve()
             object.__setattr__(self, field_name, value)
-        snapshot_hash = str(self.snapshot_sha256).strip().lower()
-        if not re.fullmatch(r"[0-9a-f]{64}", snapshot_hash):
-            raise ValueError("snapshot_sha256 must be a 64-character SHA-256")
-        object.__setattr__(self, "snapshot_sha256", snapshot_hash)
+        for field_name in (
+            "snapshot_sha256",
+            "predecessor_manifest_sha256",
+            "predecessor_package_sha256",
+        ):
+            value = str(getattr(self, field_name)).strip().lower()
+            if not re.fullmatch(r"[0-9a-f]{64}", value):
+                raise ValueError(
+                    f"{field_name} must be a 64-character SHA-256")
+            object.__setattr__(self, field_name, value)
         for field_name in ("failed_source_sha", "predecessor_source_sha"):
             value = str(getattr(self, field_name)).strip().lower()
             if not _SHA_RE.fullmatch(value):
@@ -217,6 +239,12 @@ class RollbackRequest:
             "snapshot_sha256": self.snapshot_sha256,
             "failed_source_sha": self.failed_source_sha,
             "predecessor_source_sha": self.predecessor_source_sha,
+            "predecessor_manifest_sha256": (
+                self.predecessor_manifest_sha256
+            ),
+            "predecessor_package_sha256": (
+                self.predecessor_package_sha256
+            ),
             "task_name": self.task_name,
             "health_timeout_seconds": self.health_timeout_seconds,
         }
@@ -265,6 +293,13 @@ class RollbackHost(Protocol):
     ) -> dict[str, Any]:
         ...
 
+    def terminate_owned_processes(
+        self,
+        request: RollbackRequest,
+        processes: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        ...
+
     def probe_predecessor(
         self,
         request: RollbackRequest,
@@ -281,6 +316,69 @@ def _sha256_file(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def release_package_digest(path: Path) -> dict[str, Any]:
+    """Hash every byte and normalized relative path in an immutable release."""
+    root = Path(path).expanduser().resolve()
+    if not root.is_dir():
+        raise RollbackRefusal(f"release package directory missing: {root}")
+    digest = hashlib.sha256(b"jarvis.release-package.v1\0")
+    file_count = 0
+    total_bytes = 0
+    try:
+        entries = sorted(
+            root.rglob("*"),
+            key=lambda item: item.relative_to(root).as_posix(),
+        )
+    except OSError as error:
+        raise RollbackRefusal(
+            f"release package inventory failed: {root}") from error
+    for entry in entries:
+        if entry.is_symlink():
+            raise RollbackRefusal(
+                f"release package contains a symbolic link: {entry}")
+        if entry.is_dir():
+            continue
+        if not entry.is_file():
+            raise RollbackRefusal(
+                f"release package contains an unsupported entry: {entry}")
+        relative = entry.relative_to(root).as_posix().encode("utf-8")
+        try:
+            size = entry.stat().st_size
+            content_hash = _sha256_file(entry)
+        except OSError as error:
+            raise RollbackRefusal(
+                f"release package file could not be hashed: {entry}") from error
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        digest.update(int(size).to_bytes(8, "big"))
+        digest.update(bytes.fromhex(content_hash))
+        file_count += 1
+        total_bytes += int(size)
+    if file_count == 0:
+        raise RollbackRefusal(f"release package is empty: {root}")
+    return {
+        "contract": "jarvis.release-package.v1",
+        "path": str(root),
+        "sha256": digest.hexdigest(),
+        "file_count": file_count,
+        "total_bytes": total_bytes,
+    }
+
+
+def _atomic_copy_file(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(
+        f".{destination.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with source.open("rb") as reader, temporary.open("xb") as writer:
+            shutil.copyfileobj(reader, writer, length=1024 * 1024)
+            writer.flush()
+            os.fsync(writer.fileno())
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
@@ -376,10 +474,25 @@ class _RollbackFileLock:
             self.handle = None
 
 
-def _manifest_identity(root: Path, source_sha: str) -> dict[str, Any]:
-    manifest_path = release_dir(source_sha, root) / "RELEASE.json"
+def _manifest_identity(
+    root: Path,
+    source_sha: str,
+    *,
+    expected_manifest_sha256: str | None = None,
+    expected_package_sha256: str | None = None,
+) -> dict[str, Any]:
+    directory = release_dir(source_sha, root)
+    manifest_path = directory / "RELEASE.json"
     if not manifest_path.is_file():
         raise RollbackRefusal(f"release manifest missing: {manifest_path}")
+    manifest_sha256 = _sha256_file(manifest_path)
+    if (
+        expected_manifest_sha256 is not None
+        and manifest_sha256 != expected_manifest_sha256
+    ):
+        raise RollbackRefusal(
+            f"release {source_sha} manifest SHA-256 does not match "
+            "the frozen predecessor input")
     try:
         manifest = read_release_json(manifest_path)
     except (OSError, ValueError) as error:
@@ -411,7 +524,14 @@ def _manifest_identity(root: Path, source_sha: str) -> dict[str, Any]:
     if package_schema <= 0 or not opens_min <= package_schema <= opens_max:
         raise RollbackRefusal(
             f"release {source_sha} has an invalid schema window")
-    python_exe = release_dir(source_sha, root) / ".venv" / "Scripts" / "python.exe"
+    package = None
+    if expected_package_sha256 is not None:
+        package = release_package_digest(directory)
+        if package["sha256"] != expected_package_sha256:
+            raise RollbackRefusal(
+                f"release {source_sha} package SHA-256 does not match "
+                "the frozen predecessor input")
+    python_exe = directory / ".venv" / "Scripts" / "python.exe"
     if not python_exe.is_file():
         raise RollbackRefusal(f"release Python missing: {python_exe}")
     return {
@@ -423,7 +543,8 @@ def _manifest_identity(root: Path, source_sha: str) -> dict[str, Any]:
         "opens_min": opens_min,
         "opens_max": opens_max,
         "manifest_path": str(manifest_path.resolve()),
-        "manifest_sha256": _sha256_file(manifest_path),
+        "manifest_sha256": manifest_sha256,
+        "package": package,
         "python_exe": str(python_exe.resolve()),
         "previous_runtime": manifest.get("previous_runtime"),
     }
@@ -555,6 +676,62 @@ def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
     return row is not None
 
 
+def _table_continuity_digest(
+    connection: sqlite3.Connection,
+    table_name: str,
+) -> dict[str, Any]:
+    if not _table_exists(connection, table_name):
+        return {
+            "present": False,
+            "row_count": 0,
+            "sha256": None,
+        }
+    info = connection.execute(
+        f"PRAGMA table_info({_quoted_identifier(table_name)})"
+    ).fetchall()
+    columns = [str(column[1]) for column in info]
+    primary = [
+        (int(column[5]), str(column[1]))
+        for column in info if int(column[5] or 0) > 0
+    ]
+    schema_row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    ).fetchone()
+    schema_sql = str(schema_row[0] or "") if schema_row else ""
+    order_clause = "rowid"
+    if "WITHOUT ROWID" in schema_sql.upper():
+        if not primary:
+            raise RollbackRefusal(
+                f"continuity table has no stable row order: {table_name}")
+        order_clause = ", ".join(
+            _quoted_identifier(name) for _, name in sorted(primary)
+        )
+    digest = hashlib.sha256()
+    _feed_digest_value(digest, table_name)
+    for column in columns:
+        _feed_digest_value(digest, column)
+    row_count = 0
+    cursor = connection.execute(
+        f"SELECT * FROM {_quoted_identifier(table_name)} "
+        f"ORDER BY {order_clause}"
+    )
+    while True:
+        rows = cursor.fetchmany(512)
+        if not rows:
+            break
+        for row in rows:
+            digest.update(b"R")
+            for value in row:
+                _feed_digest_value(digest, value)
+            row_count += 1
+    return {
+        "present": True,
+        "row_count": row_count,
+        "sha256": digest.hexdigest(),
+    }
+
+
 def _schema_version(connection: sqlite3.Connection) -> int:
     if not _table_exists(connection, "schema_migrations"):
         return 0
@@ -627,6 +804,8 @@ def _effect_barrier(connection: sqlite3.Connection) -> dict[str, Any]:
     journal_rows = connection.execute(
         "SELECT action_key, status FROM system_actions ORDER BY action_key"
     ).fetchall()
+    journal_continuity = _table_continuity_digest(
+        connection, "system_actions")
     journal_counts: dict[str, int] = {}
     unresolved: list[str] = []
     for action_key, status_value in journal_rows:
@@ -706,6 +885,7 @@ def _effect_barrier(connection: sqlite3.Connection) -> dict[str, Any]:
         "event_count": effect_event_count,
         "event_sha256": event_digest.hexdigest(),
         "journal_counts": journal_counts,
+        "journal_continuity": journal_continuity,
     }
 
 
@@ -745,6 +925,10 @@ def _work_barrier(connection: sqlite3.Connection) -> dict[str, Any]:
                 is_active = True
             if is_active:
                 active_leases.append(str(lease_key))
+    continuity_tables = {
+        table_name: _table_continuity_digest(connection, table_name)
+        for table_name in _WORK_CONTINUITY_TABLES
+    }
     return {
         "status": (
             "CLEAR"
@@ -754,6 +938,7 @@ def _work_barrier(connection: sqlite3.Connection) -> dict[str, Any]:
         "running_agent_runs": running_agents,
         "active_missions": active_missions,
         "active_worker_leases": active_leases,
+        "continuity_tables": continuity_tables,
     }
 
 
@@ -820,6 +1005,26 @@ def _same_path(left, right):
     )
 
 
+def _retire_completed_marker(marker_path, *, root, home, source_sha, shim_hash):
+    try:
+        payload = json.loads(marker_path.read_text(encoding="utf-8"))
+    except Exception as error:
+        _abort("completed marker is unreadable: " + type(error).__name__)
+    if (
+        payload.get("contract") != "jarvis.cross-schema-rollback-runtime.v1"
+        or payload.get("status") != "COMPLETE_FROZEN_RUNTIME"
+        or payload.get("source_sha") != source_sha
+        or not _same_path(payload.get("install_root", ""), root)
+        or not _same_path(payload.get("foundry_home", ""), home)
+        or payload.get("sitecustomize_sha256") != shim_hash
+    ):
+        _abort("completed marker changed before owner RESUME")
+    try:
+        marker_path.unlink()
+    except Exception as error:
+        _abort("completed marker retirement failed: " + type(error).__name__)
+
+
 def _activate():
     marker_raw = os.environ.get("JARVIS_ROLLBACK_RUNTIME_MARKER", "").strip()
     if not marker_raw:
@@ -849,9 +1054,6 @@ def _activate():
     supplied = os.environ.get("JARVIS_RELEASE_SHA", "").strip()
     if supplied and supplied != current:
         _abort("launcher release identity mismatch")
-    stop_path = home / "EMERGENCY_STOP"
-    if not stop_path.is_file():
-        _abort("durable STOP is not active")
     source_path = Path(__file__).resolve()
     try:
         observed_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
@@ -859,6 +1061,18 @@ def _activate():
         _abort("shim hash unavailable: " + type(error).__name__)
     if observed_hash != marker.get("sitecustomize_sha256"):
         _abort("shim hash mismatch")
+    stop_path = home / "EMERGENCY_STOP"
+    if not stop_path.is_file():
+        if marker.get("status") == "COMPLETE_FROZEN_RUNTIME":
+            _retire_completed_marker(
+                marker_path,
+                root=root,
+                home=home,
+                source_sha=current,
+                shim_hash=observed_hash,
+            )
+            return
+        _abort("durable STOP is not active")
 
     try:
         from jarvis_foundry.supervisor import run as runtime
@@ -904,10 +1118,17 @@ def _activate():
 
             def guarded_frozen_heartbeat(*args, **kwargs):
                 if not stop_path.is_file():
+                    _retire_completed_marker(
+                        marker_path,
+                        root=root,
+                        home=home,
+                        source_sha=current,
+                        shim_hash=observed_hash,
+                    )
                     try:
                         supervisor.stop()
                     finally:
-                        _abort("durable STOP disappeared")
+                        os._exit(0)
                 state = original_heartbeat(*args, **kwargs)
                 if state != "FROZEN":
                     try:
@@ -1182,37 +1403,138 @@ class WindowsRollbackHost:
         return contract
 
     def owned_processes(self, request: RollbackRequest) -> list[dict[str, Any]]:
+        try:
+            raw_processes = query_processes_strict()
+        except ProcessQueryError as error:
+            raise RollbackRefusal(
+                f"authoritative owned-process census failed: {error}") from error
+
+        supervisor_pattern = re.compile(
+            r"(?:^|\s)-m\s+[\"']?jarvis_foundry\."
+            r"(?:supervisor\.run|deployment\.(?:launcher|headless_launcher))"
+            r"(?:[\"']?)(?=\s|$)",
+            re.IGNORECASE,
+        )
+        target_supervisor_rows = [
+            raw for raw in raw_processes
+            if supervisor_pattern.search(str(
+                raw.get("CommandLine") or raw.get("command_line") or ""
+            ))
+            and process_matches_home(raw, request.foundry_home)
+        ]
         observed: list[dict[str, Any]] = []
-        for process in supervisor_processes():
+        try:
+            supervisors = supervisor_processes(
+                query=lambda: target_supervisor_rows)
+        except Exception as error:
+            raise RollbackRefusal(
+                "Supervisor creation identity could not be established"
+            ) from error
+        covered_supervisor_pids: set[int] = set()
+        for process in supervisors:
             if not process_matches_home(process, request.foundry_home):
                 continue
-            if not process.get("live", True):
+            try:
+                pid = int(process["pid"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "Supervisor census returned an invalid PID") from error
+            covered_supervisor_pids.add(pid)
+            wrapper_pid = process.get("interpreter_wrapper_pid")
+            if wrapper_pid is not None:
+                covered_supervisor_pids.add(int(wrapper_pid))
+            identity_status = process.get("identity_status")
+            if identity_status == "UNAVAILABLE":
+                if pid_alive(pid):
+                    raise RollbackRefusal(
+                        "live Supervisor creation identity is unavailable")
+                continue
+            if identity_status == "PID_REUSED" or not process.get("live"):
                 continue
             observed.append({"kind": "supervisor", **process})
+
+        for raw in target_supervisor_rows:
+            command_line = str(
+                raw.get("CommandLine") or raw.get("command_line") or "")
+            try:
+                pid = int(raw.get("ProcessId", raw.get("pid")))
+            except (TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "matching Supervisor census row has no valid PID") from error
+            if pid > 0 and pid_alive(pid) and pid not in covered_supervisor_pids:
+                raise RollbackRefusal(
+                    "matching live Supervisor could not be normalized "
+                    "into an exact creation identity")
 
         worker_pattern = re.compile(
             r"(?:^|\s)-m\s+[\"']?jarvis_foundry\.runtime\.worker_loop"
             r"(?:[\"']?)(?=\s|$)",
             re.IGNORECASE,
         )
-        for raw in query_processes():
+        expected_vbs = headless_launcher_cmd(request.install_root)
+        for raw in raw_processes:
             command_line = str(
                 raw.get("CommandLine") or raw.get("command_line") or "")
-            if not worker_pattern.search(command_line):
-                continue
-            if not process_matches_home(raw, request.foundry_home):
-                continue
             try:
                 pid = int(raw.get("ProcessId", raw.get("pid")))
             except (TypeError, ValueError):
                 continue
             if pid <= 0 or not pid_alive(pid):
                 continue
+            executable = str(
+                raw.get("ExecutablePath")
+                or raw.get("executable_path")
+                or ""
+            )
+            is_worker = bool(
+                worker_pattern.search(command_line)
+                and process_matches_home(raw, request.foundry_home)
+            )
+            is_scheduler_wrapper = False
+            if (
+                Path(executable).name.casefold()
+                in {"wscript.exe", "cscript.exe"}
+                and process_matches_home(raw, request.foundry_home)
+            ):
+                try:
+                    tokens = _split_windows_arguments(command_line)
+                    is_scheduler_wrapper = any(
+                        _same_path(token, expected_vbs)
+                        for token in tokens
+                        if Path(token).name.casefold()
+                        == expected_vbs.name.casefold()
+                    )
+                except (OSError, ValueError):
+                    is_scheduler_wrapper = False
+            if not is_worker and not is_scheduler_wrapper:
+                continue
+            try:
+                creation_identity = process_creation_identity(pid)
+            except (OSError, TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "matching owned process creation identity is unavailable"
+                ) from error
+            if creation_identity.get("create_time") is None:
+                raise RollbackRefusal(
+                    "matching owned process creation identity is unavailable")
+            if executable and not _creation_identity_matches(
+                {
+                    "pid": pid,
+                    "create_time": creation_identity.get("create_time"),
+                    "exe": executable,
+                },
+                creation_identity,
+            ):
+                continue
             observed.append({
-                "kind": "worker_loop",
+                "kind": (
+                    "scheduler_wrapper"
+                    if is_scheduler_wrapper else "worker_loop"
+                ),
                 "pid": pid,
+                "executable": executable or None,
                 "command_line": command_line,
-                "creation_identity": process_creation_identity(pid),
+                "creation_identity": creation_identity,
                 "live": True,
             })
 
@@ -1222,10 +1544,18 @@ class WindowsRollbackHost:
                 pid = int(record["pid"])
             except (KeyError, TypeError, ValueError):
                 continue
-            observed_identity = process_creation_identity(pid)
+            if not pid_alive(pid):
+                continue
+            try:
+                observed_identity = process_creation_identity(pid)
+            except (OSError, TypeError, ValueError) as error:
+                raise RollbackRefusal(
+                    "live adapter creation identity is unavailable") from error
+            if observed_identity.get("create_time") is None:
+                raise RollbackRefusal(
+                    "live adapter creation identity is unavailable")
             if (
-                pid_alive(pid)
-                and _creation_identity_matches(
+                _creation_identity_matches(
                     record.get("creation_identity"), observed_identity)
             ):
                 observed.append({
@@ -1236,7 +1566,10 @@ class WindowsRollbackHost:
                     "live": True,
                 })
         return sorted(
-            observed,
+            {
+                (str(item.get("kind")), int(item.get("pid") or 0)): item
+                for item in observed
+            }.values(),
             key=lambda item: (
                 str(item.get("kind")),
                 int(item.get("pid") or 0),
@@ -1265,6 +1598,7 @@ class WindowsRollbackHost:
         command = [
             str(python_exe),
             "-I",
+            "-B",
             "-c",
             code,
             str(request.install_root),
@@ -1272,6 +1606,8 @@ class WindowsRollbackHost:
             str(foundry_home) if foundry_home is not None else "",
         ]
         try:
+            environment = sanitized_env()
+            environment["PYTHONDONTWRITEBYTECODE"] = "1"
             result = subprocess.run(
                 command,
                 capture_output=True,
@@ -1279,7 +1615,7 @@ class WindowsRollbackHost:
                 timeout=180,
                 check=False,
                 cwd=request.foundry_home,
-                env=sanitized_env(),
+                env=environment,
                 **headless_run_kwargs(),
             )
         except (OSError, subprocess.TimeoutExpired) as error:
@@ -1311,10 +1647,12 @@ class WindowsRollbackHost:
             "JARVIS_HOME": str(request.foundry_home),
             "JARVIS_RELEASE_ID": source_sha,
             "JARVIS_RELEASE_SHA": source_sha,
+            "PYTHONDONTWRITEBYTECODE": "1",
         })
         command = [
             str(python_exe),
             "-I",
+            "-B",
             "-m",
             "jarvis_foundry.deployment.launcher",
             "--home",
@@ -1494,6 +1832,57 @@ class WindowsRollbackHost:
             ],
         }
 
+    def terminate_owned_processes(
+        self,
+        request: RollbackRequest,
+        processes: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        """Terminate only exact creation identities from a strict owned census."""
+        requested = {
+            (str(item.get("kind")), int(item.get("pid") or 0)): item
+            for item in processes
+            if str(item.get("kind")) in {
+                "adapter",
+                "scheduler_wrapper",
+                "supervisor",
+                "worker_loop",
+            }
+            and int(item.get("pid") or 0) > 0
+        }
+        current = {
+            (str(item.get("kind")), int(item.get("pid") or 0)): item
+            for item in self.owned_processes(request)
+        }
+        targeted: list[int] = []
+        for key, expected in requested.items():
+            observed_record = current.get(key)
+            if observed_record is None:
+                continue
+            pid = key[1]
+            try:
+                observed_identity = process_creation_identity(pid)
+            except (OSError, TypeError, ValueError):
+                continue
+            if not (
+                _creation_identity_matches(
+                    expected.get("creation_identity"), observed_identity)
+                and _creation_identity_matches(
+                    observed_record.get("creation_identity"),
+                    observed_identity,
+                )
+            ):
+                continue
+            targeted.extend(terminate_owned_tree(pid))
+        deadline = time.monotonic() + 12.0
+        remaining = self.owned_processes(request)
+        while remaining and time.monotonic() < deadline:
+            time.sleep(0.1)
+            remaining = self.owned_processes(request)
+        return {
+            "targeted_pids": sorted(set(targeted)),
+            "remaining": remaining,
+        }
+
     @staticmethod
     def _http_json(
         port: int,
@@ -1642,18 +2031,17 @@ class CrossSchemaRollbackController:
         )
         self.state_path = self.transaction_dir / STATE_FILE_NAME
         self.active_path = self.transactions_root / ACTIVE_TRANSACTION_NAME
-        self.lock_path = self.transactions_root / LOCK_FILE_NAME
+        self.lock_path = (
+            request.install_root / f".{STATE_DIRECTORY_NAME}.{LOCK_FILE_NAME}"
+        )
         self.evidence_dir = self.transaction_dir / "evidence"
+        self.owned_snapshot_path = self.evidence_dir / (
+            f"snapshot-{request.snapshot_sha256[:16]}.db"
+        )
         self.log_path = self.transaction_dir / "predecessor-supervisor.log"
         self.state: dict[str, Any] = {}
 
     def run(self) -> dict[str, Any]:
-        new_transaction = (
-            not self.state_path.is_file()
-            and not self.active_path.is_file()
-        )
-        if new_transaction:
-            self._initial_preconditions()
         with _RollbackFileLock(self.lock_path):
             initial_evidence = None
             if (
@@ -2160,6 +2548,12 @@ class CrossSchemaRollbackController:
         predecessor_identity = _manifest_identity(
             self.request.install_root,
             self.request.predecessor_source_sha,
+            expected_manifest_sha256=(
+                self.request.predecessor_manifest_sha256
+            ),
+            expected_package_sha256=(
+                self.request.predecessor_package_sha256
+            ),
         )
         if failed_identity["schema"] == predecessor_identity["schema"]:
             raise RollbackRefusal(
@@ -2234,15 +2628,98 @@ class CrossSchemaRollbackController:
             "legacy_identity": validation.get("legacy_identity"),
         }
 
+    @staticmethod
+    def _require_rollback_continuity(
+        snapshot: Mapping[str, Any],
+        failed_database: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        snapshot_effects = snapshot.get("effects") or {}
+        failed_effects = failed_database.get("effects") or {}
+        effect_fields = (
+            "event_count",
+            "event_sha256",
+            "journal_continuity",
+        )
+        effect_mismatches = [
+            field for field in effect_fields
+            if snapshot_effects.get(field) != failed_effects.get(field)
+        ]
+
+        snapshot_tables = (
+            (snapshot.get("work") or {}).get("continuity_tables") or {}
+        )
+        failed_tables = (
+            (failed_database.get("work") or {}).get(
+                "continuity_tables") or {}
+        )
+        work_mismatches: list[str] = []
+        preserved_work: dict[str, Any] = {}
+        for table_name in sorted(
+            set(snapshot_tables) | set(failed_tables)
+        ):
+            before = snapshot_tables.get(table_name) or {
+                "present": False,
+                "row_count": 0,
+                "sha256": None,
+            }
+            after = failed_tables.get(table_name) or {
+                "present": False,
+                "row_count": 0,
+                "sha256": None,
+            }
+            before_count = int(before.get("row_count") or 0)
+            after_count = int(after.get("row_count") or 0)
+            if before_count == 0 and after_count == 0:
+                continue
+            if before != after:
+                work_mismatches.append(table_name)
+                continue
+            preserved_work[table_name] = {
+                "row_count": before_count,
+                "sha256": before.get("sha256"),
+            }
+        if effect_mismatches or work_mismatches:
+            raise RollbackRefusal(
+                "rollback snapshot would discard post-snapshot effect/work "
+                "idempotency evidence: "
+                f"effects={effect_mismatches}, work={work_mismatches}"
+            )
+        return {
+            "status": "PRESERVED",
+            "effect_event_count": snapshot_effects.get("event_count"),
+            "effect_event_sha256": snapshot_effects.get("event_sha256"),
+            "system_actions": snapshot_effects.get(
+                "journal_continuity"),
+            "work_tables": preserved_work,
+        }
+
     def _validate_snapshot(self) -> dict[str, Any]:
-        if not self.request.snapshot_path.is_file():
-            raise RollbackRefusal(
-                f"rollback snapshot missing: {self.request.snapshot_path}")
-        observed_hash = _sha256_file(self.request.snapshot_path)
-        if observed_hash != self.request.snapshot_sha256:
-            raise RollbackRefusal(
-                "rollback snapshot SHA-256 does not match the frozen input")
-        snapshot = inspect_database(self.request.snapshot_path)
+        if self.owned_snapshot_path.exists():
+            if not self.owned_snapshot_path.is_file():
+                raise RollbackRefusal(
+                    "transaction-owned rollback snapshot is not a file")
+            observed_hash = _sha256_file(self.owned_snapshot_path)
+            if observed_hash != self.request.snapshot_sha256:
+                raise RollbackRefusal(
+                    "transaction-owned rollback snapshot SHA-256 changed")
+        else:
+            if not self.request.snapshot_path.is_file():
+                raise RollbackRefusal(
+                    f"rollback snapshot missing: {self.request.snapshot_path}")
+            observed_hash = _sha256_file(self.request.snapshot_path)
+            if observed_hash != self.request.snapshot_sha256:
+                raise RollbackRefusal(
+                    "rollback snapshot SHA-256 does not match the frozen input")
+            _atomic_copy_file(
+                self.request.snapshot_path,
+                self.owned_snapshot_path,
+            )
+            owned_hash = _sha256_file(self.owned_snapshot_path)
+            if owned_hash != self.request.snapshot_sha256:
+                raise RollbackRefusal(
+                    "rollback snapshot changed while being pinned")
+
+        snapshot = inspect_database(self.owned_snapshot_path)
         expected = self.state["evidence"]["predecessor_identity"]
         self._require_database_healthy(snapshot)
         self._require_barriers_clear(snapshot)
@@ -2250,7 +2727,40 @@ class CrossSchemaRollbackController:
             raise RollbackRefusal(
                 "rollback snapshot schema does not match the predecessor")
         self._require_authority(snapshot, expected)
+        snapshot["source_path"] = str(self.request.snapshot_path)
+        snapshot["owned_copy"] = True
+        snapshot["rollback_continuity"] = (
+            self._require_rollback_continuity(
+                snapshot,
+                self.state["evidence"]["initial_database"],
+            )
+        )
         return snapshot
+
+    def _validated_owned_snapshot(self) -> dict[str, Any]:
+        recorded = self.state.get("evidence", {}).get("snapshot")
+        if not isinstance(recorded, Mapping):
+            raise RollbackRefusal(
+                "validated rollback snapshot evidence is missing")
+        recorded_path = Path(str(recorded.get("path") or "")).resolve()
+        if not _same_path(recorded_path, self.owned_snapshot_path):
+            raise RollbackRefusal(
+                "validated rollback snapshot is outside the transaction")
+        if not self.owned_snapshot_path.is_file():
+            raise RollbackRefusal(
+                "transaction-owned rollback snapshot is missing")
+        observed_hash = _sha256_file(self.owned_snapshot_path)
+        if observed_hash != self.request.snapshot_sha256:
+            raise RollbackRefusal(
+                "transaction-owned rollback snapshot SHA-256 changed")
+        observed = inspect_database(self.owned_snapshot_path)
+        if (
+            observed.get("logical", {}).get("sha256")
+            != recorded.get("logical", {}).get("sha256")
+        ):
+            raise RollbackRefusal(
+                "transaction-owned rollback snapshot logical identity changed")
+        return observed
 
     def _assert_original_guard(self) -> dict[str, Any]:
         self._stop_record()
@@ -2296,6 +2806,7 @@ class CrossSchemaRollbackController:
         self._stop_record()
         self._require_scheduler(enabled=False)
         self._require_no_owned_processes()
+        pinned_snapshot = self._validated_owned_snapshot()
         live_path = self.request.foundry_home / "foundry.db"
         observed = inspect_database(live_path)
         initial_digest = self.state[
@@ -2307,7 +2818,7 @@ class CrossSchemaRollbackController:
             restored = observed
         elif observed_digest == initial_digest:
             FoundryDatabase(live_path).restore_from(
-                self.request.snapshot_path)
+                Path(pinned_snapshot["path"]))
             restored = inspect_database(live_path)
         else:
             raise RollbackRefusal(
@@ -2407,12 +2918,34 @@ class CrossSchemaRollbackController:
         return authority
 
     def _validate_predecessor_runtime(self) -> dict[str, Any]:
+        anchored_identity = _manifest_identity(
+            self.request.install_root,
+            self.request.predecessor_source_sha,
+            expected_manifest_sha256=(
+                self.request.predecessor_manifest_sha256
+            ),
+            expected_package_sha256=(
+                self.request.predecessor_package_sha256
+            ),
+        )
+        expected = self.state["evidence"]["predecessor_identity"]
+        if (
+            _identity_fields(anchored_identity) != _identity_fields(expected)
+            or anchored_identity.get("manifest_sha256")
+            != expected.get("manifest_sha256")
+            or (
+                anchored_identity.get("package") or {}
+            ).get("sha256") != (
+                expected.get("package") or {}
+            ).get("sha256")
+        ):
+            raise RollbackRefusal(
+                "predecessor package identity changed after preconditions")
         self_validation = self.host.validate_release_runtime(
             self.request,
             self.request.predecessor_source_sha,
             foundry_home=self.request.foundry_home,
         )
-        expected = self.state["evidence"]["predecessor_identity"]
         if _identity_fields(
             self_validation.get("runtime_identity")
         ) != _identity_fields(expected):
@@ -2491,28 +3024,53 @@ class CrossSchemaRollbackController:
         self._require_no_owned_processes()
         self._verify_target_parity()
 
-    def _exact_predecessor_processes(self) -> list[dict[str, Any]]:
-        processes = self.host.owned_processes(self.request)
-        supervisors = [
-            item for item in processes
-            if item.get("kind") == "supervisor"
-            and item.get("release_sha")
-            == self.request.predecessor_source_sha
-        ]
-        non_supervisors = [
-            item for item in processes
-            if item.get("kind") != "supervisor"
-        ]
-        unexpected_supervisors = [
-            item for item in processes
-            if item.get("kind") == "supervisor"
-            and item.get("release_sha")
-            != self.request.predecessor_source_sha
-        ]
-        if non_supervisors or unexpected_supervisors or len(supervisors) > 1:
-            raise RollbackRefusal(
-                "runtime process census found duplicate or unexpected owned lineage")
-        return supervisors
+    def _exact_predecessor_processes(
+        self,
+        *,
+        scheduler_wrapper_grace_seconds: float = 0.0,
+    ) -> list[dict[str, Any]]:
+        deadline = time.monotonic() + max(
+            0.0, scheduler_wrapper_grace_seconds)
+        while True:
+            processes = self.host.owned_processes(self.request)
+            supervisors = [
+                item for item in processes
+                if item.get("kind") == "supervisor"
+                and item.get("release_sha")
+                == self.request.predecessor_source_sha
+            ]
+            non_supervisors = [
+                item for item in processes
+                if item.get("kind") != "supervisor"
+            ]
+            unexpected_supervisors = [
+                item for item in processes
+                if item.get("kind") == "supervisor"
+                and item.get("release_sha")
+                != self.request.predecessor_source_sha
+            ]
+            transient_wrapper = bool(
+                non_supervisors
+                and all(
+                    item.get("kind") == "scheduler_wrapper"
+                    for item in non_supervisors
+                )
+                and not unexpected_supervisors
+                and len(supervisors) == 1
+                and time.monotonic() < deadline
+            )
+            if transient_wrapper:
+                time.sleep(0.1)
+                continue
+            if (
+                non_supervisors
+                or unexpected_supervisors
+                or len(supervisors) > 1
+            ):
+                raise RollbackRefusal(
+                    "runtime process census found duplicate or unexpected "
+                    "owned lineage")
+            return supervisors
 
     def _start_or_adopt_predecessor(self) -> dict[str, Any]:
         self._stop_record()
@@ -2560,7 +3118,11 @@ class CrossSchemaRollbackController:
     ) -> dict[str, Any]:
         stop = self._stop_record()
         scheduler = self._require_scheduler(enabled=scheduler_enabled)
-        processes = self._exact_predecessor_processes()
+        processes = self._exact_predecessor_processes(
+            scheduler_wrapper_grace_seconds=(
+                5.0 if scheduler_enabled else 0.0
+            )
+        )
         if len(processes) != 1:
             raise RollbackRefusal(
                 "exactly one predecessor Supervisor is required")
@@ -2634,6 +3196,11 @@ class CrossSchemaRollbackController:
             termination = self.host.terminate_started_process(
                 self.request, process_record)
         remaining = self.host.owned_processes(self.request)
+        owned_termination = None
+        if remaining:
+            owned_termination = self.host.terminate_owned_processes(
+                self.request, remaining)
+            remaining = self.host.owned_processes(self.request)
         if remaining:
             raise RollbackRefusal(
                 "uncertain Scheduler enable containment left owned processes alive")
@@ -2646,6 +3213,7 @@ class CrossSchemaRollbackController:
             "reason": "uncertain Scheduler enable was contained before re-entry",
             "scheduler_disabled": True,
             "termination": termination,
+            "owned_termination": owned_termination,
         })
         self._record(
             phase=PREDECESSOR_VALIDATED,
@@ -2691,6 +3259,16 @@ class CrossSchemaRollbackController:
                 termination = self.host.terminate_started_process(
                     self.request, adopted)
         remaining = self.host.owned_processes(self.request)
+        owned_termination: dict[str, Any] | None = None
+        if remaining:
+            try:
+                owned_termination = self.host.terminate_owned_processes(
+                    self.request, remaining)
+            except Exception as error:
+                owned_termination = {
+                    "error": f"{type(error).__name__}: {error}",
+                }
+            remaining = self.host.owned_processes(self.request)
         complete = scheduler_disabled and not remaining and stop.active()
         record = {
             "recorded_at": isoformat(),
@@ -2700,6 +3278,7 @@ class CrossSchemaRollbackController:
             "scheduler_disabled": scheduler_disabled,
             "scheduler_error": scheduler_error,
             "termination": termination,
+            "owned_termination": owned_termination,
             "remaining_processes": remaining,
         }
         self.state.setdefault("containment", []).append(record)
@@ -2796,5 +3375,6 @@ __all__ = [
     "WindowsRollbackHost",
     "database_logical_digest",
     "inspect_database",
+    "release_package_digest",
     "run_cross_schema_rollback",
 ]
