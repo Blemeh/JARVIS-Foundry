@@ -21,6 +21,13 @@ from jarvis_foundry.supervisor.estop import EmergencyStop
 from jarvis_foundry.deployment import runtime_identity
 
 
+# Local bridge client budget. The endpoint assertions, not the client wait,
+# are the contract under test; a 3-second deadline turned host load during
+# long serialized suite runs into spurious failures (2.79s observed against
+# a 3.0s budget for a localhost projection read).
+REQUEST_TIMEOUT_SECONDS = 30.0
+
+
 @pytest.fixture()
 def db(tmp_path: Path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "foundry.db")
@@ -33,7 +40,7 @@ def test_health_endpoint_reports_projection(db: FoundryDatabase, tmp_path: Path)
     server.start()
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
-        with urlopen(f"{base}/api/health", timeout=3) as response:
+        with urlopen(f"{base}/api/health", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             payload = json.loads(response.read())
         assert payload["status"] == "DEGRADED"
         assert payload["controls_configured"] is False
@@ -101,9 +108,9 @@ def test_server_serves_bundled_react_app_and_spa_routes(
     server.start()
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
-        with urlopen(f"{base}/missions/example", timeout=3) as response:
+        with urlopen(f"{base}/missions/example", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             assert b"bundled-react" in response.read()
-        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+        with urlopen(f"{base}/api/command-center", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             payload = json.loads(response.read())
         assert payload["source_of_truth"]["kind"] == "append_only_event_ledger"
     finally:
@@ -124,7 +131,7 @@ def test_operational_status_is_bounded_and_separate_from_full_snapshot(
     server.start()
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
-        with urlopen(f"{base}/api/status", timeout=3) as response:
+        with urlopen(f"{base}/api/status", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             payload = json.loads(response.read())
         assert payload["status"] in {"OK", "DEGRADED", "BLOCKED"}
         assert "mission_counts" in payload
@@ -169,7 +176,7 @@ def test_owner_command_localhost_auto_signs(db: FoundryDatabase, tmp_path: Path)
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
         body = json.dumps({"command_type": "GOAL", "target": "GLOBAL", "exact_text": "probe owner goal from UI bridge"}).encode()
-        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=3) as response:
+        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=REQUEST_TIMEOUT_SECONDS) as response:
             payload = json.loads(response.read())
         assert payload["status"] == "APPLIED"
         assert payload["command_type"] == "GOAL"
@@ -204,14 +211,14 @@ def test_browser_owner_command_requires_local_http_only_session(
             },
         )
         with pytest.raises(HTTPError) as rejected:
-            urlopen(unauthenticated, timeout=3)
+            urlopen(unauthenticated, timeout=REQUEST_TIMEOUT_SECONDS)
         assert rejected.value.code == 401
 
         session_request = Request(
             f"{base}/api/control-session",
             headers={"Origin": "http://127.0.0.1:5173"},
         )
-        with urlopen(session_request, timeout=3) as response:
+        with urlopen(session_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             assert json.loads(response.read())["status"] == "READY"
             cookie = response.headers["Set-Cookie"].split(";", 1)[0]
         authenticated = Request(
@@ -224,7 +231,7 @@ def test_browser_owner_command_requires_local_http_only_session(
                 "Cookie": cookie,
             },
         )
-        with urlopen(authenticated, timeout=3) as response:
+        with urlopen(authenticated, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             assert json.loads(response.read())["status"] == "APPLIED"
 
         snapshot = build_snapshot(db, stop_path=tmp_path / "STOP")
@@ -241,7 +248,7 @@ def test_owner_command_invalidates_cached_snapshot(db: FoundryDatabase, tmp_path
     server.start()
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
-        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+        with urlopen(f"{base}/api/command-center", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             before = json.loads(response.read())
         assert before["controls"]["goals"] == []
         body = json.dumps({
@@ -249,9 +256,9 @@ def test_owner_command_invalidates_cached_snapshot(db: FoundryDatabase, tmp_path
             "target": "GLOBAL",
             "exact_text": "refresh cached owner goal",
         }).encode()
-        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=3) as response:
+        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=REQUEST_TIMEOUT_SECONDS) as response:
             assert json.loads(response.read())["status"] == "APPLIED"
-        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+        with urlopen(f"{base}/api/command-center", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             after = json.loads(response.read())
         assert [goal["exact_text"] for goal in after["controls"]["goals"]] == [
             "refresh cached owner goal",
@@ -269,7 +276,7 @@ def test_owner_command_stop_everything_activates_sentinel(db: FoundryDatabase, t
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
         body = json.dumps({"command_type": "STOP_EVERYTHING", "target": "GLOBAL", "exact_text": "ui stop probe"}).encode()
-        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=3) as response:
+        with urlopen(Request(f"{base}/api/owner-command", data=body, method="POST"), timeout=REQUEST_TIMEOUT_SECONDS) as response:
             payload = json.loads(response.read())
         assert payload["status"] == "APPLIED"
         snapshot = build_snapshot(db, stop_path=stop_path)
@@ -315,18 +322,18 @@ def test_cached_snapshot_refreshes_external_stop_sentinel(
     server.start()
     try:
         base = f"http://{server.address[0]}:{server.address[1]}"
-        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+        with urlopen(f"{base}/api/command-center", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             before = json.loads(response.read())
         assert before["stop"]["active"] is False
 
         EmergencyStop(stop_path).activate("tray hotkey stop")
-        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+        with urlopen(f"{base}/api/command-center", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             stopped = json.loads(response.read())
         assert stopped["stop"]["active"] is True
         assert stopped["controls"]["runtime_state"] == "STOPPED"
 
         EmergencyStop(stop_path).clear()
-        with urlopen(f"{base}/api/command-center", timeout=3) as response:
+        with urlopen(f"{base}/api/command-center", timeout=REQUEST_TIMEOUT_SECONDS) as response:
             resumed = json.loads(response.read())
         assert resumed["stop"]["active"] is False
     finally:
@@ -404,7 +411,7 @@ def test_timeline_cursor_endpoint_pages_durable_events(
         base = f"http://{server.address[0]}:{server.address[1]}"
         with urlopen(
             f"{base}/api/timeline?after_sequence={sequences[0]}&limit=1",
-            timeout=3,
+            timeout=REQUEST_TIMEOUT_SECONDS,
         ) as response:
             first_page = json.loads(response.read())
         assert first_page["schema"] == "v13.command-center-event-page.v1"
@@ -416,7 +423,7 @@ def test_timeline_cursor_endpoint_pages_durable_events(
 
         with urlopen(
             f"{base}/api/timeline?after_sequence={first_page['next_sequence']}&limit=1",
-            timeout=3,
+            timeout=REQUEST_TIMEOUT_SECONDS,
         ) as response:
             final_page = json.loads(response.read())
         assert [event["sequence"] for event in final_page["events"]] == [
@@ -477,7 +484,7 @@ def test_authenticated_controls_still_require_signature(db: FoundryDatabase, tmp
         base = f"http://{server.address[0]}:{server.address[1]}"
         body = {"command_type": "PAUSE", "target": "GLOBAL", "exact_text": "pause", "nonce": "n1", "signature": "bad"}
         try:
-            urlopen(Request(f"{base}/api/controls", data=json.dumps(body).encode(), method="POST"), timeout=3)
+            urlopen(Request(f"{base}/api/controls", data=json.dumps(body).encode(), method="POST"), timeout=REQUEST_TIMEOUT_SECONDS)
         except HTTPError as error:
             assert error.code == 401
         else:
@@ -486,7 +493,7 @@ def test_authenticated_controls_still_require_signature(db: FoundryDatabase, tmp
             "command_type": "PAUSE", "target": "GLOBAL", "exact_text": "pause",
             "nonce": "n2", "signature": sign_command(secret, "PAUSE", "GLOBAL", "pause", "n2"),
         }
-        with urlopen(Request(f"{base}/api/controls", data=json.dumps(good).encode(), method="POST"), timeout=3) as response:
+        with urlopen(Request(f"{base}/api/controls", data=json.dumps(good).encode(), method="POST"), timeout=REQUEST_TIMEOUT_SECONDS) as response:
             assert json.loads(response.read())["status"] == "APPLIED"
     finally:
         server.close()
