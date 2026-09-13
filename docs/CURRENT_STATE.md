@@ -6,19 +6,24 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Tuesday, September 8, 2026 for the source-only cross-schema
-rollback-controller repair. Runtime repair `ba422d2...` adds schema-neutral,
-freeze-guarded, crash-resumable rollback from a failed v40 release to the
-frozen faa861/v38 predecessor. Validation-only source `b52c2e5...` stabilizes
-one pre-existing A3 staleness test against the current clock. The exact
-disposable baseline plus all nine interruption/re-entry paths pass with
-`live_mutated: false`. This work does not deploy or promote a release, retarget
-the live Supervisor or Scheduler, migrate the live database, run a fresh
-provider/A3/A4/48h gate, or restore production trust. Prompt 3 remains blocked
-until a fresh independent preflight validates this repair against the final
-canonical source. V10 remains live and unchanged.
+Last reconciled: Sunday, September 13, 2026 for the validation-only
+harness-stability repair that followed the first fresh preflight of the
+cross-schema rollback source. That preflight of `843d183...` blocked on the
+full suite: two v13 verifier predicates failed only from detached-HEAD
+worktree state, one A2 seam fixture held a frozen `2026-09-03` clock that had
+passed the 168-hour candidate TTL, and two checks were load-dependent client
+or cleanup deadlines that pass in isolation. Repair `fb9cb43...` anchors the
+A2 seam fixture to the current UTC clock, mirroring `b52c2e5...`. Harness
+`c132bb6...` replaces a 3.0s localhost bridge client budget with a named 30s
+budget and weakens no assertion. Rehearsal, crash/re-entry, migration, and
+packaging passed on `843d183...` with `live_mutated: false`. This work does
+not deploy or promote a release, retarget the live Supervisor or Scheduler,
+migrate the live database, run a fresh provider/A3/A4/48h gate, or restore
+production trust. Prompt 3 remains blocked until a fresh independent
+preflight validates this final canonical source. V10 remains live and
+unchanged.
 
-DOCUMENTATION STATE BASE SHA: `0bdb980f90ade765ddfd385d464731b94a265f52`
+DOCUMENTATION STATE BASE SHA: `c132bb6ded7dff30a50f80ef6a73dc55bf15dd50`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -39,6 +44,10 @@ ROLLBACK RUNTIME SOURCE SHA:  ba422d2643fc45bcd23023915d5d02d11383944c
 ROLLBACK RUNTIME TREE SHA:    e129dcb340bf911a48cf997596f19dbb6e382871
 ROLLBACK TEST FIX SHA:        b52c2e57444bb7702d10b13ea5ef8890a76c3942
 ROLLBACK TEST FIX TREE SHA:   a6fae17ed3006d7ee3dd559b4341f7863ae369db
+A2 SEAM REPAIR SHA:           fb9cb433f7aef8f5934c322ec1d69593719acb97
+A2 SEAM REPAIR TREE SHA:      654e74d2ce1cf4716f3086769ed90dd021d85f26
+HARNESS STABILITY SHA:        c132bb6ded7dff30a50f80ef6a73dc55bf15dd50
+HARNESS STABILITY TREE SHA:   3b65d07bb09cb6e0fe1bf522cdeedfc586356ebc
 ROLLBACK CONTROLLER:          REPAIRED / SOURCE ONLY / NOT LIVE
 ROLLBACK REHEARSAL:           PASS / 10 PATHS / LIVE MUTATED NO
 ROLLBACK REVIEW:              PASS / CRITICAL 0 / HIGH 0 / 1 KNOWN MEDIUM
@@ -631,6 +640,34 @@ canonical state. No fresh provider call, A3 flagship, A4 campaign, 48-hour
 run, live release promotion, live database migration, Supervisor retarget,
 Scheduler mutation, or trust restoration was started.
 
+The first fresh independent preflight of exact canonical `843d183...` then ran
+the authoritative serialized `pytest tests/foundry tests/convergence` once:
+3,468 tests, 3,434 passed, 29 classified skips, five failures, zero errors
+(`C:\temp\JARVIS-Live-Promotion-Preflight-20260908-evidence\FULL_SUITE_843D183.junit.xml`).
+Each failure was root-caused rather than dismissed as flaky. Two v13 verifier
+predicates failed only because the preflight worktree sat in detached-HEAD
+state and `git branch --show-current` returned empty; both pass on a
+branch-attached worktree at the same SHA. One A2 seam fixture pinned
+`NOW = 2026-09-03T08:00Z`, which has since exceeded the 168-hour candidate
+TTL, so the candidate was rejected `STALE` and the intended seam never ran;
+that failure is deterministic and required a test-level change. Two failures
+were load-dependent deadlines: a Command Center health read consumed 2.79s of
+a 3.0s client budget, and a workforce cleanup probe hit its fail-closed 5s
+termination deadline. Both pass in isolation.
+
+The bounded repair is validation-only. Repair `fb9cb43...` anchors the A2
+seam fixture to the current UTC clock, mirroring the earlier A3 repair
+`b52c2e5...`, and the disclosed A2 mixed-clock contract remains a Medium.
+Harness `c132bb6...` replaces the 3.0s bridge client deadline with a named
+30s budget; it weakens no assertion, because the endpoint payload is the
+contract and the client wait is not. The workforce termination guard stays
+untouched product code with fail-closed semantics. The repaired predicates
+passed 3/3 and the bridge file 16/16 in
+`C:\temp\JARVIS-Live-Promotion-Preflight-20260908-evidence\REPAIR_FOCUSED_20260913.junit.xml`
+and `C:\temp\JARVIS-Live-Promotion-Preflight-20260908-evidence\REPAIR_BRIDGE_20260913.junit.xml`.
+This repair was merged to canonical `main` and pushed as the exact source
+the next fresh preflight must validate.
+
 ## Live release and rollback authority
 
 ```text
@@ -745,14 +782,15 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-This repair mission authorizes only the normal Git merge or fast-forward of the
-exact verified source through local `main` and `origin/main`. It does not
-authorize live deployment, CURRENT/PREVIOUS changes, Supervisor retargeting,
-live database migration, provider probing, trust restoration, Prompt 3, or
-V14. After Git parity and the terminal report are proved, stop.
+The normal Git merge of the exact verified repair is complete: local `main`
+and `origin/main` carry this reconciliation commit, and the pinned SHA above
+names the source state it describes. The next authorized action is one fresh
+independent promotion preflight against that exact final canonical source,
+with live production strictly read-only. Live deployment, CURRENT/PREVIOUS
+changes, Supervisor retargeting, live database migration, provider probing,
+trust restoration, Prompt 3, or V14 remain unauthorized here. After the fresh
+preflight's report is recorded, stop.
 
-Prompt 3 remains blocked until a fresh independent preflight validates this
-repair from the final canonical source. That preflight has not started. No
-fresh provider run, genuine cold V11 A3 flagship, immediate A4 campaign, or
-separately guarded 48-hour runner was started by this repair. Source promotion
-does not close those gates or grant production trust.
+No fresh provider run, genuine cold V11 A3 flagship, immediate A4 campaign, or
+separately guarded 48-hour runner was started by this repair. Source
+promotion does not close those gates or grant production trust.
