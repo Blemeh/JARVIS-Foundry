@@ -20,7 +20,13 @@ from jarvis_foundry.project_context import (
 )
 
 
-NOW = datetime(2026, 9, 3, 8, 0, tzinfo=UTC)
+# Anchor the fixture to the current UTC clock so candidate expiry
+# (executive scoring and research freshness both compare against
+# wall-clock UTC) does not spuriously reject the intended seam
+# candidate. A frozen past timestamp silently became "STALE" once the
+# 168h candidate TTL elapsed, which is a fixture time-bomb rather than a
+# property of the inert-seam behaviour under test.
+NOW = datetime.now(UTC).replace(microsecond=0)
 LOCAL_CAPABILITIES = (
     "cap.file.read",
     "cap.file.write",
