@@ -4,14 +4,21 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from uuid import UUID
 
 import pytest
+import yaml
 
+from jarvis_foundry import __version__
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.mission.loop import FAILED, MissionLoop
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.roles.router import RoleRouter
-from jarvis_foundry.runtime._stack import _resolve_root, build_worker_stack
+from jarvis_foundry.runtime._stack import (
+    _prepare_hermes_home,
+    _resolve_root,
+    build_worker_stack,
+)
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import (
     _adapter_runtime_environment,
@@ -127,7 +134,47 @@ def test_contributor_acknowledgement_is_materialized_in_isolated_home(tmp_path):
     stack = build_worker_stack(
         database, FoundryPaths(tmp_path / "foundry"), cfg, run_id="consent")
     config = stack.disposable_root / "hermes-home" / "config.yaml"
-    assert config.read_text(encoding="utf-8") == (
+    document = yaml.safe_load(config.read_text(encoding="utf-8"))
+    assert document["security"] == {
+        "allow_data_training_tiers_noninteractive": True,
+    }
+    entry = document["providers"][cfg.provider]
+    assert entry["api"] == cfg.provider_settings.base_url
+    headers = entry["extra_headers"]
+    assert UUID(str(headers["x-opencode-session"]))
+    assert headers["User-Agent"] == f"jarvis-foundry/{__version__}"
+
+
+def test_provider_session_header_is_stable_within_one_run_home(tmp_path):
+    database = FoundryDatabase(tmp_path / "db.sqlite")
+    database.initialize()
+    cfg = WorkerRuntimeConfig(
+        enabled=True,
+        hermes={
+            "enabled": True,
+            "root": str(tmp_path),
+            "python_exe": sys.executable,
+            "allow_data_training_tiers_noninteractive": True,
+        },
+        runtime_state_root=str(tmp_path / "state"),
+    )
+    first = build_worker_stack(
+        database, FoundryPaths(tmp_path / "foundry"), cfg, run_id="stable")
+    first_path = first.disposable_root / "hermes-home" / "config.yaml"
+    first_text = first_path.read_text(encoding="utf-8")
+    second = build_worker_stack(
+        database, FoundryPaths(tmp_path / "foundry"), cfg, run_id="stable")
+    second_path = second.disposable_root / "hermes-home" / "config.yaml"
+    assert second_path.read_text(encoding="utf-8") == first_text
+    session_id = yaml.safe_load(first_text)["providers"][cfg.provider][
+        "extra_headers"]["x-opencode-session"]
+    assert session_id in second_path.read_text(encoding="utf-8")
+
+
+def test_consent_only_home_keeps_the_exact_legacy_document(tmp_path):
+    _prepare_hermes_home(
+        tmp_path, {"allow_data_training_tiers_noninteractive": True})
+    assert (tmp_path / "config.yaml").read_text(encoding="utf-8") == (
         "security:\n"
         "  allow_data_training_tiers_noninteractive: true\n"
     )

@@ -8,10 +8,12 @@ the config carries positive containment evidence — never by default.
 from __future__ import annotations
 
 import hashlib
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .. import __version__
 from ..deployment.layout import install_root
 from ..database import FoundryDatabase
 from ..paths import FoundryPaths
@@ -25,7 +27,9 @@ from ..roles.router import ProviderRouteCandidate
 from ..fabric.model import UnattendedMode
 from ..fabric.providers import unattended_mode_for
 from .provider_registry import (
+    OPENCODE_FAMILY_ID,
     ProviderReadiness,
+    family_for_provider,
     latest_provider_readiness,
     provider_profile,
     record_provider_profile,
@@ -33,6 +37,7 @@ from .provider_registry import (
 )
 from .config import WorkerRuntimeConfig
 from .authority import require_existing_executable
+from .provider_config import ProviderSettings
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,26 +213,80 @@ def _filesystem_component(value: str) -> str:
     return f"{prefix}-{digest}"
 
 
-def _prepare_hermes_home(home: Path, hermes: dict[str, Any]) -> None:
+_OPENCODE_SESSION_HEADER = "x-opencode-session"
+
+
+def _provider_request_headers(
+    hermes: dict[str, Any],
+    provider_settings: ProviderSettings | None,
+) -> dict[str, str]:
+    """Return the per-run provider headers Hermes must send on every request.
+
+    Operators may declare additional headers in the worker routing file
+    (``hermes.extra_headers``).  The OpenCode family additionally requires a
+    stable ``x-opencode-session`` value per conversation: the console Go route
+    refuses sessionless requests with HTTP 400 before they ever reach a model.
+    One isolated run home equals one conversation, so the identifier is
+    generated once here and reused for the whole run.
+    """
+    headers: dict[str, str] = {}
+    declared = hermes.get("extra_headers")
+    if isinstance(declared, dict):
+        headers.update({
+            str(key): str(value)
+            for key, value in declared.items()
+            if value is not None
+        })
+    if provider_settings is None:
+        return headers
+    family = family_for_provider(provider_settings.provider)
+    if family is not None and family.family_id == OPENCODE_FAMILY_ID:
+        headers.setdefault(_OPENCODE_SESSION_HEADER, str(uuid.uuid4()))
+        headers.setdefault("User-Agent", f"jarvis-foundry/{__version__}")
+    return headers
+
+
+def _prepare_hermes_home(
+    home: Path,
+    hermes: dict[str, Any],
+    *,
+    provider_settings: ProviderSettings | None = None,
+) -> None:
     """Materialize explicit non-interactive model consent in the run home.
 
     Hermes intentionally fails closed for contributor-tier models unless the
     owner records the data-training acknowledgement.  Each JARVIS run uses a
     fresh isolated ``HERMES_HOME``; carrying the acknowledgement into that
     home is therefore part of the runtime contract, not a live-profile write.
+
+    The same home carries the per-run provider request headers (see
+    :func:`_provider_request_headers`) so the OpenCode session identity stays
+    stable for the whole run without any live-profile or environment write.
     """
-    if hermes.get("allow_data_training_tiers_noninteractive") is not True:
+    document: dict[str, Any] = {}
+    if hermes.get("allow_data_training_tiers_noninteractive") is True:
+        document["security"] = {
+            "allow_data_training_tiers_noninteractive": True,
+        }
+    headers = _provider_request_headers(hermes, provider_settings)
+    if headers and provider_settings is not None:
+        document["providers"] = {
+            provider_settings.provider: {
+                "api": provider_settings.base_url,
+                "extra_headers": headers,
+            },
+        }
+    if not document:
         return
     config_path = home / "config.yaml"
     if config_path.exists():
         # Never overwrite a pre-existing run profile: an explicit false or a
         # malformed file must remain fail-closed and observable to Hermes.
         return
+    import yaml
+
     config_path.write_text(
-        "security:\n"
-        "  allow_data_training_tiers_noninteractive: true\n",
-        encoding="utf-8",
-    )
+        yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
 
 
 def build_worker_stack(
@@ -292,7 +351,8 @@ def build_worker_stack(
     if hermes.get("enabled", False) and not config.lab_scripted_hermes:
         home = run_root / "hermes-home"
         home.mkdir(parents=True, exist_ok=True)
-        _prepare_hermes_home(home, hermes)
+        _prepare_hermes_home(
+            home, hermes, provider_settings=config.provider_settings)
         root = Path(str(hermes.get("root", ""))).expanduser()
         if not root.is_absolute():
             from ..workers.adapters.base import AdapterConfigurationError
