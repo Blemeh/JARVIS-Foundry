@@ -57,7 +57,34 @@ source, a positive pid, and one of the two fail-closed service reasons);
 anything else still refuses. The rehearsal then completed all ten scenarios
 with `live_mutated: false`.
 
-DOCUMENTATION STATE BASE SHA: `87dba7b7b16f2ab72c00e971631dc44aa09a12a5`
+A third bounded repair, `1ee2fa4...`, closes the two A4 findings that blocked
+the pre-live gate after the provider recovered. `9d46463...` reads an honest
+verifier verdict that carries its own justification (the live contract tells
+the worker to end its response with the verdict, and a real session wrote
+`VERDICT: PASS (criteria confirmed by direct inspection)`, which the strict
+whole-line grammar had recorded as `NOT_TESTED` and which then blocked the
+mission), and closes a superseded run's commit claim on the commit path.
+`92e52dc...` closes the same class of claim at the mission's terminal
+transition, where a claim can otherwise never be resolved because the mission
+never reaches commit again. `df16309...` raises the A4 driver's per-child
+bound from 1800 s to 2700 s so a child can traverse the product's own frozen
+worst case (worker dispatch plus the bounded repair a FAIL earns plus the
+independent verifier), which is what caused the mid-build and
+post-effect resumes to be aborted as driver failures. `1ee2fa4...` replaces
+the harness's one-effect-per-campaign rule with one completed commit per
+verified step plus every effect terminal, because the canonical A3 mission
+runs an ordered two-step plan and the product's own A4 durability test
+asserts exactly that shape.
+
+The A4 current equivalent now PASSES on `1ee2fa4...`: all six fault points
+inject and recover, every check and hard assertion is true, and every
+duplicate counter is zero (candidates, objectives, missions, builder runs,
+effects, learning, wakes, resumes), with zero false successes, zero
+unverified completions, zero unbounded loops, and zero unreconciled
+ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
+`C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
+
+DOCUMENTATION STATE BASE SHA: `1ee2fa4ef329dfd7a3e88c37560cee28f903ccac`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
