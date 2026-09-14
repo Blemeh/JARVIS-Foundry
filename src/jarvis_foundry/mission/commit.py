@@ -149,6 +149,72 @@ def _abandon_superseded_commit_claims(
     return abandoned
 
 
+
+
+def close_mission_commit_claims(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    worktree: Path | None = None,
+) -> list[str]:
+    """Close this mission's commit claims that can never complete.
+
+    Called when a mission reaches a terminal state. Every commit effect
+    identity for the mission binds the dispatching run, so a claim left
+    STARTED by a run that never reached the connector -- because the mission
+    blocked on a later step, or the process died -- will never resolve on its
+    own. The pre-live ambiguity audit correctly refuses to promote while such
+    a claim remains non-terminal, so the mission terminal closure is the
+    last authority able to reconcile it.
+
+    Truth is decided from Git, never assumed: a claim whose run did commit is
+    frozen and reconciled against that exact receipt; a claim with no commit
+    anywhere in the worktree history is abandoned as never-performed.
+    Nothing is re-performed and no completion is fabricated.
+    """
+    closed: list[str] = []
+    root = worktree.resolve() if worktree is not None else None
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT action_key FROM system_actions "
+            "WHERE kind = 'git_commit' AND status = ?",
+            (STARTED,),
+        ).fetchall()
+    for row in rows:
+        candidate = str(row["action_key"])
+        state = effect_state(database, candidate)
+        identity = state.get("request_identity") or {}
+        if str(identity.get("mission_id") or "") != mission_id:
+            continue
+        step_id = str(identity.get("step_id") or "")
+        run_id = str(identity.get("run_id") or "")
+        landed = None
+        if root is not None and step_id and run_id:
+            landed = _recorded_commit(
+                root,
+                f"jarvis: {mission_id} {step_id} verified PASS (run {run_id})",
+            )
+        if landed is not None:
+            freeze_effect(
+                database, candidate,
+                reason="mission closed after its commit landed without a receipt",
+            )
+            reconcile_effect(
+                database, candidate,
+                provider_state={"exists": True, "commit_id": landed},
+            )
+            closed.append(candidate)
+            continue
+        abandon_effect(
+            database, candidate,
+            reason=(
+                "mission reached a terminal state with this commit claim "
+                "never dispatched; the connector was never invoked"
+            ),
+        )
+        closed.append(candidate)
+    return closed
+
 def _recorded_commit(root: Path, message: str) -> str | None:
     """Find the exact deterministic commit receipt in durable Git truth."""
     raw = _git(root, "log", "--format=%H%x00%B%x00")

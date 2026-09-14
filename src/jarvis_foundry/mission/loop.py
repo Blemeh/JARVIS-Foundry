@@ -47,7 +47,11 @@ from ..roles.results import (
 )
 from ..roles.router import ProviderRouteCandidate, RoleRouter
 from ..supervisor.leases import LeaseManager
-from .commit import CommitError, commit_after_pass
+from .commit import (
+    CommitError,
+    close_mission_commit_claims,
+    commit_after_pass,
+)
 from .proposal import ProposalError, Waiting, propose_next_action
 from ..v3_fault import invoke_fault_hook
 from .verification import (
@@ -452,6 +456,42 @@ class MissionLoop:
             idempotency_key=key,
         )
         self.database.append_events([transition, event])
+        if state in self._TERMINAL_STATES:
+            self._close_stranded_commit_claims(mission_id)
+
+    _TERMINAL_STATES = frozenset({"COMPLETE", "FAILED", "CANCELLED"})
+
+    def _mission_commit_target(self, mission_id: str) -> Path | None:
+        """The worktree this mission commits into, from durable admission truth."""
+        linked = self.database.events(
+            event_types=("initiative.execution_linked",), readonly=True)
+        for event in reversed(linked):
+            if str(event.payload.get("mission_id") or "") != mission_id:
+                continue
+            raw = str(event.payload.get("worktree") or "")
+            candidate = Path(raw) if raw else None
+            if candidate is not None and candidate.is_dir():
+                return candidate
+            return None
+        return None
+
+    def _close_stranded_commit_claims(self, mission_id: str) -> None:
+        """Reconcile commit claims this mission can no longer resolve.
+
+        The commit effect identity binds the dispatching run, so a claim left
+        STARTED by a run that never reached the connector -- because the
+        mission blocked on a later step, or the process died -- can never
+        complete on its own.  The pre-live ambiguity audit refuses to promote
+        while any such claim is non-terminal, so the mission lifecycle closes
+        it here.  Truth comes from Git; nothing is re-performed.
+        """
+        try:
+            target = self._mission_commit_target(mission_id)
+            close_mission_commit_claims(
+                self.database, mission_id=mission_id, worktree=target)
+        except Exception:  # noqa: BLE001 - never mask the state transition
+            return
+
 
     # -- durable helpers ----------------------------------------------------
 
