@@ -6,7 +6,9 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Sunday, September 13, 2026 for the validation-only
+Last reconciled: Sunday, September 13, 2026 for the bounded A4 proving-driver
+repair that followed the Prompt 3 provider recovery (see the next paragraph),
+and for the validation-only
 harness-stability repair that followed the first fresh preflight of the
 cross-schema rollback source. That preflight of `843d183...` blocked on the
 full suite: two v13 verifier predicates failed only from detached-HEAD
@@ -23,7 +25,25 @@ production trust. Prompt 3 remains blocked until a fresh independent
 preflight validates this final canonical source. V10 remains live and
 unchanged.
 
-DOCUMENTATION STATE BASE SHA: `c132bb6ded7dff30a50f80ef6a73dc55bf15dd50`
+The bounded A4 proving repair supersedes that blocking note for the proving
+harness only. `82271cc...` gives every fault-campaign child process its own
+worker-loop identity: the driver previously passed one durable cycle id to
+both the fault-injection child and its resume child, and `run_cycle` records
+`worker_loop.cycle_started:<loop_id>` with the dispatching process identity in
+the payload, so every resume raised `EventConflict` and the A4 campaign failed
+at its first fault point. Production never replays a loop id; the worker-loop
+CLI derives a fresh id per bounded cycle. A real campaign on the frozen
+candidate now injects and recovers all six fault points with zero duplicate
+candidates, objectives, missions, builder runs, effects, or learning updates.
+That campaign also disclosed two non-duplicate findings recorded in the
+Prompt 3 evidence root: the mid-build kill can leave one run-scoped commit
+effect `STARTED` when the mission re-verifies under a new run id, and a
+`NOT_TESTED` verifier blocks the mission instead of producing a verified
+terminal outcome. Neither is repaired here. This commit changes proving and
+documentation surfaces only; no schema, runtime, live release, Supervisor,
+Scheduler, STOP, capability, or trust claim is advanced by it.
+
+DOCUMENTATION STATE BASE SHA: `82271cc439801482e609d0d453ecae0b092c8dbb`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
@@ -51,8 +71,11 @@ HARNESS STABILITY TREE SHA:   3b65d07bb09cb6e0fe1bf522cdeedfc586356ebc
 ROLLBACK CONTROLLER:          REPAIRED / SOURCE ONLY / NOT LIVE
 ROLLBACK REHEARSAL:           PASS / 10 PATHS / LIVE MUTATED NO
 ROLLBACK REVIEW:              PASS / CRITICAL 0 / HIGH 0 / 1 KNOWN MEDIUM
-PROMPT 3 ENTRY:               BLOCKED / FRESH INDEPENDENT PREFLIGHT REQUIRED
-FRESH PROVIDER/A3/A4/48H:     NOT_STARTED
+PROMPT 3 ENTRY:               OPEN / IN PROGRESS (provider recovered)
+FRESH PROVIDER PROBE:          PASS (opencode_go / deepseek-v4.1-flash)
+FRESH A3:                      PASS (one bounded, independently verified candidate)
+FRESH A4:                      PARTIAL (6/6 fault points; two end-state findings open)
+48H TRUST WINDOW:              NOT_STARTED
 CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
