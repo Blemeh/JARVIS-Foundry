@@ -61,6 +61,13 @@ RULES = "F821,F822,F823,F401,F841"
 RUFF_VERSION = "0.16.5"
 MAX_SIGNALS = 12
 SETTLE_LIMIT = 8
+#: Bound for one child process of this driver.  A child must be able to
+#: traverse the product's own frozen worst case for a single step: the worker
+#: dispatch (hermes timeout_seconds, 900 by default), the bounded repair it
+#: may earn (another full dispatch), and the independent verifier pass.  A
+#: smaller harness bound would abort work the product is explicitly allowed to
+#: do and would misreport it as a driver failure.
+CHILD_TIMEOUT_SECONDS = 2700
 
 
 def _utc_now() -> str:
@@ -1052,7 +1059,7 @@ def _run_child(
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=1800,
+            timeout=CHILD_TIMEOUT_SECONDS,
             check=False,
         )
         evidence["child_returncode"] = result.returncode
