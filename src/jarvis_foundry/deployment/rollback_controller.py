@@ -198,6 +198,12 @@ _MAX_ACTIVATION_SUFFIX_EVENTS = 128
 _LEGACY_LEASE_RECLAIM_REASON = (
     "legacy worker-loop lease expired without process identity"
 )
+# The independent Supervisor records exactly one of these reasons when it
+# reclaims a dead predecessor's singleton lease (supervisor/service.py).
+_SUPERVISOR_LEASE_RECLAIM_REASONS = frozenset({
+    "supervisor process is no longer alive",
+    "supervisor PID creation identity was reused",
+})
 
 
 class RollbackControllerError(RuntimeError):
@@ -1145,6 +1151,7 @@ def _validate_activation_event_suffix(
             "release.manifest_recorded",
             "release.slot_changed",
             "runtime.control.claiming",
+            "runtime.control.lease_reclaimed",
             "runtime.control.resolved",
             "supervisor.stopped",
             "worker_loop.lease_reclaimed",
@@ -1221,6 +1228,26 @@ def _validate_activation_event_suffix(
                         "activation suffix lease expiry is invalid") from error
                 continue
             if event_type == "runtime.control.claiming":
+                continue
+            if event_type == "runtime.control.lease_reclaimed":
+                # The independent Supervisor reclaims a dead predecessor's
+                # singleton lease while taking over the failed release
+                # (supervisor/control.py: record_lease_reclaimed).  The event
+                # is authority-bearing, so it is accepted only when it proves
+                # the exact dead owner it reclaimed: the reconciler source,
+                # a positive pid, and the two fail-closed reason strings the
+                # service can produce.  The reclaimed owner must not be the
+                # activation Supervisor itself.
+                if (
+                    row.get("source_id") != "lease-reconciler"
+                    or payload.get("reason") not in _SUPERVISOR_LEASE_RECLAIM_REASONS
+                    or not str(payload.get("owner_id") or "")
+                    or not isinstance(payload.get("pid"), int)
+                    or int(payload["pid"]) <= 0
+                ):
+                    raise RollbackRefusal(
+                        "activation suffix contains an unproven Supervisor "
+                        "lease reclaim")
                 continue
             if not supervisor_instance:
                 raise RollbackRefusal(
