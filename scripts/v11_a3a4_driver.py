@@ -1181,6 +1181,21 @@ def _fault_cycle(
     point = str(request.get("fault_point") or "")
     resume = request.get("resume") is True
     cycle_id = str(request["cycle_id"])
+
+    def child_loop_id(phase: str) -> str:
+        """Loop identity for one child process of this durable cycle.
+
+        The harness keeps a single durable *cycle* identity across the fault
+        injection and its resume (request/response ``cycle_id``), but every
+        child process must carry its own worker-loop identity.  Production
+        never replays a loop id from a different process: the CLI derives a
+        fresh id per bounded cycle, and ``run_cycle`` records
+        ``worker_loop.cycle_started:<loop_id>`` with the dispatching process
+        identity in the payload, so a replay from a new process is an
+        idempotency conflict rather than a resume.
+        """
+        return f"{cycle_id}-{phase}"
+
     status = "RUNNING"
     reports: list[dict[str, Any]] = []
     evidence: dict[str, Any] = {}
@@ -1189,7 +1204,7 @@ def _fault_cycle(
         hook = "post initiative.selection" if resume else "after_candidate_generation"
         _report, evidence = _run_child(
             args,
-            cycle_id,
+            child_loop_id("candidate-resume" if resume else "candidate-inject"),
             fault_hook=hook,
             expect_hard_exit=True,
         )
@@ -1201,7 +1216,7 @@ def _fault_cycle(
         )
         _report, evidence = _run_child(
             args,
-            cycle_id,
+            child_loop_id("objective-resume" if resume else "objective-inject"),
             fault_hook=hook,
             expect_hard_exit=True,
         )
@@ -1209,19 +1224,21 @@ def _fault_cycle(
         if resume:
             _report, evidence = _run_child(
                 args,
-                cycle_id,
+                child_loop_id("build-resume"),
                 fault_hook="post effect dispatch",
                 expect_hard_exit=True,
             )
         else:
-            _report, evidence = _run_child(args, cycle_id, mid_build_kill=True)
+            _report, evidence = _run_child(
+                args, child_loop_id("build-inject"), mid_build_kill=True
+            )
     elif point == "post-effect-pre-acceptance":
         if resume:
             status, reports = _settle(args, cycle_id)
         else:
             _report, evidence = _run_child(
                 args,
-                cycle_id,
+                child_loop_id("effect-inject"),
                 fault_hook="post verification.started",
                 expect_hard_exit=True,
             )
@@ -1257,7 +1274,7 @@ def _fault_cycle(
                     OWNER_SECRET, "STOP_EVERYTHING", "GLOBAL", text, nonce
                 ),
             )
-            report, evidence = _run_child(args, cycle_id)
+            report, evidence = _run_child(args, child_loop_id("stop"))
             if not report or report.get("outcome") != "FROZEN":
                 raise RuntimeError(
                     "STOP fault did not freeze the canonical worker loop"
@@ -1285,7 +1302,7 @@ def _fault_cycle(
         else:
             _report, evidence = _run_child(
                 args,
-                cycle_id,
+                child_loop_id("restart-inject"),
                 fault_hook="post worker_loop.cycle_started",
                 expect_hard_exit=True,
             )
