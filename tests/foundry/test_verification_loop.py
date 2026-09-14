@@ -10,6 +10,7 @@ import pytest
 
 from jarvis_foundry.control.policy import ActionPolicy
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.events import Event
 from jarvis_foundry.mission.commit import CommitError, commit_after_pass
 from jarvis_foundry.mission.loop import BLOCKED_OUTCOME, MissionLoop, PASSED
 from jarvis_foundry.mission.verification import (
@@ -231,3 +232,63 @@ def test_loop_never_commits_on_blocked_outcome(tmp_path):
     with database.connect() as connection:
         bundles = connection.execute("SELECT COUNT(*) FROM evidence_bundles").fetchone()[0]
     assert bundles == 0  # evidence bundles exist only for verified PASS
+
+
+
+def _commit_key(worktree, run_id):
+    """The exact run-scoped commit effect identity for this fixture step."""
+    from jarvis_foundry.mission.commit import _commit_effect_id
+
+    return _commit_effect_id(
+        mission_id="mission-1", step_id="step-1", run_id=run_id,
+        worktree=worktree.resolve(), envelope=commit_envelope(worktree),
+    )
+
+
+def test_superseded_run_claim_is_closed_by_the_next_run(tmp_path):
+    """A dead run's commit claim must not strand the ledger STARTED.
+
+    The commit effect identity binds the run_id, so a repair run writes a
+    different identity for the same step. The claim left behind by the killed
+    run can never complete and must be closed, or the pre-live ambiguity
+    audit refuses to proceed on an effect that will never resolve.
+    """
+    database, repository, policy, router = mission_fixture(tmp_path)
+    (repository / "result.txt").write_text("delivered\n", encoding="utf-8")
+    start_verification(
+        database, verdict_id="verdict-s1", mission_id="mission-1",
+        step_id="step-1", builder_run_id="run-b", verifier_run_id="run-v",
+        independence={}, criteria=[])
+    record_verification_outcome(
+        database, verdict_id="verdict-s1", outcome="PASS", findings=[],
+        evidence={"verifier_run_id": "run-v"})
+
+    from jarvis_foundry.effects import STARTED, effect_state
+
+    stale_key = _commit_key(repository, "run-old")
+    database.append(Event.create(
+        "system.action_started",
+        {
+            "action_key": stale_key,
+            "before_state_capture": {},
+            "system_id": "resource-1",
+            "target_ref": str(repository.resolve()),
+            "payload_hash": stale_key.removeprefix("effect:"),
+            "kind": "git_commit",
+            "request_identity": {
+                "mission_id": "mission-1",
+                "step_id": "step-1",
+                "run_id": "run-old",
+            },
+        },
+        source_type="supervisor",
+        source_id="v5-effect-driver",
+        idempotency_key=f"{stale_key}.started",
+    ))
+    assert effect_state(database, stale_key)["status"] == STARTED
+
+    commit_after_pass(
+        database, mission_id="mission-1", step_id="step-1", run_id="run-b",
+        worktree=repository, policy=policy, envelope=commit_envelope(repository))
+
+    assert effect_state(database, stale_key)["status"] == "FAILED"
