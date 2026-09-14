@@ -817,6 +817,7 @@ def _snapshot(
             "identity_key": str(payload.get("action_key") or event.event_id),
             "mission_id": (payload.get("request_identity") or {}).get("mission_id"),
             "action_key": payload.get("action_key"),
+        "status": _effect_status(database, str(payload.get("action_key") or "")),
         }
         for event, payload in _event_rows(database, "system.action_started")
     ]
@@ -990,6 +991,17 @@ def _snapshot(
         },
     }
     return snapshot
+
+
+def _effect_status(database: FoundryDatabase, action_key: str) -> str | None:
+    """Journal status for one effect, from the append-only stream."""
+    if not action_key:
+        return None
+    from jarvis_foundry.effects import effect_state
+    try:
+        return str(effect_state(database, action_key).get("status") or "")
+    except Exception:
+        return None
 
 
 def _child_command(

@@ -43,7 +43,7 @@ def _good_snapshot(cycle_id: str, *, fault=None, status="WAIT"):
             "objectives": [_record("objective-1", "candidate-10", candidate_id="candidate-10")],
             "missions": [_record("mission-1", "objective-1:mission", state="COMPLETE")],
             "builder_runs": [_record("builder-1", "mission-1:build", mission_id="mission-1")],
-            "effects": [_record("effect-1", "mission-1:commit", mission_id="mission-1")],
+            "effects": [_record("effect-1", "mission-1:commit", mission_id="mission-1", status="COMPLETED")],
             "acceptances": [_record(
                 "acceptance-1", "mission-1:acceptance", mission_id="mission-1",
                 builder_run_id="builder-1", verifier_run_id="verifier-1",

@@ -284,6 +284,14 @@ def derive_metrics(state: Mapping[str, Any]) -> dict[str, Any]:
         "builder_runs": len(rows["builder_runs"]),
         "effects": len(rows["effects"]),
         "acceptances": len(rows["acceptances"]),
+        # Distinct mission steps that earned an independent PASS. Each one
+        # legitimately commits once, so this is the count the effect
+        # criterion is compared against.
+        # Completed commits must equal the steps that earned an independent PASS;
+        # an interrupted claim may add a reconciled sibling, never a duplicate commit.
+        "completed_effects": sum(1 for row in rows["effects"] if str(row.get("status") or "").upper() == "COMPLETED"),
+        "nonterminal_effects": sum(1 for row in rows["effects"] if str(row.get("status") or "").upper() not in {"COMPLETED", "FAILED", "FROZEN"}),
+        "verified_steps": sum(1 for row in rows["acceptances"] if row.get("independent") is True),
         "verified_outcomes": verified_outcomes,
         "learning_updates": len(rows["learning"]),
         "duplicate_candidates": _duplicates(state, "candidates"),
@@ -364,7 +372,14 @@ def evaluate_immediate_a4(state: Mapping[str, Any]) -> dict[str, Any]:
         "one_objective": metrics["objectives"] == 1,
         "one_mission": metrics["missions"] == 1,
         "completed_builder": metrics["builder_runs"] >= 1,
-        "one_effect": metrics["effects"] == 1,
+        "one_completed_effect_per_verified_step": (
+            # The canonical A3 mission runs an ordered two-step plan and each
+            # verified step legitimately commits once; asserting a single effect
+            # for the whole mission contradicted the product contract the same
+            # harness requires elsewhere.
+            metrics["completed_effects"] == metrics["verified_steps"]
+        ),
+        "every_effect_terminal": metrics["nonterminal_effects"] == 0,
         "independent_acceptance": metrics["verified_outcomes"] == 1,
         "one_learning_update": metrics["learning_updates"] == 1,
         "all_faults_injected": metrics["faults_injected"] == len(FAULT_POINTS),
