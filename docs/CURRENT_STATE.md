@@ -43,7 +43,21 @@ terminal outcome. Neither is repaired here. This commit changes proving and
 documentation surfaces only; no schema, runtime, live release, Supervisor,
 Scheduler, STOP, capability, or trust claim is advanced by it.
 
-DOCUMENTATION STATE BASE SHA: `82271cc439801482e609d0d453ecae0b092c8dbb`
+A second bounded repair, `87dba7b...`, closes a real gap in the guarded
+cross-schema rollback. The activation-suffix whitelist hardens
+`worker_loop.lease_reclaimed` but omitted
+`runtime.control.lease_reclaimed`, which `supervisor/control.py` records as
+`CONTROL_LEASE_RECLAIMED` whenever the independent Supervisor takes over a
+dead predecessor and reclaims the singleton lease. Because that takeover is
+exactly what happens while activating a failed release, the real rehearsal
+refused with "activation suffix contains post-snapshot authority:
+runtime.control.lease_reclaimed" at its baseline scenario. The event is now
+accepted only with the proven dead-owner shape (the `lease-reconciler`
+source, a positive pid, and one of the two fail-closed service reasons);
+anything else still refuses. The rehearsal then completed all ten scenarios
+with `live_mutated: false`.
+
+DOCUMENTATION STATE BASE SHA: `87dba7b7b16f2ab72c00e971631dc44aa09a12a5`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
