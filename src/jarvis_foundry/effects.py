@@ -23,7 +23,7 @@ from typing import Any, Callable, Mapping
 from .control.broker import (BrokerDecision, PolicyBroker,
                              resolve_envelope_targets)
 from .control.redaction import contains_secret_like, redact_text
-from .clock import isoformat
+from .clock import isoformat, utc_now
 from .database import FoundryDatabase
 from .domain import ActionEnvelope
 from .events import Event, canonical_json, payload_hash
@@ -227,6 +227,7 @@ def effect_state(database: FoundryDatabase,
     failed = _event_payloads(database, "system.action_failed", action_key)
     frozen = _event_payloads(database, "effect.frozen", action_key)
     compensated = _event_payloads(database, "effect.compensated", action_key)
+    abandoned_events = _event_payloads(database, "effect.abandoned", action_key)
     terminal_truth = _event_payloads(
         database, "effect.terminal_truth", action_key,
     )
@@ -235,6 +236,11 @@ def effect_state(database: FoundryDatabase,
         return state
     # journal-row truth when present; otherwise derive from the events
     state["status"] = journal["status"] if journal is not None else STARTED
+    if state["status"] == STARTED and abandoned_events:
+        # The claim was closed as never-performed. A crash between the
+        # abandonment event and the journal update must not resurrect it as
+        # a live STARTED claim that a later pass could try to perform.
+        state["status"] = FAILED
     if journal is None:
         mismatch = _event_payloads(database, "effect.reconcile_mismatch",
                                    action_key)
@@ -958,6 +964,38 @@ def compensate_effect(database: FoundryDatabase, action_key: str, *,
     _append(database, "effect.compensated", {
         "action_key": action_key, "compensation_ref": compensation_ref},
         "compensated", full_payload_key=True)
+
+
+def abandon_effect(database: FoundryDatabase, action_key: str, *,
+                   reason: str, superseded_by: str | None = None) -> None:
+    """Close a STARTED effect whose claim must never be performed.
+
+    Used when a run-scoped effect identity is permanently superseded before
+    its connector was ever invoked: the durable claim is closed as
+    ``FAILED`` so no journal row is left non-terminal, and the reason is
+    recorded as history (the payload-keyed event keeps changed reasons as
+    new records). Nothing is re-performed and no completion is fabricated.
+
+    Refuses when the effect is already terminal: a completed or failed
+    effect is never rewritten by this call.
+    """
+    state = effect_state(database, action_key)
+    if state["status"] != STARTED:
+        raise EffectStateError(
+            f"effect {action_key} is {state['status']} — abandon only "
+            "applies to STARTED effects")
+    _append(database, "effect.abandoned", {
+        "action_key": action_key,
+        "reason": reason,
+        "superseded_by": superseded_by,
+        "performed": False,
+    }, "abandoned", full_payload_key=True)
+    with database.transaction() as connection:
+        connection.execute(
+            "UPDATE system_actions SET status = ?, updated_at = ? "
+            "WHERE action_key = ? AND status = ?",
+            (FAILED, isoformat(), action_key, STARTED),
+        )
 
 
 def reconcile_effect(database: FoundryDatabase, action_key: str, *,

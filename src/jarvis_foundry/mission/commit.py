@@ -19,6 +19,7 @@ from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
 from ..domain import ActionDecision, ActionEnvelope
 from ..effects import (
+    abandon_effect,
     COMPLETED,
     FAILED,
     FROZEN,
@@ -69,6 +70,83 @@ def _commit_effect_id(
             "action_id": envelope.action_id,
         },
     )
+
+
+def _abandon_superseded_commit_claims(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    step_id: str,
+    current_run_id: str,
+    worktree: Path,
+    envelope: ActionEnvelope,
+) -> list[str]:
+    """Close commit claims left STARTED by a superseded run for this step.
+
+    The commit effect identity binds the dispatching ``run_id``, so a step
+    that is re-dispatched under a new run (repair after a killed builder)
+    writes a different identity. If the earlier claim never invoked the
+    connector (no matching commit is durable in Git), it can never complete
+    and would otherwise stay ``STARTED`` forever, which the pre-live
+    duplicate/ambiguity audit reads as an unreconciled effect.
+
+    Only claims for this exact mission and step whose Git commit receipt is
+    absent are abandoned, and the current run is never touched. Nothing is
+    re-performed and no completion is fabricated.
+    """
+    abandoned: list[str] = []
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT action_key, status FROM system_actions "
+            "WHERE kind = 'git_commit' AND status = ?",
+            (STARTED,),
+        ).fetchall()
+    for row in rows:
+        candidate = str(row["action_key"])
+        if candidate == _commit_effect_id(
+            mission_id=mission_id, step_id=step_id, run_id=current_run_id,
+            worktree=worktree, envelope=envelope,
+        ):
+            continue
+        state = effect_state(database, candidate)
+        identity = state.get("request_identity") or {}
+        candidate_step = str(identity.get("step_id") or "")
+        candidate_run = str(identity.get("run_id") or "")
+        if (
+            str(identity.get("mission_id") or "") != mission_id
+            or candidate_step != step_id
+            or not candidate_run
+            or candidate_run == current_run_id
+        ):
+            continue
+        landed = _recorded_commit(
+            worktree,
+            f"jarvis: {mission_id} {candidate_step} verified PASS "
+            f"(run {candidate_run})",
+        )
+        if landed is not None:
+            # The superseded attempt did reach Git: record the truth instead
+            # of abandoning it. Freeze the interrupted claim (freeze only
+            # applies to STARTED effects) and reconcile it against the exact
+            # commit receipt that is durable in the worktree.
+            freeze_effect(
+                database, candidate,
+                reason="superseded run committed before its claim completed",
+            )
+            reconcile_effect(
+                database, candidate,
+                provider_state={"exists": True, "commit_id": landed},
+            )
+            continue
+        abandon_effect(
+            database, candidate,
+            reason=(
+                "commit claim superseded by a fresh run for the same mission "
+                "step; the connector was never invoked and no commit exists"
+            ),
+        )
+        abandoned.append(candidate)
+    return abandoned
 
 
 def _recorded_commit(root: Path, message: str) -> str | None:
@@ -136,6 +214,19 @@ def commit_after_pass(
     action_key = _commit_effect_id(
         mission_id=mission_id, step_id=step_id, run_id=run_id,
         worktree=worktree, envelope=envelope,
+    )
+
+    # A repair run re-dispatches the step under a new run identity, so the
+    # superseded attempt's claim can never complete. Close it before this
+    # run's own exact-identity recovery, otherwise it stays STARTED forever
+    # and the pre-live ambiguity audit correctly refuses to proceed.
+    _abandon_superseded_commit_claims(
+        database,
+        mission_id=mission_id,
+        step_id=step_id,
+        current_run_id=run_id,
+        worktree=worktree,
+        envelope=envelope,
     )
 
     # A process may die after Git durably accepted the commit but before the

@@ -80,7 +80,7 @@ class HermesWorkerAdapter:
     )
     _FAILURE_REPORT_HTTP = re.compile(r"^HTTP \d{3}[:\s]")
     _VERDICT_LINE = re.compile(
-        r"^\s*VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\s*$",
+        r"^\s*VERDICT\s*:\s*(PASS|FAIL|BLOCKED|NOT_TESTED)\b(?!\s*\|)",
         re.IGNORECASE,
     )
     _VERDICT_VALUES = {"PASS", "FAIL", "BLOCKED", "NOT_TESTED"}
