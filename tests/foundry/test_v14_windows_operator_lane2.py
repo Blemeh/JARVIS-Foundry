@@ -16,6 +16,7 @@ from jarvis_foundry.connectors.windows_operator import (
     VisibleWindow,
     WindowsOperatorProvider,
     normalize_document_text,
+    prefer_application_windows,
     resolve_launch_window_owner,
 )
 from jarvis_foundry.database import FoundryDatabase
@@ -259,6 +260,32 @@ def test_helper_windows_do_not_make_main_window_ambiguous() -> None:
             is_dialog=False,
         )
     )
+    backend.windows.append(
+        BackendWindow(
+            ref=102,
+            hwnd=102,
+            title="PopupHost",
+            class_name="Microsoft.UI.Content.PopupWindowSiteBridge",
+            automation_id="",
+            runtime_id=(1, 102),
+            enabled=True,
+            visible=True,
+            is_dialog=False,
+        )
+    )
+    backend.windows.append(
+        BackendWindow(
+            ref=103,
+            hwnd=103,
+            title="",
+            class_name="tooltips_class32",
+            automation_id="",
+            runtime_id=(1, 103),
+            enabled=True,
+            visible=True,
+            is_dialog=False,
+        )
+    )
     provider = WindowsOperatorProvider(process, backend=backend)
     observed = provider.observe_main_window(title_contains="hello.txt")
     assert observed.identity.hwnd == 100
@@ -433,3 +460,45 @@ def test_named_alias_resolution() -> None:
         assert error.code == "control_not_found"
     else:
         raise AssertionError("expected alias miss")
+
+
+def test_observe_prefers_word_frame_among_document_windows() -> None:
+    process = _process()
+    backend = _FakeBackend(
+        ProcessSnapshot(
+            pid=process.pid,
+            create_time=process.create_time,
+            executable=process.executable,
+        )
+    )
+    backend.windows = [
+        BackendWindow(
+            ref=200,
+            hwnd=200,
+            title="lane2.docx - Word",
+            class_name="OpusApp",
+            automation_id="",
+            runtime_id=(1, 200),
+            enabled=True,
+            visible=True,
+            is_dialog=False,
+        ),
+        BackendWindow(
+            ref=201,
+            hwnd=201,
+            title="lane2.docx",
+            class_name="_WwG",
+            automation_id="",
+            runtime_id=(1, 201),
+            enabled=True,
+            visible=True,
+            is_dialog=False,
+        ),
+    ]
+    provider = WindowsOperatorProvider(process, backend=backend)
+    observed = provider.observe_main_window(title_contains="lane2")
+    assert observed.identity.hwnd == 200
+    assert observed.identity.class_name == "OpusApp"
+    ranked = prefer_application_windows(backend.windows, title_contains="lane2")
+    assert len(ranked) == 1
+    assert ranked[0].hwnd == 200

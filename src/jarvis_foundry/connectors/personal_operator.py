@@ -38,6 +38,7 @@ from ..supervisor.worker import (
 from .windows_operator import (
     VisibleWindow,
     is_helper_window_class,
+    prefer_application_windows,
     resolve_launch_window_owner,
 )
 
@@ -109,6 +110,29 @@ def _visible_application_windows() -> tuple[VisibleWindow, ...]:
     if not user32.EnumWindows(collect, 0):
         return ()
     return tuple(found)
+
+
+def _unique_owned_window(pid: int) -> VisibleWindow:
+    """Return the unique application frame for a live owned PID."""
+
+    ranked = prefer_application_windows(
+        [
+            window
+            for window in _visible_application_windows()
+            if window.pid == int(pid)
+        ]
+    )
+    if not ranked:
+        raise PersonalOperatorError(
+            "window_not_found",
+            "owned process has no visible top-level window",
+        )
+    if len(ranked) != 1:
+        raise PersonalOperatorError(
+            "window_ambiguous",
+            "owned process has multiple visible top-level windows",
+        )
+    return ranked[0]
 
 
 class PersonalOperatorError(ValueError):
@@ -1874,7 +1898,7 @@ class PersonalOperatorConnector:
             ):
                 return self._bind_window_owning_process(
                     process_id,
-                    title_contains=Path(str(target.resolve())).name,
+                    title_contains=Path(str(target.resolve())).stem,
                     before=snapshot,
                     launch_receipt=receipt,
                     timeout_s=30.0,
@@ -2535,22 +2559,7 @@ class PersonalOperatorConnector:
                 kernel32.GetCurrentThreadId.argtypes = []
                 kernel32.GetCurrentThreadId.restype = wintypes.DWORD
 
-                handles = [
-                    window.hwnd
-                    for window in _visible_application_windows()
-                    if window.pid == int(record["pid"])
-                ]
-                if not handles:
-                    raise PersonalOperatorError(
-                        "window_not_found",
-                        "owned process has no visible top-level window",
-                    )
-                if len(handles) != 1:
-                    raise PersonalOperatorError(
-                        "window_ambiguous",
-                        "owned process has multiple visible top-level windows",
-                    )
-                hwnd = handles[0]
+                hwnd = _unique_owned_window(int(record["pid"])).hwnd
                 foreground_before = int(user32.GetForegroundWindow() or 0)
                 user32.ShowWindow(hwnd, 9)  # SW_RESTORE
                 api_focused = bool(user32.SetForegroundWindow(hwnd))
@@ -2601,7 +2610,7 @@ class PersonalOperatorConnector:
                 readback = {
                     **process_readback,
                     "window_handle": hwnd,
-                    "visible_window_count": len(handles),
+                    "visible_window_count": 1,
                     "foreground_before": foreground_before,
                     "foreground_window": foreground_after,
                     "current_thread": current_thread,
@@ -2672,22 +2681,7 @@ class PersonalOperatorConnector:
                 user32 = ctypes.WinDLL("user32", use_last_error=True)
                 user32.GetForegroundWindow.argtypes = []
                 user32.GetForegroundWindow.restype = wintypes.HWND
-                handles = [
-                    window.hwnd
-                    for window in _visible_application_windows()
-                    if window.pid == int(record["pid"])
-                ]
-                if not handles:
-                    raise PersonalOperatorError(
-                        "window_not_found",
-                        "owned process has no visible top-level window",
-                    )
-                if len(handles) != 1:
-                    raise PersonalOperatorError(
-                        "window_ambiguous",
-                        "owned process has multiple visible top-level windows",
-                    )
-                hwnd = handles[0]
+                hwnd = _unique_owned_window(int(record["pid"])).hwnd
                 foreground = int(user32.GetForegroundWindow() or 0)
                 readback = {
                     **process_readback,

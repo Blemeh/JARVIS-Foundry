@@ -1,13 +1,17 @@
 {
   "lane": "2-v14-windows-operator",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "59a4b2643c5613ceefbf1e51113f6800723f61f3",
+  "final_sha": "",
   "branch": "candidate/max-lane-2-v14-windows-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-2-v14-windows-20260915",
   "commits": [
     {
       "sha": "59a4b2643c5613ceefbf1e51113f6800723f61f3",
       "message": "Turn the Windows operator into a real Notepad/Word desktop path."
+    },
+    {
+      "sha": "732a03659774b014e53a0d50b1f7595fbca170d4",
+      "message": "Record Lane 2 Windows operator handoff against the product commit."
     }
   ],
   "files_changed": [
@@ -35,6 +39,7 @@
     "WindowsOperatorProvider.get_clipboard_text",
     "open_artifact_and_assert",
     "resolve_launch_window_owner",
+    "prefer_application_windows",
     "normalize_document_text",
     "OperatorAction.kind paste"
   ],
@@ -57,7 +62,13 @@
       "action_kind": "desktop.control.paste",
       "required": ["process_id", "window", "control", "value"],
       "optional": ["condition", "timeout_s", "readback_control"],
-      "notes": "sets clipboard then pastes only into the bound control. same OperatorAction contract as replace_text."
+      "notes": "sets clipboard then pastes only into the bound control (select-all then Ctrl+V). same OperatorAction contract as replace_text."
+    },
+    {
+      "action_kind": "WindowsOperatorProvider.invoke_file_dialog",
+      "required": ["window", "path", "action"],
+      "optional": ["timeout_s", "action_id"],
+      "notes": "action is open or save_as. Open confirm is SplitButton automation_id 1 on #32770. Receipt after.value is not the path; callers assert window title or document hash."
     }
   ],
   "receipt_schemas": [
@@ -68,6 +79,11 @@
     {
       "action_kind": "desktop.control.paste",
       "fields": ["claimed", "operator_receipt", "process_id", "provider_ref", "readback_verified", "effect_possible", "reconciliation_required"]
+    },
+    {
+      "action_kind": "invoke_file_dialog",
+      "fields": ["outcome", "error_code", "process", "window", "dialog", "effect_possible", "reconciliation_required"],
+      "retry_reconcile": ["UNKNOWN unexpected_dialog", "UNKNOWN expected_dialog_timeout", "UNKNOWN timeout_after_possible_effect", "FAILED control_not_found"]
     }
   ],
   "config_keys": [],
@@ -83,59 +99,73 @@
     "python var/lane2-demo/demo.py"
   ],
   "real_substrate_proofs": [
-    "Notepad open_artifact_and_assert hash match on WindowsApps Notepad.exe window-owning PID",
-    "replace_text COMPLETED on DocumentControl Text editor",
-    "Word desktop.open rebound to window-owning PID distinct from Notepad",
+    "Notepad open_artifact_and_assert hash match on WindowsApps Notepad.exe window-owning PID 15096",
+    "replace_text, type, paste COMPLETED on DocumentControl Text editor RichEditD2DPT",
+    "File Open #32770 SplitButton landed hello-open-*.txt with matching normalized document hash",
+    "Word desktop.open rebound to OpusApp HWND, title lane2 [Compatibility Mode] - Word, PID 25220",
+    "Excel /x unique workbook XLMAIN plus UIA cell value JARVIS lane2 excel",
+    "focus Word then Notepad focused=true, PIDs stable, not swapped",
     "ProcessIdentityMismatch after killing demo Notepad PID",
-    "Explorer /separate launch+close without killing owner shell explorer 13212"
+    "Explorer /separate launch+close without killing owner shell explorer"
   ],
   "capability_states": {
     "uiautomation_backend": "BUILT_AND_PROVEN",
     "process_window_rebind": "BUILT_AND_PROVEN",
     "helper_window_filter": "BUILT_AND_PROVEN",
+    "application_frame_preference": "BUILT_AND_PROVEN",
     "open_artifact_and_assert": "BUILT_AND_PROVEN",
     "notepad_replace_text": "BUILT_AND_PROVEN",
+    "notepad_type": "BUILT_AND_PROVEN",
+    "desktop.control.paste": "BUILT_AND_PROVEN",
+    "native_file_open": "BUILT_AND_PROVEN",
+    "native_file_save_as": "BUILT_NOT_REAL_WORLD_PROVEN",
     "stale_identity_after_kill": "BUILT_AND_PROVEN",
     "multi_app_pid_isolation": "BUILT_AND_PROVEN",
+    "focus_return_to_notepad": "BUILT_AND_PROVEN",
     "word_launch_bind": "BUILT_AND_PROVEN",
+    "word_document_inspect": "BUILT_AND_PROVEN",
+    "excel_proof": "BUILT_AND_PROVEN",
     "explorer_separate_launch": "BUILT_AND_PROVEN",
     "existing_instance_reuse_refusal": "BUILT_AND_PROVEN",
-    "desktop.control.paste": "BUILT_NOT_REAL_WORLD_PROVEN",
-    "desktop.control.type": "BUILT_NOT_REAL_WORLD_PROVEN",
-    "native_file_dialog": "BUILT_NOT_REAL_WORLD_PROVEN",
-    "word_document_inspect": "BUILT_NOT_REAL_WORLD_PROVEN",
-    "focus_return_to_notepad": "BUILT_NOT_REAL_WORLD_PROVEN",
-    "excel_proof": "STILL_MISSING",
-    "calculator_proof": "STILL_MISSING"
+    "explorer_select_open_file": "STILL_MISSING",
+    "calculator_proof": "STILL_MISSING",
+    "checkbox_radio_select": "STILL_MISSING",
+    "fabric_desktop_file_dialog": "STILL_MISSING"
   },
   "cross_lane_assumptions": [
     "Lane 4 composes desktop.open_artifact_and_assert with owned-root relative path, allowlisted absolute executable, and expected document text.",
     "ProcessIdentity is pid+create_time+live image path. Win11 Notepad live image is WindowsApps Notepad.exe, not System32 notepad.exe.",
     "WindowIdentity.to_selector omits title because Notepad prefixes * when dirty.",
-    "desktop.open with show_window=true waits for a new window; show_window=false does not.",
-    "Control string values are redacted to sha256/length in receipts.",
-    "Single-instance reuse of a pre-existing app is FAILED existing_instance_reused, not adopted."
+    "desktop.open with show_window=true waits for a new window using the artifact stem in the title, then same-exe fresh window fallback. show_window=false does not bind a window.",
+    "Control string values are redacted to sha256/length in receipts. Compare document text with normalize_document_text (CRLF).",
+    "Single-instance reuse of a pre-existing app is FAILED existing_instance_reused, not adopted. Excel needs /x plus a unique workbook name to force a new instance.",
+    "File Open confirm is SplitButtonControl automation_id 1, not ButtonControl Open DropDown.",
+    "invoke_file_dialog is a provider method. There is no fabric action_kind desktop.file_dialog yet.",
+    "paste selects all then pastes. type types at the caret. replace_text SetValue then Ctrl+End so a following type appends."
   ],
   "likely_conflicts": [
     "personal_operator._launch_process no longer requires live exe path == allowlisted path (App Execution Alias).",
-    "desktop.open now post-binds GUI file opens when show_window is true.",
-    "list_windows drops GDI+/IME helper HWNDs.",
+    "desktop.open now post-binds GUI file opens when show_window is true, matching title stem not full filename.",
+    "list_windows drops helper HWNDs including PopupHost, tooltips, Office chrome.",
+    "observe_main_window and focus prefer APPLICATION_FRAME_CLASSES (Notepad, OpusApp, XLMAIN, CabinetWClass).",
     "New fabric action kinds desktop.open_artifact_and_assert and desktop.control.paste."
   ],
   "integration_order_notes": [
     "Land Lane 2 before Lane 4 cross-app compose that calls open_artifact_and_assert.",
+    "Lane 4 should call WindowsOperatorProvider.invoke_file_dialog for native Open until a fabric verb exists.",
     "Lane 1 browser and Lane 3 GitHub are independent.",
     "Do not merge this branch to main from this lane."
   ],
   "known_semantic_conflicts": [
-    "Win11 Notepad File flyout did not expose an exact Open MenuItem/Button on this PC, so File Open is implemented but not live-proven.",
-    "type/paste dispatch on Win11 Notepad DocumentControl timed out on value readback (UNKNOWN timeout_after_possible_effect). replace_text Value pattern is the proven edit path."
+    "Save As on Win11 Notepad raised unexpected_dialog after the Save As item click. The extra dialog was not #32770-only. Fail closed. File Open is the proven dialog path.",
+    "Word may show Document Recovery chrome if a prior demo Word was killed. OpusApp frame still binds.",
+    "python-docx files open as Compatibility Mode. That is a title variant, not a second Word."
   ],
   "next_highest_value_work": [
-    "Prove File Open/Save As against Win11 Notepad or Word IFileDialog, including picker-host process if the dialog is not in the app PID.",
-    "Make type/paste readback succeed on RichEditD2DPT (TextPattern vs ValuePattern after SendKeys).",
-    "Unique Word document window selection when Word has multiple HWNDs.",
-    "Focus return to a Notepad window after another app is foregrounded.",
-    "Excel open+readback if a stable cell UIA value is available."
+    "Handle the extra Win11 Notepad Save As dialog (encoding or confirm) without weakening unexpected_dialog.",
+    "Add fabric action_kind desktop.file_dialog wrapping invoke_file_dialog for Lane 4.",
+    "Explorer select/open of a lane-owned file inside the demo folder.",
+    "Wait-until enabled/visible/value helpers and checkbox/radio/select on a bounded demo app.",
+    "Calculator or another harmless Win32 app as a third identity proof."
   ]
 }

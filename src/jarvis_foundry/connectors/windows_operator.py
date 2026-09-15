@@ -34,6 +34,26 @@ HELPER_WINDOW_CLASSES = frozenset(
         "GDI+ Hook Window Class",
         "MSCTFIME UI",
         "IME",
+        "tooltips_class32",
+        "Auto-Suggest Dropdown",
+        "ComboLBox",
+        "_SearchEditBoxFakeWindow",
+        "WorkerW",
+        "Microsoft.UI.Content.PopupWindowSiteBridge",
+        "MsoCommandBar",
+        "MsoCommandBarShadow",
+        "OfficeTooltip",
+        "Net UI Tool Window",
+        "MsoSplash",
+    }
+)
+APPLICATION_FRAME_CLASSES = frozenset(
+    {
+        "Notepad",
+        "OpusApp",
+        "XLMAIN",
+        "CabinetWClass",
+        "ExploreWClass",
     }
 )
 DOCUMENT_CONTROL_TYPES = frozenset(
@@ -102,6 +122,54 @@ def is_helper_window_class(class_name: str) -> bool:
     """Return whether a native class is a non-application helper HWND."""
 
     return str(class_name or "") in HELPER_WINDOW_CLASSES
+
+
+def prefer_application_windows(
+    windows: Sequence[Any],
+    *,
+    title_contains: str | None = None,
+    class_name: str | None = None,
+) -> list[Any]:
+    """Reduce a window list to the unique application frame when possible."""
+
+    visible = [
+        window
+        for window in windows
+        if getattr(window, "visible", True)
+        and getattr(window, "enabled", True)
+        and not is_helper_window_class(getattr(window, "class_name", ""))
+        and not getattr(window, "is_dialog", False)
+        and (
+            class_name is None
+            or getattr(window, "class_name", "") == class_name
+        )
+    ]
+    if title_contains:
+        titled = [
+            window
+            for window in visible
+            if title_contains.casefold()
+            in str(getattr(window, "title", "")).casefold()
+        ]
+        if titled:
+            visible = titled
+    framed = [
+        window
+        for window in visible
+        if getattr(window, "class_name", "") in APPLICATION_FRAME_CLASSES
+    ]
+    if len(framed) == 1:
+        return framed
+    if framed:
+        visible = framed
+    titled = [
+        window
+        for window in visible
+        if str(getattr(window, "title", "")).strip()
+    ]
+    if len(titled) == 1:
+        return titled
+    return titled or list(visible)
 
 
 def normalize_document_text(text: str) -> str:
@@ -866,6 +934,11 @@ class _UIAutomationBackend:
                 "control_read_only", "control Value pattern is read-only"
             )
         pattern.SetValue(value)
+        try:
+            control.ref.SetFocus()
+            self._auto.SendKeys("{Ctrl}{End}", waitTime=0.02)
+        except Exception:  # noqa: BLE001 - caret placement is best-effort
+            pass
 
     def type_text(
         self, control: BackendControl, value: str, *, timeout_s: float
@@ -952,6 +1025,7 @@ class _UIAutomationBackend:
                     "focus_not_verified",
                     "exact control focus could not be verified before paste",
                 )
+            self._auto.SendKeys("{Ctrl}a", interval=0.01, waitTime=0.02)
             self._auto.SendKeys("{Ctrl}v", interval=0.01, waitTime=0.05)
         except WindowsOperatorError:
             raise
@@ -1262,24 +1336,11 @@ class WindowsOperatorProvider:
         """Observe the unique application window for this process."""
 
         self._verify_process()
-        windows = [
-            window
-            for window in self._backend().list_windows(self.process.pid)
-            if window.visible
-            and window.enabled
-            and not is_helper_window_class(window.class_name)
-            and (class_name is None or window.class_name == class_name)
-        ]
-        if title_contains:
-            titled = [
-                window
-                for window in windows
-                if title_contains.casefold() in window.title.casefold()
-            ]
-            if len(titled) == 1:
-                windows = titled
-            elif titled:
-                windows = titled
+        windows = prefer_application_windows(
+            self._backend().list_windows(self.process.pid),
+            title_contains=title_contains,
+            class_name=class_name,
+        )
         if not windows:
             raise TargetMatchError(
                 "window_not_found",
@@ -1427,109 +1488,145 @@ class WindowsOperatorProvider:
         item_key = "open_item" if action == "open" else "save_as_item"
         confirm_key = "open_button" if action == "open" else "save_button"
         try:
-            file_menu = self.resolve_named_control(
-                window,
-                names=CONTROL_NAME_ALIASES["file_menu"],
-                control_type="MenuItemControl",
-                automation_ids=("File",),
-            )
-        except TargetMatchError:
-            file_menu = self.find_control_on_any_window(
-                names=CONTROL_NAME_ALIASES["file_menu"],
-                control_type="ButtonControl",
-                automation_ids=("File", "ContentButton"),
-            )
-            window = file_menu.window
-        item_names = CONTROL_NAME_ALIASES[item_key]
-        menu_click = OperatorAction(
-            action_id=f"{action_id}:menu",
-            kind="click",
-            window=window,
-            control=file_menu.selector,
-            readback_control=ControlSelector(
-                control_type="MenuItemControl",
-                name=item_names[0],
-            ),
-            condition=ControlCondition("control_exists", True),
-            timeout_s=min(timeout_s, 15.0),
-        )
-        # Try each Open/Save As alias as the postcondition of expanding File.
-        last = self.perform(menu_click)
-        if last.outcome != "COMPLETED":
-            for name in item_names[1:]:
-                retry = OperatorAction(
-                    action_id=f"{action_id}:menu:{name}",
+            try:
+                file_menu = self.resolve_named_control(
+                    window,
+                    names=CONTROL_NAME_ALIASES["file_menu"],
+                    control_type="MenuItemControl",
+                    automation_ids=("File",),
+                )
+            except TargetMatchError:
+                file_menu = self.find_control_on_any_window(
+                    names=CONTROL_NAME_ALIASES["file_menu"],
+                    control_type="MenuItemControl",
+                    automation_ids=("File",),
+                )
+                window = file_menu.window
+            item_names = CONTROL_NAME_ALIASES[item_key]
+            last = self.perform(
+                OperatorAction(
+                    action_id=f"{action_id}:menu",
                     kind="click",
                     window=window,
                     control=file_menu.selector,
                     readback_control=ControlSelector(
                         control_type="MenuItemControl",
-                        name=name,
+                        name=item_names[0],
                     ),
                     condition=ControlCondition("control_exists", True),
-                    timeout_s=min(timeout_s, 8.0),
+                    timeout_s=min(timeout_s, 15.0),
                 )
-                last = self.perform(retry)
-                if last.outcome == "COMPLETED":
-                    break
-        if last.outcome != "COMPLETED":
-            return last
-        try:
-            item = self.find_control_on_any_window(
-                names=item_names,
-                control_type="MenuItemControl",
             )
-        except TargetMatchError:
-            item = self.find_control_on_any_window(
-                names=item_names,
-                control_type="ButtonControl",
+            if last.outcome != "COMPLETED":
+                for name in item_names[1:]:
+                    last = self.perform(
+                        OperatorAction(
+                            action_id=f"{action_id}:menu:{name}",
+                            kind="click",
+                            window=window,
+                            control=file_menu.selector,
+                            readback_control=ControlSelector(
+                                control_type="MenuItemControl",
+                                name=name,
+                            ),
+                            condition=ControlCondition("control_exists", True),
+                            timeout_s=min(timeout_s, 8.0),
+                        )
+                    )
+                    if last.outcome == "COMPLETED":
+                        break
+            if last.outcome != "COMPLETED":
+                return last
+            try:
+                item = self.resolve_named_control(
+                    window,
+                    names=item_names,
+                    control_type="MenuItemControl",
+                )
+            except TargetMatchError:
+                try:
+                    item = self.find_control_on_any_window(
+                        names=item_names,
+                        control_type="MenuItemControl",
+                    )
+                except TargetMatchError:
+                    item = self.find_control_on_any_window(
+                        names=item_names,
+                        control_type="ButtonControl",
+                    )
+            last = self.perform(
+                OperatorAction(
+                    action_id=f"{action_id}:item",
+                    kind="click",
+                    window=item.window,
+                    control=item.selector,
+                    expected_dialog=ExpectedDialog(
+                        WindowSelector(class_name="#32770"),
+                        timeout_s=min(timeout_s, 15.0),
+                    ),
+                    timeout_s=min(timeout_s, 20.0),
+                )
             )
-        dialog_selector = WindowSelector(class_name="#32770")
-        item_click = OperatorAction(
-            action_id=f"{action_id}:item",
-            kind="click",
-            window=window,
-            control=item.selector,
-            expected_dialog=ExpectedDialog(dialog_selector, timeout_s=min(timeout_s, 15.0)),
-            timeout_s=min(timeout_s, 20.0),
-        )
-        last = self.perform(item_click)
-        if last.outcome != "COMPLETED" or last.dialog is None:
-            return last
-        dialog_window = last.dialog.identity
-        name_box = self.resolve_named_control(
-            dialog_window,
-            names=CONTROL_NAME_ALIASES["file_name"],
-            control_type="EditControl",
-            automation_ids=("1148", "1001"),
-        )
-        typed = self.perform(
-            OperatorAction(
-                action_id=f"{action_id}:filename",
-                kind="replace_text",
-                window=dialog_window,
-                control=name_box.selector,
-                value=path,
-                timeout_s=min(timeout_s, 10.0),
+            if last.outcome != "COMPLETED" or last.dialog is None:
+                return last
+            dialog_window = last.dialog.identity
+            name_box = self.resolve_named_control(
+                dialog_window,
+                names=CONTROL_NAME_ALIASES["file_name"],
+                control_type="EditControl",
+                automation_ids=("1148", "1001"),
             )
-        )
-        if typed.outcome != "COMPLETED":
-            return typed
-        confirm = self.resolve_named_control(
-            dialog_window,
-            names=CONTROL_NAME_ALIASES[confirm_key],
-            control_type="ButtonControl",
-        )
-        return self.perform(
-            OperatorAction(
-                action_id=f"{action_id}:confirm",
-                kind="click",
-                window=dialog_window,
-                control=confirm.selector,
-                condition=ControlCondition("window_exists", False),
-                timeout_s=min(timeout_s, 15.0),
+            typed = self.perform(
+                OperatorAction(
+                    action_id=f"{action_id}:filename",
+                    kind="replace_text",
+                    window=dialog_window,
+                    control=name_box.selector,
+                    value=path,
+                    timeout_s=min(timeout_s, 10.0),
+                )
             )
-        )
+            if typed.outcome == "FAILED":
+                return typed
+            if typed.outcome != "COMPLETED" and not typed.effect_possible:
+                return typed
+            try:
+                confirm = self.resolve_named_control(
+                    dialog_window,
+                    names=CONTROL_NAME_ALIASES[confirm_key],
+                    control_type="SplitButtonControl",
+                    automation_ids=("1",),
+                )
+            except TargetMatchError:
+                confirm = self.resolve_named_control(
+                    dialog_window,
+                    names=CONTROL_NAME_ALIASES[confirm_key],
+                    control_type="ButtonControl",
+                    automation_ids=("1",),
+                )
+            return self.perform(
+                OperatorAction(
+                    action_id=f"{action_id}:confirm",
+                    kind="click",
+                    window=dialog_window,
+                    control=confirm.selector,
+                    condition=ControlCondition("window_exists", False),
+                    timeout_s=min(timeout_s, 15.0),
+                )
+            )
+        except TargetMatchError as error:
+            return self._receipt(
+                OperatorAction(
+                    action_id=action_id,
+                    kind="click",
+                    window=window,
+                    control=ControlSelector(name="File"),
+                    timeout_s=min(timeout_s, 5.0),
+                ),
+                "FAILED",
+                error_code=error.code,
+                detail=self._safe_detail(error),
+            )
 
     def set_clipboard_text(self, text: str) -> None:
         if not isinstance(text, str) or len(text) > 4096:

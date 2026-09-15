@@ -29,6 +29,7 @@ from jarvis_foundry.connectors.windows_operator import (
     ProcessIdentity,
     ProcessIdentityMismatch,
     WindowsOperatorProvider,
+    normalize_document_text,
 )
 from jarvis_foundry.fabric.computer_operator import open_artifact_and_assert
 
@@ -172,12 +173,42 @@ def main() -> int:
                 outcome=replaced.outcome,
                 error_code=replaced.error_code,
             )
+            typed = provider.perform(
+                OperatorAction(
+                    action_id="lane2-type",
+                    kind="type",
+                    window=window.identity,
+                    control=document.selector,
+                    value="!",
+                    condition=ControlCondition(
+                        "value", "JARVIS lane2 replaced!"
+                    ),
+                    timeout_s=8.0,
+                )
+            )
+            note("type", outcome=typed.outcome, error_code=typed.error_code)
+            pasted = provider.perform(
+                OperatorAction(
+                    action_id="lane2-paste",
+                    kind="paste",
+                    window=window.identity,
+                    control=document.selector,
+                    value="JARVIS lane2 clipboard",
+                    timeout_s=8.0,
+                )
+            )
+            note(
+                "paste",
+                outcome=pasted.outcome,
+                error_code=pasted.error_code,
+                clipboard_sha=_sha("JARVIS lane2 clipboard"),
+            )
             try:
                 dialog = provider.invoke_file_dialog(
                     window.identity,
                     path=str(opened_file),
                     action="open",
-                    timeout_s=12.0,
+                    timeout_s=20.0,
                     action_id="lane2-file-open",
                 )
                 note(
@@ -190,54 +221,50 @@ def main() -> int:
                     ),
                 )
                 if dialog.outcome == "COMPLETED":
-                    after_open = provider.observe_main_window()
+                    after_open = provider.observe_main_window(
+                        title_contains=opened_file.stem
+                    )
                     read = provider.find_document_control(after_open.identity)
+                    observed_text = normalize_document_text(
+                        str(read.value or "")
+                    )
+                    expected_open = normalize_document_text(
+                        "JARVIS lane2 opened via dialog\n"
+                    )
                     note(
                         "file_open_readback",
                         window_title=after_open.identity.title,
-                        value_length=read.to_dict().get("value_length"),
-                        value_sha256=read.to_dict().get("value_sha256"),
+                        value_length=len(observed_text),
+                        value_sha256=_sha(observed_text),
+                        expected_sha256=_sha(expected_open),
+                        readback_verified=observed_text == expected_open,
                     )
+                    save_as_path = DEMO_DIR / f"hello-save-{run_token}.txt"
+                    saved = provider.invoke_file_dialog(
+                        after_open.identity,
+                        path=str(save_as_path),
+                        action="save_as",
+                        timeout_s=20.0,
+                        action_id="lane2-file-save-as",
+                    )
+                    note(
+                        "file_save_as_dialog",
+                        outcome=saved.outcome,
+                        error_code=saved.error_code,
+                        detail=saved.detail,
+                    )
+                    if saved.outcome == "COMPLETED":
+                        after_save = provider.observe_main_window(
+                            title_contains=save_as_path.stem
+                        )
+                        note(
+                            "file_save_as_readback",
+                            window_title=after_save.identity.title,
+                            saved_exists=save_as_path.is_file(),
+                        )
             except Exception as error:
                 note(
                     "file_open_dialog",
-                    outcome="FAILED",
-                    detail=f"{type(error).__name__}: {error}",
-                )
-            try:
-                typed = provider.perform(
-                    OperatorAction(
-                        action_id="lane2-type",
-                        kind="type",
-                        window=window.identity,
-                        control=document.selector,
-                        value="!",
-                        condition=ControlCondition(
-                            "value", "JARVIS lane2 replaced!"
-                        ),
-                        timeout_s=8.0,
-                    )
-                )
-                note("type", outcome=typed.outcome, error_code=typed.error_code)
-                pasted = provider.perform(
-                    OperatorAction(
-                        action_id="lane2-paste",
-                        kind="paste",
-                        window=window.identity,
-                        control=document.selector,
-                        value="JARVIS lane2 clipboard",
-                        timeout_s=8.0,
-                    )
-                )
-                note(
-                    "paste",
-                    outcome=pasted.outcome,
-                    error_code=pasted.error_code,
-                    clipboard_sha=_sha("JARVIS lane2 clipboard"),
-                )
-            except Exception as error:
-                note(
-                    "type_paste",
                     outcome="FAILED",
                     detail=f"{type(error).__name__}: {error}",
                 )
@@ -301,40 +328,12 @@ def main() -> int:
                 notepad_live = True
             except Exception:
                 notepad_live = False
-        if notepad_live and launched.get("status") == "COMPLETED":
-            rec_a_before = connector.get_validated_process_record("lane2-notepad")
-            rec_b_before = connector.get_validated_process_record(second_app)
-            focus_b = connector.focus_process(second_app)
-            note(
-                "focus_second",
-                status=focus_b.get("status"),
-                focused=(focus_b.get("result") or {}).get("focused"),
-                hwnd=(focus_b.get("result") or {}).get("window_handle"),
-            )
-            focus_a = connector.focus_process("lane2-notepad")
-            note(
-                "focus_back_notepad",
-                status=focus_a.get("status"),
-                focused=(focus_a.get("result") or {}).get("focused"),
-                hwnd=(focus_a.get("result") or {}).get("window_handle"),
-            )
-            rec_a = connector.get_validated_process_record("lane2-notepad")
-            rec_b = connector.get_validated_process_record(second_app)
-            note(
-                "identity_handoff",
-                notepad_pid=rec_a["pid"],
-                second_pid=rec_b["pid"],
-                notepad_pid_stable=rec_a["pid"] == rec_a_before["pid"],
-                second_pid_stable=rec_b["pid"] == rec_b_before["pid"],
-                swapped=rec_a["pid"] == rec_b["pid"],
-            )
 
         if second_app in {"lane2-word", "lane2-excel"} and launched.get("status") == "COMPLETED":
             try:
                 office = _provider(connector, second_app)
                 observed = office.observe_main_window(
                     title_contains=target.stem,
-                    class_name="OpusApp" if second_app == "lane2-word" else None,
                 )
                 controls = office.inspect(observed.identity)
                 note(
@@ -358,6 +357,103 @@ def main() -> int:
                     status="FAILED",
                     detail=f"{type(error).__name__}: {error}",
                 )
+
+        if WORD.exists() and EXCEL.exists() and second_app == "lane2-word":
+            try:
+                from openpyxl import Workbook
+
+                xlsx = DEMO_DIR / f"lane2-excel-{run_token}.xlsx"
+                book = Workbook()
+                book.active["A1"] = "JARVIS lane2 excel"
+                book.save(xlsx)
+                excel = connector.desktop_open(
+                    "lane2-excel",
+                    str(EXCEL),
+                    xlsx.name,
+                    args=["/x"],
+                    cwd=".",
+                    idempotency_key=f"lane2-excel-open-{run_token}",
+                    show_window=True,
+                )
+                owned_ids.append("lane2-excel")
+                note(
+                    "excel_open",
+                    status=excel.get("status"),
+                    error=(excel.get("error") or {}).get("classification"),
+                    pid=(excel.get("result") or {}).get("pid"),
+                    window_hwnd=(excel.get("result") or {}).get("window_hwnd"),
+                )
+                if excel.get("status") == "COMPLETED":
+                    excel_provider = _provider(connector, "lane2-excel")
+                    excel_window = excel_provider.observe_main_window(
+                        title_contains=xlsx.stem,
+                        class_name="XLMAIN",
+                    )
+                    excel_controls = excel_provider.inspect(excel_window.identity)
+                    cell = next(
+                        (
+                            item
+                            for item in excel_controls
+                            if isinstance(item.value, str)
+                            and "JARVIS lane2 excel" in item.value
+                        ),
+                        None,
+                    )
+                    note(
+                        "excel_observe",
+                        title=excel_window.identity.title,
+                        class_name=excel_window.identity.class_name,
+                        hwnd=excel_window.identity.hwnd,
+                        control_count=len(excel_controls),
+                        cell_value_sha=(
+                            _sha(cell.value) if cell is not None else None
+                        ),
+                    )
+            except Exception as error:
+                note(
+                    "excel_observe",
+                    status="FAILED",
+                    detail=f"{type(error).__name__}: {error}",
+                )
+
+        focus_app = None
+        for candidate in (second_app, "lane2-excel"):
+            if candidate not in owned_ids:
+                continue
+            try:
+                connector.get_validated_process_record(candidate)
+                focus_app = candidate
+                break
+            except Exception:
+                continue
+        if notepad_live and focus_app is not None:
+            rec_a_before = connector.get_validated_process_record("lane2-notepad")
+            rec_b_before = connector.get_validated_process_record(focus_app)
+            focus_b = connector.focus_process(focus_app)
+            note(
+                "focus_second",
+                app=focus_app,
+                status=focus_b.get("status"),
+                focused=(focus_b.get("result") or {}).get("focused"),
+                hwnd=(focus_b.get("result") or {}).get("window_handle"),
+            )
+            focus_a = connector.focus_process("lane2-notepad")
+            note(
+                "focus_back_notepad",
+                status=focus_a.get("status"),
+                focused=(focus_a.get("result") or {}).get("focused"),
+                hwnd=(focus_a.get("result") or {}).get("window_handle"),
+            )
+            rec_a = connector.get_validated_process_record("lane2-notepad")
+            rec_b = connector.get_validated_process_record(focus_app)
+            note(
+                "identity_handoff",
+                notepad_pid=rec_a["pid"],
+                second_pid=rec_b["pid"],
+                notepad_pid_stable=rec_a["pid"] == rec_a_before["pid"],
+                second_pid_stable=rec_b["pid"] == rec_b_before["pid"],
+                swapped=rec_a["pid"] == rec_b["pid"],
+            )
 
         if notepad_live:
             identity = _provider(connector, "lane2-notepad").process

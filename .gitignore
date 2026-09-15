@@ -16,6 +16,10 @@ var/*
 var/lane2-demo/.jarvis-personal-operator/
 var/lane2-demo/hello-1*.txt
 var/lane2-demo/hello-open-1*.txt
+var/lane2-demo/hello-save-1*.txt
+var/lane2-demo/probe-*.txt
+var/lane2-demo/lane2-excel-*.xlsx
+var/lane2-demo/lane2.xlsx
 var/lane2-demo/~$*
 state/
 logs/
