@@ -26,6 +26,10 @@ web = [
     "playwright==1.62.0",
     "trafilatura==2.2.0",
 ]
+voice = [
+    "edge-tts>=7.0",
+    "winotify>=1.1.0; sys_platform == 'win32'",
+]
 
 [project.scripts]
 jarvis = "jarvis_foundry.cli.main:main"

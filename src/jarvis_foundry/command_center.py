@@ -2256,6 +2256,17 @@ def _build_snapshot(
         stop_path=str(stop_path) if stop_path is not None else None,
         snapshot=snapshot_payload,
     )
+    try:
+        from .convergence.briefings_l10n import render_briefing
+        snapshot_payload["briefing_l10n"] = {
+            "en": render_briefing(snapshot_payload, "en"),
+            "sq": render_briefing(snapshot_payload, "sq"),
+        }
+    except Exception as error:  # noqa: BLE001 - projection must fail open to NOT_AVAILABLE
+        snapshot_payload["briefing_l10n"] = {
+            "status": "NOT_AVAILABLE",
+            "reason": type(error).__name__,
+        }
     # Trust is an additive health subprojection.  Keep the established
     # top-level Command Center contract stable for existing consumers while
     # exposing the evidence-backed lifecycle under ``health``.

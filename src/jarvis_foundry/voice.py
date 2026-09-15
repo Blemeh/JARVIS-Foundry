@@ -1,15 +1,30 @@
-"""Provider-neutral English voice boundary with authenticated directives."""
+"""Provider-neutral voice boundary with authenticated owner directives."""
 from __future__ import annotations
 
 import hashlib
-import re
+import hmac
 import uuid
 from dataclasses import dataclass
 from typing import Protocol
 
+from .command_center import build_snapshot
 from .database import FoundryDatabase
 from .events import Event, EventConflict
 from .owner_controls import OwnerAuthenticationError, OwnerControlService, OwnerReplayError, sign_command
+from .voice_commands import (
+    COMMAND_RESUME,
+    KIND_COMMAND,
+    KIND_STATUS,
+    confirmation_text,
+    failure_text,
+    match_owner_utterance,
+    normalize_language,
+)
+from .voice_status import render_owner_status
+
+
+class SpeechUnavailable(RuntimeError):
+    pass
 
 
 class SpeechToTextAdapter(Protocol):
@@ -51,13 +66,6 @@ class FixtureTTS:
         return SynthesizedAudio(text.encode("utf-8"), self.provider, "text/fixture", len(text) * 10)
 
 
-_COMMAND_PATTERNS = (
-    ("STOP_EVERYTHING", re.compile(r"^(?:please\s+)?stop(?:\s+everything)?$", re.I), "GLOBAL"),
-    ("PAUSE", re.compile(r"^(?:please\s+)?pause(?:\s+jarvis)?$", re.I), "GLOBAL"),
-    ("RESUME", re.compile(r"^(?:please\s+)?resume(?:\s+jarvis)?$", re.I), "GLOBAL"),
-)
-
-
 class VoiceGateway:
     def __init__(self, database: FoundryDatabase, *, owner_secret: bytes, stt: SpeechToTextAdapter, tts: TextToSpeechAdapter, stop_path: str | None = None) -> None:
         self.database = database
@@ -65,63 +73,76 @@ class VoiceGateway:
         self.stt = stt
         self.tts = tts
 
-    def handle(self, audio: bytes, *, nonce: str, signature: str, interaction_id: str | None = None, language_hint: str | None = "en") -> dict[str, object]:
+    def handle(
+        self,
+        audio: bytes,
+        *,
+        nonce: str,
+        signature: str,
+        interaction_id: str | None = None,
+        language_hint: str | None = "en",
+        transcript: Transcript | None = None,
+    ) -> dict[str, object]:
         interaction_id = interaction_id or str(uuid.uuid4())
-        # A client retry with the same interaction identity is a read-only
-        # replay of the first durable result.  It must not re-run STT/TTS or
-        # attempt a second owner directive.
         with self.database.connect() as connection:
             existing = connection.execute(
                 "SELECT * FROM voice_interactions WHERE interaction_id = ?",
                 (interaction_id,),
             ).fetchone()
         if existing is not None:
-            # A voice command replay is explicitly rejected.  The first
-            # durable interaction remains queryable from the Command Center,
-            # but a repeated audio request cannot impersonate the owner or
-            # cause a second directive.
             return {"interaction_id": interaction_id, "status": "REJECTED", "auth_status": "REPLAYED",
                     "transcript": None, "response_text": "This voice command was already recorded.",
                     "directive_id": None, "audio_metadata": {"status": "NOT_AVAILABLE"},
                     "error": "voice interaction replay rejected"}
-        transcript: Transcript | None = None
+        captured: Transcript | None = transcript
         command_type = target = response = directive_id = None
         status = "NOT_TESTED"
         auth_status = "UNAUTHENTICATED"
         error: str | None = None
+        spoken_language = normalize_language(language_hint)
         try:
-            transcript = self.stt.transcribe(audio, language_hint=language_hint)
-            if transcript.language.lower() not in {"en", "eng", "en-us", "en-gb"}:
-                status, auth_status, error = "REJECTED", "UNAUTHORIZED", "English voice command required"
-            elif not transcript.text.strip():
+            if captured is None:
+                captured = self.stt.transcribe(audio, language_hint=language_hint)
+            if not captured.text.strip():
                 status, auth_status, error = "MALFORMED", "UNAUTHENTICATED", "empty transcript"
             else:
-                matches = [(kind, tgt) for kind, pattern, tgt in _COMMAND_PATTERNS if pattern.fullmatch(transcript.text.strip())]
-                if len(matches) != 1:
-                    status, auth_status, error = "AMBIGUOUS", "UNAUTHENTICATED", "ambiguous or unsupported English command"
+                matched = match_owner_utterance(captured.text, language_hint=captured.language or language_hint)
+                spoken_language = matched.language
+                if matched.kind == KIND_STATUS:
+                    snapshot = build_snapshot(self.database, stop_path=self.controls.stop.path if self.controls.stop else None)
+                    response = render_owner_status(snapshot, matched.language)
+                    status, auth_status = "COMPLETED", "AUTHENTICATED"
+                elif matched.kind != KIND_COMMAND or matched.command_type is None:
+                    status, auth_status, error = "AMBIGUOUS", "UNAUTHENTICATED", "ambiguous or unsupported command"
+                    response = failure_text(matched.language)
                 else:
-                    command_type, target = matches[0]
-                    expected = sign_command(self.controls.secret, command_type, target, transcript.text.strip(), nonce)
-                    if not expected == signature:
+                    command_type, target = matched.command_type, matched.target
+                    expected = sign_command(self.controls.secret, command_type, target, matched.exact_text, nonce)
+                    if not hmac.compare_digest(expected, signature or ""):
                         raise OwnerAuthenticationError("voice command authentication failed")
-                    if command_type == "RESUME":
-                        self.controls.resume(nonce=nonce, signature=signature, exact_text=transcript.text.strip())
+                    applied = False
+                    if command_type == COMMAND_RESUME:
+                        self.controls.resume(nonce=nonce, signature=signature, exact_text=matched.exact_text)
+                        applied = True
                     else:
-                        result = self.controls.apply(command_type, target=target, exact_text=transcript.text.strip(), nonce=nonce, signature=signature)
+                        result = self.controls.apply(command_type, target=target, exact_text=matched.exact_text, nonce=nonce, signature=signature)
                         directive_id = result.directive_id
+                        applied = result.outcome not in {"REFUSE"}
                     auth_status = "AUTHENTICATED"
-                    response = {"STOP_EVERYTHING": "JARVIS is stopped.", "PAUSE": "JARVIS is paused.", "RESUME": "JARVIS resumed."}[command_type]
-                    status = "COMPLETED"
+                    response = confirmation_text(command_type, matched.language, applied=applied)
+                    status = "COMPLETED" if applied else "REJECTED"
+                    if not applied:
+                        error = "owner control refused the command"
         except OwnerReplayError as exc:
             status, auth_status, error = "REJECTED", "REPLAYED", str(exc)
         except OwnerAuthenticationError as exc:
             status, auth_status, error = "REJECTED", "UNAUTHENTICATED", str(exc)
-        except Exception as exc:  # adapters fail closed into an auditable record
+        except Exception as exc:
             status, auth_status, error = "BLOCKED", auth_status, f"voice dependency unavailable: {exc}"
         if response is None:
-            response = "I could not execute that command."
+            response = failure_text(spoken_language)
         try:
-            spoken = self.tts.synthesize(response, language="en")
+            spoken = self.tts.synthesize(str(response), language=spoken_language)
             audio_metadata = {"format": spoken.format, "duration_ms": spoken.duration_ms, "sha256": hashlib.sha256(spoken.audio).hexdigest()}
             tts_provider = spoken.provider
         except Exception as exc:
@@ -129,8 +150,8 @@ class VoiceGateway:
             tts_provider = getattr(self.tts, "provider", "UNKNOWN")
         event = Event.create(
             "voice.interaction_recorded",
-            {"interaction_id": interaction_id, "auth_status": auth_status, "language": transcript.language if transcript else language_hint,
-             "transcript": transcript.text if transcript else None, "response_text": response,
+            {"interaction_id": interaction_id, "auth_status": auth_status, "language": captured.language if captured else language_hint,
+             "transcript": captured.text if captured else None, "response_text": response,
              "stt_provider": getattr(self.stt, "provider", "UNKNOWN"), "tts_provider": tts_provider,
              "command_type": command_type, "directive_id": directive_id, "status": status,
              "audio_metadata": audio_metadata, "evidence": {"error": error} if error else {"directive_id": directive_id}},
@@ -140,11 +161,20 @@ class VoiceGateway:
         try:
             self.database.append(event)
         except EventConflict:
-            # Another process won the same interaction id between the read
-            # above and this append.  Return the durable winner on retry.
             with self.database.connect() as connection:
                 winner = connection.execute("SELECT * FROM voice_interactions WHERE interaction_id = ?", (interaction_id,)).fetchone()
             if winner is not None:
                 return {"interaction_id": interaction_id, "status": "REJECTED", "auth_status": "REPLAYED", "transcript": None, "response_text": "This voice command was already recorded.", "directive_id": None, "audio_metadata": {"status": "NOT_AVAILABLE"}, "error": "voice interaction replay rejected"}
             raise
-        return {"interaction_id": interaction_id, "status": status, "auth_status": auth_status, "transcript": transcript.text if transcript else None, "response_text": response, "directive_id": directive_id, "audio_metadata": audio_metadata, "error": error}
+        return {
+            "interaction_id": interaction_id,
+            "status": status,
+            "auth_status": auth_status,
+            "transcript": captured.text if captured else None,
+            "response_text": response,
+            "directive_id": directive_id,
+            "audio_metadata": audio_metadata,
+            "error": error,
+            "command_type": command_type,
+            "language": spoken_language,
+        }

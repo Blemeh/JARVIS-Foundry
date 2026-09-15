@@ -495,6 +495,7 @@ def test_existing_non_discovery_consumers_unchanged(db):
                     "result_traceability",
                     "work_hierarchy",
                 "briefing_packet",
+                "briefing_l10n",
                 "effect_truth",
                 "evolution_truth",
                 "portfolio",
