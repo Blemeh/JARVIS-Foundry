@@ -68,6 +68,7 @@ export interface FoundrySnapshot {
     count?: number;
   };
   briefing_packet?: Record<string, unknown>;
+  briefing_l10n?: Record<string, unknown>;
   /** Additive §3.13 projection; absent on backends older than its landing. */
   discovery?: unknown;
   /** Additive V9 world-model read projection; absent when no durable state exists. */

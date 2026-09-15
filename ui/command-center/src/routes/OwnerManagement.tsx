@@ -8,6 +8,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import type { OwnerAttentionRecord, OwnerControlSurface } from "../lib/contracts";
 import { routeFetchErrorDetail, shouldShowRouteFetchError } from "../lib/routeResilience";
+import { useLocale } from "../i18n/LocaleContext";
 
 function value(record: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
@@ -166,6 +167,30 @@ function AttentionCard({ item }: { item: OwnerAttentionRecord }) {
   );
 }
 
+function LocalizedBriefing({ packet }: { packet: Record<string, unknown> | null }) {
+  const { locale } = useLocale();
+  if (!packet || packet.status === "NOT_AVAILABLE") return null;
+  const localized = packet[locale];
+  if (!localized || typeof localized !== "object" || Array.isArray(localized)) return null;
+  const row = localized as Record<string, unknown>;
+  const categories = Array.isArray(row.categories) ? row.categories : [];
+  return (
+    <section className="panel">
+      <h2 className="t-label">{String(row.title ?? "Briefing")}</h2>
+      <p className="mt-1 text-xs opacity-60">{String(row.source ?? "")}</p>
+      {categories.map((item, index) => {
+        const category = item as Record<string, unknown>;
+        return (
+          <article key={String(category.category_id ?? index)} className="mt-3 border-t border-white/10 pt-3">
+            <p className="t-label">{String(category.category ?? "")}</p>
+            <p className="mt-1 text-sm">{String(category.text ?? "")}</p>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
 function BriefingHistory({ records }: { records: Record<string, unknown>[] }) {
   return (
     <section className="panel">
@@ -307,6 +332,7 @@ export function OwnerManagement() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <BriefingHistory records={surface.briefings} />
+        <LocalizedBriefing packet={surface.briefingL10n} />
         <section className="panel">
           <h2 className="t-label">Directive history</h2>
           {surface.directiveHistory.length === 0 ? <p className="mt-3 text-sm opacity-60">No owner directive history is available.</p> : <p className="mt-3 text-sm">{surface.directiveHistory.length} directive record(s) are available through the canonical snapshot.</p>}

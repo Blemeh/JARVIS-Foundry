@@ -449,6 +449,7 @@ export interface OwnerControlSurface {
     count: number;
   };
   briefingPacket: Record<string, unknown> | null;
+  briefingL10n: Record<string, unknown> | null;
   effectTruth?: Record<string, unknown>;
   evolutionTruth?: Record<string, unknown>;
   decisionQueue: {
@@ -891,6 +892,8 @@ export interface JarvisClient {
   requestGateReevaluation(missionId: string): Promise<{ accepted: boolean; simulatedAt: string; missionId: string; error?: string }>;
   requestHalt(missionId: string): Promise<{ accepted: boolean; simulatedAt: string; missionId: string; error?: string }>;
   submitOwnerGoal(objective: string, mode?: OwnerDelegationMode): Promise<OwnerGoalResult>;
+  pauseOperations(reason: string): Promise<OwnerGoalResult>;
+  submitVeto(text: string): Promise<OwnerGoalResult>;
   activateStop(reason: string): Promise<StopResult>;
   resumeOperations(targetDirectiveId?: string, reason?: string): Promise<{ accepted: boolean; error?: string }>;
   /** @deprecated simulated mode only — use activateStop in live mode */

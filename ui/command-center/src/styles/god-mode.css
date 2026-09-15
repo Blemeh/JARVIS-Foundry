@@ -731,7 +731,7 @@
 
 .owner-command-form {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 0;
   border: 1px solid var(--structural-line);
   border-radius: var(--radius-xl);

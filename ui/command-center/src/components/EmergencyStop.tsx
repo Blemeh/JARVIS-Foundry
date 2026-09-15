@@ -2,6 +2,7 @@ import { AlertOctagon, OctagonX, RotateCcw, ShieldCheck } from "lucide-react";
 import { Dialog } from "./Dialog";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { isCanonicalSource, sourceModeLabel, type ResolvedSourceMode } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function canResume(
@@ -21,6 +22,7 @@ export function canActivateStop(live: boolean, sourceMode: ResolvedSourceMode): 
 export function EmergencyStopDialog() {
   const { stopDialogOpen, closeStopDialog, stopActive, stopActivatedAt, resumeTargetId, activateStop, resetStop, mode, sourceMode, streamConnected } =
     useCommandCenter();
+  const { t } = useLocale();
 
   const live = mode === "live";
   const canonical = isCanonicalSource(sourceMode);
@@ -28,7 +30,7 @@ export function EmergencyStopDialog() {
   return (
     <Dialog
       open={stopDialogOpen}
-      title="Emergency STOP"
+      title={t("stop.dialogTitle")}
       onClose={closeStopDialog}
       labelledBy="stop-dialog-title"
       footer={
@@ -45,13 +47,13 @@ export function EmergencyStopDialog() {
               title={live && resumeTargetId ? `Revoke ${resumeTargetId}` : undefined}
             >
               <RotateCcw size={14} />
-              Resume
+              {t("stop.resume")}
             </button>
           </>
         ) : (
           <>
             <button type="button" className="btn" onClick={closeStopDialog}>
-              Cancel
+              {t("stop.cancel")}
             </button>
             <button
               type="button"
@@ -60,7 +62,7 @@ export function EmergencyStopDialog() {
               disabled={!canActivateStop(live, sourceMode)}
             >
               <OctagonX size={14} />
-              {live ? "Activate STOP" : "Simulate STOP"}
+              {live ? t("stop.activate") : t("stop.simulate")}
             </button>
           </>
         )
@@ -77,7 +79,7 @@ export function EmergencyStopDialog() {
                   : sourceMode === "SIMULATED"
                     ? "SIMULATED STOP - UI CANDIDATE"
                     : `STOP STATE ${sourceModeLabel(sourceMode)} - CANONICAL STATUS UNAVAILABLE`
-                : "STOP IS THE HIGHEST AUTHORITY OWNER CONTROL"}
+                : t("stop.highest")}
             </p>
             <p className="prose">
               {canonical
@@ -108,17 +110,19 @@ export function EmergencyStopDialog() {
   );
 }
 
-export function StopControl({ compact = false, label = "Emergency STOP" }: { compact?: boolean; label?: string }) {
+export function StopControl({ compact = false, label }: { compact?: boolean; label?: string }) {
   const { openStopDialog, stopActive, sourceMode } = useCommandCenter();
+  const { t } = useLocale();
+  const resolvedLabel = label ?? t("stop.control");
   return (
     <button
       type="button"
       className={`stop-control ${compact ? "stop-control-compact" : ""} ${stopActive ? "stop-control-armed" : ""}`}
       onClick={openStopDialog}
-      aria-label={stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active. Open Emergency STOP control." : "STOP active. Open Emergency STOP control.") : label}
+      aria-label={stopActive ? (sourceMode === "SIMULATED" ? `${t("stop.simActive")}. ${t("stop.dialogTitle")}.` : `${t("stop.active")}. ${t("stop.dialogTitle")}.`) : resolvedLabel}
     >
       <AlertOctagon size={compact ? 15 : 16} aria-hidden="true" />
-      <span>{compact ? (stopActive ? "STOP ACTIVE" : label) : stopActive ? (sourceMode === "SIMULATED" ? "STOP simulation active" : "STOP ACTIVE") : label}</span>
+      <span>{compact ? (stopActive ? t("stop.active") : resolvedLabel) : stopActive ? (sourceMode === "SIMULATED" ? t("stop.simActive") : t("stop.active")) : resolvedLabel}</span>
     </button>
   );
 }

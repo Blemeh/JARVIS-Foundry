@@ -889,3 +889,42 @@
 .topbar-stream-reconnect:hover {
   background: rgba(255, 208, 113, 0.18);
 }
+
+.locale-toggle {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.locale-toggle-btn {
+  border: 1px solid var(--line-strong, rgba(255,255,255,.12));
+  background: transparent;
+  color: inherit;
+  font: 650 10px/1 var(--font-mono, monospace);
+  letter-spacing: .08em;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.locale-toggle-btn.is-active {
+  border-color: var(--electric-signal, #8affef);
+  color: var(--electric-signal, #8affef);
+}
+
+.settings-routing-select,
+.owner-command-kind {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--line-strong, rgba(255,255,255,.12));
+  padding: 8px 10px;
+  font: 500 12px/1.2 var(--font-body, sans-serif);
+}
+
+.owner-command-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+

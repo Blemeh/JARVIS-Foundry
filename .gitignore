@@ -21,6 +21,9 @@ var/lane2-demo/probe-*.txt
 var/lane2-demo/lane2-excel-*.xlsx
 var/lane2-demo/lane2.xlsx
 var/lane2-demo/~$*
+!var/lane5-demo/
+!var/lane5-demo/**
+var/lane5-demo/generated/
 state/
 logs/
 scripts/.cc_live_e2e/

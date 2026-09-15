@@ -17,13 +17,16 @@ import "./components/jarvis-core/jarvis-core.css";
 import "./styles/remaster.css";
 import { App } from "./App";
 import { CommandCenterProvider } from "./context/CommandCenterContext";
+import { LocaleProvider } from "./i18n/LocaleContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <CommandCenterProvider>
-        <App />
-      </CommandCenterProvider>
+      <LocaleProvider>
+        <CommandCenterProvider>
+          <App />
+        </CommandCenterProvider>
+      </LocaleProvider>
     </BrowserRouter>
   </StrictMode>,
 );

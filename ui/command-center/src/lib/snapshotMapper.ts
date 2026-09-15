@@ -502,6 +502,7 @@ export function mapOwnerControlSurface(snapshot: FoundrySnapshot): OwnerControlS
       count: Number(snapshot.result_traceability?.count ?? 0),
     },
     briefingPacket: snapshot.briefing_packet ?? null,
+    briefingL10n: snapshot.briefing_l10n ?? null,
     decisionQueue: {
       open: (queue.open ?? []) as unknown as OwnerControlSurface["decisionQueue"]["open"],
       history: (queue.history ?? []) as unknown as OwnerControlSurface["decisionQueue"]["history"],

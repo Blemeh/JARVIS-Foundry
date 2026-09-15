@@ -4,15 +4,19 @@ import { Link } from "react-router-dom";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import type { OwnerGoalResult } from "../lib/contracts";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { LocaleToggle, useLocale } from "../i18n/LocaleContext";
 
+type CommandKind = "GOAL" | "PAUSE" | "VETO_ACTION";
 type CommandProgress =
   | { phase: "idle" }
-  | { phase: "submitted"; objective: string; result: OwnerGoalResult }
+  | { phase: "submitted"; objective: string; result: OwnerGoalResult; kind: CommandKind }
   | { phase: "error"; objective: string; message: string };
 
 export function OwnerCommandSurface() {
   const { client, stopActive, sourceMode, mutationsEnabled } = useCommandCenter();
+  const { t, locale } = useLocale();
   const [objective, setObjective] = useState("");
+  const [kind, setKind] = useState<CommandKind>("GOAL");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<CommandProgress>({ phase: "idle" });
 
@@ -23,8 +27,11 @@ export function OwnerCommandSurface() {
 
     setSubmitting(true);
     try {
-      const result = await client.submitOwnerGoal(text);
-      setProgress({ phase: "submitted", objective: text, result });
+      let result: OwnerGoalResult;
+      if (kind === "PAUSE") result = await client.pauseOperations(text);
+      else if (kind === "VETO_ACTION") result = await client.submitVeto(text);
+      else result = await client.submitOwnerGoal(text);
+      setProgress({ phase: "submitted", objective: text, result, kind });
       if (result.accepted) setObjective("");
     } catch (err) {
       setProgress({
@@ -38,20 +45,40 @@ export function OwnerCommandSurface() {
   };
 
   const disabled = stopActive || submitting || !mutationsEnabled;
+  const acceptedLabel = (submittedKind: CommandKind) => {
+    if (submittedKind === "PAUSE") return t("command.pauseAccepted");
+    if (submittedKind === "VETO_ACTION") return t("command.vetoAccepted");
+    return t("command.accepted");
+  };
 
   return (
-    <section className="owner-command" aria-label="Command JARVIS">
-      <h2 className="owner-command-title">Command JARVIS</h2>
+    <section className="owner-command" aria-label={t("command.title")}>
+      <div className="owner-command-head">
+        <h2 className="owner-command-title">{t("command.title")}</h2>
+        <LocaleToggle compact />
+      </div>
       <form className="owner-command-form" onSubmit={(e) => void submit(e)}>
+        <select
+          className="owner-command-kind"
+          value={kind}
+          onChange={(event) => setKind(event.target.value as CommandKind)}
+          disabled={disabled}
+          aria-label={t("command.title")}
+        >
+          <option value="GOAL">{t("command.goal")}</option>
+          <option value="PAUSE">{t("command.pause")}</option>
+          <option value="VETO_ACTION">{t("command.veto")}</option>
+        </select>
         <input
           className="owner-command-input"
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
-          placeholder="Tell JARVIS what you want..."
-          aria-label="Owner objective for JARVIS"
+          placeholder={t("command.placeholder")}
+          aria-label={t("command.objective")}
+          lang={locale}
           disabled={disabled}
         />
-        <button type="submit" className="owner-command-submit" disabled={disabled || !objective.trim()} aria-label="Submit objective">
+        <button type="submit" className="owner-command-submit" disabled={disabled || !objective.trim()} aria-label={t("command.submit")}>
           <ArrowRight size={18} aria-hidden="true" />
         </button>
       </form>
@@ -59,12 +86,12 @@ export function OwnerCommandSurface() {
       {progress.phase === "submitted" ? (
         <div className="owner-command-progress" role="status">
           <div className="owner-command-line">
-            <span className="owner-command-role">You</span>
+            <span className="owner-command-role">{t("command.you")}</span>
             <p>{progress.objective}</p>
           </div>
           <div className="owner-command-line">
-            <span className="owner-command-role">JARVIS</span>
-            <p>{progress.result.accepted ? "Goal accepted" : progress.result.error ?? "Goal not accepted"}</p>
+            <span className="owner-command-role">{t("command.jarvis")}</span>
+            <p>{progress.result.accepted ? acceptedLabel(progress.kind) : progress.result.error ?? t("command.notAccepted")}</p>
           </div>
           {progress.result.directiveId ? (
             <p className="owner-command-meta t-mono">
@@ -83,18 +110,18 @@ export function OwnerCommandSurface() {
       {progress.phase === "error" ? (
         <div className="owner-command-progress owner-command-progress--error" role="alert">
           <div className="owner-command-line">
-            <span className="owner-command-role">You</span>
+            <span className="owner-command-role">{t("command.you")}</span>
             <p>{progress.objective}</p>
           </div>
           <div className="owner-command-line">
-            <span className="owner-command-role">JARVIS</span>
+            <span className="owner-command-role">{t("command.jarvis")}</span>
             <p>{progress.message}</p>
           </div>
         </div>
       ) : null}
 
       {stopActive ? (
-        <p className="owner-command-gate">Commands frozen while STOP is active.</p>
+        <p className="owner-command-gate">{t("command.pausedFrozen")}</p>
       ) : !mutationsEnabled ? (
         <p className="owner-command-gate">
           Mutations gated in {sourceModeLabel(sourceMode)} mode.{" "}

@@ -7,21 +7,24 @@ import { StopControl } from "./EmergencyStop";
 import { TrustDialog } from "./TrustDialog";
 import { NotificationBell } from "./NotificationBell";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { LocaleToggle, useLocale } from "../i18n/LocaleContext";
+import type { MessageKey } from "../i18n/LocaleContext";
 
-const routeNames: Record<string, string> = {
-  "/": "Current focus",
-  "/work": "Work",
-  "/world": "World",
-  "/capabilities": "Capabilities",
-  "/you": "You",
-  "/activity": "Activity",
-  "/evidence": "Evidence",
-  "/settings": "Settings",
+const routeKeys: Record<string, MessageKey> = {
+  "/": "top.currentFocus",
+  "/work": "nav.work",
+  "/world": "nav.world",
+  "/capabilities": "nav.capabilities",
+  "/you": "nav.you",
+  "/activity": "nav.activity",
+  "/evidence": "nav.evidence",
+  "/settings": "nav.settings",
 };
 
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
   const location = useLocation();
+  const { t } = useLocale();
   const {
     stopActive,
     trustDialogOpen,
@@ -39,7 +42,8 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
   const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
   const schemaLabel = schemaQuery.data?.schema == null ? "UNKNOWN" : String(schemaQuery.data.schema);
   const basePath = `/${location.pathname.split("/").filter(Boolean)[0] ?? ""}`;
-  const page = routeNames[location.pathname] ?? routeNames[basePath] ?? "System view";
+  const pageKey = routeKeys[location.pathname] ?? routeKeys[basePath];
+  const page = pageKey ? t(pageKey) : t("top.systemView");
   const trustState = stopActive
     ? "SUSPENDED"
     : trustSummaryStatus === "ready" && trustSummary
@@ -52,7 +56,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     <>
       <header className="topbar topbar--god" role="banner">
         <div className="topbar-left">
-          <button type="button" className="icon-btn mobile-menu-btn" aria-label="Open navigation" onClick={onOpenMobileNav}>
+          <button type="button" className="icon-btn mobile-menu-btn" aria-label={t("nav.open")} onClick={onOpenMobileNav}>
             <Menu size={18} aria-hidden="true" />
           </button>
           <div className="topbar-context">
@@ -67,7 +71,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           {!streamConnected ? (
             <span className="topbar-disconnect">
               <WifiOff size={13} aria-hidden="true" />
-              <span>Updates paused</span>
+              <span>{t("top.updatesPaused")}</span>
               <button
                 type="button"
                 className="topbar-stream-reconnect"
@@ -75,31 +79,32 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
                 title="Reconnect to the canonical runtime projection"
               >
                 <RefreshCw size={11} aria-hidden="true" />
-                Reconnect
+                {t("top.reconnect")}
               </button>
             </span>
           ) : null}
           <span className="topbar-source data-source-pill" title={connection.error ?? `Data source: ${source}`}>
             <Database size={13} aria-hidden="true" />
-            <span>DATA SOURCE: {source}</span>
+            <span>{t("top.dataSource")}: {source}</span>
           </span>
-          <span className="topbar-schema" title="Active schema version">Schema {schemaLabel}</span>
+          <span className="topbar-schema" title="Active schema version">{t("top.schema")} {schemaLabel}</span>
           <button
             type="button"
             className={`topbar-trust trust-pill topbar-trust--${trustState.toLowerCase()}`}
             onClick={openTrustDialog}
-            aria-label={`Trust state ${trustState}. Open trust explanation.`}
+            aria-label={`${t("top.trust")} ${trustState}. Open trust explanation.`}
           >
             <ShieldQuestion size={14} aria-hidden="true" />
-            <span>Trust {trustState}</span>
+            <span>{t("top.trust")} {trustState}</span>
           </button>
+          <LocaleToggle compact />
           <NotificationBell />
           <span className="topbar-clock" aria-label={`Local time ${clock.time}`}>
             <Clock size={13} aria-hidden="true" />
             <span className="t-num topbar-clock-time">{clock.time}</span>
           </span>
           <span className="topbar-runtime" aria-label={`Runtime ${stopActive ? "stopped" : operational ? "operational" : "gated"}`}>
-            <Activity size={13} aria-hidden="true" />{stopActive ? "Stopped" : operational ? "Operational" : "Gated"}
+            <Activity size={13} aria-hidden="true" />{stopActive ? t("top.stopped") : operational ? t("top.operational") : t("top.gated")}
           </span>
           <StopControl compact />
         </div>

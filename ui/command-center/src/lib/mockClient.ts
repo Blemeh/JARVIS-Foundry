@@ -292,6 +292,16 @@ export class MockJarvisClient implements JarvisClient {
     return { accepted: false, error: "simulated mode does not write to runtime" };
   }
 
+  async pauseOperations(_reason: string): Promise<OwnerGoalResult> {
+    await delay();
+    return { accepted: false, error: "simulated mode does not write to runtime" };
+  }
+
+  async submitVeto(_text: string): Promise<OwnerGoalResult> {
+    await delay();
+    return { accepted: false, error: "simulated mode does not write to runtime" };
+  }
+
   async activateStop(): Promise<StopResult> {
     return this.simulateStop();
   }

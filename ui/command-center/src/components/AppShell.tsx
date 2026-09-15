@@ -9,6 +9,7 @@ import { EmergencyStopDialog } from "./EmergencyStop";
 import { StopBanner } from "./StopBanner";
 import { RoutedOutletBoundary } from "./RouteErrorBoundary";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useLocale } from "../i18n/LocaleContext";
 
 const routeTitles: Record<string, string> = {
   "/": "JARVIS",
@@ -34,8 +35,9 @@ const routeTitles: Record<string, string> = {
 
 export function AppShell() {
   const location = useLocation();
+  const { t } = useLocale();
   const basePath = location.pathname.split("/").slice(0, 2).join("/") || "/";
-  const pageTitle = routeTitles[location.pathname] ?? routeTitles[basePath] ?? "Command Center";
+  const pageTitle = routeTitles[location.pathname] ?? routeTitles[basePath] ?? t("nav.commandCenter");
   useDocumentTitle(pageTitle);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -50,7 +52,7 @@ export function AppShell() {
   return (
     <div className="app-shell app-shell--god" data-page={pageTitle.toLowerCase()}>
       <a className="skip-link" href="#main-content">
-        Skip to content
+        {t("nav.skip")}
       </a>
       <NavRail />
       <TopStatusBar onOpenMobileNav={() => setMobileOpen(true)} />
@@ -64,11 +66,11 @@ export function AppShell() {
       <MobileNav onOpenDrawer={() => setMobileOpen(true)} />
       {mobileOpen ? (
         <div className="mobile-drawer-layer" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && setMobileOpen(false)}>
-          <div className="mobile-drawer mobile-nav-rail-drawer" role="dialog" aria-modal="true" aria-label="Navigation">
+          <div className="mobile-drawer mobile-nav-rail-drawer" role="dialog" aria-modal="true" aria-label={t("nav.navigation")}>
             <button
               type="button"
               className="icon-btn mobile-drawer-close"
-              aria-label="Close navigation"
+              aria-label={t("nav.close")}
               onClick={() => setMobileOpen(false)}
             >
               <X size={18} />

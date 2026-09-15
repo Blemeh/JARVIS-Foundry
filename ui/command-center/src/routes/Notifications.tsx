@@ -7,6 +7,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { EmptyState, ErrorState, LoadingState } from "../components/states";
 import { routeFetchErrorDetail, shouldShowRouteFetchError } from "../lib/routeResilience";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 export function Notifications() {
   const {
@@ -23,11 +24,12 @@ export function Notifications() {
     sourceMode,
     connection,
   } = useCommandCenter();
+  const { t } = useLocale();
 
   if (notificationsStatus === "loading") {
     return (
       <div className="shell-content">
-        <LoadingState label="Loading notifications" />
+        <LoadingState label={t("notify.loading")} />
       </div>
     );
   }
@@ -39,7 +41,7 @@ export function Notifications() {
     return (
       <div className="shell-content">
         <ErrorState
-          label="Notifications unavailable"
+          label={t("notify.unavailable")}
           detail={routeFetchErrorDetail(sourceMode, connection, notificationsError, "Notification center")}
         />
       </div>
@@ -52,7 +54,7 @@ export function Notifications() {
   return (
     <div className="shell-content">
       <SectionHeader
-        title="Notification / Exception Center"
+        title={t("notify.title")}
         description="Only meaningful JARVIS events appear here: verification failures, blocked missions, worker crashes and recoveries, provider degradation, memory conflicts, STOP, and promotion or rollback state. Every item links to the object that caused it."
         actions={
           <>
@@ -69,7 +71,7 @@ export function Notifications() {
               </button>
             ) : null}
             <Link to="/" className="btn btn-ghost">
-              Overview
+              {t("notify.overview")}
               <ArrowUpRight size={14} aria-hidden="true" />
             </Link>
           </>
@@ -77,16 +79,16 @@ export function Notifications() {
       />
 
       <div className="fleet-stats systems-stats">
-        <MetricCard label="Total events" value={notifications.length} tone="accent" />
-        <MetricCard label="Unread" value={unreadCount} tone={unreadCount ? "amber" : "default"} />
-        <MetricCard label="Critical" value={critical} tone={critical ? "error" : "default"} />
-        <MetricCard label="Resolved" value={resolved} tone="teal" />
+        <MetricCard label={t("notify.total")} value={notifications.length} tone="accent" />
+        <MetricCard label={t("notify.unread")} value={unreadCount} tone={unreadCount ? "amber" : "default"} />
+        <MetricCard label={t("notify.critical")} value={critical} tone={critical ? "error" : "default"} />
+        <MetricCard label={t("notify.resolved")} value={resolved} tone="teal" />
       </div>
 
       <div className="panel panel-corner notify-page">
         {notifications.length === 0 ? (
           <EmptyState
-            label="No alerts"
+            label={t("notify.empty")}
             detail={sourceMode === "SIMULATED" ? "Nothing is demanding owner attention in this simulated universe." : sourceMode === "LIVE" ? "No canonical runtime event currently demands owner attention." : `No alerts available: runtime source is ${sourceModeLabel(sourceMode)}.`}
           />
         ) : (

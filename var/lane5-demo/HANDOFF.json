@@ -1,0 +1,158 @@
+{
+  "lane": "lane-5-v15-human-interface",
+  "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
+  "final_sha": "",
+  "branch": "candidate/max-lane-5-v15-human-interface-20260915",
+  "worktree": "C:\\temp\\JARVIS\\max-lane-5-v15-human-interface-20260915",
+  "commits": [],
+  "files_changed": [
+    "src/jarvis_foundry/voice.py",
+    "src/jarvis_foundry/voice_commands.py",
+    "src/jarvis_foundry/voice_speech.py",
+    "src/jarvis_foundry/voice_status.py",
+    "src/jarvis_foundry/voice_session.py",
+    "src/jarvis_foundry/windows_toast.py",
+    "src/jarvis_foundry/command_center.py",
+    "tests/foundry/test_v15_human_interface.py",
+    "tests/foundry/test_command_center_discovery.py",
+    "pyproject.toml",
+    ".gitignore",
+    "ui/command-center/src/i18n/catalog.ts",
+    "ui/command-center/src/i18n/LocaleContext.tsx",
+    "ui/command-center/src/main.tsx",
+    "ui/command-center/src/components/NavRail.tsx",
+    "ui/command-center/src/components/AppShell.tsx",
+    "ui/command-center/src/components/TopStatusBar.tsx",
+    "ui/command-center/src/components/StopBanner.tsx",
+    "ui/command-center/src/components/EmergencyStop.tsx",
+    "ui/command-center/src/components/OwnerCommandSurface.tsx",
+    "ui/command-center/src/components/states.tsx",
+    "ui/command-center/src/components/MobileNav.tsx",
+    "ui/command-center/src/routes/Settings.tsx",
+    "ui/command-center/src/routes/Notifications.tsx",
+    "ui/command-center/src/routes/OwnerManagement.tsx",
+    "ui/command-center/src/lib/contracts.ts",
+    "ui/command-center/src/lib/realClient.ts",
+    "ui/command-center/src/lib/mockClient.ts",
+    "ui/command-center/src/lib/snapshotMapper.ts",
+    "ui/command-center/src/lib/snapshotTypes.ts",
+    "var/lane5-demo/"
+  ],
+  "public_apis_added_or_changed": [
+    "jarvis_foundry.voice_commands.match_owner_utterance",
+    "jarvis_foundry.voice_commands.MatchedUtterance",
+    "jarvis_foundry.voice.VoiceGateway.handle(transcript= optional)",
+    "jarvis_foundry.voice_speech.SapiTTSAdapter",
+    "jarvis_foundry.voice_speech.EdgeTTSAdapter",
+    "jarvis_foundry.voice_speech.WindowsSpeechSTTAdapter",
+    "jarvis_foundry.voice_speech.WindowsTTSAdapter",
+    "jarvis_foundry.voice_status.render_owner_status",
+    "jarvis_foundry.voice_session.OwnerVoiceSession",
+    "jarvis_foundry.windows_toast.AttentionToastRouter",
+    "snapshot.briefing_l10n",
+    "Command Center localStorage jarvis.commandCenter.locale",
+    "Command Center localStorage jarvis.commandCenter.notificationRouting",
+    "JarvisClient.pauseOperations",
+    "JarvisClient.submitVeto"
+  ],
+  "fabric_capabilities": [],
+  "action_kinds": [],
+  "payload_schemas": [
+    "MatchedUtterance {kind, command_type, target, exact_text, remainder, language, pattern_id, original}",
+    "ToastResult {status, attention_id, delivered, detail}",
+    "voice.handle return adds command_type, language"
+  ],
+  "receipt_schemas": [
+    "OwnerControlService OwnerCommandResult unchanged",
+    "voice.interaction_recorded event payload unchanged plus bilingual language"
+  ],
+  "config_keys": [
+    "jarvis.commandCenter.locale=en|sq",
+    "jarvis.commandCenter.notificationRouting=in-app|in-app-toast|off",
+    "optional extra: voice [edge-tts, winotify]"
+  ],
+  "dependencies_added": [
+    "optional extra voice: edge-tts>=7.0",
+    "optional extra voice: winotify>=1.1.0 (win32)"
+  ],
+  "tests_run": [
+    "pytest tests/foundry/test_v15_human_interface.py",
+    "pytest tests/foundry/test_v4_command_center.py::test_voice_routes_authenticated_english_and_rejects_impersonation",
+    "pytest tests/foundry/test_command_center_discovery.py::test_existing_non_discovery_consumers_unchanged",
+    "vitest locale/stop/sidebar/topStatusBar/realClient/snapshotMapper/mobileNav"
+  ],
+  "demos_run": [
+    "var/lane5-demo/voice_roundtrip.py",
+    "var/lane5-demo/owner_voice_demo.py",
+    "var/lane5-demo/toast_demo.py",
+    "var/lane5-demo/ptt.py --text status (sq)"
+  ],
+  "real_substrate_proofs": [
+    "SAPI English TTS WAV on this PC",
+    "Windows Speech STT transcribed SAPI 'Stopped.' as 'Stopped'",
+    "Edge TTS Albanian MP3 on this PC",
+    "winotify Windows toast emitted then deduped by attention id",
+    "isolated OwnerControlService GOAL/STOP/RESUME via VoiceGateway"
+  ],
+  "capability_states": {
+    "bilingual_command_matcher": "BUILT_AND_PROVEN",
+    "same_language_confirmations": "BUILT_AND_PROVEN",
+    "english_sapi_tts": "BUILT_AND_PROVEN",
+    "english_windows_stt": "BUILT_AND_PROVEN",
+    "albanian_edge_tts": "BUILT_AND_PROVEN",
+    "albanian_stt": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "owner_voice_gateway_goal_veto_stop_pause_resume": "BUILT_AND_PROVEN",
+    "status_what_are_you_doing": "BUILT_AND_PROVEN",
+    "push_to_talk_cli": "BUILT_AND_PROVEN",
+    "push_to_talk_live_microphone": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "windows_toast": "BUILT_AND_PROVEN",
+    "toast_dedup_in_session_and_json_store": "BUILT_AND_PROVEN",
+    "toast_restart_durability": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "command_center_i18n": "BUILT_AND_PROVEN",
+    "settings_locale_and_notification_routing": "BUILT_AND_PROVEN",
+    "owner_command_surface_goal_pause_veto": "BUILT_AND_PROVEN",
+    "briefing_l10n_shared_snapshot": "BUILT_AND_PROVEN",
+    "gmail": "STILL_MISSING",
+    "wake_word": "STILL_MISSING"
+  },
+  "cross_lane_assumptions": [
+    "OwnerControlService command types are the only owner vocabulary. Voice never becomes an authority.",
+    "HMAC sign_command contract unchanged: (command_type, target, exact_text, nonce).",
+    "GOAL/VETO/REDIRECT exact_text is the remainder, not the whole utterance.",
+    "STOP/PAUSE/RESUME exact_text remains the original utterance so existing voice tests keep working.",
+    "STATUS is a snapshot read, not an owner command type.",
+    "snapshot.briefing_l10n is additive. Other lanes adding snapshot keys should merge, not overwrite.",
+    "UI locale is localStorage, not a second world model.",
+    "Windows toasts are a delivery adapter over decision_queue attention identities."
+  ],
+  "likely_conflicts": [
+    "src/jarvis_foundry/voice.py",
+    "src/jarvis_foundry/command_center.py snapshot payload keys",
+    "ui/command-center/src/components/NavRail.tsx",
+    "ui/command-center/src/components/TopStatusBar.tsx",
+    "ui/command-center/src/routes/Settings.tsx",
+    "ui/command-center/src/components/OwnerCommandSurface.tsx",
+    "ui/command-center/src/lib/contracts.ts",
+    "ui/command-center/src/lib/realClient.ts",
+    "ui/command-center/src/main.tsx",
+    "tests/foundry/test_command_center_discovery.py expected snapshot keys",
+    ".gitignore var/ exception"
+  ],
+  "integration_order_notes": [
+    "Land matcher + VoiceGateway before UI.",
+    "Keep HMAC verification in VoiceGateway; UI continues to use localhost /api/owner-command signing inside CommandCenterServer.",
+    "Wire live notifier to read jarvis.commandCenter.notificationRouting after convergence if the live CC process should emit toasts.",
+    "Do not merge VoiceGateway into OwnerControlService."
+  ],
+  "known_semantic_conflicts": [
+    "Windows Speech STT of long English GOAL audio can mangle 'goal' to 'Gold'. Demos fall back to canonical text for the owner-control mapping while still generating the WAV.",
+    "Albanian STT has no local recognizer on this PC. Albanian commands are proven as text/fixture plus real Albanian TTS confirmations."
+  ],
+  "next_highest_value_work": [
+    "Live microphone PTT with a visible listening state in Command Center, still explicit not always-on.",
+    "Albanian STT if a local whisper model is later installed.",
+    "Connect the Windows toast router to the live Command Center process using persisted notification routing, without a new database.",
+    "Translate remaining dense page copy (Overview/Work/Executive) without translating SHA/mission/provider IDs.",
+    "Optional wake word only after the explicit PTT path is used by the owner."
+  ]
+}

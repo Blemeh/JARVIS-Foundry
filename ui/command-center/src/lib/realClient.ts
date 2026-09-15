@@ -624,6 +624,24 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     }
   }
 
+  async pauseOperations(reason: string): Promise<OwnerGoalResult> {
+    try {
+      const result = await this.ownerCommand("PAUSE", reason, "GLOBAL");
+      return { accepted: result.status === "APPLIED", directiveId: result.directive_id, eventId: result.event_id };
+    } catch (error) {
+      return { accepted: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  async submitVeto(text: string): Promise<OwnerGoalResult> {
+    try {
+      const result = await this.ownerCommand("VETO_ACTION", text, "GLOBAL");
+      return { accepted: result.status === "APPLIED", directiveId: result.directive_id, eventId: result.event_id };
+    } catch (error) {
+      return { accepted: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   async activateStop(reason: string): Promise<StopResult> {
     try {
       await this.ownerCommand("STOP_EVERYTHING", reason, "GLOBAL");
