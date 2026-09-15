@@ -84,10 +84,46 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `1ee2fa4ef329dfd7a3e88c37560cee28f903ccac`
+DOCUMENTATION STATE BASE SHA: `41f0cd3`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
+
+## Repair-path scope fix (2026-09-15)
+
+The failed live owner mission `mission-699bf14dd056` exposed a recovery-path
+source defect: a durable FAIL moves a mission to REPAIRING, and MissionLoop
+prepends the repair context, which embeds the verifier findings verbatim.
+Findings legitimately quote JSON -- the builder's own `.jarvis-result.json`
+that the verifier is reporting on. The envelope scanner took the FIRST brace in
+the text, so that incidental quoted fragment was treated as the fabric scope
+payload; the scope check then demanded a scoped field the step never carried
+and hard-blocked the repair before dispatch with `invalid_workforce_scope` /
+"fabric action file.write is missing scoped field target". Repair budget was
+consumed by a scope error rather than by the work.
+
+`src/jarvis_foundry/fabric/adapter.py` now treats only a JSON object that
+TERMINATES the instructions as an envelope. A real envelope still drives the
+structured fabric fast path; prose declines it and the real worker executes
+inside the registered resource root, where JARVIS-owned evidence reconciles the
+work against that root. Scope is not weakened: out-of-scope targets, missing
+scoped fields, forbidden paths, and malformed envelopes all still fail closed,
+and the evidence reconciler's rejection of dishonest or mismatched artifact
+claims is untouched. Where prose quotes an object and a real envelope follows
+it, the trailing envelope is the one that resolves (the new test asserts this
+explicitly); that ordering is intended, not a fail-closed case.
+
+Residual, recorded honestly by the independent review: because a trailing JSON
+object is textually indistinguishable from a quoted fragment, a fragment that
+happens to end the instructions is treated as the envelope, and if a real
+envelope precedes it the trailing one wins. Containment is unaffected -- such
+a payload is still constrained to the registered root, and the escaping,
+forbidden-path, and missing-field variants all fail closed -- so this is a
+fidelity residual (Medium), not a confinement defect. No follow-up change is
+made here; it is recorded for the next authorized phase.
+
+Regression coverage: `tests/foundry/test_v13_repair_path_scope.py` fails on the
+pre-repair base with the exact live error and passes after the fix.
 
 ```text
 V10 ACCEPTED PREDECESSOR:     042942680687b0ee0382b439b1ddba5a9db7f089
