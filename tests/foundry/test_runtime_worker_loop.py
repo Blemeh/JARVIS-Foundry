@@ -71,11 +71,13 @@ def test_campaign_runtime_config_is_explicit_and_observation_incompatible(tmp_pa
     path.write_text(
         "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
         "model: deepseek-v4-flash\n"
-        "campaign_runtime:\n  enabled: true\n",
+        "campaign_runtime:\n  enabled: true\n"
+        "  resource_capacity:\n    shared-repository: 1\n",
         encoding="utf-8",
     )
     cfg = WorkerRuntimeConfig.from_yaml(path)
     assert cfg.campaign_enabled is True
+    assert cfg.campaign_runtime["resource_capacity"] == {"shared-repository": 1}
     observation = tmp_path / "campaign-observation.yaml"
     observation.write_text(
         "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"

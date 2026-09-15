@@ -40,4 +40,3 @@ objective/campaign
 
 The demo never installs or activates a release, changes the live database,
 Supervisor, Scheduler, trust, provider configuration, `main`, or origin.
-

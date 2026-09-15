@@ -79,4 +79,3 @@ exit 0
 ```
 
 No source or live state was mutated by the baseline.
-

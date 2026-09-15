@@ -1162,6 +1162,9 @@ def run_cycle(
                     stop_path=_default_stop_path(paths, config),
                     controller="supervisor",
                     fault_hook=fault_hook,
+                    resource_capacity=dict(
+                        config.campaign_runtime.get("resource_capacity") or {}
+                    ),
                 )
                 campaign_resume_payload = campaign_resume.to_payload()
                 campaign_blocked_mission_ids = tuple(
