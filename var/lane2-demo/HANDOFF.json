@@ -1,10 +1,15 @@
 {
   "lane": "2-v14-windows-operator",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "",
+  "final_sha": "59a4b2643c5613ceefbf1e51113f6800723f61f3",
   "branch": "candidate/max-lane-2-v14-windows-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-2-v14-windows-20260915",
-  "commits": [],
+  "commits": [
+    {
+      "sha": "59a4b2643c5613ceefbf1e51113f6800723f61f3",
+      "message": "Turn the Windows operator into a real Notepad/Word desktop path."
+    }
+  ],
   "files_changed": [
     ".gitignore",
     "src/jarvis_foundry/connectors/personal_operator.py",
@@ -17,7 +22,8 @@
     "var/lane2-demo/hello.txt",
     "var/lane2-demo/hello-open.txt",
     "var/lane2-demo/DEMO_RESULT.json",
-    "var/lane2-demo/HANDOFF.json"
+    "var/lane2-demo/HANDOFF.json",
+    "var/lane2-demo/lane2.docx"
   ],
   "public_apis_added_or_changed": [
     "WindowsOperatorProvider.observe_main_window",
