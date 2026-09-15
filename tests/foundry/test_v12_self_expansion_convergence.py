@@ -80,6 +80,7 @@ from jarvis_foundry.self_expansion import (
     ExpansionBlueprint,
     SelfExpansionEngine,
     SelfExpansionPolicy,
+    run_isolated_expansion_then_resume,
     self_expansion_record,
 )
 
@@ -667,6 +668,64 @@ def test_selected_mcp_receipt_failure_rolls_back_runtime_and_catalog(
             for event in _events(database, "fabric.capability.disabled")
             if event.payload.get("capability_id") == MCP_MISSING
         ]) == 1
+    finally:
+        engine.close()
+
+
+def test_callable_expansion_entrypoint_resumes_and_replays_without_duplicate_trial(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    objective_id = "objective-v16-callable-expansion"
+    create_objective(
+        database,
+        "Resume through the public isolated expansion entrypoint",
+        objective_id=objective_id,
+        required_capabilities=(MISSING,),
+        success_criteria=("the exact objective resumes",),
+        budget={"max_missions": 1, "max_retries": 1},
+    )
+    first_cycle = run_autonomy_cycle(
+        database,
+        cycle_id="v16-callable-expansion-gap",
+    )
+    assert first_cycle.materialization["materialized"] is False
+
+    def resolver(candidate, request):
+        return _blueprint(candidate, request, bad_contract=False)
+
+    engine = SelfExpansionEngine(
+        database,
+        repo_root=ROOT,
+        artifact_root=tmp_path / "callable-adapter-artifacts",
+        trial_root=tmp_path / "callable-artifact-trials",
+        resolver=resolver,
+    )
+    try:
+        result = run_isolated_expansion_then_resume(
+            database,
+            objective_id=objective_id,
+            port=engine,
+            strategy_id="v16-callable-expansion",
+        )
+        assert len(result.gaps) == 1
+        assert result.resumed_gap_ids == (result.gaps[0].gap_id,)
+        assert result.waiting_gap_ids == ()
+        assert rebuild_executive_state(database).objectives[objective_id].status == "ACTIVE"
+        trial_count = len(_events(database, TRIAL_SELECTED))
+        registration_count = len(_events(database, REGISTERED))
+
+        replay = run_isolated_expansion_then_resume(
+            database,
+            objective_id=objective_id,
+            port=engine,
+            strategy_id="v16-callable-expansion",
+        )
+        assert replay.as_dict() == result.as_dict()
+        assert len(_events(database, TRIAL_SELECTED)) == trial_count
+        assert len(_events(database, REGISTERED)) == registration_count
+        assert len(_events(database, WAKE_FIRED)) == 1
+        assert len(_events(database, RESUMED)) == 1
     finally:
         engine.close()
 

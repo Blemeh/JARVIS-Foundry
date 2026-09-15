@@ -2932,6 +2932,13 @@ def rebuild_required_wakes(
                 if wake_kind == "WAIT_FOR_PROVIDER" and condition.get("provider_id")
                 else None
             ),
+            resource_id=(
+                str(child.isolation_key)
+                if wake_kind == "WAIT_FOR_RESOURCE"
+                and child is not None
+                and child.isolation_key
+                else None
+            ),
             signal=(
                 str(condition.get("signal") or "campaign.child_state_changed")
                 if wake_kind == "WAIT_FOR_SIGNAL" else None
@@ -2984,6 +2991,148 @@ def rebuild_required_wakes(
             # projection.  Its wake state is already authoritative.
             pass
     return created
+
+
+def reconcile_campaign_resource_capacity(
+    database: FoundryDatabase,
+    resource_capacity: Mapping[str, int],
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Persist and release cross-campaign resource waits deterministically.
+
+    A child's existing ``isolation_key`` is the resource identity. Running
+    children consume capacity first; READY and prior RESOURCE-waiting children
+    then compete in stable campaign/child order. No scheduler is introduced:
+    blocked children use the existing ``WAIT_FOR_RESOURCE`` wake and recovery
+    path.
+    """
+
+    _gate(database, controller, stop_path=stop_path)
+    capacity: dict[str, int] = {}
+    for raw_key, raw_value in dict(resource_capacity or {}).items():
+        key = str(raw_key or "").strip()
+        if not key:
+            raise CampaignError("resource capacity keys must be non-empty")
+        value = int(raw_value)
+        if value < 0:
+            raise CampaignError("resource capacity must be non-negative")
+        capacity[key] = value
+    if not capacity:
+        return {"capacity": {}, "waiting": [], "released": [], "unchanged": True}
+
+    state = rebuild_campaign_state(database)
+    used = {key: 0 for key in capacity}
+    for child in state.children.values():
+        key = str(child.isolation_key or "")
+        if child.status == "RUNNING" and key in used:
+            used[key] += 1
+
+    candidates = sorted(
+        (
+            child
+            for child in state.children.values()
+            if child.isolation_key in capacity
+            and (
+                child.status == "READY"
+                or (child.status == "WAITING" and child.wait_kind == "RESOURCE")
+            )
+        ),
+        key=lambda child: (child.campaign_id, child.child_id),
+    )
+    admitted: set[str] = set()
+    for child in candidates:
+        key = str(child.isolation_key)
+        if used[key] >= capacity[key]:
+            continue
+        used[key] += 1
+        admitted.add(child.child_id)
+
+    waiting: list[str] = []
+    affected_campaigns: set[str] = set()
+    for child in candidates:
+        if child.child_id in admitted or child.status != "READY":
+            continue
+        record_child_state(
+            database,
+            child.child_id,
+            "WAITING",
+            reason=f"resource capacity exhausted for {child.isolation_key}",
+            wait_kind="RESOURCE",
+            wait_reason=f"wait for resource {child.isolation_key}",
+            controller=controller,
+            stop_path=stop_path,
+        )
+        waiting.append(child.child_id)
+        affected_campaigns.add(child.campaign_id)
+
+    for campaign_id in sorted(affected_campaigns):
+        rebuild_required_wakes(
+            database,
+            campaign_id,
+            controller=controller,
+            stop_path=stop_path,
+        )
+
+    released: list[str] = []
+    wakes = rebuild_wake_state(database)
+    refreshed = rebuild_campaign_state(database)
+    for child_id in sorted(admitted):
+        child = refreshed.children.get(child_id)
+        if child is None or child.status != "WAITING" or child.wait_kind != "RESOURCE":
+            continue
+        marker = f":campaign:{child.campaign_id}:child:{child.child_id}:WAIT_FOR_RESOURCE:"
+        active = next(
+            (
+                wake
+                for wake in wakes.values()
+                if marker in str(wake.get("wake_id") or "")
+                and wake.get("status") == "ACTIVE"
+            ),
+            None,
+        )
+        if active is None:
+            rebuild_required_wakes(
+                database,
+                child.campaign_id,
+                controller=controller,
+                stop_path=stop_path,
+            )
+            wakes = rebuild_wake_state(database)
+            active = next(
+                (
+                    wake
+                    for wake in wakes.values()
+                    if marker in str(wake.get("wake_id") or "")
+                    and wake.get("status") == "ACTIVE"
+                ),
+                None,
+            )
+        if active is None:
+            continue
+        trigger_wake(
+            database,
+            str(active["wake_id"]),
+            controller=controller,
+            reason=f"resource {child.isolation_key} capacity recovered",
+        )
+        _recover_triggered_waits(
+            database,
+            child.campaign_id,
+            controller=controller,
+            stop_path=stop_path,
+        )
+        released.append(child.child_id)
+
+    return {
+        "capacity": capacity,
+        "used": used,
+        "waiting": waiting,
+        "released": released,
+        "admitted": sorted(admitted),
+        "unchanged": not waiting and not released,
+    }
 
 
 def _recover_triggered_waits(
@@ -4158,6 +4307,7 @@ def startup_resume_pass(
     resume_id: str | None = None,
     controller: str = SUPERVISOR_CONTROLLER,
     fault_hook: Callable[[str], None] | None = None,
+    resource_capacity: Mapping[str, int] | None = None,
 ) -> CampaignResumeReport:
     """Recover EXECUTING/WAITING campaigns before any new dispatch.
 
@@ -4370,6 +4520,23 @@ def startup_resume_pass(
             "campaign_id": "*",
             "error": f"deadline recovery failed: {type(error).__name__}: {error}"[:500],
         })
+
+    if resource_capacity is not None:
+        try:
+            reconcile_campaign_resource_capacity(
+                database,
+                resource_capacity,
+                controller=controller,
+                stop_path=stop_path,
+            )
+        except Exception as error:  # noqa: BLE001 - bounded recovery report
+            errors.append({
+                "campaign_id": "*",
+                "error": (
+                    "resource capacity recovery failed: "
+                    f"{type(error).__name__}: {error}"
+                )[:500],
+            })
 
     # One bounded tick drives the existing Continuous Executive wake
     # authority.  Recovery re-checks exact child predicates in phase two.
@@ -4708,4 +4875,5 @@ __all__ = [
     "startup_resume_pass", "resume_campaigns", "campaign_snapshot",
     "campaign_dispatch_context", "campaign_dispatchable_mission_ids",
     "campaign_blocked_mission_ids",
+    "reconcile_campaign_resource_capacity",
 ]

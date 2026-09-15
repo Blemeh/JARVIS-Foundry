@@ -40,6 +40,7 @@ from jarvis_foundry.executive.campaigns import (
     record_child_state,
     rebuild_campaign_state,
     reconcile_child_effects,
+    reconcile_campaign_resource_capacity,
     reserve_child_retry,
     resume_campaign,
     startup_resume_pass,
@@ -1181,6 +1182,84 @@ def test_triggered_unreleased_dependency_wake_is_reused(tmp_path: Path) -> None:
     after = database.event_count(event_type="executive.wake_created")
     assert second.waiting_campaigns == ("campaign-wake-reuse",)
     assert after == before
+
+
+def test_two_campaigns_wait_and_wake_once_on_shared_resource_capacity(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    create_objective(
+        database,
+        "Second V16 capacity objective",
+        objective_id="objective-v16-capacity-b",
+        success_criteria=("shared resource work completes",),
+    )
+    for suffix, objective_id in (
+        ("a", "objective-v12"),
+        ("b", "objective-v16-capacity-b"),
+    ):
+        mission_id = f"mission-v16-capacity-{suffix}"
+        _append(
+            database,
+            "mission.created",
+            {
+                "mission_id": mission_id,
+                "objective": f"capacity child {suffix}",
+                "resource_id": "shared-v16-resource",
+                "state": "READY",
+                "acceptance_criteria": ["bounded resource work"],
+                "next_action": "dispatch",
+            },
+            f"mission.created:{mission_id}",
+        )
+        campaign_id = f"campaign-v16-capacity-{suffix}"
+        child_id = f"child-v16-capacity-{suffix}"
+        create_campaign(database, objective_id, campaign_id=campaign_id)
+        declare_child_mission(
+            database,
+            campaign_id,
+            child_id=child_id,
+            isolation_key="shared-v16-resource",
+        )
+        bind_child_mission(database, child_id, mission_id)
+        record_child_state(database, child_id, "READY")
+
+    first = reconcile_campaign_resource_capacity(
+        database,
+        {"shared-v16-resource": 1},
+    )
+    state = rebuild_campaign_state(database)
+    assert first["admitted"] == ["child-v16-capacity-a"]
+    assert first["waiting"] == ["child-v16-capacity-b"]
+    assert state.children["child-v16-capacity-a"].status == "READY"
+    assert state.children["child-v16-capacity-b"].status == "WAITING"
+    assert state.children["child-v16-capacity-b"].wait_kind == "RESOURCE"
+    resource_wakes = [
+        wake
+        for wake in rebuild_wake_state(database).values()
+        if wake.get("kind") == "WAIT_FOR_RESOURCE"
+    ]
+    assert len(resource_wakes) == 1
+    assert resource_wakes[0]["resource_id"] == "shared-v16-resource"
+    assert campaign_dispatchable_mission_ids(database) == ("mission-v16-capacity-a",)
+
+    record_child_state(database, "child-v16-capacity-a", "CANCELLED")
+    second = reconcile_campaign_resource_capacity(
+        database,
+        {"shared-v16-resource": 1},
+    )
+    state = rebuild_campaign_state(database)
+    assert second["released"] == ["child-v16-capacity-b"]
+    assert state.children["child-v16-capacity-b"].status == "READY"
+    assert campaign_dispatchable_mission_ids(database) == ("mission-v16-capacity-b",)
+    triggered = database.event_count(event_type="executive.wake_triggered")
+
+    replay = reconcile_campaign_resource_capacity(
+        database,
+        {"shared-v16-resource": 1},
+    )
+    assert replay["unchanged"] is True
+    assert database.event_count(event_type="executive.wake_triggered") == triggered
 
 
 def test_startup_projects_bound_dispatchable_mission_to_ready_child(tmp_path: Path) -> None:

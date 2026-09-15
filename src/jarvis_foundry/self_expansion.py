@@ -45,7 +45,17 @@ from .fabric.catalog import (
     observed_readiness,
 )
 from .fabric.executors import ExecutorContext
-from .fabric.gap_bridge import ExpansionWorkPort, ExpansionWorkRequest, GapBridgeStopped
+from .fabric.gap_bridge import (
+    CapabilityGapState,
+    ExpansionWorkPort,
+    ExpansionWorkRequest,
+    GapBridgeError,
+    GapBridgeStopped,
+    GapPolicy,
+    bridge_missing_plan_capabilities,
+    rebuild_gap_state,
+    start_expansion_attempt,
+)
 from .fabric.loop import execute_action
 from .fabric.model import (
     CapabilityTrust,
@@ -119,6 +129,108 @@ class SelfExpansionPolicy:
             or not 1 <= self.max_candidate_trials <= 12
         ):
             raise SelfExpansionError("max_candidate_trials must be between 1 and 12")
+
+
+@dataclass(frozen=True, slots=True)
+class ExpansionResumeResult:
+    """Exact durable result of one bounded expand-and-resume pass."""
+
+    objective_id: str
+    strategy_id: str
+    gaps: tuple[CapabilityGapState, ...]
+
+    @property
+    def resumed_gap_ids(self) -> tuple[str, ...]:
+        return tuple(
+            gap.gap_id
+            for gap in self.gaps
+            if gap.status.value in {"RESUMED", "ALTERNATE_RESUMED"}
+        )
+
+    @property
+    def waiting_gap_ids(self) -> tuple[str, ...]:
+        return tuple(gap.gap_id for gap in self.gaps if not gap.terminal)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "contract_version": CONTRACT_VERSION,
+            "objective_id": self.objective_id,
+            "strategy_id": self.strategy_id,
+            "gap_ids": [gap.gap_id for gap in self.gaps],
+            "resumed_gap_ids": list(self.resumed_gap_ids),
+            "waiting_gap_ids": list(self.waiting_gap_ids),
+            "gaps": [gap.as_dict() for gap in self.gaps],
+        }
+
+
+def run_isolated_expansion_then_resume(
+    database: FoundryDatabase,
+    *,
+    objective_id: str,
+    port: ExpansionWorkPort,
+    strategy_id: str = "reuse-first-isolated-trial",
+    policy: GapPolicy | None = None,
+    gap_ids: tuple[str, ...] = (),
+) -> ExpansionResumeResult:
+    """Run one bounded canonical gap -> trial -> wake/resume pass.
+
+    This is product glue, not a new authority. The gap bridge still owns
+    objective WAIT/wake/replan state, ``port`` owns bounded discovery/trial,
+    and the Fabric Catalog remains the only readiness authority. Replaying
+    the call returns the same terminal gaps without redispatching completed
+    attempts.
+    """
+
+    oid = str(objective_id or "").strip()
+    strategy = str(strategy_id or "").strip()
+    if not oid:
+        raise SelfExpansionError("objective_id is required")
+    if not isinstance(port, ExpansionWorkPort):
+        raise SelfExpansionError("port must implement ExpansionWorkPort")
+    if not strategy or len(strategy) > 256 or any(char.isspace() for char in strategy):
+        raise SelfExpansionError("strategy_id must be a bounded identity")
+
+    opened = bridge_missing_plan_capabilities(database, oid, policy=policy)
+    durable = rebuild_gap_state(database)
+    requested = tuple(dict.fromkeys(str(value) for value in gap_ids if str(value)))
+    selected_ids = requested or tuple(
+        sorted(
+            {
+                gap.gap_id
+                for gap in (*opened, *durable.values())
+                if gap.origin_objective_id == oid
+            }
+        )
+    )
+    if requested:
+        missing = [gap_id for gap_id in requested if gap_id not in durable]
+        foreign = [
+            gap_id
+            for gap_id in requested
+            if gap_id in durable and durable[gap_id].origin_objective_id != oid
+        ]
+        if missing:
+            raise GapBridgeError(f"unknown capability gaps: {', '.join(missing)}")
+        if foreign:
+            raise GapBridgeError(
+                f"capability gaps do not belong to {oid}: {', '.join(foreign)}"
+            )
+
+    results: list[CapabilityGapState] = []
+    for gap_id in selected_ids:
+        gap = rebuild_gap_state(database)[gap_id]
+        if gap.terminal or gap.status.value in {"BUDGET_EXHAUSTED", "REPLAN_REQUIRED"}:
+            results.append(gap)
+            continue
+        results.append(
+            start_expansion_attempt(
+                database,
+                gap_id,
+                strategy_id=strategy,
+                port=port,
+            )
+        )
+    return ExpansionResumeResult(oid, strategy, tuple(results))
 
 
 def stable_expansion_run_id(request: ExpansionWorkRequest) -> str:
@@ -958,9 +1070,11 @@ __all__ = [
     "BlueprintResolver",
     "CONTRACT_VERSION",
     "ExpansionBlueprint",
+    "ExpansionResumeResult",
     "SelfExpansionEngine",
     "SelfExpansionError",
     "SelfExpansionPolicy",
+    "run_isolated_expansion_then_resume",
     "self_expansion_record",
     "stable_expansion_run_id",
 ]
