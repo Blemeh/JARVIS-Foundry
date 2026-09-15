@@ -1,7 +1,7 @@
 {
   "lane": "2-v14-windows-operator",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "",
+  "final_sha": "dfc1103a1484f9be862ed4c3a7fa5d256ab17e05",
   "branch": "candidate/max-lane-2-v14-windows-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-2-v14-windows-20260915",
   "commits": [
@@ -11,7 +11,11 @@
     },
     {
       "sha": "732a03659774b014e53a0d50b1f7595fbca170d4",
-      "message": "Record Lane 2 Windows operator handoff against the product commit."
+      "message": "Record the Lane 2 product SHA in HANDOFF.json."
+    },
+    {
+      "sha": "dfc1103a1484f9be862ed4c3a7fa5d256ab17e05",
+      "message": "Prove Notepad File Open, type/paste, Word/Excel identity, and focus return."
     }
   ],
   "files_changed": [
