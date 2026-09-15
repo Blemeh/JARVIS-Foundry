@@ -1,10 +1,19 @@
 {
   "lane": "lane-5-v15-human-interface",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "",
+  "final_sha": "a205326b356cff71577abc9edc5edf78752b4c0d",
   "branch": "candidate/max-lane-5-v15-human-interface-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-5-v15-human-interface-20260915",
-  "commits": [],
+  "commits": [
+    {
+      "sha": "4c2a01bedacca7157f63ef24dbe79d9ba5bc3a6b",
+      "message": "Add bilingual owner voice, Windows speech adapters, and toast routing."
+    },
+    {
+      "sha": "a205326b356cff71577abc9edc5edf78752b4c0d",
+      "message": "Add Command Center EN/SQ locale, owner GOAL/PAUSE/VETO, and Lane 5 demos."
+    }
+  ],
   "files_changed": [
     "src/jarvis_foundry/voice.py",
     "src/jarvis_foundry/voice_commands.py",
