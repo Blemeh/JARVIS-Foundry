@@ -169,14 +169,37 @@ def resolve_general_work_dispatch(
 
 
 def _json_object(text: str) -> dict[str, Any] | None:
+    """Return a structured envelope, but only one that ends the text.
+
+    Instructions legitimately carry prose. MissionLoop prepends the repair
+    context, which embeds the verifier's findings verbatim, and those findings
+    can quote JSON -- for example the builder's own .jarvis-result.json that
+    the verifier is reporting on. Taking the FIRST brace in the text therefore
+    picked up an incidental fragment and treated it as the fabric scope
+    envelope. The scope check then demanded a scoped field the step never
+    carried and hard-blocked the repair role before it could dispatch
+    (live finding 2026-09-15: invalid_workforce_scope /
+    'fabric action file.write is missing scoped field target').
+
+    Only a JSON object that terminates the instructions is an envelope. That
+    keeps the structured fast path for real envelopes (including the
+    general-work repair replay, where prose context precedes the durable
+    canonical payload) while a purely prose step declines the structured path
+    and is executed by the real worker inside the registered root, where
+    JARVIS-owned evidence reconciles it against that root.
+    """
+    decoder = json.JSONDecoder()
     start = text.find("{")
-    if start < 0:
-        return None
-    try:
-        obj, _end = json.JSONDecoder().raw_decode(text[start:])
-    except json.JSONDecodeError:
-        return None
-    return obj if isinstance(obj, dict) else None
+    while start >= 0:
+        try:
+            obj, end = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            start = text.find("{", start + 1)
+            continue
+        if not text[start + end:].strip():
+            return obj if isinstance(obj, dict) else None
+        start = text.find("{", start + 1)
+    return None
 
 
 def owned_root_for_manifest(
