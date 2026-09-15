@@ -10,7 +10,13 @@ credentials.*
 secrets.*
 
 # Runtime state must never be committed
-var/
+var/*
+!var/lane2-demo/
+!var/lane2-demo/**
+var/lane2-demo/.jarvis-personal-operator/
+var/lane2-demo/hello-1*.txt
+var/lane2-demo/hello-open-1*.txt
+var/lane2-demo/~$*
 state/
 logs/
 scripts/.cc_live_e2e/

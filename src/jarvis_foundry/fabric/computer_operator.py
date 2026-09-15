@@ -24,6 +24,7 @@ from ..connectors.windows_operator import (
     WindowSelector,
     WindowsOperatorError,
     WindowsOperatorProvider,
+    normalize_document_text,
 )
 from ..control.broker import emergency_stop_reason
 from ..effects import effect_state, finalize_verified_effect
@@ -53,6 +54,8 @@ COMPUTER_OPERATOR_ACTIONS = frozenset({
     "desktop.control.select",
     "desktop.control.wait",
     "desktop.control.assert",
+    "desktop.control.paste",
+    "desktop.open_artifact_and_assert",
     "desktop.action.reconcile",
 })
 PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS = frozenset({
@@ -71,12 +74,14 @@ _UI_ACTION_KINDS = {
     "desktop.control.select": "select",
     "desktop.control.wait": "wait",
     "desktop.control.assert": "assert",
+    "desktop.control.paste": "paste",
 }
 _MUTATING_UI_ACTIONS = frozenset({
     "desktop.control.click",
     "desktop.control.replace_text",
     "desktop.control.type",
     "desktop.control.select",
+    "desktop.control.paste",
 })
 _POLICY_OVERRIDE_KEYS = frozenset({
     "environment_allowlist",
@@ -248,6 +253,30 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
             executor="computer_operator",
             unattended=allowed,
             limitations=("single exact accessibility assertion",),
+        ),
+        CapabilitySpec(
+            capability_id="cap.desktop.control.paste",
+            version="1.0.0",
+            kind=Kind.CONNECTOR,
+            action_kind="desktop.control.paste",
+            semantic=Semantic.EXECUTE,
+            executor="computer_operator",
+            unattended=allowed,
+            limitations=(
+                "clipboard text is set then pasted only into a bound control; exact value readback",
+            ),
+        ),
+        CapabilitySpec(
+            capability_id="cap.desktop.open_artifact_and_assert",
+            version="1.0.0",
+            kind=Kind.CONNECTOR,
+            action_kind="desktop.open_artifact_and_assert",
+            semantic=Semantic.EXECUTE,
+            executor="computer_operator",
+            unattended=allowed,
+            limitations=(
+                "allow-listed app; owned-root file; window-owning process identity; document value hash",
+            ),
         ),
         CapabilitySpec(
             capability_id="cap.desktop.action.reconcile",
@@ -487,6 +516,79 @@ def _record_identity(record: Mapping[str, Any]) -> ProcessIdentity:
         create_time=int(creation["create_time"]),
         executable=str(creation.get("exe") or record["executable"]),
     )
+
+
+def open_artifact_and_assert(
+    connector: PersonalOperatorConnector,
+    *,
+    process_id: str,
+    executable: str,
+    path: str,
+    expected: str,
+    idempotency_key: str,
+    timeout_s: float = 15.0,
+    cwd: str = ".",
+    control: ControlSelector | None = None,
+    backend: Any = None,
+    stop_check: Any = None,
+) -> dict[str, Any]:
+    """Launch/open one owned file, bind identities, and assert document text."""
+
+    opened = connector.desktop_open(
+        process_id,
+        executable,
+        path,
+        cwd=cwd,
+        idempotency_key=idempotency_key,
+        show_window=True,
+    )
+    result = _personal_result("desktop.open_artifact_and_assert", opened)
+    if result.get("claimed") != "COMPLETED":
+        return result
+    if (opened.get("result") or {}).get("state") != "running":
+        result["claimed"] = "FAILED"
+        result["error_code"] = "process_not_running"
+        result["detail"] = "desktop open did not leave a live process"
+        return result
+    record = connector.get_validated_process_record(process_id)
+    provider = WindowsOperatorProvider(
+        _record_identity(record),
+        backend=backend,
+        stop_check=stop_check or (lambda: False),
+    )
+    marker = Path(path).name
+    window = provider.observe_main_window(title_contains=marker)
+    document = provider.find_document_control(window.identity, control)
+    observed = document.value if isinstance(document.value, str) else ""
+    expected_norm = normalize_document_text(expected)
+    observed_norm = normalize_document_text(observed)
+    expected_sha = hashlib.sha256(expected_norm.encode("utf-8")).hexdigest()
+    observed_sha = hashlib.sha256(observed_norm.encode("utf-8")).hexdigest()
+    matched = expected_norm == observed_norm
+    payload = {
+        **result,
+        "process": provider.process.to_dict(),
+        "window": window.to_dict(),
+        "control": document.selector.to_dict(),
+        "expected_sha256": expected_sha,
+        "expected_length": len(expected_norm),
+        "observed_sha256": observed_sha,
+        "observed_length": len(observed_norm),
+        "readback_verified": matched,
+        "reconciled": matched,
+        "provider_id": "windows-uiautomation",
+        "provider_ref": (
+            f"computer:{provider.process.pid}:{provider.process.create_time}:"
+            f"{window.identity.hwnd}"
+        ),
+    }
+    if not matched:
+        payload["claimed"] = "FAILED"
+        payload["error_code"] = "artifact_text_mismatch"
+        payload["detail"] = "document value hash did not match expected text"
+        return payload
+    payload["claimed"] = "COMPLETED"
+    return payload
 
 
 def _provider(
@@ -812,6 +914,27 @@ def dispatch_computer_operator(
                 "readback_verified": True,
                 "reconciled": True,
             }
+        if action_kind == "desktop.open_artifact_and_assert":
+            expected = payload.get("expected")
+            if not isinstance(expected, str):
+                raise ValueError("expected text is required")
+            control_value = payload.get("control")
+            return open_artifact_and_assert(
+                connector,
+                process_id=_required_text(payload, "process_id"),
+                executable=_required_text(payload, "application", "executable"),
+                path=_required_text(payload, "target", "path"),
+                expected=expected,
+                idempotency_key=_required_text(payload, "idempotency_key"),
+                timeout_s=_timeout_seconds(payload),
+                cwd=str(payload.get("cwd") or "."),
+                control=(
+                    _control_selector(control_value, "control")
+                    if control_value is not None
+                    else None
+                ),
+                backend=getattr(ctx, "windows_operator_backend", None),
+            )
         if action_kind == "desktop.action.reconcile":
             return _reconcile_action(ctx, payload)
         action = _operator_action(payload, action_kind)
@@ -970,6 +1093,42 @@ def verify_computer_operator(
                 == _stable_evidence(claimed.get("controls"))
                 else VerifyVerdict.MISMATCH
             )
+        if action_kind == "desktop.open_artifact_and_assert":
+            process_id = _required_text(payload, "process_id")
+            observed = connector.inspect_process(process_id)
+            running = (
+                observed.get("status") == "COMPLETED"
+                and (observed.get("result") or {}).get("state") == "running"
+                and (observed.get("result") or {}).get("matches") is True
+            )
+            if not running:
+                return VerifyVerdict.MISMATCH
+            provider = _provider(ctx, payload, honor_stop=False)
+            claimed_window = claimed.get("window")
+            if not isinstance(claimed_window, Mapping):
+                return VerifyVerdict.MISMATCH
+            identity = _window_identity(
+                claimed_window.get("identity") or claimed_window
+            )
+            control_value = payload.get("control") or claimed.get("control")
+            selector = (
+                _control_selector(control_value, "control")
+                if isinstance(control_value, Mapping)
+                else None
+            )
+            document = provider.find_document_control(identity, selector)
+            observed_text = (
+                document.value if isinstance(document.value, str) else ""
+            )
+            observed_sha = hashlib.sha256(
+                normalize_document_text(observed_text).encode("utf-8")
+            ).hexdigest()
+            return (
+                VerifyVerdict.MATCH
+                if observed_sha == claimed.get("observed_sha256")
+                and observed_sha == claimed.get("expected_sha256")
+                else VerifyVerdict.MISMATCH
+            )
         if action_kind == "desktop.action.reconcile":
             return (
                 VerifyVerdict.MATCH
@@ -996,5 +1155,6 @@ __all__ = [
     "PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS",
     "computer_operator_specs",
     "dispatch_computer_operator",
+    "open_artifact_and_assert",
     "verify_computer_operator",
 ]

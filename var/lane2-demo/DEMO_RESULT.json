@@ -1,0 +1,142 @@
+{
+  "demo": "lane2-windows-operator",
+  "steps": [
+    {
+      "step": "open_artifact_and_assert",
+      "claimed": "COMPLETED",
+      "error_code": null,
+      "process": {
+        "logical_id": "lane2-notepad",
+        "pid": 14588,
+        "create_time": 134339847009728845,
+        "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
+      },
+      "window": {
+        "identity": {
+          "process": {
+            "logical_id": "lane2-notepad",
+            "pid": 14588,
+            "create_time": 134339847009728845,
+            "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
+          },
+          "hwnd": 14422898,
+          "title": "Notepad",
+          "class_name": "Notepad",
+          "automation_id": "",
+          "runtime_id": [
+            42,
+            14422898
+          ],
+          "observation_generation": 1
+        },
+        "enabled": true,
+        "visible": true,
+        "is_dialog": false
+      },
+      "control": {
+        "control_type": "DocumentControl",
+        "name": "Text editor",
+        "automation_id": "",
+        "class_name": "RichEditD2DPT",
+        "runtime_id": [
+          42,
+          24712406
+        ]
+      },
+      "expected_sha256": "32df0f57b52335e1f44fde5cb939a0614aba3e84a8c2e875d0b78154f8d413f4",
+      "observed_sha256": "32df0f57b52335e1f44fde5cb939a0614aba3e84a8c2e875d0b78154f8d413f4",
+      "readback_verified": true
+    },
+    {
+      "step": "replace_text",
+      "outcome": "COMPLETED",
+      "error_code": null
+    },
+    {
+      "step": "file_open_dialog",
+      "outcome": "FAILED",
+      "detail": "TargetMatchError: no control matched the exact accessibility selector"
+    },
+    {
+      "step": "type",
+      "outcome": "UNKNOWN",
+      "error_code": "timeout_after_possible_effect"
+    },
+    {
+      "step": "paste",
+      "outcome": "UNKNOWN",
+      "error_code": "timeout_after_possible_effect",
+      "clipboard_sha": "9b9ab7ac1d695d5b43a91d9cec21b1269526ae8597f552c71c2ff6209e3501e5"
+    },
+    {
+      "step": "second_app",
+      "app": "lane2-word",
+      "status": "COMPLETED",
+      "error": null,
+      "pid": 27292,
+      "window_hwnd": 2888928
+    },
+    {
+      "step": "focus_second",
+      "status": "COMPLETED",
+      "focused": true,
+      "hwnd": null
+    },
+    {
+      "step": "focus_back_notepad",
+      "status": "FAILED",
+      "focused": null,
+      "hwnd": null
+    },
+    {
+      "step": "identity_handoff",
+      "notepad_pid": 14588,
+      "second_pid": 27292,
+      "notepad_pid_stable": true,
+      "second_pid_stable": true,
+      "swapped": false
+    },
+    {
+      "step": "office_observe",
+      "status": "FAILED",
+      "detail": "TargetMatchError: no application window matched the exact process"
+    },
+    {
+      "step": "stale_identity",
+      "status": "COMPLETED",
+      "error_code": "process_identity_unavailable",
+      "detail": "PID 14588 could not be verified"
+    },
+    {
+      "step": "inspect_after_kill",
+      "status": "COMPLETED",
+      "state": "exited",
+      "alive": false
+    },
+    {
+      "step": "explorer",
+      "status": "COMPLETED",
+      "error": null,
+      "pid": 25184
+    }
+  ],
+  "closed": [
+    {
+      "process_id": "lane2-notepad",
+      "status": "COMPLETED",
+      "error": null
+    },
+    {
+      "process_id": "lane2-word",
+      "status": "COMPLETED",
+      "error": null
+    },
+    {
+      "process_id": "lane2-folder",
+      "status": "COMPLETED",
+      "error": null
+    }
+  ],
+  "ok": true,
+  "before_windows": []
+}

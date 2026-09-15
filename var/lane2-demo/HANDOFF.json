@@ -1,0 +1,135 @@
+{
+  "lane": "2-v14-windows-operator",
+  "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
+  "final_sha": "",
+  "branch": "candidate/max-lane-2-v14-windows-20260915",
+  "worktree": "C:\\temp\\JARVIS\\max-lane-2-v14-windows-20260915",
+  "commits": [],
+  "files_changed": [
+    ".gitignore",
+    "src/jarvis_foundry/connectors/personal_operator.py",
+    "src/jarvis_foundry/connectors/windows_operator.py",
+    "src/jarvis_foundry/fabric/computer_operator.py",
+    "tests/foundry/test_v14_windows_operator_lane2.py",
+    "var/lane2-demo/ORIENTATION.md",
+    "var/lane2-demo/DEMO.md",
+    "var/lane2-demo/demo.py",
+    "var/lane2-demo/hello.txt",
+    "var/lane2-demo/hello-open.txt",
+    "var/lane2-demo/DEMO_RESULT.json",
+    "var/lane2-demo/HANDOFF.json"
+  ],
+  "public_apis_added_or_changed": [
+    "WindowsOperatorProvider.observe_main_window",
+    "WindowsOperatorProvider.find_document_control",
+    "WindowsOperatorProvider.resolve_named_control",
+    "WindowsOperatorProvider.find_control_on_any_window",
+    "WindowsOperatorProvider.invoke_file_dialog",
+    "WindowsOperatorProvider.set_clipboard_text",
+    "WindowsOperatorProvider.get_clipboard_text",
+    "open_artifact_and_assert",
+    "resolve_launch_window_owner",
+    "normalize_document_text",
+    "OperatorAction.kind paste"
+  ],
+  "fabric_capabilities": [
+    "cap.desktop.open_artifact_and_assert",
+    "cap.desktop.control.paste"
+  ],
+  "action_kinds": [
+    "desktop.open_artifact_and_assert",
+    "desktop.control.paste"
+  ],
+  "payload_schemas": [
+    {
+      "action_kind": "desktop.open_artifact_and_assert",
+      "required": ["process_id", "application|executable", "target|path", "expected", "idempotency_key"],
+      "optional": ["cwd", "control", "timeout_s"],
+      "notes": "path is owned-root relative. expected is document text. receipts hash values; they do not include raw document text."
+    },
+    {
+      "action_kind": "desktop.control.paste",
+      "required": ["process_id", "window", "control", "value"],
+      "optional": ["condition", "timeout_s", "readback_control"],
+      "notes": "sets clipboard then pastes only into the bound control. same OperatorAction contract as replace_text."
+    }
+  ],
+  "receipt_schemas": [
+    {
+      "action_kind": "desktop.open_artifact_and_assert",
+      "fields": ["claimed", "process", "window", "control", "expected_sha256", "expected_length", "observed_sha256", "observed_length", "readback_verified", "provider_id", "provider_ref"]
+    },
+    {
+      "action_kind": "desktop.control.paste",
+      "fields": ["claimed", "operator_receipt", "process_id", "provider_ref", "readback_verified", "effect_possible", "reconciliation_required"]
+    }
+  ],
+  "config_keys": [],
+  "dependencies_added": [],
+  "tests_run": [
+    "tests/foundry/test_v14_windows_operator_lane2.py",
+    "tests/foundry/test_v13_windows_operator.py",
+    "tests/foundry/test_v13_computer_operator_fabric.py",
+    "tests/foundry/test_v13_personal_operator.py",
+    "tests/foundry/test_v13_personal_operator_fabric.py"
+  ],
+  "demos_run": [
+    "python var/lane2-demo/demo.py"
+  ],
+  "real_substrate_proofs": [
+    "Notepad open_artifact_and_assert hash match on WindowsApps Notepad.exe window-owning PID",
+    "replace_text COMPLETED on DocumentControl Text editor",
+    "Word desktop.open rebound to window-owning PID distinct from Notepad",
+    "ProcessIdentityMismatch after killing demo Notepad PID",
+    "Explorer /separate launch+close without killing owner shell explorer 13212"
+  ],
+  "capability_states": {
+    "uiautomation_backend": "BUILT_AND_PROVEN",
+    "process_window_rebind": "BUILT_AND_PROVEN",
+    "helper_window_filter": "BUILT_AND_PROVEN",
+    "open_artifact_and_assert": "BUILT_AND_PROVEN",
+    "notepad_replace_text": "BUILT_AND_PROVEN",
+    "stale_identity_after_kill": "BUILT_AND_PROVEN",
+    "multi_app_pid_isolation": "BUILT_AND_PROVEN",
+    "word_launch_bind": "BUILT_AND_PROVEN",
+    "explorer_separate_launch": "BUILT_AND_PROVEN",
+    "existing_instance_reuse_refusal": "BUILT_AND_PROVEN",
+    "desktop.control.paste": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "desktop.control.type": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "native_file_dialog": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "word_document_inspect": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "focus_return_to_notepad": "BUILT_NOT_REAL_WORLD_PROVEN",
+    "excel_proof": "STILL_MISSING",
+    "calculator_proof": "STILL_MISSING"
+  },
+  "cross_lane_assumptions": [
+    "Lane 4 composes desktop.open_artifact_and_assert with owned-root relative path, allowlisted absolute executable, and expected document text.",
+    "ProcessIdentity is pid+create_time+live image path. Win11 Notepad live image is WindowsApps Notepad.exe, not System32 notepad.exe.",
+    "WindowIdentity.to_selector omits title because Notepad prefixes * when dirty.",
+    "desktop.open with show_window=true waits for a new window; show_window=false does not.",
+    "Control string values are redacted to sha256/length in receipts.",
+    "Single-instance reuse of a pre-existing app is FAILED existing_instance_reused, not adopted."
+  ],
+  "likely_conflicts": [
+    "personal_operator._launch_process no longer requires live exe path == allowlisted path (App Execution Alias).",
+    "desktop.open now post-binds GUI file opens when show_window is true.",
+    "list_windows drops GDI+/IME helper HWNDs.",
+    "New fabric action kinds desktop.open_artifact_and_assert and desktop.control.paste."
+  ],
+  "integration_order_notes": [
+    "Land Lane 2 before Lane 4 cross-app compose that calls open_artifact_and_assert.",
+    "Lane 1 browser and Lane 3 GitHub are independent.",
+    "Do not merge this branch to main from this lane."
+  ],
+  "known_semantic_conflicts": [
+    "Win11 Notepad File flyout did not expose an exact Open MenuItem/Button on this PC, so File Open is implemented but not live-proven.",
+    "type/paste dispatch on Win11 Notepad DocumentControl timed out on value readback (UNKNOWN timeout_after_possible_effect). replace_text Value pattern is the proven edit path."
+  ],
+  "next_highest_value_work": [
+    "Prove File Open/Save As against Win11 Notepad or Word IFileDialog, including picker-host process if the dialog is not in the app PID.",
+    "Make type/paste readback succeed on RichEditD2DPT (TextPattern vs ValuePattern after SendKeys).",
+    "Unique Word document window selection when Word has multiple HWNDs.",
+    "Focus return to a Notepad window after another app is foregrounded.",
+    "Excel open+readback if a stable cell UIA value is available."
+  ]
+}

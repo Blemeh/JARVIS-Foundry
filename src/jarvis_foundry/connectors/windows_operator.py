@@ -24,9 +24,47 @@ ActionOutcome: TypeAlias = Literal[
 ]
 
 _ACTION_KINDS = frozenset(
-    {"click", "replace_text", "type", "select", "wait", "assert"}
+    {"click", "replace_text", "type", "select", "wait", "assert", "paste"}
 )
-_MUTATING_ACTIONS = frozenset({"click", "replace_text", "type", "select"})
+_MUTATING_ACTIONS = frozenset(
+    {"click", "replace_text", "type", "select", "paste"}
+)
+HELPER_WINDOW_CLASSES = frozenset(
+    {
+        "GDI+ Hook Window Class",
+        "MSCTFIME UI",
+        "IME",
+    }
+)
+DOCUMENT_CONTROL_TYPES = frozenset(
+    {
+        "DocumentControl",
+        "EditControl",
+        "Document",
+        "Edit",
+    }
+)
+DOCUMENT_NAME_ALIASES = (
+    "Text editor",
+    "Text Editor",
+    "Document",
+    "RichEdit Control",
+)
+CONTROL_NAME_ALIASES: dict[str, tuple[str, ...]] = {
+    "file_menu": ("File", "Fichier", "Datei"),
+    "open_item": ("Open", "Open...", "Ouvrir", "Ouvrir...", "Öffnen"),
+    "save_as_item": (
+        "Save as",
+        "Save As",
+        "Save as...",
+        "Save As...",
+        "Enregistrer sous",
+        "Speichern unter",
+    ),
+    "file_name": ("File name", "File name:", "Nom du fichier", "Dateiname"),
+    "open_button": ("Open", "Ouvrir", "Öffnen"),
+    "save_button": ("Save", "Enregistrer", "Speichern"),
+}
 _CONDITION_FIELDS = frozenset(
     {
         "window_exists",
@@ -58,6 +96,63 @@ class ProcessIdentityMismatch(WindowsOperatorError):
 
 class TargetMatchError(WindowsOperatorError):
     """A window or control target resolved to zero or multiple matches."""
+
+
+def is_helper_window_class(class_name: str) -> bool:
+    """Return whether a native class is a non-application helper HWND."""
+
+    return str(class_name or "") in HELPER_WINDOW_CLASSES
+
+
+def normalize_document_text(text: str) -> str:
+    """Normalize UIA/file newlines for document equality."""
+
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+@dataclass(frozen=True, slots=True)
+class VisibleWindow:
+    """One top-level window snapshot used for launch-time identity binding."""
+
+    hwnd: int
+    pid: int
+    title: str
+    class_name: str
+
+    def key(self) -> tuple[int, int]:
+        return (self.hwnd, self.pid)
+
+
+def resolve_launch_window_owner(
+    before: Sequence[VisibleWindow],
+    after: Sequence[VisibleWindow],
+    *,
+    title_contains: str,
+) -> tuple[str, VisibleWindow | None]:
+    """Choose a newly appeared application window, or refuse reuse.
+
+    Returns ``(status, window)`` where status is ``bound``, ``reused``,
+    ``missing``, or ``ambiguous``.
+    """
+
+    marker = title_contains.casefold()
+
+    def matches(window: VisibleWindow) -> bool:
+        return (
+            not is_helper_window_class(window.class_name)
+            and marker in window.title.casefold()
+        )
+
+    before_keys = {window.key() for window in before}
+    candidates = [window for window in after if matches(window)]
+    if not candidates:
+        return "missing", None
+    fresh = [window for window in candidates if window.key() not in before_keys]
+    if len(fresh) == 1:
+        return "bound", fresh[0]
+    if len(fresh) > 1:
+        return "ambiguous", None
+    return "reused", candidates[0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,9 +249,8 @@ class WindowIdentity:
     def to_selector(self) -> WindowSelector:
         return WindowSelector(
             hwnd=self.hwnd,
-            title=self.title,
-            class_name=self.class_name,
-            automation_id=self.automation_id,
+            class_name=self.class_name or None,
+            automation_id=self.automation_id or None,
             runtime_id=self.runtime_id,
         )
 
@@ -329,7 +423,7 @@ class OperatorAction:
             raise ValueError("timeout_s must be within (0, 60]")
         if self.kind in _MUTATING_ACTIONS and self.control is None:
             raise ValueError(f"{self.kind} requires a control selector")
-        if self.kind in {"replace_text", "type"}:
+        if self.kind in {"replace_text", "type", "paste"}:
             if not isinstance(self.value, str):
                 raise ValueError(f"{self.kind} requires text")
             if len(self.value) > 4096:
@@ -484,6 +578,14 @@ class AccessibilityBackend(Protocol):
         timeout_s: float,
     ) -> None: ...
 
+    def set_clipboard_text(self, text: str) -> None: ...
+
+    def get_clipboard_text(self) -> str: ...
+
+    def paste_text(
+        self, control: BackendControl, *, timeout_s: float
+    ) -> None: ...
+
 
 class _UIAutomationBackend:
     """Thin ``uiautomation`` adapter with no coordinate-based actions."""
@@ -629,6 +731,8 @@ class _UIAutomationBackend:
             if int(self._property(control, "ProcessId", 0) or 0) != pid:
                 continue
             class_name = str(self._property(control, "ClassName", "") or "")
+            if is_helper_window_class(class_name):
+                continue
             window_pattern = self._pattern(control, "WindowPattern")
             is_modal = bool(
                 self._property(window_pattern, "IsModal", False)
@@ -665,6 +769,19 @@ class _UIAutomationBackend:
                 value = raw_value
             else:
                 value = str(raw_value)
+        text_pattern = self._pattern(control, "TextPattern")
+        if text_pattern is not None:
+            try:
+                document_range = getattr(text_pattern, "DocumentRange", None)
+                raw_text = (
+                    document_range.GetText(-1)
+                    if document_range is not None
+                    else None
+                )
+            except Exception:  # noqa: BLE001 - Text pattern is optional
+                raw_text = None
+            if isinstance(raw_text, str) and raw_text:
+                value = raw_text
         selected: bool | None = None
         selection_pattern = self._pattern(control, "SelectionItemPattern")
         if selection_pattern is not None:
@@ -801,6 +918,48 @@ class _UIAutomationBackend:
                 "control exposes no SelectionItem pattern",
             )
         pattern.Select()
+
+    def set_clipboard_text(self, text: str) -> None:
+        try:
+            self._auto.SetClipboardText(text)
+        except Exception as error:  # noqa: BLE001 - clipboard boundary
+            raise WindowsOperatorError(
+                "clipboard_write_failed",
+                f"clipboard text could not be set: {type(error).__name__}",
+            ) from error
+
+    def get_clipboard_text(self) -> str:
+        try:
+            value = self._auto.GetClipboardText()
+        except Exception as error:  # noqa: BLE001 - clipboard boundary
+            raise WindowsOperatorError(
+                "clipboard_read_failed",
+                f"clipboard text could not be read: {type(error).__name__}",
+            ) from error
+        return "" if value is None else str(value)
+
+    def paste_text(
+        self, control: BackendControl, *, timeout_s: float
+    ) -> None:
+        del timeout_s
+        try:
+            focused = bool(control.ref.SetFocus())
+            has_focus = bool(
+                self._property(control.ref, "HasKeyboardFocus", False)
+            )
+            if not focused or not has_focus:
+                raise WindowsOperatorError(
+                    "focus_not_verified",
+                    "exact control focus could not be verified before paste",
+                )
+            self._auto.SendKeys("{Ctrl}v", interval=0.01, waitTime=0.05)
+        except WindowsOperatorError:
+            raise
+        except Exception as error:  # noqa: BLE001 - input boundary
+            raise WindowsOperatorError(
+                "paste_failed",
+                f"accessibility paste failed: {type(error).__name__}",
+            ) from error
 
 
 class _StopDuringWait(RuntimeError):
@@ -1094,6 +1253,294 @@ class WindowsOperatorProvider:
             for control in controls
         )
 
+    def observe_main_window(
+        self,
+        *,
+        title_contains: str | None = None,
+        class_name: str | None = None,
+    ) -> WindowObservation:
+        """Observe the unique application window for this process."""
+
+        self._verify_process()
+        windows = [
+            window
+            for window in self._backend().list_windows(self.process.pid)
+            if window.visible
+            and window.enabled
+            and not is_helper_window_class(window.class_name)
+            and (class_name is None or window.class_name == class_name)
+        ]
+        if title_contains:
+            titled = [
+                window
+                for window in windows
+                if title_contains.casefold() in window.title.casefold()
+            ]
+            if len(titled) == 1:
+                windows = titled
+            elif titled:
+                windows = titled
+        if not windows:
+            raise TargetMatchError(
+                "window_not_found",
+                "no application window matched the exact process",
+            )
+        if len(windows) != 1:
+            raise TargetMatchError(
+                "window_ambiguous",
+                f"{len(windows)} application windows matched the process",
+            )
+        return self._window_observation(windows[0])
+
+    def resolve_named_control(
+        self,
+        window: WindowIdentity,
+        *,
+        names: Sequence[str],
+        control_type: str | None = None,
+        automation_ids: Sequence[str] = (),
+    ) -> ControlObservation:
+        """Return the first uniquely matching alias, else fail closed."""
+
+        last_error: TargetMatchError | None = None
+        selectors: list[ControlSelector] = []
+        for automation_id in automation_ids:
+            selectors.append(
+                ControlSelector(
+                    control_type=control_type,
+                    automation_id=automation_id,
+                )
+            )
+        for name in names:
+            selectors.append(
+                ControlSelector(control_type=control_type, name=name)
+            )
+        for selector in selectors:
+            try:
+                matches = self.inspect(window, selector)
+            except TargetMatchError as error:
+                last_error = error
+                continue
+            if len(matches) == 1:
+                return matches[0]
+            last_error = TargetMatchError(
+                "control_ambiguous",
+                f"{len(matches)} controls matched alias {selector.to_dict()}",
+            )
+        raise last_error or TargetMatchError(
+            "control_not_found",
+            "no control matched the supplied exact name aliases",
+        )
+
+    def find_control_on_any_window(
+        self,
+        *,
+        names: Sequence[str],
+        control_type: str | None = None,
+        automation_ids: Sequence[str] = (),
+    ) -> ControlObservation:
+        """Resolve a named control under any visible application window."""
+
+        self._verify_process()
+        last_error: TargetMatchError | None = None
+        for window in self._backend().list_windows(self.process.pid):
+            if is_helper_window_class(window.class_name) or not window.visible:
+                continue
+            observation = self._window_observation(window)
+            try:
+                return self.resolve_named_control(
+                    observation.identity,
+                    names=names,
+                    control_type=control_type,
+                    automation_ids=automation_ids,
+                )
+            except TargetMatchError as error:
+                last_error = error
+                continue
+        raise last_error or TargetMatchError(
+            "control_not_found",
+            "no visible window contained the named control",
+        )
+
+    def find_document_control(
+        self,
+        window: WindowIdentity,
+        selector: ControlSelector | None = None,
+    ) -> ControlObservation:
+        """Locate the unique document/edit surface under one window."""
+
+        if selector is not None:
+            matches = self.inspect(window, selector)
+            if len(matches) != 1:
+                raise TargetMatchError(
+                    "control_ambiguous",
+                    "document selector did not resolve to one control",
+                )
+            return matches[0]
+        controls = self.inspect(window)
+        valued = [
+            control
+            for control in controls
+            if control.enabled
+            and control.visible
+            and isinstance(control.value, str)
+            and (
+                (control.selector.control_type or "") in DOCUMENT_CONTROL_TYPES
+                or (control.selector.name or "") in DOCUMENT_NAME_ALIASES
+            )
+        ]
+        named = [
+            control
+            for control in valued
+            if (control.selector.name or "") in DOCUMENT_NAME_ALIASES
+        ]
+        pool = named or valued
+        if not pool:
+            raise TargetMatchError(
+                "control_not_found",
+                "no document/edit control with a Value pattern was found",
+            )
+        if len(pool) != 1:
+            raise TargetMatchError(
+                "control_ambiguous",
+                f"{len(pool)} document/edit controls matched",
+            )
+        return pool[0]
+
+    def invoke_file_dialog(
+        self,
+        window: WindowIdentity,
+        *,
+        path: str,
+        action: str = "open",
+        timeout_s: float = 15.0,
+        action_id: str = "file-dialog",
+    ) -> ActionReceipt:
+        """Open or Save As via named UIA aliases, then assert the landed path.
+
+        ``action`` is ``open`` or ``save_as``. Receipt ``after.value`` is not
+        raw path text; callers should use window title / document readback.
+        """
+
+        if action not in {"open", "save_as"}:
+            raise ValueError("file dialog action must be open or save_as")
+        item_key = "open_item" if action == "open" else "save_as_item"
+        confirm_key = "open_button" if action == "open" else "save_button"
+        try:
+            file_menu = self.resolve_named_control(
+                window,
+                names=CONTROL_NAME_ALIASES["file_menu"],
+                control_type="MenuItemControl",
+                automation_ids=("File",),
+            )
+        except TargetMatchError:
+            file_menu = self.find_control_on_any_window(
+                names=CONTROL_NAME_ALIASES["file_menu"],
+                control_type="ButtonControl",
+                automation_ids=("File", "ContentButton"),
+            )
+            window = file_menu.window
+        item_names = CONTROL_NAME_ALIASES[item_key]
+        menu_click = OperatorAction(
+            action_id=f"{action_id}:menu",
+            kind="click",
+            window=window,
+            control=file_menu.selector,
+            readback_control=ControlSelector(
+                control_type="MenuItemControl",
+                name=item_names[0],
+            ),
+            condition=ControlCondition("control_exists", True),
+            timeout_s=min(timeout_s, 15.0),
+        )
+        # Try each Open/Save As alias as the postcondition of expanding File.
+        last = self.perform(menu_click)
+        if last.outcome != "COMPLETED":
+            for name in item_names[1:]:
+                retry = OperatorAction(
+                    action_id=f"{action_id}:menu:{name}",
+                    kind="click",
+                    window=window,
+                    control=file_menu.selector,
+                    readback_control=ControlSelector(
+                        control_type="MenuItemControl",
+                        name=name,
+                    ),
+                    condition=ControlCondition("control_exists", True),
+                    timeout_s=min(timeout_s, 8.0),
+                )
+                last = self.perform(retry)
+                if last.outcome == "COMPLETED":
+                    break
+        if last.outcome != "COMPLETED":
+            return last
+        try:
+            item = self.find_control_on_any_window(
+                names=item_names,
+                control_type="MenuItemControl",
+            )
+        except TargetMatchError:
+            item = self.find_control_on_any_window(
+                names=item_names,
+                control_type="ButtonControl",
+            )
+        dialog_selector = WindowSelector(class_name="#32770")
+        item_click = OperatorAction(
+            action_id=f"{action_id}:item",
+            kind="click",
+            window=window,
+            control=item.selector,
+            expected_dialog=ExpectedDialog(dialog_selector, timeout_s=min(timeout_s, 15.0)),
+            timeout_s=min(timeout_s, 20.0),
+        )
+        last = self.perform(item_click)
+        if last.outcome != "COMPLETED" or last.dialog is None:
+            return last
+        dialog_window = last.dialog.identity
+        name_box = self.resolve_named_control(
+            dialog_window,
+            names=CONTROL_NAME_ALIASES["file_name"],
+            control_type="EditControl",
+            automation_ids=("1148", "1001"),
+        )
+        typed = self.perform(
+            OperatorAction(
+                action_id=f"{action_id}:filename",
+                kind="replace_text",
+                window=dialog_window,
+                control=name_box.selector,
+                value=path,
+                timeout_s=min(timeout_s, 10.0),
+            )
+        )
+        if typed.outcome != "COMPLETED":
+            return typed
+        confirm = self.resolve_named_control(
+            dialog_window,
+            names=CONTROL_NAME_ALIASES[confirm_key],
+            control_type="ButtonControl",
+        )
+        return self.perform(
+            OperatorAction(
+                action_id=f"{action_id}:confirm",
+                kind="click",
+                window=dialog_window,
+                control=confirm.selector,
+                condition=ControlCondition("window_exists", False),
+                timeout_s=min(timeout_s, 15.0),
+            )
+        )
+
+    def set_clipboard_text(self, text: str) -> None:
+        if not isinstance(text, str) or len(text) > 4096:
+            raise ValueError("clipboard text must be a string of at most 4096 characters")
+        self._verify_process()
+        self._backend().set_clipboard_text(text)
+
+    def get_clipboard_text(self) -> str:
+        self._verify_process()
+        return self._backend().get_clipboard_text()
+
     @staticmethod
     def _safe_detail(error: BaseException | str) -> str:
         text = str(error).replace("\r", " ").replace("\n", " ").strip()
@@ -1163,6 +1610,15 @@ class WindowsOperatorProvider:
             actual: JsonScalar = True
         else:
             actual = getattr(observation, condition.field)
+        if (
+            condition.field == "value"
+            and isinstance(actual, str)
+            and isinstance(condition.expected, str)
+        ):
+            return (
+                normalize_document_text(actual)
+                == normalize_document_text(condition.expected)
+            ), observation
         return actual == condition.expected, observation
 
     def _new_dialogs(
@@ -1248,6 +1704,8 @@ class WindowsOperatorProvider:
         if action.condition is not None:
             return action.condition
         if action.kind == "replace_text":
+            return ControlCondition("value", action.value)
+        if action.kind == "paste":
             return ControlCondition("value", action.value)
         if action.kind == "select":
             return ControlCondition("selected", True)
@@ -1366,6 +1824,11 @@ class WindowsOperatorProvider:
                 elif action.kind == "select":
                     self._backend().select(
                         live_control, action.value, timeout_s=remaining
+                    )
+                elif action.kind == "paste":
+                    self._backend().set_clipboard_text(action.value or "")
+                    self._backend().paste_text(
+                        live_control, timeout_s=remaining
                     )
             except Exception as error:  # noqa: BLE001 - effect may have landed
                 return self._receipt(
@@ -1660,19 +2123,27 @@ __all__ = [
     "ActionReceipt",
     "BackendControl",
     "BackendWindow",
+    "CONTROL_NAME_ALIASES",
     "ControlCondition",
     "ControlObservation",
     "ControlSelector",
+    "DOCUMENT_CONTROL_TYPES",
+    "DOCUMENT_NAME_ALIASES",
     "ExpectedDialog",
+    "HELPER_WINDOW_CLASSES",
     "OperatorAction",
     "ProcessIdentity",
     "ProcessIdentityMismatch",
     "ProcessSnapshot",
     "TargetMatchError",
+    "VisibleWindow",
     "WindowIdentity",
     "WindowObservation",
     "WindowSelector",
     "WindowsOperatorError",
     "WindowsOperatorProvider",
     "WindowsOperatorUnavailable",
+    "is_helper_window_class",
+    "normalize_document_text",
+    "resolve_launch_window_owner",
 ]

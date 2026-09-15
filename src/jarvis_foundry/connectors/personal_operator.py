@@ -35,6 +35,11 @@ from ..supervisor.worker import (
     list_process_tree,
     process_creation_identity,
 )
+from .windows_operator import (
+    VisibleWindow,
+    is_helper_window_class,
+    resolve_launch_window_owner,
+)
 
 
 RECEIPT_SCHEMA = "jarvis.personal_operator.receipt.v1"
@@ -42,6 +47,68 @@ STATE_DIRECTORY = ".jarvis-personal-operator"
 LEDGER_FILE = "operations.json"
 PROCESS_REGISTRY_FILE = "processes.json"
 _PROCESS_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+
+
+def _visible_application_windows() -> tuple[VisibleWindow, ...]:
+    """Snapshot visible non-helper top-level windows on this desktop."""
+
+    if os.name != "nt":
+        return ()
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    callback_type = ctypes.WINFUNCTYPE(
+        wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
+    )
+    user32.EnumWindows.argtypes = [callback_type, wintypes.LPARAM]
+    user32.EnumWindows.restype = wintypes.BOOL
+    user32.GetWindowThreadProcessId.argtypes = [
+        wintypes.HWND,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.IsWindowVisible.argtypes = [wintypes.HWND]
+    user32.IsWindowVisible.restype = wintypes.BOOL
+    user32.GetWindowTextW.argtypes = [
+        wintypes.HWND,
+        wintypes.LPWSTR,
+        ctypes.c_int,
+    ]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.GetClassNameW.argtypes = [
+        wintypes.HWND,
+        wintypes.LPWSTR,
+        ctypes.c_int,
+    ]
+    user32.GetClassNameW.restype = ctypes.c_int
+    found: list[VisibleWindow] = []
+
+    @callback_type
+    def collect(hwnd: int, _lparam: int) -> bool:
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        class_name = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, class_name, 256)
+        if is_helper_window_class(class_name.value):
+            return True
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        title = ctypes.create_unicode_buffer(512)
+        user32.GetWindowTextW(hwnd, title, 512)
+        found.append(
+            VisibleWindow(
+                hwnd=int(hwnd),
+                pid=int(pid.value),
+                title=title.value,
+                class_name=class_name.value,
+            )
+        )
+        return True
+
+    if not user32.EnumWindows(collect, 0):
+        return ()
+    return tuple(found)
 
 
 class PersonalOperatorError(ValueError):
@@ -1788,7 +1855,8 @@ class PersonalOperatorConnector:
                 )
             normalized_args = list(args)
             normalized_args.append(str(target.resolve()))
-            return self._launch_process(
+            snapshot = _visible_application_windows()
+            receipt = self._launch_process(
                 operation,
                 process_id,
                 application,
@@ -1798,10 +1866,198 @@ class PersonalOperatorConnector:
                 show_window=show_window,
                 opened_identity=target_identity,
             )
+            if (
+                receipt.get("status") == "COMPLETED"
+                and not receipt.get("replayed")
+                and target_identity.get("kind") == "file"
+                and show_window
+            ):
+                return self._bind_window_owning_process(
+                    process_id,
+                    title_contains=Path(str(target.resolve())).name,
+                    before=snapshot,
+                    launch_receipt=receipt,
+                    timeout_s=30.0,
+                )
+            return receipt
         except PersonalOperatorError as error:
             return self._error_receipt(
                 operation, error, request_id=idempotency_key
             )
+
+    def _bind_window_owning_process(
+        self,
+        process_id: str,
+        *,
+        title_contains: str,
+        before: Sequence[VisibleWindow],
+        launch_receipt: Mapping[str, Any],
+        timeout_s: float,
+    ) -> dict[str, Any]:
+        """Rebind a launch record onto the new window-owning process.
+
+        Windows App Execution Alias and single-instance apps often leave the
+        CreateProcess PID windowless. A pre-existing instance that merely
+        changes title is refused rather than adopted.
+        """
+
+        logical_id = self._validate_process_id(process_id)
+        deadline = time.monotonic() + float(timeout_s)
+        last_status = "missing"
+        last_window: VisibleWindow | None = None
+        before_keys = {window.key() for window in before}
+        launched_record = launch_receipt.get("target_identity") or {}
+        launched_exe = str(
+            ((launched_record.get("creation_identity") or {}) if isinstance(launched_record, Mapping) else {}).get("exe")
+            or (launched_record.get("executable") if isinstance(launched_record, Mapping) else "")
+            or ""
+        )
+        while time.monotonic() < deadline:
+            after = _visible_application_windows()
+            last_status, last_window = resolve_launch_window_owner(
+                before,
+                after,
+                title_contains=title_contains,
+            )
+            if last_status == "missing":
+                fresh = [
+                    window
+                    for window in after
+                    if window.key() not in before_keys
+                    and not is_helper_window_class(window.class_name)
+                ]
+                matched: list[VisibleWindow] = []
+                for window in fresh:
+                    identity = process_creation_identity(window.pid)
+                    exe = str(identity.get("exe") or "")
+                    if exe and launched_exe and self._same_executable(launched_exe, exe):
+                        matched.append(window)
+                if len(matched) == 1:
+                    last_status, last_window = "bound", matched[0]
+            if last_status != "missing":
+                break
+            time.sleep(0.05)
+        if last_status == "missing" or last_window is None:
+            self._release_unbound_launch(
+                logical_id, reason="window_not_found"
+            )
+            return self._error_receipt(
+                "desktop.open",
+                PersonalOperatorError(
+                    "window_not_found",
+                    "launched process did not present a new window for the artifact",
+                    status="UNKNOWN",
+                ),
+                request_id=str(launch_receipt.get("request_id") or ""),
+            )
+        if last_status == "ambiguous":
+            self._release_unbound_launch(
+                logical_id, reason="window_ambiguous"
+            )
+            return self._error_receipt(
+                "desktop.open",
+                PersonalOperatorError(
+                    "window_ambiguous",
+                    "multiple new windows matched the opened artifact title",
+                    status="UNKNOWN",
+                ),
+                request_id=str(launch_receipt.get("request_id") or ""),
+            )
+        if last_status == "reused":
+            self._release_unbound_launch(
+                logical_id, reason="existing_instance_reused"
+            )
+            return self._error_receipt(
+                "desktop.open",
+                PersonalOperatorError(
+                    "existing_instance_reused",
+                    "opened artifact reused a pre-existing application instance",
+                ),
+                request_id=str(launch_receipt.get("request_id") or ""),
+            )
+        identity = process_creation_identity(last_window.pid)
+        if identity.get("create_time") is None or not identity.get("exe"):
+            return self._error_receipt(
+                "desktop.open",
+                PersonalOperatorError(
+                    "process_identity_unavailable",
+                    "window-owning process could not be bound to a complete identity",
+                    status="UNKNOWN",
+                ),
+                request_id=str(launch_receipt.get("request_id") or ""),
+            )
+        with self._lock:
+            registry = self._load_process_registry()
+            record = registry.get(logical_id)
+            if record is None:
+                raise PersonalOperatorError(
+                    "process_not_registered",
+                    "process_id is not registry-owned",
+                )
+            stub_pid = int(record["pid"])
+            stub_identity = dict(record.get("creation_identity") or {})
+            if last_window.pid != stub_pid:
+                record["stub_pid"] = stub_pid
+                record["pid"] = int(last_window.pid)
+                record["creation_identity"] = identity
+                descendants = list(record.get("owned_descendants") or [])
+                if stub_pid not in descendants:
+                    descendants.append(stub_pid)
+                record["owned_descendants"] = descendants
+                record["window_hwnd"] = last_window.hwnd
+                record["window_title"] = last_window.title
+                registry[logical_id] = record
+                self._write_process_registry(registry)
+                self._processes.pop(logical_id, None)
+                if stub_identity.get("create_time") is not None:
+                    _terminate_windows_exact(
+                        {
+                            "pid": stub_pid,
+                            "creation_identity": stub_identity,
+                        },
+                        grace_seconds=0.2,
+                    )
+            else:
+                record["window_hwnd"] = last_window.hwnd
+                record["window_title"] = last_window.title
+                registry[logical_id] = record
+                self._write_process_registry(registry)
+            matches, readback = self._record_matches_process(record)
+            if not matches:
+                raise PersonalOperatorError(
+                    "process_identity_mismatch",
+                    "window-owning process identity changed before readback",
+                    status="UNKNOWN",
+                )
+            merged = dict(launch_receipt)
+            merged["target_identity"] = _json_copy(record)
+            result = dict(merged.get("result") or {})
+            result["pid"] = record["pid"]
+            result["window_hwnd"] = last_window.hwnd
+            merged["result"] = result
+            merged["readback"] = readback
+            merged["reconciled"] = True
+            return merged
+
+    def _release_unbound_launch(
+        self, process_id: str, *, reason: str
+    ) -> None:
+        """Terminate only the launch stub. Never touch a reused instance."""
+
+        process = self._processes.pop(process_id, None)
+        if process is not None:
+            _terminate_popen_exact(process, grace_seconds=0.5)
+        with self._lock:
+            registry = self._load_process_registry()
+            record = registry.get(process_id)
+            if record is None:
+                return
+            _terminate_windows_exact(record, grace_seconds=0.5)
+            record["state"] = "exited"
+            record["close_reason"] = reason
+            record["reconciled_at"] = _utc_now()
+            registry[process_id] = record
+            self._write_process_registry(registry)
 
     def _launch_process(
         self,
@@ -1923,10 +2179,7 @@ class PersonalOperatorConnector:
                     if process.poll() is not None:
                         break
                     time.sleep(0.02)
-                if (
-                    identity.get("create_time") is None
-                    or not self._same_executable(str(resolved), identity.get("exe"))
-                ):
+                if identity.get("create_time") is None or not identity.get("exe"):
                     _terminate_popen_exact(
                         process,
                         grace_seconds=0.1,
@@ -2255,22 +2508,11 @@ class PersonalOperatorConnector:
                 from ctypes import wintypes
 
                 user32 = ctypes.WinDLL("user32", use_last_error=True)
-                handles: list[int] = []
-                callback_type = ctypes.WINFUNCTYPE(
-                    wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
-                )
-                user32.EnumWindows.argtypes = [
-                    callback_type,
-                    wintypes.LPARAM,
-                ]
-                user32.EnumWindows.restype = wintypes.BOOL
                 user32.GetWindowThreadProcessId.argtypes = [
                     wintypes.HWND,
                     ctypes.POINTER(wintypes.DWORD),
                 ]
                 user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-                user32.IsWindowVisible.argtypes = [wintypes.HWND]
-                user32.IsWindowVisible.restype = wintypes.BOOL
                 user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
                 user32.ShowWindow.restype = wintypes.BOOL
                 user32.SetForegroundWindow.argtypes = [wintypes.HWND]
@@ -2293,17 +2535,11 @@ class PersonalOperatorConnector:
                 kernel32.GetCurrentThreadId.argtypes = []
                 kernel32.GetCurrentThreadId.restype = wintypes.DWORD
 
-                def _collect(hwnd: int, _lparam: int) -> bool:
-                    owner_pid = wintypes.DWORD()
-                    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner_pid))
-                    if int(owner_pid.value) == int(record["pid"]) and user32.IsWindowVisible(
-                        hwnd
-                    ):
-                        handles.append(int(hwnd))
-                    return True
-
-                callback = callback_type(_collect)
-                user32.EnumWindows(callback, 0)
+                handles = [
+                    window.hwnd
+                    for window in _visible_application_windows()
+                    if window.pid == int(record["pid"])
+                ]
                 if not handles:
                     raise PersonalOperatorError(
                         "window_not_found",
@@ -2434,43 +2670,13 @@ class PersonalOperatorConnector:
                 from ctypes import wintypes
 
                 user32 = ctypes.WinDLL("user32", use_last_error=True)
-                handles: list[int] = []
-                callback_type = ctypes.WINFUNCTYPE(
-                    wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
-                )
-                user32.EnumWindows.argtypes = [
-                    callback_type,
-                    wintypes.LPARAM,
-                ]
-                user32.EnumWindows.restype = wintypes.BOOL
-                user32.GetWindowThreadProcessId.argtypes = [
-                    wintypes.HWND,
-                    ctypes.POINTER(wintypes.DWORD),
-                ]
-                user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-                user32.IsWindowVisible.argtypes = [wintypes.HWND]
-                user32.IsWindowVisible.restype = wintypes.BOOL
                 user32.GetForegroundWindow.argtypes = []
                 user32.GetForegroundWindow.restype = wintypes.HWND
-
-                def _collect(hwnd: int, _lparam: int) -> bool:
-                    owner_pid = wintypes.DWORD()
-                    user32.GetWindowThreadProcessId(
-                        hwnd, ctypes.byref(owner_pid)
-                    )
-                    if (
-                        int(owner_pid.value) == int(record["pid"])
-                        and user32.IsWindowVisible(hwnd)
-                    ):
-                        handles.append(int(hwnd))
-                    return True
-
-                callback = callback_type(_collect)
-                if not user32.EnumWindows(callback, 0):
-                    raise PersonalOperatorError(
-                        "window_observation_failed",
-                        "Windows could not enumerate top-level windows",
-                    )
+                handles = [
+                    window.hwnd
+                    for window in _visible_application_windows()
+                    if window.pid == int(record["pid"])
+                ]
                 if not handles:
                     raise PersonalOperatorError(
                         "window_not_found",
