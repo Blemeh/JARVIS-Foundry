@@ -1933,11 +1933,13 @@ class PlaywrightBrowserSession:
         timeout_ms: int | None = None,
         stop_check: Callable[[], bool] | None = None,
         idempotency_key: str | None = None,
+        frame_index: int | None = None,
     ) -> ConnectorAttempt:
         """Wait for one exact accessibility target without mutating the page."""
 
         if self.page is None or self._last_identity is None:
             raise BrowserTargetError("navigate before waiting for a target")
+        scope = self._frame(frame_index)
         target_id = _safe_identity(target_id, "target_id")
         role = _safe_identity(role, "role")
         if (
@@ -2018,7 +2020,7 @@ class PlaywrightBrowserSession:
                     before_state=before,
                 )
             try:
-                locator = self.page.get_by_role(role, name=name, exact=True)
+                locator = scope.get_by_role(role, name=name, exact=True)
                 last_count = locator.count()
                 if last_count > 1:
                     return self.connector._attempt(
@@ -2251,8 +2253,8 @@ class PlaywrightBrowserSession:
             ),
         )
 
-    def inspect(self) -> dict[str, Any]:
-        """Return the bounded accessibility structure of the current page.
+    def inspect(self, *, frame_index: int | None = None) -> dict[str, Any]:
+        """Return the bounded accessibility structure of one frame scope.
 
         This is the read-only discovery step of the operator loop: it lets a
         caller choose exact role/name targets for later ``execute`` calls
@@ -2264,8 +2266,9 @@ class PlaywrightBrowserSession:
         self._reread_current_page()
         if self._last_identity is None:
             raise BrowserTargetError("navigate before inspecting the page")
+        scope = self._frame(frame_index)
         final_url, revision, structural_hash = self._current_revision()
-        structure = self.connector._structure(self.page)
+        structure = self.connector._structure(scope)
         elements: list[dict[str, Any]] = []
         for item in structure[:INSPECT_MAX_ELEMENTS]:
             raw_name = str(item.get("name") or "")[:512]
@@ -2298,6 +2301,7 @@ class PlaywrightBrowserSession:
             "elements": elements,
             "element_count": len(elements),
             "frames": self.frame_targets(),
+            "frame_index": frame_index,
             "final_url": _safe_url_ref(final_url),
             "document_id": self._last_identity.document_id,
             "page_revision": revision,
@@ -3672,7 +3676,12 @@ class PlaywrightBrowserSession:
                 row["document_id"] = capture.page.document_id
             return row
         if action == "inspect":
-            inspected = self.inspect()
+            inspected = self.inspect(
+                frame_index=(
+                    int(item["frame_index"])
+                    if item.get("frame_index") is not None else None
+                ),
+            )
             return {
                 "step_id": step_id, "action": action,
                 "outcome": "COMPLETED",
@@ -3744,6 +3753,10 @@ class PlaywrightBrowserSession:
                 ),
                 stop_check=stop_check,
                 idempotency_key=idempotency_key,
+                frame_index=(
+                    int(item["frame_index"])
+                    if item.get("frame_index") is not None else None
+                ),
             )
             after = dict(attempt.after_state or {})
             return {

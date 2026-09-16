@@ -752,8 +752,18 @@ def test_run_steps_can_target_an_iframe(
         assert frames[1]["index"] == 1
         inspected = session.inspect()
         assert len(inspected["frames"]) == 2
+        framed = session.inspect(frame_index=1)
+        assert framed["frame_index"] == 1
+        assert {
+            element["name"] for element in framed["elements"]
+        } >= {"Frame note", "Frame send"}
         result = session.run_steps(
             [
+                {
+                    "step_id": "wait", "action": "wait", "frame_index": 1,
+                    "target_id": "frame-send", "role": "button",
+                    "name": "Frame send", "wait_state": "visible",
+                },
                 {
                     "step_id": "fill", "action": "fill", "frame_index": 1,
                     "target_id": "frame-note", "role": "textbox",
@@ -776,5 +786,5 @@ def test_run_steps_can_target_an_iframe(
             step_scope="grant:v14-frame",
         )
     assert result["success"] is True, result["stopped_at"]
-    assert [row["outcome"] for row in result["steps"]] == ["COMPLETED"] * 3
+    assert [row["outcome"] for row in result["steps"]] == ["COMPLETED"] * 4
     assert server.frame_submissions == 1

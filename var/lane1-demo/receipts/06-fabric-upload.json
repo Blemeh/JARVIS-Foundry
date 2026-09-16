@@ -4,10 +4,10 @@
   "note": "",
   "observed": {
     "action": "upload",
-    "action_key": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+    "action_key": "effect:53f32ce4befac5216791092ccd2f339e36146e0a495b1f651e2298b03bb67ede",
     "action_request_count": 1,
     "action_request_seen": true,
-    "attempt_id": "playwright-859009ee89f9e8af2f8d6605",
+    "attempt_id": "playwright-9e9e61b998e068e8651cf5bf",
     "authority": "DATA_ONLY",
     "authorization_id": "grant:lane1-demo",
     "authorization_require_authenticated": true,
@@ -16,20 +16,20 @@
     "cost": {
       "browser_sessions": 1
     },
-    "document_id": "8a29c87b41c8e5119d82396db4779952e0c272fb1ee460e9f7397372cdd3aa43",
+    "document_id": "5d2aba063941e26d63ae8bfeff31481db58d6973903b6e25aa6f757e8a6c3805",
     "download": null,
-    "effect_id": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+    "effect_id": "effect:53f32ce4befac5216791092ccd2f339e36146e0a495b1f651e2298b03bb67ede",
     "error_code": null,
     "evidence_refs": [
-      "browser-url:4d85ffdc68f6b8758fc85d81"
+      "browser-url:b61d8c2b6b95dbf32a43c9c8"
     ],
-    "final_url": "http://127.0.0.1:58904/upload",
-    "idempotency_key": "idempotency:8988326503f86598c9c70b90610ed5eaddbc692dae2d8d4039d322daaf9cad95",
+    "final_url": "http://127.0.0.1:51522/upload",
+    "idempotency_key": "idempotency:403efad733800bfadba23a8028ff07ad00237d2c60cec934c466e6ea42fb9f08",
     "journal_state": "COMPLETED",
-    "page_revision": "e82b01ea63e2c660b480c221087bb308022e3546c6f8a0e235b1cd573311c643",
-    "payload_hash": "002cbb0e8fe275bb55a23a13590739b3f68327cfbd3b97e990b16c52664cee88",
+    "page_revision": "44b4a1e630f53b41ac7e6feeb22b652b266c9af2fc22e4ac922b9f02b71e9b59",
+    "payload_hash": "a8fd8630f1dd20bd4808b90144fb743daf54bf6d8c6d48085f319dffa987aa31",
     "performed": true,
-    "provider_ref": "http://127.0.0.1:58904/upload",
+    "provider_ref": "http://127.0.0.1:51522/upload",
     "readback": {
       "authority": "DATA_ONLY",
       "files": [
@@ -50,14 +50,14 @@
     "replayed": false,
     "session": {
       "auth_marker_found": true,
-      "checked_at": "2026-09-16T08:43:41.522285Z",
-      "current_url": "http://127.0.0.1:58904/upload",
+      "checked_at": "2026-09-16T08:51:29.978830Z",
+      "current_url": "http://127.0.0.1:51522/upload",
       "owner_scope": "owner-local",
       "profile_id": "lane1-demo-profile",
       "reason": null,
       "restored": true,
-      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
-      "site_origin": "http://127.0.0.1:58904",
+      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
+      "site_origin": "http://127.0.0.1:51522",
       "state": "AUTHENTICATED",
       "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
       "storage_state_present": true
@@ -69,7 +69,7 @@
     "structural_hash": "2ab08eb8674ed459683037ea9eade2d3e7ee617250f0c1b3d26b818ce8715410",
     "target_count": 4,
     "target_id": "evidence-file",
-    "target_ref": "http://127.0.0.1:58904/upload",
+    "target_ref": "http://127.0.0.1:51522/upload",
     "upload": {
       "postcondition": {
         "authority": "DATA_ONLY",
@@ -110,7 +110,7 @@
       "source_name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
       "source_ref": "uploads/evidence.txt"
     },
-    "verified_at": "2026-09-16T08:43:41.638992Z",
+    "verified_at": "2026-09-16T08:51:30.094853Z",
     "wait_state": null
   },
   "receipt": {
@@ -126,20 +126,20 @@
       "browser_sessions": 1
     },
     "effect_class": "REVERSIBLE_EXTERNAL",
-    "effect_id": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+    "effect_id": "effect:53f32ce4befac5216791092ccd2f339e36146e0a495b1f651e2298b03bb67ede",
     "error": null,
     "evidence_refs": [
-      "browser-url:4d85ffdc68f6b8758fc85d81",
+      "browser-url:b61d8c2b6b95dbf32a43c9c8",
       "capability:cap.browser.web.execute",
-      "effect:effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52"
+      "effect:effect:53f32ce4befac5216791092ccd2f339e36146e0a495b1f651e2298b03bb67ede"
     ],
-    "idempotency_key": "idempotency:8988326503f86598c9c70b90610ed5eaddbc692dae2d8d4039d322daaf9cad95",
+    "idempotency_key": "idempotency:403efad733800bfadba23a8028ff07ad00237d2c60cec934c466e6ea42fb9f08",
     "mission_id": "mission.lane1.browser.demo",
     "observed": {
       "action": "upload",
       "action_request_count": 1,
       "action_request_seen": true,
-      "attempt_id": "playwright-859009ee89f9e8af2f8d6605",
+      "attempt_id": "playwright-9e9e61b998e068e8651cf5bf",
       "authority": "DATA_ONLY",
       "authorization_id": "grant:lane1-demo",
       "authorization_require_authenticated": true,
@@ -148,18 +148,18 @@
       "cost": {
         "browser_sessions": 1
       },
-      "document_id": "8a29c87b41c8e5119d82396db4779952e0c272fb1ee460e9f7397372cdd3aa43",
+      "document_id": "5d2aba063941e26d63ae8bfeff31481db58d6973903b6e25aa6f757e8a6c3805",
       "download": null,
-      "effect_id": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+      "effect_id": "effect:53f32ce4befac5216791092ccd2f339e36146e0a495b1f651e2298b03bb67ede",
       "error_code": null,
       "evidence_refs": [
-        "browser-url:4d85ffdc68f6b8758fc85d81"
+        "browser-url:b61d8c2b6b95dbf32a43c9c8"
       ],
-      "final_url": "http://127.0.0.1:58904/upload",
-      "idempotency_key": "idempotency:8988326503f86598c9c70b90610ed5eaddbc692dae2d8d4039d322daaf9cad95",
-      "page_revision": "e82b01ea63e2c660b480c221087bb308022e3546c6f8a0e235b1cd573311c643",
-      "payload_hash": "002cbb0e8fe275bb55a23a13590739b3f68327cfbd3b97e990b16c52664cee88",
-      "provider_ref": "http://127.0.0.1:58904/upload",
+      "final_url": "http://127.0.0.1:51522/upload",
+      "idempotency_key": "idempotency:403efad733800bfadba23a8028ff07ad00237d2c60cec934c466e6ea42fb9f08",
+      "page_revision": "44b4a1e630f53b41ac7e6feeb22b652b266c9af2fc22e4ac922b9f02b71e9b59",
+      "payload_hash": "a8fd8630f1dd20bd4808b90144fb743daf54bf6d8c6d48085f319dffa987aa31",
+      "provider_ref": "http://127.0.0.1:51522/upload",
       "readback": {
         "authority": "DATA_ONLY",
         "files": [
@@ -179,14 +179,14 @@
       "redirects": [],
       "session": {
         "auth_marker_found": true,
-        "checked_at": "2026-09-16T08:43:41.522285Z",
-        "current_url": "http://127.0.0.1:58904/upload",
+        "checked_at": "2026-09-16T08:51:29.978830Z",
+        "current_url": "http://127.0.0.1:51522/upload",
         "owner_scope": "owner-local",
         "profile_id": "lane1-demo-profile",
         "reason": null,
         "restored": true,
-        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
-        "site_origin": "http://127.0.0.1:58904",
+        "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
+        "site_origin": "http://127.0.0.1:51522",
         "state": "AUTHENTICATED",
         "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
         "storage_state_present": true
@@ -198,7 +198,7 @@
       "structural_hash": "2ab08eb8674ed459683037ea9eade2d3e7ee617250f0c1b3d26b818ce8715410",
       "target_count": 4,
       "target_id": "evidence-file",
-      "target_ref": "http://127.0.0.1:58904/upload",
+      "target_ref": "http://127.0.0.1:51522/upload",
       "upload": {
         "postcondition": {
           "authority": "DATA_ONLY",
@@ -243,8 +243,8 @@
     },
     "observed_outcome": "VERIFIED",
     "postcondition_results": [],
-    "provider_ref": "http://127.0.0.1:58904/upload",
-    "receipt_id": "receipt:effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52:attempt:1",
+    "provider_ref": "http://127.0.0.1:51522/upload",
+    "receipt_id": "receipt:effect:53f32ce4befac5216791092ccd2f339e36146e0a495b1f651e2298b03bb67ede:attempt:1",
     "state": "VERIFIED",
     "step_id": "upload",
     "workflow_id": "workflow.lane1-demo",

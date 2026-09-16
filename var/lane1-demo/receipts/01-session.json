@@ -2,19 +2,19 @@
   "note": "storage-state contents are never serialized into receipts",
   "session": {
     "auth_marker_found": true,
-    "checked_at": "2026-09-16T08:43:27.050176Z",
-    "current_url": "http://127.0.0.1:58904/dashboard",
+    "checked_at": "2026-09-16T08:51:15.104865Z",
+    "current_url": "http://127.0.0.1:51522/dashboard",
     "owner_scope": "owner-local",
     "profile_id": "lane1-demo-profile",
     "reason": null,
     "restored": false,
-    "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
-    "site_origin": "http://127.0.0.1:58904",
+    "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
+    "site_origin": "http://127.0.0.1:51522",
     "state": "AUTHENTICATED",
     "state_sha256": null,
     "storage_state_present": false
   },
-  "site": "http://127.0.0.1:58904",
+  "site": "http://127.0.0.1:51522",
   "state_file_present": true,
   "state_sha256": null
 }

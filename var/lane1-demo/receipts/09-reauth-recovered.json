@@ -4,10 +4,10 @@
   "note": "",
   "observed": {
     "action": "submit",
-    "action_key": "effect:6bf92752ad99de798f744b78046a79843c503976ae05e5b243ea4ce9a8d085e3",
+    "action_key": "effect:3f27ef6b35bf32c3021d747219693825fc8b68c2012b4a69db5f759e866b5bc9",
     "action_request_count": 1,
     "action_request_seen": true,
-    "attempt_id": "playwright-97e810fb9898664e824d4fae",
+    "attempt_id": "playwright-a3999a45900fc23474bae6e5",
     "authority": "DATA_ONLY",
     "authorization_id": "grant:lane1-demo",
     "authorization_require_authenticated": true,
@@ -16,25 +16,25 @@
     "cost": {
       "browser_sessions": 1
     },
-    "document_id": "6dec06cc24c2e8943298d52a9187352cbc8d7f7c33b026993a59baa2529ff962",
+    "document_id": "60651a6bf843d204fcb53b207e83b8d5536cee570263302287e80751fa73d833",
     "download": null,
-    "effect_id": "effect:6bf92752ad99de798f744b78046a79843c503976ae05e5b243ea4ce9a8d085e3",
+    "effect_id": "effect:3f27ef6b35bf32c3021d747219693825fc8b68c2012b4a69db5f759e866b5bc9",
     "error_code": null,
     "evidence_refs": [
-      "browser-url:245cf094f10530f5efe767dc"
+      "browser-url:f9ff399e5d3b89d68f3efd9c"
     ],
-    "final_url": "http://127.0.0.1:58904/dashboard",
-    "idempotency_key": "idempotency:11f148ea294f0305ec30c8e5669a409295e179b28bd0274ab7ec5fff6dc42cbd",
+    "final_url": "http://127.0.0.1:51522/dashboard",
+    "idempotency_key": "idempotency:c78ee7fede9024ffd288663cb4115ab034123d20e510f2dc2974b322391cf4c4",
     "journal_state": "COMPLETED",
-    "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
-    "payload_hash": "700608380c69acbb9fe8b257350052f55b2df1c160d5141ff566f701b80a35b1",
+    "page_revision": "6adb5076d21191978b6ebdde3b4c4369682b4dac916f5e1c736e32bbf67ef4e4",
+    "payload_hash": "8a133e18c7e5c142d4f587f58e903f86f70c181033bcaa8b9d97b7a209b3419f",
     "performed": true,
-    "provider_ref": "http://127.0.0.1:58904/dashboard",
+    "provider_ref": "http://127.0.0.1:51522/dashboard",
     "readback": {
       "authority": "DATA_ONLY",
-      "final_url": "http://127.0.0.1:58904/dashboard",
-      "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
-      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "final_url": "http://127.0.0.1:51522/dashboard",
+      "page_revision": "6adb5076d21191978b6ebdde3b4c4369682b4dac916f5e1c736e32bbf67ef4e4",
+      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
       "session_state": "AUTHENTICATED",
       "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
       "target_enabled": true,
@@ -45,19 +45,19 @@
     "readback_verified": true,
     "reconciled": true,
     "redirects": [
-      "http://127.0.0.1:58904/dashboard"
+      "http://127.0.0.1:51522/dashboard"
     ],
     "replayed": false,
     "session": {
       "auth_marker_found": true,
-      "checked_at": "2026-09-16T08:43:55.308119Z",
-      "current_url": "http://127.0.0.1:58904/dashboard",
+      "checked_at": "2026-09-16T08:51:44.125073Z",
+      "current_url": "http://127.0.0.1:51522/dashboard",
       "owner_scope": "owner-local",
       "profile_id": "lane1-demo-profile",
       "reason": null,
       "restored": true,
-      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
-      "site_origin": "http://127.0.0.1:58904",
+      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
+      "site_origin": "http://127.0.0.1:51522",
       "state": "AUTHENTICATED",
       "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
       "storage_state_present": true
@@ -69,9 +69,9 @@
     "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
     "target_count": 1,
     "target_id": "accept-order",
-    "target_ref": "http://127.0.0.1:58904/dashboard",
+    "target_ref": "http://127.0.0.1:51522/dashboard",
     "upload": null,
-    "verified_at": "2026-09-16T08:43:55.425942Z",
+    "verified_at": "2026-09-16T08:51:44.241996Z",
     "wait_state": null
   },
   "receipt": {
@@ -87,20 +87,20 @@
       "browser_sessions": 1
     },
     "effect_class": "REVERSIBLE_EXTERNAL",
-    "effect_id": "effect:6bf92752ad99de798f744b78046a79843c503976ae05e5b243ea4ce9a8d085e3",
+    "effect_id": "effect:3f27ef6b35bf32c3021d747219693825fc8b68c2012b4a69db5f759e866b5bc9",
     "error": null,
     "evidence_refs": [
-      "browser-url:245cf094f10530f5efe767dc",
+      "browser-url:f9ff399e5d3b89d68f3efd9c",
       "capability:cap.browser.web.execute",
-      "effect:effect:6bf92752ad99de798f744b78046a79843c503976ae05e5b243ea4ce9a8d085e3"
+      "effect:effect:3f27ef6b35bf32c3021d747219693825fc8b68c2012b4a69db5f759e866b5bc9"
     ],
-    "idempotency_key": "idempotency:11f148ea294f0305ec30c8e5669a409295e179b28bd0274ab7ec5fff6dc42cbd",
+    "idempotency_key": "idempotency:c78ee7fede9024ffd288663cb4115ab034123d20e510f2dc2974b322391cf4c4",
     "mission_id": "mission.lane1.browser.demo",
     "observed": {
       "action": "submit",
       "action_request_count": 1,
       "action_request_seen": true,
-      "attempt_id": "playwright-97e810fb9898664e824d4fae",
+      "attempt_id": "playwright-a3999a45900fc23474bae6e5",
       "authority": "DATA_ONLY",
       "authorization_id": "grant:lane1-demo",
       "authorization_require_authenticated": true,
@@ -109,23 +109,23 @@
       "cost": {
         "browser_sessions": 1
       },
-      "document_id": "6dec06cc24c2e8943298d52a9187352cbc8d7f7c33b026993a59baa2529ff962",
+      "document_id": "60651a6bf843d204fcb53b207e83b8d5536cee570263302287e80751fa73d833",
       "download": null,
-      "effect_id": "effect:6bf92752ad99de798f744b78046a79843c503976ae05e5b243ea4ce9a8d085e3",
+      "effect_id": "effect:3f27ef6b35bf32c3021d747219693825fc8b68c2012b4a69db5f759e866b5bc9",
       "error_code": null,
       "evidence_refs": [
-        "browser-url:245cf094f10530f5efe767dc"
+        "browser-url:f9ff399e5d3b89d68f3efd9c"
       ],
-      "final_url": "http://127.0.0.1:58904/dashboard",
-      "idempotency_key": "idempotency:11f148ea294f0305ec30c8e5669a409295e179b28bd0274ab7ec5fff6dc42cbd",
-      "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
-      "payload_hash": "700608380c69acbb9fe8b257350052f55b2df1c160d5141ff566f701b80a35b1",
-      "provider_ref": "http://127.0.0.1:58904/dashboard",
+      "final_url": "http://127.0.0.1:51522/dashboard",
+      "idempotency_key": "idempotency:c78ee7fede9024ffd288663cb4115ab034123d20e510f2dc2974b322391cf4c4",
+      "page_revision": "6adb5076d21191978b6ebdde3b4c4369682b4dac916f5e1c736e32bbf67ef4e4",
+      "payload_hash": "8a133e18c7e5c142d4f587f58e903f86f70c181033bcaa8b9d97b7a209b3419f",
+      "provider_ref": "http://127.0.0.1:51522/dashboard",
       "readback": {
         "authority": "DATA_ONLY",
-        "final_url": "http://127.0.0.1:58904/dashboard",
-        "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
-        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "final_url": "http://127.0.0.1:51522/dashboard",
+        "page_revision": "6adb5076d21191978b6ebdde3b4c4369682b4dac916f5e1c736e32bbf67ef4e4",
+        "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
         "session_state": "AUTHENTICATED",
         "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
         "target_enabled": true,
@@ -136,18 +136,18 @@
       "readback_verified": true,
       "reconciled": true,
       "redirects": [
-        "http://127.0.0.1:58904/dashboard"
+        "http://127.0.0.1:51522/dashboard"
       ],
       "session": {
         "auth_marker_found": true,
-        "checked_at": "2026-09-16T08:43:55.308119Z",
-        "current_url": "http://127.0.0.1:58904/dashboard",
+        "checked_at": "2026-09-16T08:51:44.125073Z",
+        "current_url": "http://127.0.0.1:51522/dashboard",
         "owner_scope": "owner-local",
         "profile_id": "lane1-demo-profile",
         "reason": null,
         "restored": true,
-        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
-        "site_origin": "http://127.0.0.1:58904",
+        "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
+        "site_origin": "http://127.0.0.1:51522",
         "state": "AUTHENTICATED",
         "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
         "storage_state_present": true
@@ -159,14 +159,14 @@
       "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
       "target_count": 1,
       "target_id": "accept-order",
-      "target_ref": "http://127.0.0.1:58904/dashboard",
+      "target_ref": "http://127.0.0.1:51522/dashboard",
       "upload": null,
       "wait_state": null
     },
     "observed_outcome": "VERIFIED",
     "postcondition_results": [],
-    "provider_ref": "http://127.0.0.1:58904/dashboard",
-    "receipt_id": "receipt:effect:6bf92752ad99de798f744b78046a79843c503976ae05e5b243ea4ce9a8d085e3:attempt:1",
+    "provider_ref": "http://127.0.0.1:51522/dashboard",
+    "receipt_id": "receipt:effect:3f27ef6b35bf32c3021d747219693825fc8b68c2012b4a69db5f759e866b5bc9:attempt:1",
     "state": "VERIFIED",
     "step_id": "recovered",
     "workflow_id": "workflow.lane1-demo",
