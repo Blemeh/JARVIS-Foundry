@@ -1,11 +1,12 @@
 {
   "lane": "lane-4-v14-composition",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "783f808756778acb6b45a81ee09292b1a97a63d8",
+  "final_sha": "fe04cf80a63178964566d811996e6773ebf9f212",
   "branch": "candidate/max-lane-4-v14-compose-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-4-v14-compose-20260915",
   "commits": [
-    "783f808756778acb6b45a81ee09292b1a97a63d8"
+    "783f808756778acb6b45a81ee09292b1a97a63d8",
+    "fe04cf80a63178964566d811996e6773ebf9f212"
   ],
   "files_changed": [
     "src/jarvis_foundry/fabric/model.py",
