@@ -499,22 +499,88 @@ def materialize_portfolio_selection(
     # Both steps stay under the canonical MissionLoop and ordered immutable
     # contracts; no parallel mission engine or manual continuation is added.
     if kind == "OWNER_GOAL":
-        goal_token = hashlib.sha256(
-            f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
-        plan_name = f".jarvis/owner-goals/{goal_token}/plan.md"
-        outcome_name = f".jarvis/owner-goals/{goal_token}/outcome.md"
         metadata = dict(item.get("metadata") or {})
-        success = tuple(
-            str(value) for value in metadata.get("success_criteria") or ()
-            if str(value).strip())
-        objective_criteria = success or (
-            f"the registered resource satisfies the owner objective: {objective}",)
+        recipe_id = str(metadata.get("recipe_id") or "").strip()
         provenance = {
             "decision_id": decision_id,
             "portfolio_item_id": item_id,
             "portfolio_class": kind,
             "goal_id": metadata.get("goal_id"),
         }
+        if recipe_id:
+            params = dict(metadata.get("recipe_params") or {})
+            artifact = str(
+                params.get("artifact_target")
+                or params.get("target")
+                or "research/owner-goal-artifact.md"
+            ).strip() or "research/owner-goal-artifact.md"
+            envelope = json.dumps(
+                {
+                    "recipe_id": recipe_id,
+                    "params": params,
+                    "mission_id": mission_id,
+                },
+                ensure_ascii=True,
+                sort_keys=True,
+            )
+            execute = MissionStepContract(
+                mission_id=mission_id,
+                step_id="01-workflow",
+                version=1,
+                resource_id=resource_id,
+                capability="cap.workflow.run",
+                target_relative_path=artifact,
+                instructions=envelope,
+                expected_effects=(
+                    f"named recipe {recipe_id} completes through workflow.run",
+                    f"{artifact} exists after independent verification",
+                ),
+                rollback={
+                    "method": "revert registered-resource recipe effects",
+                    "reversible": True,
+                },
+                risk_class="C1",
+                verification_criteria=tuple(
+                    str(value)
+                    for value in metadata.get("success_criteria") or ()
+                    if str(value).strip()
+                ) or (
+                    f"{artifact} exists",
+                    "workflow.run nested receipts are independently verified",
+                ),
+                expected_artifacts=(artifact,),
+                forbidden_paths=(),
+                recorded_by="supervisor",
+                source="owner-goal-admission",
+                provenance={**provenance, "recipe_id": recipe_id},
+            )
+            record_step_contract(database, execute)
+            database.append(Event.create(
+                "portfolio.selection_materialized",
+                {
+                    "decision_id": decision_id,
+                    "item_id": item_id,
+                    "kind": kind,
+                    "mission_id": mission_id,
+                    "contract_ids": [execute.contract_id],
+                    "goal_id": metadata.get("goal_id"),
+                    "recipe_id": recipe_id,
+                },
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+            ))
+            return {"materialized": True, "mission_id": mission_id,
+                    "blocked_reason": None}
+        goal_token = hashlib.sha256(
+            f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
+        plan_name = f".jarvis/owner-goals/{goal_token}/plan.md"
+        outcome_name = f".jarvis/owner-goals/{goal_token}/outcome.md"
+        success = tuple(
+            str(value) for value in metadata.get("success_criteria") or ()
+            if str(value).strip())
+        objective_criteria = success or (
+            f"the registered resource satisfies the owner objective: {objective}",)
         plan = MissionStepContract(
             mission_id=mission_id,
             step_id="01-plan",

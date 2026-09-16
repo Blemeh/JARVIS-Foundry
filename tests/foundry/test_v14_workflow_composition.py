@@ -41,7 +41,7 @@ def _intent(*actions: str) -> TaskIntent:
     return TaskIntent(task_id="lane4-test", required_actions=tuple(actions))
 
 
-def test_recipe_registry_lists_seven_valid_recipes() -> None:
+def test_recipe_registry_lists_registered_valid_recipes() -> None:
     listed = list_recipes()
     ids = sorted(item["recipe_id"] for item in listed)
     assert ids == [
@@ -52,6 +52,7 @@ def test_recipe_registry_lists_seven_valid_recipes() -> None:
         "v14.research_to_artifact",
         "v14.research_to_docx",
         "v14.research_to_xlsx",
+        "v16.bounded_note",
     ]
     for item in listed:
         assert validate_recipe(load_recipe(item["recipe_id"])) == []

@@ -392,6 +392,36 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
         },
         "tags": ("v14", "artifact", "repo"),
     },
+    {
+        "recipe_id": "v16.bounded_note",
+        "version": "1.0.0",
+        "description": "Write one bounded note and independently read it back.",
+        "required_capabilities": ("file.write", "file.read"),
+        "parameters": {
+            "target": {"required": True, "description": "Owned-root note path."},
+            "content": {"required": True, "description": "Exact note body."},
+        },
+        "steps": (
+            {
+                "step_id": "write",
+                "action_kind": "file.write",
+                "payload": {
+                    "target": "$params.target",
+                    "content": "$params.content",
+                },
+            },
+            {
+                "step_id": "verify",
+                "action_kind": "file.read",
+                "payload": {"target": "$write.target"},
+            },
+        ),
+        "outputs": {
+            "target": "$write.target",
+            "content_hash": "$verify.content_hash",
+        },
+        "tags": ("v16", "campaign", "bounded"),
+    },
 )
 
 

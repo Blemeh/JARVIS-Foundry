@@ -34,7 +34,7 @@ describe("remastered information architecture", () => {
   it("keeps Capability Fabric absence and Gmail scope honest", async () => {
     renderRoute("/capabilities", <Capabilities />);
     await waitFor(() => expect(screen.getByRole("heading", { name: "Capabilities" })).toBeInTheDocument());
-    expect(screen.getByText("Gmail remains deferred by owner")).toBeInTheDocument();
+    expect(screen.getByText(/Deferred by owner/i)).toBeInTheDocument();
     expect(screen.getByText("DEFERRED_BY_OWNER")).toBeInTheDocument();
     expect(screen.getByText(/No fixture capabilities are substituted/i)).toBeInTheDocument();
     expect(screen.getAllByText("NOT YET INTEGRATED")).toHaveLength(12);

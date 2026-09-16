@@ -22,6 +22,6 @@ The repository execution pointer still names V11 A3/A4 and frozen-roadmap decisi
 
 ## Classification summary before port
 
-The machine-readable ledger is authoritative for every row. Initial counts: 13 `PORT_EXACT`, 7 `PORT_SEMANTIC`, 1 `ALREADY_REPRESENTED`, 4 `SUPERSEDED_BY_COMBINED_IMPLEMENTATION`, 4 `EVIDENCE_ONLY`, 3 `DEFER_LIVE_ONLY`, 1 `REJECT_WITH_REASON`, and 1 `BLOCKED`.
+The machine-readable ledger is authoritative for every row. Counts: 15 `PORT_EXACT`, 5 `PORT_SEMANTIC`, 1 `ALREADY_REPRESENTED`, 3 `SUPERSEDED_BY_COMBINED_IMPLEMENTATION`, 3 `EVIDENCE_ONLY`, 3 `DEFER_LIVE_ONLY`, 1 `REJECT_WITH_REASON`, and 1 `BLOCKED`.
 
 No lane is accepted by commit count. Source behavior, effect identity, owner authority, verifier truth, STOP semantics, and recovery durability determine acceptance.

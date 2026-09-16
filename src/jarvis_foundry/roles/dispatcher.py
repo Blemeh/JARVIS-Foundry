@@ -2827,7 +2827,7 @@ class RoleDispatcher:
                 )
 
         decision = None
-        from ..fabric.adapter import resolve_general_work_dispatch
+        from ..fabric.adapter import resolve_fabric_action, resolve_general_work_dispatch
 
         local_fabric = resolve_general_work_dispatch(
             self.database,
@@ -2836,6 +2836,12 @@ class RoleDispatcher:
             step_id=step_id,
             capability=capability,
         )
+        if local_fabric is None:
+            action = resolve_fabric_action(capability, self.database)
+            if action is not None and (
+                str(capability).startswith("cap.") or action == "workflow.run"
+            ):
+                local_fabric = (action, capability, None)
         if local_fabric is not None:
             local_action, local_capability, _instructions = local_fabric
             local_candidate = ProviderRouteCandidate(

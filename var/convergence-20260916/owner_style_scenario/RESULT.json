@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "artifact_exists": true,
+    "authenticated_source_recorded": true,
+    "contract_is_workflow_run": true,
+    "executive_admitted_goal": true,
+    "mission_loop_passed": true,
+    "mission_materialized": true,
+    "owner_control_applied": true,
+    "owner_notepad_untouched": true,
+    "remote_matches_worktree": true
+  },
+  "contract_step": "01-workflow",
+  "cycle_reason": "highest executable portfolio value",
+  "cycle_status": "MISSION_MATERIALIZED",
+  "directive_id": "owner-71d1829bb6e29e1198e141e1",
+  "local_head": "3d0a66bacac8ceee19832c47a743741042b01769",
+  "mission_id": "mission-c18ca6b957f6",
+  "objective_id": "owner-goal:owner-71d1829bb6e29e1198e141e1",
+  "outcome": "PASSED",
+  "passed": true,
+  "reason": null,
+  "remote_head": "3d0a66bacac8ceee19832c47a743741042b01769",
+  "remote_lookup_error": null,
+  "schema": "jarvis.owner-style.converged-real-scenario.v1"
+}

@@ -268,6 +268,8 @@ def try_fabric_dispatch(
     structured_only: bool = False,
     mcp_backend=None,
     mcp_mutation_verifier=None,
+    operator_executable_allowlist: tuple[str | Path, ...] = (),
+    browser_execution_authorization=None,
 ) -> RoleResult | None:
     """Run a mapped fabric action or return None so the inner adapter can."""
     dispatch_manifest = manifest
@@ -292,7 +294,8 @@ def try_fabric_dispatch(
             ),
         )
     role_allowed = manifest.role in {"builder", "repair"} or (
-        manifest.role == "verifier" and action in GENERAL_WORK_ACTIONS
+        manifest.role == "verifier"
+        and action in {*GENERAL_WORK_ACTIONS, "workflow.run"}
     )
     if not role_allowed:
         return None
@@ -317,6 +320,29 @@ def try_fabric_dispatch(
                 reason="selected MCP capability requires a structured Fabric payload",
             )
         return None
+    if manifest.role == "verifier" and action == "workflow.run":
+        missing = [
+            name
+            for name in manifest.expected_artifacts
+            if not (owned_root / name).is_file()
+        ]
+        matches = not missing
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=COMPLETED,
+            provider="fabric",
+            model="local",
+            verdict=VERDICT_PASS if matches else VERDICT_FAIL,
+            evidence=(
+                f"fabric:{action}",
+                "verification:independent-artifact-presence",
+                f"verified:{'MATCH' if matches else 'MISMATCH'}",
+            ),
+            error_class=None if matches else "workflow_artifact_missing",
+            error_detail=None if matches else f"missing artifacts: {missing}",
+            identity_transition_authorized=True,
+        )
     if manifest.role == "verifier" and action in ARTIFACT_ACTIONS:
         probe_ctx = ExecutorContext(
             database=database,
@@ -546,14 +572,16 @@ def try_fabric_dispatch(
         return None
     heartbeat()
     try:
+        grant = browser_execution_authorization
+        if grant is None:
+            grant = browser_execution_authorization_from_environment()
         ctx = ExecutorContext(
             database=database,
             owned_root=owned_root,
             mcp_backend=mcp_backend,
             mcp_mutation_verifier=mcp_mutation_verifier,
-            browser_execution_authorization=(
-                browser_execution_authorization_from_environment()
-            ),
+            browser_execution_authorization=grant,
+            operator_executable_allowlist=tuple(operator_executable_allowlist),
             **github_write_dispatch_settings().executor_kwargs(),
         )
         receipt = execute_for_spine(
@@ -644,6 +672,8 @@ class FabricRoleAdapter:
         structured_only: bool = False,
         mcp_backend=None,
         mcp_mutation_verifier=None,
+        operator_executable_allowlist: tuple[str | Path, ...] = (),
+        browser_execution_authorization=None,
     ) -> None:
         self.database = database
         self.owned_root = Path(owned_root).expanduser().resolve()
@@ -651,6 +681,8 @@ class FabricRoleAdapter:
         self.structured_only = structured_only
         self.mcp_backend = mcp_backend
         self.mcp_mutation_verifier = mcp_mutation_verifier
+        self.operator_executable_allowlist = tuple(operator_executable_allowlist)
+        self.browser_execution_authorization = browser_execution_authorization
 
     def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
         root = owned_root_for_manifest(
@@ -669,6 +701,8 @@ class FabricRoleAdapter:
             structured_only=self.structured_only,
             mcp_backend=self.mcp_backend,
             mcp_mutation_verifier=self.mcp_mutation_verifier,
+            operator_executable_allowlist=self.operator_executable_allowlist,
+            browser_execution_authorization=self.browser_execution_authorization,
         )
         if result is None:
             return self.inner.dispatch(manifest, heartbeat=heartbeat)

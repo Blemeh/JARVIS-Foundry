@@ -1349,12 +1349,24 @@ def generate_missions_for_objective(
             due_at=objective.deadline, owner_only=False, requires_verifier=True,
             evidence_refs=step.evidence_refs, provenance={**objective.provenance, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id},
             metadata={"executive_objective_id": objective_id, "executive_plan_id": plan.plan_id,
-                      "executive_step_id": step.step_id, "required_capabilities": list(step.required_capabilities),
+                      "executive_step_id": step.step_id,
+                      "required_capabilities": list(dict.fromkeys((
+                          *step.required_capabilities,
+                          *(
+                              str(value)
+                              for value in (objective.metadata.get("required_capabilities") or ())
+                              if str(value).strip()
+                          ),
+                          *(("cap.workflow.run",) if objective.metadata.get("recipe_id") else ()),
+                      ))),
                       "probation_capabilities": list(step.probation_capabilities),
                       "goal_id": objective.provenance.get("directive_id"),
                       "success_criteria": list(objective.success_criteria),
                       "constraints": list(objective.constraints),
-                      "time_horizon": objective.deadline},
+                      "time_horizon": objective.deadline,
+                      "recipe_id": objective.metadata.get("recipe_id"),
+                      "recipe_params": dict(objective.metadata.get("recipe_params") or {}),
+                      },
             source_type="supervisor", source_id=source_id,
         )
         request = {"request_id": item_id, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id, "item_id": item_id, "status": "REQUESTED"}
