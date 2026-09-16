@@ -247,6 +247,47 @@ def test_github_issue_crash_after_post_recovers_from_provider_readback(
     assert provider.write_calls == 1
 
 
+def test_completed_but_unaccepted_write_upgrades_through_reconciliation(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    seed_builtins(database)
+    blind_ctx = _ctx(
+        tmp_path,
+        database,
+        github_write=provider.write,
+        github_writes_enabled=True,
+        github_authorized_repositories=("owner/demo",),
+    )
+    dispatched = execute_action(
+        database, blind_ctx, _intent("github.issue.create"),
+        "github.issue.create", _issue_payload(),
+    )
+    action_key = str(dispatched.claimed_effect["action_key"])
+    assert dispatched.claimed_effect["claimed"] == "COMPLETED"
+    assert dispatched.claimed_effect["readback_status"] == "NOT_TESTED"
+    assert dispatched.verified.value == "MISMATCH"
+    assert "accepted" not in effect_state(database, action_key)
+    assert provider.write_calls == 1
+
+    recovered = execute_action(
+        database, _write_ctx(tmp_path, database, provider),
+        _intent("github.write.reconcile"),
+        "github.write.reconcile",
+        {
+            "original_effect_id": action_key,
+            "original_action": "github.issue.create",
+            "request": _issue_payload(),
+        },
+    )
+    assert recovered.success is True
+    assert recovered.claimed_effect["accepted"] is True
+    assert recovered.claimed_effect["readback"]["status"] == "MATCH"
+    assert provider.write_calls == 1
+    assert effect_state(database, action_key)["accepted"] is True
+
+
 def test_github_write_reconcile_requires_exact_intent(tmp_path: Path) -> None:
     database = _db(tmp_path)
     provider = FakeIssueProvider()
