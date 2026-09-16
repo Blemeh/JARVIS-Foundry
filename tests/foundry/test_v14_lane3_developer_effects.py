@@ -247,6 +247,61 @@ def test_github_issue_crash_after_post_recovers_from_provider_readback(
     assert provider.write_calls == 1
 
 
+def test_reconcile_then_write_on_same_context_is_not_blocked(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    seed_builtins(database)
+    payload = _issue_payload()
+    request = _provider_request(database, payload)
+
+    def lost_response() -> dict[str, Any]:
+        provider.write(
+            "/repos/owner/demo/issues",
+            {"title": payload["title"], "body": payload["body"]},
+        )
+        raise TimeoutError("response lost after the provider accepted the issue")
+
+    execute_fabric_effect(
+        database,
+        action_key=request,
+        system_id="github",
+        target_ref="github.issue.create",
+        payload_hash="lane3",
+        kind="github.issue.create",
+        connector_id="fabric:cap.github.issue.create",
+        request_identity={
+            "action_kind": "github.issue.create",
+            "input_hash": _fabric_hash(payload),
+        },
+        perform=lost_response,
+        claim_ttl_s=0.01,
+    )
+
+    shared_ctx = _write_ctx(tmp_path, database, provider)
+    recovered = execute_action(
+        database, shared_ctx, _intent("github.write.reconcile"),
+        "github.write.reconcile",
+        {
+            "original_effect_id": request,
+            "original_action": "github.issue.create",
+            "request": payload,
+        },
+    )
+    assert recovered.success is True
+    assert shared_ctx.github_write_adapter is not None
+
+    new_payload = _issue_payload(title="Second issue on the same context")
+    created = execute_action(
+        database, shared_ctx, _intent("github.issue.create"),
+        "github.issue.create", new_payload,
+    )
+    assert created.success is True
+    assert created.claimed_effect["claimed"] == "COMPLETED"
+    assert provider.write_calls == 2
+
+
 def test_completed_but_unaccepted_write_upgrades_through_reconciliation(
     tmp_path: Path,
 ) -> None:

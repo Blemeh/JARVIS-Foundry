@@ -720,10 +720,13 @@ def github_write_reconcile(
         transport = ctx.github_write
         if transport is None and ctx.github_writes_enabled:
             transport = gh_api_write_transport
+        # Recovery never writes, but the cached adapter keeps the context's
+        # real dispatch policy so a later write on the same context is not
+        # wrongly refused by an adapter created here.
         adapter = GitHubWriteAdapter(
             transport=transport or gh_api_write_transport,
             read_transport=ctx.github_api,
-            dispatch_enabled=False,
+            dispatch_enabled=ctx.github_writes_enabled,
             authorized_repositories=ctx.github_authorized_repositories,
         )
         ctx.github_write_adapter = adapter
