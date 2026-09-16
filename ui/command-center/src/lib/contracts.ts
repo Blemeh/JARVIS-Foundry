@@ -386,6 +386,33 @@ export interface OwnerGoalResult {
   error?: string;
 }
 
+export interface VoiceTextResult {
+  status: string;
+  transcript: string;
+  responseText: string;
+  commandType?: string | null;
+  language?: string;
+  directiveId?: string;
+  eventId?: string;
+  error?: string;
+}
+
+export interface OwnerUiPrefs {
+  locale: "en" | "sq";
+  notificationRouting: "in-app" | "in-app-toast" | "off";
+}
+
+export interface AttentionToastDelivery {
+  status: string;
+  mode?: string;
+  results: Array<{
+    status: string;
+    attention_id: string;
+    delivered: boolean;
+    detail: string;
+  }>;
+}
+
 export type OwnerDelegationMode = "TELL_ME" | "PREPARE" | "HANDLE" | "WATCH";
 
 export type OwnerAttentionClassification =
@@ -894,6 +921,11 @@ export interface JarvisClient {
   submitOwnerGoal(objective: string, mode?: OwnerDelegationMode): Promise<OwnerGoalResult>;
   pauseOperations(reason: string): Promise<OwnerGoalResult>;
   submitVeto(text: string): Promise<OwnerGoalResult>;
+  submitVoiceText(text: string, languageHint?: string): Promise<VoiceTextResult>;
+  saveOwnerUiPrefs(prefs: OwnerUiPrefs): Promise<OwnerUiPrefs>;
+  getOwnerUiPrefs(): Promise<OwnerUiPrefs>;
+  deliverAttentionToasts(): Promise<AttentionToastDelivery>;
+  getAttentionToastStatus(): Promise<AttentionToastDelivery>;
   activateStop(reason: string): Promise<StopResult>;
   resumeOperations(targetDirectiveId?: string, reason?: string): Promise<{ accepted: boolean; error?: string }>;
   /** @deprecated simulated mode only — use activateStop in live mode */

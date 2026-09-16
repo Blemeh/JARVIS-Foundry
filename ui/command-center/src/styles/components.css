@@ -835,6 +835,43 @@
   opacity: 0.92;
 }
 
+.pause-banner-global {
+  position: sticky;
+  top: 0;
+  z-index: 39;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px var(--page-margin);
+  background: rgba(255, 196, 72, 0.16);
+  border-bottom: 1px solid var(--caution-amber, #ffc448);
+  color: var(--caution-amber, #ffc448);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.pause-banner-note {
+  font-size: 11px;
+  opacity: 0.92;
+}
+
+.pause-banner-resume {
+  margin-left: auto;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: 650 11px/1 var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.pause-banner-resume:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .topbar-stop-chip {
   display: inline-flex;
   align-items: center;

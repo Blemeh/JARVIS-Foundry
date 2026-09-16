@@ -356,4 +356,40 @@ describe("RealJarvisRuntimeAdapter", () => {
     expect(result.status).toBe("EMPTY");
     expect(client.connection.connected).toBe(true);
   });
+
+  it("submits typed voice text through the Command Center voice-text seam", async () => {
+    let voiceBody: Record<string, unknown> | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/control-session")) {
+        return new Response(JSON.stringify({ status: "READY" }), { status: 200 });
+      }
+      if (url.endsWith("/voice-text")) {
+        voiceBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response(JSON.stringify({
+          status: "COMPLETED",
+          transcript: "ndalo",
+          response_text: "U ndal.",
+          command_type: "STOP_EVERYTHING",
+          language: "sq",
+          directive_id: "d-stop",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/command-center")) {
+        return new Response(JSON.stringify(snapshot), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    }));
+    const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
+    await expect(client.submitVoiceText("ndalo", "sq")).resolves.toMatchObject({
+      status: "COMPLETED",
+      responseText: "U ndal.",
+      commandType: "STOP_EVERYTHING",
+      directiveId: "d-stop",
+    });
+    expect(voiceBody).toEqual({ text: "ndalo", language_hint: "sq" });
+  });
 });

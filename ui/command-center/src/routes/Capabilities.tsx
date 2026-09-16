@@ -22,6 +22,7 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 type CapabilityRow = { spec: Record<string, unknown>; metadata: Record<string, unknown> | null; readiness: Record<string, unknown> };
 type GroupName = "Web" | "Browser" | "Code" | "GitHub" | "Files" | "Documents" | "Data" | "System" | "Desktop" | "MCP" | "Providers" | "Self-acquired";
@@ -77,6 +78,7 @@ function provenance(row: CapabilityRow): string {
 
 function CapabilitiesContent(data: OverviewData) {
   const { sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [selected, setSelected] = useState<CapabilityRow | null>(null);
   const rawRows = data.capabilityFabric?.capabilities;
   const groups = useMemo<Group[]>(() => {
@@ -89,12 +91,12 @@ function CapabilitiesContent(data: OverviewData) {
   return (
     <div className="shell-content rm-page rm-capabilities">
       <header className="rm-page-head">
-        <div><h1>Capabilities</h1><p>What JARVIS can call, what it has actually verified, and where every capability came from.</p></div>
+        <div><h1>{t("page.capabilities")}</h1><p>{t("page.capabilitiesSubtitle")}</p></div>
         <div className="rm-page-source"><span>{sourceModeLabel(sourceMode)} · {surfaceStatus}</span><small>{surfaceAuthority}</small></div>
       </header>
 
       <aside className="rm-gmail-policy">
-        <MailX size={18} aria-hidden="true" /><div><strong>Gmail remains deferred by owner</strong><p>Not probed, not activated, and never treated as a blocker. This is a scope constraint, not a runtime readiness claim.</p></div><span>DEFERRED_BY_OWNER</span>
+        <MailX size={18} aria-hidden="true" /><div><strong>{t("settings.gmail")}</strong><p>{t("settings.gmailBody")}</p></div><span>DEFERRED_BY_OWNER</span>
       </aside>
 
       <div className="rm-capability-summary">

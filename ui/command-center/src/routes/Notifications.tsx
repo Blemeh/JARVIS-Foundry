@@ -55,7 +55,7 @@ export function Notifications() {
     <div className="shell-content">
       <SectionHeader
         title={t("notify.title")}
-        description="Only meaningful JARVIS events appear here: verification failures, blocked missions, worker crashes and recoveries, provider degradation, memory conflicts, STOP, and promotion or rollback state. Every item links to the object that caused it."
+        description={t("notify.description")}
         actions={
           <>
             {sourceMode === "SIMULATED" ? (

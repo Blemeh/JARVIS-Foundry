@@ -1,8 +1,11 @@
 """Lane 5 bilingual matcher, remainder preservation, and owner-control mapping."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from urllib.request import Request, urlopen
 
+from jarvis_foundry.command_center import CommandCenterServer
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.owner_controls import sign_command
@@ -50,6 +53,19 @@ def test_matcher_table_and_remainder_preservation() -> None:
         assert matched.language == language, text
         assert matched.exact_text == exact_text, (text, matched.exact_text)
         assert matched.remainder == remainder, (text, matched.remainder)
+
+
+def test_wake_prefix_is_stripped_before_match() -> None:
+    for text, command_type, language in (
+        ("jarvis, stop", COMMAND_STOP, "en"),
+        ("hey jarvis pause", COMMAND_PAUSE, "en"),
+        ("ok jarvis ndalo", COMMAND_STOP, "sq"),
+        ("JARVIS vazhdo", COMMAND_RESUME, "sq"),
+    ):
+        matched = match_owner_utterance(text)
+        assert matched.kind == KIND_COMMAND, text
+        assert matched.command_type == command_type, text
+        assert matched.language == language, text
 
 
 def test_status_queries_are_not_owner_commands() -> None:
@@ -168,3 +184,56 @@ def test_toast_router_dedups_attention_identity(tmp_path: Path) -> None:
     restarted = AttentionToastRouter(adapter, mode=MODE_IN_APP_TOAST, store_path=tmp_path / "seen.json")
     third = restarted.emit(item)
     assert third.status == "DEDUPED"
+
+
+def test_command_center_voice_text_prefs_and_attention_toasts(tmp_path: Path) -> None:
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    secret = b"lane5-cc-voice-secret-bytes-32ok"
+    server = CommandCenterServer(database, stop_path=tmp_path / "STOP", runtime_home=tmp_path)
+    server.configure_owner(secret)
+    adapter = _MemoryToast()
+    server._handler.toast_adapter = adapter
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        voice_body = json.dumps({"text": "jarvis ndalo", "language_hint": "sq"}).encode()
+        with urlopen(Request(f"{base}/api/voice-text", data=voice_body, method="POST"), timeout=15) as response:
+            spoken = json.loads(response.read())
+        assert spoken["status"] == "COMPLETED"
+        assert spoken["command_type"] == COMMAND_STOP
+        assert spoken["response_text"] == "U ndal."
+        assert (tmp_path / "STOP").exists()
+
+        prefs_body = json.dumps({"locale": "sq", "notification_routing": "in-app-toast"}).encode()
+        with urlopen(Request(f"{base}/api/owner-ui-prefs", data=prefs_body, method="POST"), timeout=15) as response:
+            prefs = json.loads(response.read())
+        assert prefs["status"] == "APPLIED"
+        assert prefs["locale"] == "sq"
+        with urlopen(f"{base}/api/owner-ui-prefs", timeout=15) as response:
+            loaded = json.loads(response.read())
+        assert loaded["locale"] == "sq"
+
+        def fake_snapshot(self):
+            return {
+                "decision_queue": {
+                    "open": [{
+                        "queue_id": "attention:cc-1",
+                        "classification": "DECISION_REQUIRED",
+                        "summary": "Need a veto decision",
+                    }],
+                },
+            }
+
+        server._handler._cached_snapshot = fake_snapshot
+        with urlopen(Request(f"{base}/api/attention-toasts", data=b"{}", method="POST"), timeout=15) as response:
+            delivery = json.loads(response.read())
+        assert delivery["status"] == "READY"
+        assert delivery["mode"] == "in-app-toast"
+        assert delivery["results"][0]["status"] == "EMITTED"
+        assert adapter.shown == [("DECISION_REQUIRED", "Need a veto decision", "attention:cc-1")]
+        with urlopen(f"{base}/api/attention-toasts", timeout=15) as response:
+            last = json.loads(response.read())
+        assert last["results"][0]["attention_id"] == "attention:cc-1"
+    finally:
+        server.close()

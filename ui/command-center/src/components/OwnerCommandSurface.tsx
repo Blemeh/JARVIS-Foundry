@@ -5,6 +5,7 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import type { OwnerGoalResult } from "../lib/contracts";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { LocaleToggle, useLocale } from "../i18n/LocaleContext";
+import { VoiceTalkButton } from "./VoiceTalkButton";
 
 type CommandKind = "GOAL" | "PAUSE" | "VETO_ACTION";
 type CommandProgress =
@@ -82,6 +83,7 @@ export function OwnerCommandSurface() {
           <ArrowRight size={18} aria-hidden="true" />
         </button>
       </form>
+      <VoiceTalkButton />
 
       {progress.phase === "submitted" ? (
         <div className="owner-command-progress" role="status">

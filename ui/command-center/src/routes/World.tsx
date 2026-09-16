@@ -7,6 +7,7 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 type WorldSignal = {
   id: string;
@@ -117,6 +118,7 @@ function signalsFrom(data: OverviewData): { signals: WorldSignal[]; authority: s
 
 function WorldContent(data: OverviewData) {
   const { sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [selected, setSelected] = useState<WorldSignal | null>(null);
   const projection = useMemo(() => signalsFrom(data), [data]);
   const counts = record(data.worldIntelligence?.counts);
@@ -126,7 +128,7 @@ function WorldContent(data: OverviewData) {
   return (
     <div className="shell-content rm-page rm-world">
       <header className="rm-page-head">
-        <div><h1>World</h1><p>What JARVIS has observed, how old it is, why it matters, and whether it changed action.</p></div>
+        <div><h1>{t("page.world")}</h1><p>{t("page.worldSubtitle")}</p></div>
         <div className="rm-page-source"><span>{sourceModeLabel(sourceMode)}</span><small>{projection.authority}</small></div>
       </header>
 

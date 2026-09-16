@@ -8,6 +8,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { EmptyState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { useRouteQuery } from "../hooks/useRouteQuery";
+import { useLocale } from "../i18n/LocaleContext";
 
 function num(value: unknown): string {
   return typeof value === "number" ? value.toFixed(3) : "—";
@@ -283,6 +284,7 @@ function BriefingPacket({ packet }: { packet: Record<string, unknown> | null }) 
 
 export function Executive() {
   const { client, version } = useCommandCenter();
+  const { t } = useLocale();
   const executiveQuery = useRouteQuery(
     () =>
       Promise.all([
@@ -301,15 +303,15 @@ export function Executive() {
   return (
     <RouteQueryGate
       query={executiveQuery}
-      loadingLabel="Loading executive decisions"
-      errorLabel="Executive decisions unavailable"
+      loadingLabel={t("page.executiveLoading")}
+      errorLabel={t("page.executiveUnavailable")}
       surface="Executive decision spine"
       shellClass="space-y-4"
     >
       {({ decisions, epoch, authority, ownerSurface, autonomy }) => (
     <div className="space-y-4">
       <SectionHeader
-        title="Executive"
+        title={t("page.executive")}
         description={
           "Decision spine projection from the durable ledger. " +
           `Activation epoch: ${epoch ?? "none"} · admission authority: ${authority}.`
@@ -319,8 +321,8 @@ export function Executive() {
       <AutonomySurface autonomy={autonomy} />
       {decisions.length === 0 ? (
         <EmptyState
-          label="No executive decisions recorded"
-          detail="The Executive has not yet selected a mission in this ledger. This is an honest empty state, not an error."
+          label={t("page.executiveEmpty")}
+          detail={t("page.executiveEmptyDetail")}
         />
       ) : (
         <div className="space-y-3">

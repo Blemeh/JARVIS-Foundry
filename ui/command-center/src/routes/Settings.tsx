@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Database, Eye, MailX, Radio, ShieldCheck } from "lucide-react";
 import { RouteQueryGate } from "../components/RouteQueryGate";
@@ -7,10 +8,24 @@ import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { LocaleToggle, useLocale } from "../i18n/LocaleContext";
 import type { NotificationRouting } from "../i18n/catalog";
+import type { AttentionToastDelivery } from "../lib/contracts";
 
 function SettingsContent(data: OverviewData) {
-  const { sourceMode, connection, streamConnected } = useCommandCenter();
+  const { client, sourceMode, connection, streamConnected } = useCommandCenter();
   const { t, routing, setRouting } = useLocale();
+  const [toastStatus, setToastStatus] = useState<AttentionToastDelivery | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void client.getAttentionToastStatus().then((status) => {
+      if (!cancelled) setToastStatus(status);
+    }).catch(() => {
+      if (!cancelled) setToastStatus({ status: "UNAVAILABLE", results: [] });
+    });
+    return () => { cancelled = true; };
+  }, [client, routing]);
+  const toastSummary = toastStatus
+    ? `${toastStatus.status}${toastStatus.mode ? ` · ${toastStatus.mode}` : ""}${toastStatus.results.length ? ` · ${toastStatus.results.length} items` : ""}`
+    : t("settings.toastNotRun");
   const rows = [
     { icon: Database, label: t("settings.dataSource"), value: sourceModeLabel(sourceMode), detail: connection.error ?? (connection.lastFetchedAt ? `Last fetched ${connection.lastFetchedAt}` : "No live fetch timestamp") },
     { icon: Radio, label: t("settings.updateChannel"), value: streamConnected ? "CONNECTED" : "PAUSED", detail: streamConnected ? "Projection refresh events are connected." : "Updates are paused; displayed state may be stale." },
@@ -48,6 +63,7 @@ function SettingsContent(data: OverviewData) {
             <option value="off">{t("settings.notifyOff")}</option>
           </select>
           <small>{t("settings.notifyHelp")}</small>
+          <small>{t("settings.toastStatus")}: {toastSummary}</small>
         </div>
         <div><h2>{t("settings.theme")}</h2><p>{t("settings.themeBody")}</p><small>{t("settings.themeNote")}</small></div>
         <div><h2>{t("settings.permissions")}</h2><p>{t("settings.permissionsBody")}</p><small>{t("settings.permissionsNote")}</small></div>

@@ -2438,6 +2438,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
     timeline_limit: int = 200
     discovery_cycle_enabled: bool | None = None
     static_root: Path | None = None
+    toast_adapter: Any = None
+    last_toast_delivery: dict[str, Any] = {"status": "NOT_RUN", "results": []}
     CONTROL_SESSION_COOKIE = "JARVIS_OWNER_SESSION"
 
     def _write_body(self, body: bytes) -> bool:
@@ -2730,6 +2732,15 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 return
             self._json_response({"status": "FOUND", "kind": record_kind, "record": record}, status=200)
             return
+        if route == "/api/owner-ui-prefs":
+            from .owner_ui import load_owner_ui_prefs
+            prefs = load_owner_ui_prefs(self.runtime_home or Path(self.database.path).resolve().parent)
+            self._json_response({"status": "READY", **prefs}, status=200)
+            return
+        if route == "/api/attention-toasts":
+            last = getattr(type(self), "last_toast_delivery", {"status": "NOT_RUN", "results": []})
+            self._json_response(dict(last), status=200)
+            return
         if route == "/api/health":
             health = build_health_snapshot(
                 self.database, stop_path=self.stop_path,
@@ -2931,7 +2942,13 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         route = self.path.split("?", 1)[0]
-        if route not in {"/api/controls", "/api/owner-command"}:
+        if route not in {
+            "/api/controls",
+            "/api/owner-command",
+            "/api/voice-text",
+            "/api/owner-ui-prefs",
+            "/api/attention-toasts",
+        }:
             self.send_error(404)
             return
         if not self.owner_secret:
@@ -2951,7 +2968,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 raise ValueError("JSON object required")
-            if route == "/api/owner-command":
+            if route in {"/api/owner-command", "/api/voice-text", "/api/owner-ui-prefs", "/api/attention-toasts"}:
                 if not _is_loopback(self.client_address[0]):
                     raise OwnerAuthenticationError("owner-command is localhost-only")
                 origin = self.headers.get("Origin")
@@ -2964,6 +2981,52 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                         raise OwnerAuthenticationError(
                             "owner-command browser session is not authenticated"
                         )
+            if route == "/api/owner-ui-prefs":
+                from .owner_ui import save_owner_ui_prefs
+                prefs = save_owner_ui_prefs(
+                    self.runtime_home or Path(self.database.path).resolve().parent,
+                    payload,
+                )
+                self._json_response({"status": "APPLIED", **prefs}, status=200)
+                return
+            if route == "/api/attention-toasts":
+                from .owner_ui import deliver_open_attention_toasts, load_owner_ui_prefs, toast_store_path
+                runtime_home = self.runtime_home or Path(self.database.path).resolve().parent
+                prefs = load_owner_ui_prefs(runtime_home)
+                snapshot = self._cached_snapshot()
+                queue = snapshot.get("decision_queue") if isinstance(snapshot.get("decision_queue"), dict) else {}
+                results = deliver_open_attention_toasts(
+                    list(queue.get("open") or []),
+                    adapter=self.toast_adapter,
+                    mode=prefs["notification_routing"],
+                    store_path=toast_store_path(runtime_home),
+                )
+                delivery = {
+                    "status": "READY",
+                    "mode": prefs["notification_routing"],
+                    "results": results,
+                }
+                type(self).last_toast_delivery = delivery
+                self._json_response(delivery, status=200)
+                return
+            if route == "/api/voice-text":
+                from .voice import FixtureSTT, FixtureTTS, Transcript
+                from .voice_session import OwnerVoiceSession
+                text = str(payload.get("text") or payload.get("transcript") or "").strip()
+                if not text:
+                    raise ValueError("voice text required")
+                language_hint = str(payload.get("language_hint") or payload.get("language") or "en")
+                session = OwnerVoiceSession(
+                    self.database,
+                    owner_secret=self.owner_secret,
+                    stop_path=str(self.stop_path) if self.stop_path else None,
+                    stt=FixtureSTT(Transcript(text, language_hint)),
+                    tts=FixtureTTS(),
+                )
+                result = session.process_text(text, language_hint=language_hint)
+                type(self)._invalidate_snapshot_cache()
+                self._json_response(result if isinstance(result, dict) else {"status": "UNKNOWN"}, status=200)
+                return
             service = OwnerControlService(self.database, secret=self.owner_secret, stop_path=self.stop_path, owner_id=self.owner_id)
             command_type = str(payload.get("command_type", ""))
             target = payload.get("target")
@@ -3304,6 +3367,8 @@ class CommandCenterServer:
             if source_repo is not None else None)
         handler.discovery_cycle_enabled = discovery_cycle_enabled
         handler.static_root = Path(static_root).resolve() if static_root else None
+        handler.toast_adapter = None
+        handler.last_toast_delivery = {"status": "NOT_RUN", "results": []}
         self._handler = handler
         self.httpd = ThreadingHTTPServer((host, port), handler)
         self.thread: threading.Thread | None = None

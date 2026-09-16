@@ -7,6 +7,7 @@ cd C:\temp\JARVIS\max-lane-5-v15-human-interface-20260915
 python var/lane5-demo/voice_roundtrip.py
 python var/lane5-demo/owner_voice_demo.py
 python var/lane5-demo/toast_demo.py
+python var/lane5-demo/cc_voice_text.py
 ```
 
 ## Speech

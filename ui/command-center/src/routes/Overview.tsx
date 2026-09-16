@@ -21,6 +21,7 @@ import type { Mission } from "../lib/contracts";
 import { resolveNucleusState, type JarvisNucleusState } from "../lib/nucleusState";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -63,13 +64,14 @@ function metricValue(data: OverviewData, key: string): string {
 
 function OverviewContent(data: OverviewData) {
   const { sourceMode, stopActive, scenario, streamConnected, connection } = useCommandCenter();
+  const { t } = useLocale();
   const [focusOpen, setFocusOpen] = useState(false);
   const mission = activeMission(data.missions);
   const currentWork = data.autonomy.current_work;
   const candidateTitle = currentWork?.candidate?.title ?? null;
   const ownerGoal = data.ownerSurface?.goals[0];
   const durableGoal = text(ownerGoal?.exact_text) ?? text(ownerGoal?.objective);
-  const focusTitle = candidateTitle ?? mission?.title ?? durableGoal ?? "No active focus is recorded";
+  const focusTitle = candidateTitle ?? mission?.title ?? durableGoal ?? t("overview.noActiveFocus");
   const focusWhy =
     data.executive?.latest_decision?.reason ??
     data.autonomy.executive.wait_reason ??
@@ -155,26 +157,26 @@ function OverviewContent(data: OverviewData) {
             <span>{mission?.id ?? currentWork?.candidate?.candidate_id ?? "NO ACTIVE ID"}</span>
           </div>
           <h1 id="current-focus-heading">{focusTitle}</h1>
-          <p className="rm-focus-why"><strong>Why now</strong>{focusWhy}</p>
+          <p className="rm-focus-why"><strong>{t("overview.whyNow")}</strong>{focusWhy}</p>
           <div className="rm-focus-meta">
             <span><Crosshair size={15} aria-hidden="true" />{lifecycleSuspended ? `Suspended at ${phase ?? "unknown phase"}` : phase ?? "Phase unknown"}</span>
             <span><Clock3 size={15} aria-hidden="true" />{compactAge(mission?.startedAt)}</span>
             <span><Eye size={15} aria-hidden="true" />Confidence {liveConfidence == null ? "UNKNOWN" : `${Math.round(liveConfidence * 100)}%`}</span>
           </div>
           <div className="rm-focus-next">
-            <span>Next</span><p>{nextAction}</p>
+            <span>{t("overview.nextLabel")}</span><p>{nextAction}</p>
             <button type="button" className="rm-text-action" onClick={() => setFocusOpen(true)}>
-              Focus mode <Focus size={15} aria-hidden="true" />
+              {t("overview.focusMode")} <Focus size={15} aria-hidden="true" />
             </button>
           </div>
           <div className="rm-focus-glance" aria-label="At a glance">
             <div className={attention || blockedMission ? "is-attention" : ""}>
-              <span>Needs you</span>
+              <span>{t("overview.needsYou")}</span>
               <strong>{attention?.summary ?? blockedMission?.title ?? "No owner attention reported"}</strong>
               <small>{attention?.consequence ?? blockedMission?.nextAction ?? (data.ownerSurface ? "JARVIS can continue within current constraints." : "Owner queue unavailable from this source.")}</small>
             </div>
             <div>
-              <span>Latest verified</span>
+              <span>{t("overview.latestVerified")}</span>
               {latestCompletedMission ? (
                 <Link to={`/missions/${latestCompletedMission.id}`}>{latestCompletedMission.title}</Link>
               ) : latestCompletionEvent ? (
@@ -203,14 +205,14 @@ function OverviewContent(data: OverviewData) {
       <section className={`rm-attention ${attention || blockedMission ? "rm-attention--open" : ""}`} aria-labelledby="attention-title">
         <div className="rm-attention-icon">{attention || blockedMission ? <CircleAlert size={19} aria-hidden="true" /> : <CheckCircle2 size={19} aria-hidden="true" />}</div>
         <div>
-          <h2 id="attention-title">{attention ? "Your attention is needed" : blockedMission ? "A blocked mission needs review" : "No owner decision is waiting"}</h2>
-          <p>{attention?.summary ?? attention?.consequence ?? blockedMission?.nextAction ?? (data.ownerSurface ? "JARVIS can continue within current constraints." : "Owner decision queue is not available from this source.")}</p>
+          <h2 id="attention-title">{attention ? t("overview.attentionNeeded") : blockedMission ? t("overview.blockedMission") : t("overview.noDecision")}</h2>
+          <p>{attention?.summary ?? attention?.consequence ?? blockedMission?.nextAction ?? (data.ownerSurface ? t("overview.canContinue") : "Owner decision queue is not available from this source.")}</p>
         </div>
-        {attention?.mission_id ? <Link to={`/missions/${attention.mission_id}`}>Review <ChevronRight size={15} /></Link> : blockedMission ? <Link to={`/missions/${blockedMission.id}`}>Inspect <ChevronRight size={15} /></Link> : <Link to="/you">Owner context <ChevronRight size={15} /></Link>}
+        {attention?.mission_id ? <Link to={`/missions/${attention.mission_id}`}>{t("overview.review")} <ChevronRight size={15} /></Link> : blockedMission ? <Link to={`/missions/${blockedMission.id}`}>{t("overview.inspect")} <ChevronRight size={15} /></Link> : <Link to="/you">{t("overview.ownerContext")} <ChevronRight size={15} /></Link>}
       </section>
 
       <section className="rm-today" aria-labelledby="today-title">
-        <div className="rm-section-heading"><h2 id="today-title">Today</h2><span>{streamConnected ? "Updates connected" : "Updates paused"}</span></div>
+        <div className="rm-section-heading"><h2 id="today-title">{t("overview.today")}</h2><span>{streamConnected ? t("overview.updatesConnected") : t("overview.updatesPaused")}</span></div>
         <div className="rm-today-strip">
           {today.map((item) => <div key={item.label}><span>{item.label}</span><strong>{item.value}</strong><small>{item.detail}</small></div>)}
         </div>
@@ -218,25 +220,25 @@ function OverviewContent(data: OverviewData) {
 
       <div className="rm-home-depth">
         <section className="rm-depth-section" aria-labelledby="completed-title">
-          <div className="rm-section-heading"><h2 id="completed-title">Recently completed</h2><Link to="/work?status=completed">All work <ArrowRight size={14} /></Link></div>
+          <div className="rm-section-heading"><h2 id="completed-title">{t("overview.recentlyCompleted")}</h2><Link to="/work?status=completed">{t("overview.allWork")} <ArrowRight size={14} /></Link></div>
           <div className="rm-record-list">
             {completed.slice(0, 3).map((item) => <Link key={item.id} to={`/missions/${item.id}`}><CheckCircle2 size={16} /><span><strong>{item.title}</strong><small>{item.id} · {item.nextAction}</small></span></Link>)}
             {completed.length === 0 && recentCompletionEvents.map((event) => <Link key={event.id} to={`/activity?event=${event.id}`}><CheckCircle2 size={16} /><span><strong>{event.title}</strong><small>{event.detail}</small></span></Link>)}
-            {completed.length === 0 && recentCompletionEvents.length === 0 ? <p className="rm-empty-line">No completed outcome is present in this projection.</p> : null}
+            {completed.length === 0 && recentCompletionEvents.length === 0 ? <p className="rm-empty-line">{t("overview.noCompleted")}</p> : null}
           </div>
         </section>
 
         <section className="rm-depth-section" aria-labelledby="discovered-title">
-          <div className="rm-section-heading"><h2 id="discovered-title">Discovered</h2><Link to="/world">Open world <ArrowRight size={14} /></Link></div>
+          <div className="rm-section-heading"><h2 id="discovered-title">{t("overview.discovered")}</h2><Link to="/world">{t("overview.openWorld")} <ArrowRight size={14} /></Link></div>
           <div className="rm-record-list">
             {signals.map((signal) => <Link key={signal.signal_id} to="/world"><Lightbulb size={16} /><span><strong>{signal.summary}</strong><small>{signal.salience} · score {signal.score ?? "UNKNOWN"}</small></span></Link>)}
             {signals.length === 0 && candidates.map((candidate) => <Link key={candidate.candidate_id} to={`/executive?candidate=${candidate.candidate_id}`}><Lightbulb size={16} /><span><strong>{candidate.title}</strong><small>{candidate.state} · {candidate.project ?? "project unknown"}</small></span></Link>)}
-            {signals.length === 0 && candidates.length === 0 ? <p className="rm-empty-line">No durable discovered signal is available from this source.</p> : null}
+            {signals.length === 0 && candidates.length === 0 ? <p className="rm-empty-line">{t("overview.noDiscovered")}</p> : null}
           </div>
         </section>
 
         <section className="rm-depth-section rm-depth-section--next" aria-labelledby="next-title">
-          <div className="rm-section-heading"><h2 id="next-title">What happens next</h2><Link to="/activity">Trace activity <ArrowRight size={14} /></Link></div>
+          <div className="rm-section-heading"><h2 id="next-title">{t("overview.next")}</h2><Link to="/activity">{t("overview.traceActivity")} <ArrowRight size={14} /></Link></div>
           <div className="rm-next-sequence">
             <span>01</span><p>{nextAction}</p>
             <span>02</span><p>{state === "VERIFYING" ? "Reconcile independent evidence before accepting an outcome." : "Verification remains required before any claimed outcome is trusted."}</p>
@@ -245,7 +247,7 @@ function OverviewContent(data: OverviewData) {
         </section>
       </div>
 
-      <Dialog open={focusOpen} title="Focus mode" onClose={() => setFocusOpen(false)} variant="focus">
+      <Dialog open={focusOpen} title={t("overview.focusMode")} onClose={() => setFocusOpen(false)} variant="focus">
         <div className={`rm-focus-mode rm-focus-mode--${state.toLowerCase()}`}>
           <section className="rm-focus-mode-hero" aria-labelledby="focus-mode-objective">
             <div className="rm-focus-mode-copy">

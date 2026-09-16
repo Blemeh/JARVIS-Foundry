@@ -29,6 +29,9 @@ import type {
   SystemOverview,
   TimelineEvent,
   TrustSummary,
+  VoiceTextResult,
+  OwnerUiPrefs,
+  AttentionToastDelivery,
   Worker,
   WorkHierarchy,
   ObsidianVaultFile,
@@ -640,6 +643,102 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     } catch (error) {
       return { accepted: false, error: error instanceof Error ? error.message : String(error) };
     }
+  }
+
+  private async ownerPost(path: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await this.ensureControlSession();
+      const response = await fetchWithTimeout(`${this.apiBase}${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (response.ok) return payload;
+      if (response.status === 401 && attempt === 0) {
+        this.controlSessionReady = false;
+        continue;
+      }
+      throw new Error(String(payload.reason ?? `HTTP ${response.status}`));
+    }
+    throw new Error("owner browser session could not be authenticated");
+  }
+
+  async submitVoiceText(text: string, languageHint?: string): Promise<VoiceTextResult> {
+    try {
+      const payload = await this.ownerPost("/voice-text", { text, language_hint: languageHint ?? "en" });
+      await this.refreshSnapshot();
+      return {
+        status: String(payload.status ?? "UNKNOWN"),
+        transcript: String(payload.transcript ?? text),
+        responseText: String(payload.response_text ?? ""),
+        commandType: payload.command_type == null ? null : String(payload.command_type),
+        language: payload.language == null ? undefined : String(payload.language),
+        directiveId: payload.directive_id == null ? undefined : String(payload.directive_id),
+        eventId: payload.event_id == null ? undefined : String(payload.event_id),
+      };
+    } catch (error) {
+      return {
+        status: "REJECTED",
+        transcript: text,
+        responseText: "",
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async saveOwnerUiPrefs(prefs: OwnerUiPrefs): Promise<OwnerUiPrefs> {
+    const payload = await this.ownerPost("/owner-ui-prefs", {
+      locale: prefs.locale,
+      notification_routing: prefs.notificationRouting,
+    });
+    return {
+      locale: payload.locale === "sq" ? "sq" : "en",
+      notificationRouting: (
+        payload.notification_routing === "off" || payload.notification_routing === "in-app"
+          ? payload.notification_routing
+          : "in-app-toast"
+      ),
+    };
+  }
+
+  async getOwnerUiPrefs(): Promise<OwnerUiPrefs> {
+    const response = await fetchWithTimeout(`${this.apiBase}/owner-ui-prefs`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    const payload = (await response.json()) as Record<string, unknown>;
+    return {
+      locale: payload.locale === "sq" ? "sq" : "en",
+      notificationRouting: (
+        payload.notification_routing === "off" || payload.notification_routing === "in-app"
+          ? payload.notification_routing
+          : "in-app-toast"
+      ),
+    };
+  }
+
+  async deliverAttentionToasts(): Promise<AttentionToastDelivery> {
+    const payload = await this.ownerPost("/attention-toasts", {});
+    return {
+      status: String(payload.status ?? "UNKNOWN"),
+      mode: payload.mode == null ? undefined : String(payload.mode),
+      results: Array.isArray(payload.results) ? payload.results as AttentionToastDelivery["results"] : [],
+    };
+  }
+
+  async getAttentionToastStatus(): Promise<AttentionToastDelivery> {
+    const response = await fetchWithTimeout(`${this.apiBase}/attention-toasts`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    const payload = (await response.json()) as Record<string, unknown>;
+    return {
+      status: String(payload.status ?? "NOT_RUN"),
+      mode: payload.mode == null ? undefined : String(payload.mode),
+      results: Array.isArray(payload.results) ? payload.results as AttentionToastDelivery["results"] : [],
+    };
   }
 
   async activateStop(reason: string): Promise<StopResult> {

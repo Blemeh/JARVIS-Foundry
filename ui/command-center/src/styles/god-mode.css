@@ -780,6 +780,52 @@
   cursor: not-allowed;
 }
 
+.voice-talk {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.owner-command-talk {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--structural-line);
+  border-radius: 999px;
+  background: rgba(255, 196, 72, 0.08);
+  color: var(--caution-amber, #ffc448);
+  cursor: pointer;
+}
+
+.owner-command-talk:hover:not(:disabled) {
+  background: rgba(255, 196, 72, 0.16);
+}
+
+.owner-command-talk.is-listening {
+  color: var(--error, #ff7189);
+  background: rgba(255, 113, 137, 0.16);
+}
+
+.owner-command-talk:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-talk-hint,
+.voice-talk-status,
+.voice-talk-error {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--telemetry-dim);
+}
+
+.voice-talk-error {
+  color: var(--caution-amber, #ffc448);
+}
+
 .owner-command-progress {
   margin-top: 14px;
   padding: 14px 16px;

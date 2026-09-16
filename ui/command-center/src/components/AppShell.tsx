@@ -7,6 +7,7 @@ import { CommandBar } from "./CommandBar";
 import { MobileNav } from "./MobileNav";
 import { EmergencyStopDialog } from "./EmergencyStop";
 import { StopBanner } from "./StopBanner";
+import { PauseBanner } from "./PauseBanner";
 import { RoutedOutletBoundary } from "./RouteErrorBoundary";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useLocale } from "../i18n/LocaleContext";
@@ -37,7 +38,18 @@ export function AppShell() {
   const location = useLocation();
   const { t } = useLocale();
   const basePath = location.pathname.split("/").slice(0, 2).join("/") || "/";
-  const pageTitle = routeTitles[location.pathname] ?? routeTitles[basePath] ?? t("nav.commandCenter");
+  const titled: Record<string, string> = {
+    "/": t("nav.jarvis"),
+    "/work": t("page.work"),
+    "/you": t("page.you"),
+    "/settings": t("settings.title"),
+    "/notifications": t("notify.title"),
+    "/owner": t("owner.page"),
+    "/executive": t("page.executive"),
+    "/world": t("page.world"),
+    "/capabilities": t("page.capabilities"),
+  };
+  const pageTitle = titled[location.pathname] ?? titled[basePath] ?? routeTitles[location.pathname] ?? routeTitles[basePath] ?? t("nav.commandCenter");
   useDocumentTitle(pageTitle);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -58,6 +70,7 @@ export function AppShell() {
       <TopStatusBar onOpenMobileNav={() => setMobileOpen(true)} />
       <main className="shell-main" id="main-content" tabIndex={-1}>
         <StopBanner />
+        <PauseBanner />
         <RoutedOutletBoundary>
           <Outlet />
         </RoutedOutletBoundary>

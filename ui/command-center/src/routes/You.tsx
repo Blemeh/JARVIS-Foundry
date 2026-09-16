@@ -5,6 +5,7 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import type { OwnerControlSurface } from "../lib/contracts";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 function field(record: Record<string, unknown>, names: string[]): string {
   for (const name of names) {
@@ -31,6 +32,7 @@ function OwnerRecords({ title, rows, empty }: { title: string; rows: Record<stri
 
 function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
   const { sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const waiting = surface?.decisionQueue.open ?? [];
   const context = surface?.ownerContext;
   const sections = context?.sections ?? {};
@@ -42,27 +44,27 @@ function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
   return (
     <div className="shell-content rm-page rm-you">
       <header className="rm-page-head">
-        <div><h1>You</h1><p>The durable relationship boundary between the owner and JARVIS: direction, constraints, vetoes, and consequential decisions.</p></div>
+        <div><h1>{t("page.you")}</h1><p>{t("page.youSubtitle")}</p></div>
         <div className="rm-page-source"><span>{sourceModeLabel(sourceMode)}</span><small>{contextAvailable ? `${context?.contract} · ${context?.authority.model}` : surface ? `runtime ${surface.runtimeState}` : "owner projection unavailable"}</small></div>
       </header>
 
       <section className="rm-owner-relationship">
         <div className="rm-owner-avatar"><CircleUserRound size={42} aria-hidden="true" /></div>
-        <div><h2>Owner authority remains human</h2><p>JARVIS may observe, reason, prepare, act within granted authority, verify, recover, and learn. Goals, constraints, vetoes, pause, redirect, and STOP remain yours.</p></div>
+        <div><h2>{t("you.authority")}</h2><p>JARVIS may observe, reason, prepare, act within granted authority, verify, recover, and learn. Goals, constraints, vetoes, pause, redirect, and STOP remain yours.</p></div>
         <div className="rm-owner-state"><span>{surface ? (surface.stopped ? "STOPPED" : surface.paused ? "PAUSED" : surface.runtimeState) : "UNKNOWN"}</span><small>{surface?.stateReason ?? "Canonical owner state not available"}</small></div>
       </section>
 
-      {!surface ? <div className="rm-owner-unavailable"><Compass size={20} /><div><strong>Owner history is unavailable from this source</strong><p>No simulated goals or preferences are substituted. Connect a canonical runtime projection to inspect durable directives.</p></div></div> : null}
+      {!surface ? <div className="rm-owner-unavailable"><Compass size={20} /><div><strong>{t("you.unavailable")}</strong><p>No simulated goals or preferences are substituted. Connect a canonical runtime projection to inspect durable directives.</p></div></div> : null}
 
       <div className="rm-owner-grid">
-        <OwnerRecords title="Goals and priorities" rows={contextAvailable ? rows("goals", "priorities", "active_objectives") : surface?.goals ?? []} empty={contextAvailable ? "No current goal, priority, or objective is recorded." : surface ? "No active goal is recorded." : "UNAVAILABLE"} />
-        <OwnerRecords title="Projects and standing orders" rows={rows("programs", "projects", "standing_orders")} empty={contextAvailable ? "NOT YET INTEGRATED" : "UNAVAILABLE"} />
-        <OwnerRecords title="Constraints, permissions and preferences" rows={contextAvailable ? rows("constraints", "permissions", "preferences") : surface?.constraints ?? []} empty={contextAvailable ? "No source-backed record is available." : surface ? "No standing constraint is recorded." : "UNAVAILABLE"} />
-        <OwnerRecords title="Decisions and vetoes" rows={contextAvailable ? rows("decisions", "vetoes") : [...(surface?.vetoes ?? []), ...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty={contextAvailable ? "No current decision or veto is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.goals")} rows={contextAvailable ? rows("goals", "priorities", "active_objectives") : surface?.goals ?? []} empty={contextAvailable ? "No current goal, priority, or objective is recorded." : surface ? "No active goal is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.projects")} rows={rows("programs", "projects", "standing_orders")} empty={contextAvailable ? "NOT YET INTEGRATED" : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.constraints")} rows={contextAvailable ? rows("constraints", "permissions", "preferences") : surface?.constraints ?? []} empty={contextAvailable ? "No source-backed record is available." : surface ? "No standing constraint is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.decisions")} rows={contextAvailable ? rows("decisions", "vetoes") : [...(surface?.vetoes ?? []), ...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty={contextAvailable ? "No current decision or veto is recorded." : "UNAVAILABLE"} />
       </div>
 
       <section className="rm-owner-waiting" aria-labelledby="owner-waiting-title">
-        <div className="rm-section-heading"><h2 id="owner-waiting-title">Waiting on you</h2><span>{surface ? waiting.length : "—"}</span></div>
+        <div className="rm-section-heading"><h2 id="owner-waiting-title">{t("you.waiting")}</h2><span>{surface ? waiting.length : "—"}</span></div>
         {waiting.length ? waiting.map((item) => <article key={item.queue_id}>
           <Scale size={17} /><div><strong>{item.summary ?? item.classification}</strong><p>{item.consequence ?? "Consequence not recorded."}</p><small>{item.classification} · {item.opened_at ?? "time unknown"}</small></div>
           {item.mission_id ? <Link to={`/missions/${item.mission_id}`}>Review <ArrowRight size={14} /></Link> : <Link to="/owner">Inspect <ArrowRight size={14} /></Link>}

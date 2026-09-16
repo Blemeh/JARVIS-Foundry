@@ -13,6 +13,7 @@ import type {
   WorkObjective,
 } from "../lib/contracts";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 type WorkFilter = "active" | "waiting" | "attention" | "completed" | "all";
 
@@ -122,6 +123,7 @@ function CampaignBlock({
 
 function WorkContent({ missions, hierarchy }: WorkData) {
   const { sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [params, setParams] = useSearchParams();
   const fromUrl = params.get("status") as WorkFilter | null;
   const [localFilter, setLocalFilter] = useState<WorkFilter>(fromUrl && ["active", "waiting", "attention", "completed", "all"].includes(fromUrl) ? fromUrl : "active");
@@ -176,14 +178,14 @@ function WorkContent({ missions, hierarchy }: WorkData) {
     ? filtered.filter((mission) => !assignedMissionIds.has(mission.id))
     : [];
   const filters: Array<{ key: WorkFilter; label: string }> = [
-    { key: "active", label: "Active" }, { key: "waiting", label: "Waiting" },
-    { key: "attention", label: "Needs owner" }, { key: "completed", label: "Completed" }, { key: "all", label: "All" },
+    { key: "active", label: t("work.filterActive") }, { key: "waiting", label: t("work.filterWaiting") },
+    { key: "attention", label: t("work.filterAttention") }, { key: "completed", label: t("work.filterCompleted") }, { key: "all", label: t("work.filterAll") },
   ];
 
   return (
     <div className="shell-content rm-page rm-work">
       <header className="rm-page-head">
-        <div><h1>Work</h1><p>Owner goals through evidence, joined only where canonical identities exist.</p></div>
+        <div><h1>{t("page.work")}</h1><p>{t("page.workSubtitle")}</p></div>
         <div className="rm-page-source"><span>{sourceModeLabel(sourceMode)}</span><small>{missions.length} mission records · {hierarchy?.status ?? "UNAVAILABLE"} hierarchy</small></div>
       </header>
 
@@ -285,11 +287,11 @@ function WorkContent({ missions, hierarchy }: WorkData) {
           ) : null}
         </div>
       ) : (
-        <div className="rm-page-empty"><FolderKanban size={22} /><h2>No work in this view</h2><p>{sourceMode === "LIVE" ? "No canonical work matches this filter or hierarchy selection." : "No simulated mission matches this filter."}</p></div>
+        <div className="rm-page-empty"><FolderKanban size={22} /><h2>{t("work.noWork")}</h2><p>{sourceMode === "LIVE" ? "No canonical work matches this filter or hierarchy selection." : "No simulated mission matches this filter."}</p></div>
       )}
 
       <aside className="rm-work-footnote">
-        <GitBranch size={17} /><div><strong>Hierarchy truth boundary</strong><p>Missing programs, projects, or links stay unavailable. Mission detail carries action, worker, evidence, verifier, and repair drill-down.</p></div>
+        <GitBranch size={17} /><div><strong>{t("work.hierarchy")}</strong><p>Missing programs, projects, or links stay unavailable. Mission detail carries action, worker, evidence, verifier, and repair drill-down.</p></div>
         <Link to="/missions">Mission forensics <ListChecks size={15} /></Link>
       </aside>
       {filtered.some((mission) => ["BLOCKED", "HALTED", "INTERVENTION"].includes(mission.status)) ? <span className="rm-sr-status"><CircleAlert size={14} />This view contains work needing attention.</span> : null}

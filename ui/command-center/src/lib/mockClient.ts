@@ -26,6 +26,9 @@ import type {
   SystemOverview,
   TimelineEvent,
   TrustSummary,
+  VoiceTextResult,
+  OwnerUiPrefs,
+  AttentionToastDelivery,
   Worker,
 } from "./contracts";
 import type { FoundryExecutive } from "./snapshotTypes";
@@ -300,6 +303,36 @@ export class MockJarvisClient implements JarvisClient {
   async submitVeto(_text: string): Promise<OwnerGoalResult> {
     await delay();
     return { accepted: false, error: "simulated mode does not write to runtime" };
+  }
+
+  async submitVoiceText(text: string, languageHint?: string): Promise<VoiceTextResult> {
+    await delay();
+    return {
+      status: "SKIPPED",
+      transcript: text,
+      responseText: "simulated mode does not write to runtime",
+      language: languageHint,
+    };
+  }
+
+  async saveOwnerUiPrefs(prefs: OwnerUiPrefs): Promise<OwnerUiPrefs> {
+    await delay();
+    return prefs;
+  }
+
+  async getOwnerUiPrefs(): Promise<OwnerUiPrefs> {
+    await delay();
+    return { locale: "en", notificationRouting: "in-app-toast" };
+  }
+
+  async deliverAttentionToasts(): Promise<AttentionToastDelivery> {
+    await delay();
+    return { status: "SKIPPED", results: [] };
+  }
+
+  async getAttentionToastStatus(): Promise<AttentionToastDelivery> {
+    await delay();
+    return { status: "NOT_RUN", results: [] };
   }
 
   async activateStop(): Promise<StopResult> {

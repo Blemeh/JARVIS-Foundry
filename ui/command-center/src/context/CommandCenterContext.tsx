@@ -12,6 +12,7 @@ import type { ConnectionState, JarvisClient, MockEventType, Notification, Scenar
 import { createJarvisClient, resolveClientMode } from "../lib/clientFactory";
 import { MockJarvisClient } from "../lib/mockClient";
 import { resolveSourceMode, type ResolvedSourceMode } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 const DEMO_SEQUENCE: MockEventType[] = [
   "verification.failed",
@@ -30,6 +31,7 @@ interface CommandCenterState {
   scenario: Scenario | null;
   streamConnected: boolean;
   stopActive: boolean;
+  paused: boolean;
   stopActivatedAt: string | null;
   resumeTargetId: string | null;
   stopDialogOpen: boolean;
@@ -74,6 +76,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [client] = useState<JarvisClient>(() => createJarvisClient());
   const mode = resolveClientMode();
   const mockClient = client instanceof MockJarvisClient ? client : null;
+  const { locale, routing } = useLocale();
 
   const [version, setVersion] = useState(0);
   const [connection, setConnection] = useState<ConnectionState>(client.connection);
@@ -84,6 +87,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [demoIndex, setDemoIndex] = useState(0);
   const [stopActive, setStopActive] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [stopActivatedAt, setStopActivatedAt] = useState<string | null>(null);
   const [resumeTargetId, setResumeTargetId] = useState<string | null>(null);
   const [stopDialogOpen, setStopDialogOpen] = useState(false);
@@ -115,14 +119,13 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       if (mode === "live") {
         setStreamConnected(nextConnection.connected && !nextConnection.stale);
       }
-      const active = ownerSurface?.stopped;
-      if (typeof active === "boolean") {
-        setStopActive(active);
-        setResumeTargetId(ownerSurface?.resumableDirectiveIds[0] ?? null);
-        if (!active) {
-          setStopActivatedAt(null);
-          setResumeTargetId(null);
-        }
+      const stopped = Boolean(ownerSurface?.stopped);
+      const nextPaused = Boolean(ownerSurface?.paused);
+      if (ownerSurface) {
+        setStopActive(stopped);
+        setPaused(nextPaused);
+        setResumeTargetId(ownerSurface.resumableDirectiveIds[0] ?? null);
+        if (!stopped) setStopActivatedAt(null);
       }
     } catch (err: unknown) {
       setNotifications([]);
@@ -135,6 +138,16 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       if (mode === "live") setStreamConnected(false);
     }
   }, [client, mode]);
+
+  useEffect(() => {
+    if (mode !== "live") return;
+    void client.saveOwnerUiPrefs({ locale, notificationRouting: routing }).catch(() => undefined);
+  }, [client, locale, mode, routing]);
+
+  useEffect(() => {
+    if (mode !== "live" || routing !== "in-app-toast") return;
+    void client.deliverAttentionToasts().catch(() => undefined);
+  }, [client, mode, routing, version]);
 
   useEffect(() => {
     const id = window.setTimeout(() => void refreshNotifications(), 0);
@@ -158,6 +171,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       }
       if (event.type === "resume") {
         setStopActive(false);
+        setPaused(false);
         setStopActivatedAt(null);
       }
     });
@@ -193,6 +207,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       if (mockClient) {
         await mockClient.resumeSimulation();
         setStopActive(false);
+        setPaused(false);
         setStopActivatedAt(null);
         setResumeTargetId(null);
       }
@@ -281,6 +296,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       scenario,
       streamConnected,
       stopActive,
+      paused,
       stopActivatedAt,
       resumeTargetId,
       stopDialogOpen,
@@ -319,6 +335,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       scenario,
       streamConnected,
       stopActive,
+      paused,
       stopActivatedAt,
       resumeTargetId,
       stopDialogOpen,

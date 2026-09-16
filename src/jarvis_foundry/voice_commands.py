@@ -23,6 +23,7 @@ TARGET_GLOBAL = "GLOBAL"
 
 _E = r"[eë]"
 _C = r"[cç]"
+_WAKE_PREFIX = re.compile(r"^(?:(?:hey|ok|okay)\s+)?jarvis[,:\s]+", re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +76,7 @@ def _strip_utterance(text: str) -> str:
     cleaned = text.strip()
     cleaned = cleaned.replace("\u2019", "'").replace("\u2018", "'")
     cleaned = re.sub(r"\s+", " ", cleaned)
+    cleaned = _WAKE_PREFIX.sub("", cleaned, count=1)
     return cleaned.strip(" \t.?!")
 
 
