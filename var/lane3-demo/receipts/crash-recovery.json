@@ -53,7 +53,7 @@
       "status": 200,
       "terminal_truth": true,
       "title": "Lane 3 crash-recovery issue",
-      "verified_at": "2026-09-16T07:14:46.705103Z"
+      "verified_at": "2026-09-16T08:43:56.256865Z"
     },
     "receipt": {
       "action_kind": "github.write.reconcile",
@@ -161,7 +161,7 @@
       "status": 200,
       "terminal_truth": true,
       "title": "Lane 3 crash-recovery issue",
-      "verified_at": "2026-09-16T07:14:46.904160Z"
+      "verified_at": "2026-09-16T08:43:56.483301Z"
     },
     "receipt": {
       "action_kind": "github.issue.create",
@@ -232,8 +232,8 @@
     "action_key": "effect:dfc9ebcd661a1cc950527432ad4da206fe5bfaebe77d209b803850a451cd0c29",
     "before_state": {},
     "claim_active": false,
-    "claim_expires_at": 1789542886.1893504,
-    "claimed_at": 1789542886.1793504,
+    "claim_expires_at": 1789548235.7500174,
+    "claimed_at": 1789548235.7400174,
     "expected_effects": [
       "github.issue.create"
     ],
@@ -270,8 +270,8 @@
     "action_key": "effect:dfc9ebcd661a1cc950527432ad4da206fe5bfaebe77d209b803850a451cd0c29",
     "before_state": {},
     "claim_active": false,
-    "claim_expires_at": 1789542886.1893504,
-    "claimed_at": 1789542886.1793504,
+    "claim_expires_at": 1789548235.7500174,
+    "claimed_at": 1789548235.7400174,
     "expected_effects": [
       "github.issue.create"
     ],

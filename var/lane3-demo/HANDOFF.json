@@ -32,6 +32,18 @@
     {
       "sha": "dbb6d50",
       "message": "Lane 3: git.push.reconcile verb for ambiguous push recovery"
+    },
+    {
+      "sha": "2382911",
+      "message": "Lane 3: git crash-window durability, demo scenario and handoff truth"
+    },
+    {
+      "sha": "f07467f",
+      "message": "Lane 3: acceptance upgrade recovery coverage"
+    },
+    {
+      "sha": "9eb0226",
+      "message": "Lane 3: keep dispatch policy on the cached recovery adapter"
     }
   ],
   "files_changed": [
@@ -92,7 +104,7 @@
   ],
   "dependencies_added": [],
   "tests_run": [
-    "tests/foundry/test_v14_lane3_developer_effects.py (14 tests, pass)",
+    "tests/foundry/test_v14_lane3_developer_effects.py (16 tests, pass)",
     "tests/foundry/test_v12_irreversible_github.py (pass)",
     "tests/foundry/test_v12_irreversible_fabric.py (pass)",
     "tests/foundry/test_v10_c_developer_provider.py (pass)",
@@ -100,7 +112,11 @@
     "tests/foundry/test_git_connector.py (pass)",
     "tests/foundry/test_v3_git_reconcile.py (pass)",
     "tests/foundry/test_v9_capability_fabric.py (pass)",
-    "tests/foundry/test_effects.py (pass)"
+    "tests/foundry/test_effects.py (pass)",
+    "tests/foundry/test_worker_mission_bridge.py (pass)",
+    "tests/foundry/test_v13_general_work_fabric.py (pass)",
+    "tests/foundry/test_v13_repair_path_scope.py (pass)",
+    "tests/foundry/test_v13_worker_boundaries.py (pass)"
   ],
   "demos_run": [
     "python var/lane3-demo/demo.py all (git, github-issue, github-pr, crash-recovery, git-crash-recovery) — twice, clean reset"
