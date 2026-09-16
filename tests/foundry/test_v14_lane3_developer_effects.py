@@ -1,0 +1,379 @@
+"""Lane 3: durable developer effects — crash recovery, dedupe, Git remote truth."""
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import time
+from pathlib import Path
+from typing import Any, Mapping
+
+import pytest
+
+from jarvis_foundry.connectors.git import GitConnector
+from jarvis_foundry.connectors.github_write import (
+    GitHubWriteAdapter,
+    reconcile_github_write_effect,
+)
+from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.effects import execute_fabric_effect, effect_state, fabric_effect_id
+from jarvis_foundry.fabric import (
+    ExecutorContext,
+    TaskIntent,
+    execute_action,
+    seed_builtins,
+)
+
+from v3_fixtures import make_bare_remote
+
+
+def _db(tmp_path: Path) -> FoundryDatabase:
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    return database
+
+
+def _ctx(tmp_path: Path, database: FoundryDatabase, **kwargs: Any) -> ExecutorContext:
+    owned = tmp_path / "owned"
+    owned.mkdir(exist_ok=True)
+    return ExecutorContext(database=database, owned_root=owned, **kwargs)
+
+
+def _intent(*actions: str) -> TaskIntent:
+    return TaskIntent(task_id="task.lane3", required_actions=actions)
+
+
+class FakeIssueProvider:
+    """Deterministic provider: POST creates a numbered object; GET reads it."""
+
+    def __init__(self) -> None:
+        self.documents: list[dict[str, Any]] = []
+        self.write_calls = 0
+        self.read_calls: list[str] = []
+
+    def write(self, endpoint: str, payload: Mapping[str, Any]) -> tuple[int, bytes]:
+        assert endpoint == "/repos/owner/demo/issues"
+        self.write_calls += 1
+        number = len(self.documents) + 1
+        document = {
+            "number": number,
+            "title": payload["title"],
+            "body": payload.get("body", ""),
+            "html_url": f"https://github.com/owner/demo/issues/{number}",
+        }
+        self.documents.append(document)
+        return 201, json.dumps(document).encode("utf-8")
+
+    def read(self, endpoint: str) -> tuple[int, bytes]:
+        self.read_calls.append(endpoint)
+        if "?state=all" in endpoint:
+            return 200, json.dumps(self.documents).encode("utf-8")
+        match = re.search(r"/issues/(\d+)$", endpoint)
+        if match is not None:
+            number = int(match.group(1))
+            if 1 <= number <= len(self.documents):
+                return 200, json.dumps(self.documents[number - 1]).encode("utf-8")
+        return 404, b"{}"
+
+
+def _write_ctx(
+    tmp_path: Path, database: FoundryDatabase, provider: FakeIssueProvider,
+) -> ExecutorContext:
+    return _ctx(
+        tmp_path,
+        database,
+        github_write=provider.write,
+        github_api=provider.read,
+        github_writes_enabled=True,
+        github_authorized_repositories=("owner/demo",),
+    )
+
+
+def _issue_payload(**overrides: Any) -> dict[str, Any]:
+    payload = {
+        "owner": "owner",
+        "repo": "demo",
+        "title": "Lane 3 durable effect",
+        "body": "exactly-once body",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_github_issue_duplicate_intent_never_posts_twice(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    ctx = _write_ctx(tmp_path, database, provider)
+    seed_builtins(database)
+
+    first = execute_action(
+        database, ctx, _intent("github.issue.create"),
+        "github.issue.create", _issue_payload(),
+    )
+    assert first.success is True
+    assert provider.write_calls == 1
+
+    second = execute_action(
+        database, ctx, _intent("github.issue.create"),
+        "github.issue.create", _issue_payload(),
+    )
+    assert second.success is True
+    assert second.claimed_effect["replayed"] is True
+    assert second.claimed_effect["performed"] is False
+    assert provider.write_calls == 1
+
+
+def test_github_issue_crash_after_post_recovers_from_provider_readback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    ctx = _write_ctx(tmp_path, database, provider)
+    seed_builtins(database)
+
+    import jarvis_foundry.effects as effects_module
+
+    original_append = effects_module._append
+
+    def crash_at_completion(database: FoundryDatabase, event_type: str,
+                            payload: dict[str, Any], key_suffix: str,
+                            **kwargs: Any) -> None:
+        if event_type == "system.action_completed":
+            raise RuntimeError("simulated crash before local completion")
+        original_append(database, event_type, payload, key_suffix, **kwargs)
+
+    monkeypatch.setattr("jarvis_foundry.effects._append", crash_at_completion)
+    payload = _issue_payload(claim_ttl_s=0.01)
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        execute_action(
+            database, ctx, _intent("github.issue.create"),
+            "github.issue.create", payload,
+        )
+    monkeypatch.setattr("jarvis_foundry.effects._append", original_append)
+    assert provider.write_calls == 1
+
+    started = [
+        event for event in database.events()
+        if event.event_type == "system.action_started"
+        and event.payload.get("kind") == "github.issue.create"
+    ]
+    assert len(started) == 1
+    action_key = str(started[0].payload["action_key"])
+    assert effect_state(database, action_key)["status"] == "STARTED"
+
+    time.sleep(0.03)
+    restarted_ctx = _write_ctx(tmp_path, database, provider)
+    recovered = execute_action(
+        database, restarted_ctx, _intent("github.write.reconcile"),
+        "github.write.reconcile",
+        {
+            "original_effect_id": action_key,
+            "original_action": "github.issue.create",
+            "request": _issue_payload(),
+        },
+    )
+    assert recovered.success is True
+    assert recovered.claimed_effect["claimed"] == "COMPLETED"
+    assert recovered.claimed_effect["accepted"] is True
+    assert recovered.claimed_effect["original_effect_id"] == action_key
+    assert provider.write_calls == 1
+
+    state = effect_state(database, action_key)
+    assert state["accepted"] is True
+    assert state["terminal_outcome"] == "COMPLETED"
+    assert state["reconciled"] is True
+    assert provider.documents and len(provider.documents) == 1
+
+    replay = execute_action(
+        database, restarted_ctx, _intent("github.issue.create"),
+        "github.issue.create", _issue_payload(),
+    )
+    assert replay.success is True
+    assert replay.claimed_effect["replayed"] is True
+    assert provider.write_calls == 1
+
+
+def test_github_write_reconcile_requires_exact_intent(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    ctx = _write_ctx(tmp_path, database, provider)
+    seed_builtins(database)
+    first = execute_action(
+        database, ctx, _intent("github.issue.create"),
+        "github.issue.create", _issue_payload(),
+    )
+    action_key = str(first.claimed_effect["action_key"])
+    reads_before = len(provider.read_calls)
+
+    tampered = execute_action(
+        database, _write_ctx(tmp_path, database, provider),
+        _intent("github.write.reconcile"),
+        "github.write.reconcile",
+        {
+            "original_effect_id": action_key,
+            "original_action": "github.issue.create",
+            "request": _issue_payload(title="a different title"),
+        },
+    )
+    assert tampered.claimed_effect["claimed"] == "BLOCKED"
+    assert tampered.claimed_effect["error_code"] == "request_identity_mismatch"
+    assert len(provider.read_calls) == reads_before
+
+
+def test_github_write_reconcile_finalizes_one_provider_object(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    adapter = GitHubWriteAdapter(
+        transport=provider.write,
+        read_transport=provider.read,
+        dispatch_enabled=True,
+        authorized_repositories=("owner/demo",),
+    )
+    payload = _issue_payload()
+    request = _provider_request(database, payload)
+
+    def lost_response() -> dict[str, Any]:
+        provider.write(
+            "/repos/owner/demo/issues",
+            {"title": payload["title"], "body": payload["body"]},
+        )
+        raise TimeoutError("response lost after provider accepted the issue")
+
+    timed_out = execute_fabric_effect(
+        database,
+        action_key=request,
+        system_id="github",
+        target_ref="github.issue.create",
+        payload_hash="lane3",
+        kind="github.issue.create",
+        connector_id="fabric:cap.github.issue.create",
+        request_identity={
+            "action_kind": "github.issue.create",
+            "input_hash": _fabric_hash(payload),
+        },
+        perform=lost_response,
+        claim_ttl_s=0.01,
+    )
+    assert timed_out["journal_state"] == "FROZEN"
+    assert provider.write_calls == 1
+
+    recovered = reconcile_github_write_effect(
+        database,
+        action_key=request,
+        adapter=adapter,
+        action_kind="github.issue.create",
+        endpoint="/repos/owner/demo/issues",
+        request_payload=payload,
+    )
+    assert recovered["claimed"] == "COMPLETED"
+    assert recovered["accepted"] is True
+    assert recovered["performed"] is False
+    assert recovered["reconciliation_required"] is False
+    assert provider.write_calls == 1
+    assert effect_state(database, request)["accepted"] is True
+    assert effect_state(database, request)["terminal_outcome"] == "COMPLETED"
+
+
+def _fabric_hash(payload: Mapping[str, Any]) -> str:
+    from jarvis_foundry.connectors.github_write import github_write_input_hash
+
+    return github_write_input_hash(payload)
+
+
+def _provider_request(database: FoundryDatabase, payload: Mapping[str, Any]) -> str:
+    return fabric_effect_id(
+        system_id="github",
+        target_ref="github.issue.create",
+        capability_id="cap.github.issue.create",
+        capability_version="1.0.0",
+        action_kind="github.issue.create",
+        input_payload=dict(payload),
+    )
+
+
+def _clone(tmp_path: Path) -> tuple[Path, Path, str]:
+    bare = make_bare_remote(tmp_path / "remote.git")
+    work = tmp_path / "owned" / "repo"
+    work.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "clone", "-q", str(bare), str(work)], check=True)
+    subprocess.run(["git", "-C", str(work), "config", "user.email", "lane3@local"], check=True)
+    subprocess.run(["git", "-C", str(work), "config", "user.name", "lane3"], check=True)
+    base = work / "base.txt"
+    base.write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(work), "add", "base.txt"], check=True)
+    subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", "base"], check=True)
+    head = subprocess.run(
+        ["git", "-C", str(work), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    return work, bare, head
+
+
+def test_git_push_second_identical_is_already_satisfied_noop(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    work, bare, head = _clone(tmp_path)
+    connector = GitConnector(database, owned_root=tmp_path / "owned")
+
+    first = connector.push(
+        action_id="lane3-push-1", worktree=work, remote=str(bare), branch="main",
+    )
+    assert first["outcome"] == "COMPLETED"
+    assert first["performed"] is True
+    assert first["remote_head"] == head
+
+    state = connector.remote_branch_state(str(bare), "main", expected_head=head)
+    assert state["exists"] is True
+    assert state["head_sha"] == head
+    assert state["matches_expected"] is True
+    assert state["push_required"] is False
+
+    second = connector.push(
+        action_id="lane3-push-2", worktree=work, remote=str(bare), branch="main",
+    )
+    assert second["outcome"] == "COMPLETED"
+    assert second["performed"] is False
+    assert second.get("already_satisfied") is True
+    assert second["remote_head"] == head
+    assert connector.read_ref(str(bare), "main") == head
+
+    missing = connector.remote_branch_state(str(bare), "topic", expected_head=head)
+    assert missing["exists"] is False
+    assert missing["head_sha"] is None
+    assert missing["push_required"] is True
+
+
+def test_git_push_rejection_reports_truthful_failure(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    work, bare, head = _clone(tmp_path)
+    connector = GitConnector(database, owned_root=tmp_path / "owned")
+
+    (work / "next.txt").write_text("next\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(work), "add", "next.txt"], check=True)
+    subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", "next"], check=True)
+    advanced = subprocess.run(
+        ["git", "-C", str(work), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+    other = tmp_path / "other"
+    subprocess.run(["git", "clone", "-q", str(bare), str(other)], check=True)
+    subprocess.run(["git", "-C", str(other), "config", "user.email", "other@local"], check=True)
+    subprocess.run(["git", "-C", str(other), "config", "user.name", "other"], check=True)
+    (other / "divergent.txt").write_text("divergent\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(other), "add", "divergent.txt"], check=True)
+    subprocess.run(["git", "-C", str(other), "commit", "-q", "-m", "divergent"], check=True)
+    subprocess.run(
+        ["git", "-C", str(other), "push", "-q", "origin", "HEAD:main"], check=True,
+    )
+
+    rejected = connector.push(
+        action_id="lane3-push-divergent", worktree=work, remote=str(bare),
+        branch="main", expected_head=advanced,
+    )
+    assert rejected["outcome"] == "FAILED"
+    assert connector.read_ref(str(bare), "main") == subprocess.run(
+        ["git", "-C", str(other), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()

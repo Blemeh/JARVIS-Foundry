@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Any
 
 from ..database import FoundryDatabase
+from ..effects import effect_state
 from ..v3_git import GitEffectAdapter, ls_remote_head, preflight_identity
 from .contract import ConnectorSpec
 
@@ -100,6 +101,34 @@ class GitConnector:
     @staticmethod
     def read_ref(remote: str | Path, branch: str = "main") -> str | None:
         return ls_remote_head(remote, branch)
+
+    @staticmethod
+    def remote_branch_state(
+        remote: str | Path,
+        branch: str = "main",
+        *,
+        expected_head: str | None = None,
+    ) -> dict[str, Any]:
+        """Provider-side branch truth used to decide whether a push is needed.
+
+        ``push_required`` is ``None`` when no intended head was supplied; it is
+        otherwise derived from live ``git ls-remote`` truth, never from a local
+        exit code or cached state.
+        """
+
+        observed = ls_remote_head(remote, branch)
+        expected = str(expected_head).strip().lower() if expected_head else None
+        matches = (observed == expected) if expected is not None else None
+        return {
+            "remote": str(remote),
+            "branch": str(branch),
+            "exists": observed is not None,
+            "head_sha": observed,
+            "expected_head": expected,
+            "matches_expected": matches,
+            "push_required": None if matches is None else not matches,
+            "source": "git ls-remote",
+        }
 
     def create_commit(
         self,
@@ -246,6 +275,34 @@ class GitConnector:
         stop_path: str | None = None,
     ) -> dict[str, Any]:
         owned = self._owned_worktree(worktree)
+        key = f"v3-git:{action_id}"
+        if (
+            effect_state(self.database, key).get("status") == "UNKNOWN"
+            and not self._run(owned, "status", "--porcelain")
+        ):
+            # Never invoke the transport when provider truth already carries
+            # the intended commit: the second identical push is an
+            # already-satisfied success, not a second material effect.  A
+            # pending/frozen identity still goes through canonical
+            # reconciliation instead of this shortcut, and a dirty worktree
+            # still fails the canonical preflight.
+            intended = str(
+                expected_head or self._run(owned, "rev-parse", "HEAD")
+            ).strip().lower()
+            state = self.remote_branch_state(remote, branch, expected_head=intended)
+            if state["matches_expected"]:
+                return {
+                    "outcome": "COMPLETED",
+                    "action_key": key,
+                    "remote_head": intended,
+                    "performed": False,
+                    "already_satisfied": True,
+                    "provider_state": {
+                        "source": "git ls-remote",
+                        "head": intended,
+                        "branch": str(branch),
+                    },
+                }
         return self._effects.push(
             action_id=action_id, worktree=owned, remote=remote, branch=branch,
             expected_head=expected_head, execute=execute, stop_path=stop_path,

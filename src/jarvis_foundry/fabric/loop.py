@@ -198,6 +198,16 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             ),
         ),
         CapabilitySpec(
+            capability_id="cap.github.write.reconcile", version="1.0.0",
+            kind=Kind.CONNECTOR, action_kind="github.write.reconcile",
+            semantic=Semantic.READ, executor="github_write",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "read-only provider reconciliation of one terminal GitHub issue/PR "
+                "create effect; finalizes the original effect without redispatch",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.gmail.send", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="gmail.send", semantic=Semantic.COMMUNICATE,
             executor="gmail_api",
@@ -762,6 +772,19 @@ def _verify_action(
         return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
     if action_kind == "github.pull_request.create":
         return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
+    if action_kind == "github.write.reconcile":
+        readback = claimed.get("readback")
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("original_effect_id")
+            and claimed.get("accepted") is True
+            and claimed.get("reconciled") is True
+            and isinstance(readback, Mapping)
+            and readback.get("status") == "MATCH"
+            and readback.get("matches") is True
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.UNKNOWN if claimed_status in {"UNKNOWN", "BLOCKED"} else VerifyVerdict.MISMATCH
     if action_kind == "github.pull_request.publish":
         push = claimed.get("push_effect")
         pull_request = claimed.get("pull_request_effect")
@@ -1266,7 +1289,7 @@ def execute_action(
         identities={"GLOBAL", intent.task_id},
     )
     reconciliation_capable = (
-        action_kind in {"github.pull_request.publish", "gmail.send"}
+        action_kind in {"github.pull_request.publish", "gmail.send", "github.write.reconcile"}
         or action_kind.startswith("mcp.")
         or action_kind in {
             "browser.web.reconcile",

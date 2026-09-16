@@ -39,6 +39,9 @@ from ..connectors.github_write import (
     GitHubRepositoryAuthorization,
     GitHubWriteAdapter,
     GitPushTransport,
+    gh_api_write_transport,
+    github_write_intent,
+    reconcile_github_write_effect,
 )
 from ..connectors.web_research import BrowserExecutionAuthorization
 from ..database import FoundryDatabase
@@ -442,33 +445,25 @@ def github_identity(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
 
 def github_issue_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Create an issue through the explicit GitHub write seam."""
-    owner = str(payload["owner"])
-    repo = str(payload["repo"])
-    title = str(payload["title"])
-    body = str(payload.get("body") or "")
-    endpoint = f"/repos/{owner}/{repo}/issues"
+    endpoint, provider_payload = github_write_intent("github.issue.create", payload)
     return _github_write(
         ctx,
         "github.issue.create",
         endpoint,
-        {"title": title, "body": body},
+        provider_payload,
     )
 
 
 def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Open a pull request via injected write transport. No silent live mutation."""
-    owner = str(payload["owner"])
-    repo = str(payload["repo"])
-    title = str(payload["title"])
-    head = str(payload["head"])
-    base = str(payload.get("base") or "main")
-    body = str(payload.get("body") or "")
-    endpoint = f"/repos/{owner}/{repo}/pulls"
+    endpoint, provider_payload = github_write_intent(
+        "github.pull_request.create", payload,
+    )
     return _github_write(
         ctx,
         "github.pull_request.create",
         endpoint,
-        {"title": title, "head": head, "base": base, "body": body},
+        provider_payload,
     )
 
 
@@ -485,13 +480,16 @@ def github_pull_request_publish(
         }
     adapter = ctx.github_write_adapter
     if adapter is None:
-        if ctx.github_write is None:
+        transport = ctx.github_write
+        if transport is None and ctx.github_writes_enabled:
+            transport = gh_api_write_transport
+        if transport is None:
             return {
                 "claimed": "BLOCKED", "performed": False,
                 "error_code": "github_write_transport_required",
             }
         adapter = GitHubWriteAdapter(
-            transport=ctx.github_write,
+            transport=transport,
             read_transport=ctx.github_api,
             dispatch_enabled=ctx.github_writes_enabled,
             authorized_repositories=ctx.github_authorized_repositories,
@@ -518,6 +516,102 @@ def github_pull_request_publish(
         effect_id=str(effect_id) if effect_id else None,
         mission_id=str(payload.get("mission_id") or "") or None,
         stop_path=str(payload.get("stop_path")) if payload.get("stop_path") else None,
+    )
+
+
+_GITHUB_WRITE_EFFECT_KINDS = frozenset({
+    "github.issue.create",
+    "github.pull_request.create",
+})
+
+
+def _github_effect_row(
+    database: FoundryDatabase,
+    action_key: str,
+) -> Mapping[str, Any] | None:
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT action_key, system_id, target_ref, payload_hash, kind, status "
+            "FROM system_actions WHERE action_key = ?",
+            (action_key,),
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "action_key": str(row[0]),
+        "system_id": str(row[1]),
+        "target_ref": str(row[2]),
+        "payload_hash": str(row[3]),
+        "kind": str(row[4]),
+        "status": str(row[5]),
+    }
+
+
+def github_write_reconcile(
+    ctx: ExecutorContext, payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Recover one terminal GitHub write effect from provider truth.
+
+    Read-only: the exact canonical intent is re-supplied by the caller,
+    bound to the durable journal identity, and matched against the provider.
+    A matching provider object finalizes the ORIGINAL effect through the
+    canonical acceptance seam; no second provider write is ever issued.
+    """
+
+    action_key = str(
+        payload.get("original_effect_id") or payload.get("effect_id") or ""
+    ).strip()
+    if not action_key:
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "original_effect_id_required",
+        }
+    row = _github_effect_row(ctx.database, action_key)
+    if row is None:
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "effect_not_found",
+        }
+    if (
+        row["system_id"] != "github"
+        or row["kind"] not in _GITHUB_WRITE_EFFECT_KINDS
+    ):
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "effect_identity_mismatch",
+        }
+    action_kind = str(payload.get("original_action") or row["kind"]).strip()
+    if action_kind != row["kind"]:
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "effect_identity_mismatch",
+        }
+    request_payload = payload.get("request")
+    if not isinstance(request_payload, Mapping):
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "request_payload_required",
+        }
+    endpoint, _provider_payload = github_write_intent(action_kind, request_payload)
+    adapter = ctx.github_write_adapter
+    if adapter is None:
+        transport = ctx.github_write
+        if transport is None and ctx.github_writes_enabled:
+            transport = gh_api_write_transport
+        adapter = GitHubWriteAdapter(
+            transport=transport or gh_api_write_transport,
+            read_transport=ctx.github_api,
+            dispatch_enabled=False,
+            authorized_repositories=ctx.github_authorized_repositories,
+        )
+        ctx.github_write_adapter = adapter
+    return reconcile_github_write_effect(
+        ctx.database,
+        action_key=action_key,
+        adapter=adapter,
+        action_kind=action_kind,
+        endpoint=endpoint,
+        request_payload=request_payload,
     )
 
 
@@ -561,6 +655,8 @@ def _github_write(
     adapter = ctx.github_write_adapter
     if adapter is None:
         transport = ctx.github_write
+        if transport is None and ctx.github_writes_enabled:
+            transport = gh_api_write_transport
         if transport is None:
             raise FabricError(f"{action_kind} requires an explicit write transport")
         # Preserve the historical callback shape while reusing one lifecycle
@@ -2606,6 +2702,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "github.issue.create": github_issue_create,
     "github.pull_request.create": github_pull_request_create,
     "github.pull_request.publish": github_pull_request_publish,
+    "github.write.reconcile": github_write_reconcile,
     "gmail.send": gmail_send,
     "http.read": http_read,
     "http.write": http_write,

@@ -118,6 +118,56 @@ def github_effect_key(
     )
 
 
+def github_write_intent(
+    action_kind: str, payload: Mapping[str, Any]
+) -> tuple[str, dict[str, Any]]:
+    """Map one canonical Fabric intent to its exact provider request.
+
+    The mapping is shared by dispatch and recovery so a replayed intent can
+    never drift from the provider payload that the original effect used.
+    The returned provider payload is what crosses the wire; owner-supplied
+    text is copied verbatim and never rewritten.
+    """
+
+    if not isinstance(payload, Mapping):
+        raise GitHubWriteError("GitHub write payload must be an object")
+    if action_kind == "github.issue.create":
+        owner = str(payload["owner"])
+        repo = str(payload["repo"])
+        return f"/repos/{owner}/{repo}/issues", {
+            "title": str(payload["title"]),
+            "body": str(payload.get("body") or ""),
+        }
+    if action_kind == "github.pull_request.create":
+        owner = str(payload["owner"])
+        repo = str(payload["repo"])
+        return f"/repos/{owner}/{repo}/pulls", {
+            "title": str(payload["title"]),
+            "head": str(payload["head"]),
+            "base": str(payload.get("base") or "main"),
+            "body": str(payload.get("body") or ""),
+        }
+    raise GitHubWriteError(f"undeclared GitHub write action: {action_kind!r}")
+
+
+def github_write_input_hash(payload: Mapping[str, Any]) -> str:
+    """Hash one canonical Fabric intent exactly as Fabric identity does.
+
+    ``_EXECUTION_CONTROL_FIELDS`` are the runtime controls Fabric removes
+    before deriving an effect identity; importing the canonical set keeps
+    recovery bound to the same hash instead of a second, drifting copy.
+    """
+
+    from ..fabric.contracts import _EXECUTION_CONTROL_FIELDS
+
+    filtered = {
+        str(key): value
+        for key, value in payload.items()
+        if str(key) not in _EXECUTION_CONTROL_FIELDS
+    }
+    return hashlib.sha256(canonical_json(filtered).encode("utf-8")).hexdigest()
+
+
 def _safe_transport_message(raw: bytes | str) -> str:
     text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
     return redact_text(text).strip()[:400]
@@ -690,10 +740,220 @@ class GitHubWriteAdapter:
         self._requests[request.idempotency_key] = request
         return self._reconcile_collection(request)
 
+    def observe_request(
+        self,
+        action_kind: str,
+        endpoint: str,
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Read provider truth for one exact request. Never writes.
+
+        Unlike :meth:`reconcile_request` this read-only seam carries no write
+        authorization requirement: recovery must stay possible after the
+        original dispatch authorization was revoked or the process died.
+        """
+
+        request = GitHubWriteRequest.build(action_kind, endpoint, payload)
+        return self._reconcile_collection(request)
+
     def __call__(self, endpoint: str, payload: Mapping[str, Any]) -> tuple[int, bytes]:
         """Expose the legacy callback shape for explicit seam injection."""
 
         return self.transport(endpoint, payload)
+
+
+def _recovery_result(
+    action_key: str,
+    *,
+    claimed: str,
+    error_code: str | None,
+    reconciliation_required: bool,
+    extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "claimed": claimed,
+        "action_key": action_key,
+        "original_effect_id": action_key,
+        "performed": False,
+        "replayed": False,
+        "reconciled": False,
+        "reconciliation_required": reconciliation_required,
+        "error_code": error_code,
+        **dict(extra or {}),
+    }
+
+
+def reconcile_github_write_effect(
+    database: FoundryDatabase,
+    *,
+    action_key: str,
+    adapter: GitHubWriteAdapter,
+    action_kind: str,
+    endpoint: str,
+    request_payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reconcile one journaled GitHub write effect against provider truth.
+
+    Recovery seam for ``execute_fabric_effect`` entries whose provider result
+    was lost to a crash, timeout, or ambiguous transport.  The caller must
+    re-supply the exact canonical Fabric intent; its input hash is checked
+    against the durable journal identity before any provider read, and no
+    provider write is ever issued here.
+
+    Outcomes:
+
+    * an accepted effect replays its durable terminal truth without any read;
+    * a stale ``STARTED`` claim is frozen (never re-performed) and read back;
+    * exactly one provider object matching the intent finalizes the original
+      effect through :func:`finalize_verified_effect` with an independent
+      MATCH readback and a durable provider receipt;
+    * everything else stays ``UNKNOWN`` with ``reconciliation_required``.
+    """
+
+    if not isinstance(action_key, str) or not action_key.strip():
+        raise GitHubWriteError("action_key is required for GitHub write reconciliation")
+    if action_kind not in _WRITE_ACTIONS:
+        return _recovery_result(
+            action_key, claimed="BLOCKED",
+            error_code="undeclared_write_action", reconciliation_required=False,
+        )
+    try:
+        _, provider_payload = github_write_intent(action_kind, request_payload)
+    except (KeyError, TypeError, GitHubWriteError):
+        return _recovery_result(
+            action_key, claimed="BLOCKED",
+            error_code="invalid_request_payload", reconciliation_required=False,
+        )
+    GitHubWriteRequest.build(action_kind, endpoint, provider_payload)
+
+    state = effect_state(database, action_key)
+    status = state.get("status")
+    if status == "UNKNOWN":
+        return _recovery_result(
+            action_key, claimed="UNKNOWN",
+            error_code="effect_not_recorded", reconciliation_required=True,
+        )
+    if status == STARTED:
+        if state.get("claim_active"):
+            return _recovery_result(
+                action_key, claimed="UNKNOWN",
+                error_code="effect_claim_active", reconciliation_required=True,
+            )
+        freeze_effect(
+            database, action_key,
+            reason="interrupted GitHub write requires provider readback",
+        )
+        state = effect_state(database, action_key)
+        status = state.get("status")
+    if status not in {COMPLETED, FAILED, FROZEN}:
+        return _recovery_result(
+            action_key, claimed="UNKNOWN",
+            error_code="effect_not_terminal", reconciliation_required=True,
+        )
+
+    identity = state.get("request_identity")
+    identity = identity if isinstance(identity, Mapping) else {}
+    if str(identity.get("action_kind") or "") != action_kind:
+        return _recovery_result(
+            action_key, claimed="BLOCKED",
+            error_code="request_identity_mismatch", reconciliation_required=False,
+        )
+    try:
+        observed_hash = github_write_input_hash(request_payload)
+    except (TypeError, ValueError):
+        return _recovery_result(
+            action_key, claimed="BLOCKED",
+            error_code="request_payload_not_serializable",
+            reconciliation_required=False,
+        )
+    if observed_hash != identity.get("input_hash"):
+        return _recovery_result(
+            action_key, claimed="BLOCKED",
+            error_code="request_identity_mismatch", reconciliation_required=False,
+        )
+
+    if status == FAILED:
+        return _recovery_result(
+            action_key, claimed="FAILED",
+            error_code="effect_failed", reconciliation_required=False,
+        )
+
+    if status == COMPLETED and state.get("accepted") is True:
+        # Durable terminal truth already exists; replay it without a provider
+        # read so a later network failure cannot downgrade an accepted effect.
+        return {
+            "claimed": "COMPLETED",
+            "action_key": action_key,
+            "original_effect_id": action_key,
+            "journal_state": COMPLETED,
+            "accepted": True,
+            "terminal_truth": True,
+            "reconciled": True,
+            "performed": False,
+            "replayed": True,
+            "reconciliation_required": False,
+            "readback_status": "MATCH",
+            "readback": {
+                "status": "MATCH",
+                "matches": True,
+                "source": "durable accepted terminal truth",
+            },
+            "error_code": None,
+        }
+
+    observed = adapter.observe_request(action_kind, endpoint, provider_payload)
+    readback = observed.get("readback")
+    provider_id = observed.get("provider_id")
+    provider_ref = observed.get("provider_ref")
+    if (
+        observed.get("claimed") != COMPLETED
+        or observed.get("readback_status") != "MATCH"
+        or not isinstance(readback, Mapping)
+        or readback.get("matches") is not True
+        or not provider_id
+        or not provider_ref
+    ):
+        return {
+            **dict(observed),
+            "action_key": action_key,
+            "original_effect_id": action_key,
+            "journal_state": status,
+            "performed": False,
+            "replayed": False,
+            "reconciled": False,
+            "reconciliation_required": True,
+        }
+
+    receipt = {
+        "provider_id": str(provider_id),
+        "provider_ref": str(provider_ref),
+        "number": observed.get("number"),
+        "owner": observed.get("owner"),
+        "repo": observed.get("repo"),
+        "resource": observed.get("resource"),
+        "html_url": observed.get("html_url"),
+    }
+    result = {
+        **dict(observed),
+        "action_key": action_key,
+        "original_effect_id": action_key,
+        "reconciled": True,
+        "performed": False,
+        "replayed": False,
+    }
+    return finalize_verified_effect(
+        database,
+        action_key,
+        provider_receipt=receipt,
+        readback=readback,
+        result=result,
+        acceptance_evidence={
+            "criterion": "exactly one provider object matches the exact intent",
+            "original_effect_id": action_key,
+            "recovered_from_journal_state": status,
+        },
+        reconciled=True,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1485,4 +1745,7 @@ __all__ = [
     "GITHUB_WRITE_SPEC",
     "gh_api_write_transport",
     "github_effect_key",
+    "github_write_input_hash",
+    "github_write_intent",
+    "reconcile_github_write_effect",
 ]
