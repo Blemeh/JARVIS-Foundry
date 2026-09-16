@@ -56,6 +56,12 @@ APPLICATION_FRAME_CLASSES = frozenset(
         "ExploreWClass",
     }
 )
+DOCUMENT_FRAME_CLASSES = frozenset(
+    {
+        "RichEditD2DPT",
+        "_WwG",
+    }
+)
 DOCUMENT_CONTROL_TYPES = frozenset(
     {
         "DocumentControl",
@@ -930,23 +936,20 @@ class _UIAutomationBackend:
     def set_value(
         self, control: BackendControl, value: str, *, timeout_s: float
     ) -> None:
-        del timeout_s
         pattern = self._pattern(control.ref, "ValuePattern")
-        if pattern is None:
-            raise WindowsOperatorError(
-                "unsupported_accessibility_pattern",
-                "control exposes no Value pattern",
-            )
-        if bool(self._property(pattern, "IsReadOnly", True)):
-            raise WindowsOperatorError(
-                "control_read_only", "control Value pattern is read-only"
-            )
-        pattern.SetValue(value)
-        try:
-            control.ref.SetFocus()
-            self._auto.SendKeys("{Ctrl}{End}", waitTime=0.02)
-        except Exception:  # noqa: BLE001 - caret placement is best-effort
-            pass
+        writable = pattern is not None and not bool(
+            self._property(pattern, "IsReadOnly", True)
+        )
+        if writable:
+            pattern.SetValue(value)
+            try:
+                control.ref.SetFocus()
+                self._auto.SendKeys("{Ctrl}{End}", waitTime=0.02)
+            except Exception:  # noqa: BLE001 - caret placement is best-effort
+                pass
+            return
+        self.set_clipboard_text(value)
+        self.paste_text(control, timeout_s=timeout_s)
 
     def type_text(
         self, control: BackendControl, value: str, *, timeout_s: float
@@ -1463,7 +1466,18 @@ class WindowsOperatorProvider:
             for control in valued
             if (control.selector.name or "") in DOCUMENT_NAME_ALIASES
         ]
-        pool = named or valued
+        documents = [
+            control
+            for control in valued
+            if (control.selector.control_type or "")
+            in {"DocumentControl", "Document"}
+        ]
+        framed = [
+            control
+            for control in valued
+            if (control.selector.class_name or "") in DOCUMENT_FRAME_CLASSES
+        ]
+        pool = named or framed or documents or valued
         if not pool:
             raise TargetMatchError(
                 "control_not_found",

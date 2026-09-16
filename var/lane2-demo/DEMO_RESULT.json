@@ -7,25 +7,25 @@
       "error_code": null,
       "process": {
         "logical_id": "lane2-notepad",
-        "pid": 7356,
-        "create_time": 134340189283884806,
+        "pid": 22280,
+        "create_time": 134340195188803235,
         "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
       },
       "window": {
         "identity": {
           "process": {
             "logical_id": "lane2-notepad",
-            "pid": 7356,
-            "create_time": 134340189283884806,
+            "pid": 22280,
+            "create_time": 134340195188803235,
             "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
           },
-          "hwnd": 11080244,
+          "hwnd": 984416,
           "title": "Notepad",
           "class_name": "Notepad",
           "automation_id": "",
           "runtime_id": [
             42,
-            11080244
+            984416
           ],
           "observation_generation": 1
         },
@@ -40,7 +40,7 @@
         "class_name": "RichEditD2DPT",
         "runtime_id": [
           42,
-          5773164
+          5706270
         ]
       },
       "expected_sha256": "32df0f57b52335e1f44fde5cb939a0614aba3e84a8c2e875d0b78154f8d413f4",
@@ -72,7 +72,7 @@
     },
     {
       "step": "file_open_readback",
-      "window_title": "hello-open-1789545328.txt - Notepad",
+      "window_title": "hello-open-1789545918.txt - Notepad",
       "value_length": 31,
       "value_sha256": "4da85416aa8c883534fbe96775626b6723ae27bd3e8dfeab787b6b2797a8893d",
       "expected_sha256": "4da85416aa8c883534fbe96775626b6723ae27bd3e8dfeab787b6b2797a8893d",
@@ -86,7 +86,7 @@
     },
     {
       "step": "file_save_as_readback",
-      "window_title": "hello-save-1789545328.txt - Notepad",
+      "window_title": "hello-save-1789545918.txt - Notepad",
       "saved_exists": true
     },
     {
@@ -106,15 +106,15 @@
       "app": "lane2-word",
       "status": "COMPLETED",
       "error": null,
-      "pid": 4724,
-      "window_hwnd": 2365464
+      "pid": 6856,
+      "window_hwnd": 32708166
     },
     {
       "step": "office_observe",
       "title": "lane2 [Compatibility Mode] - Word",
       "class_name": "OpusApp",
-      "hwnd": 2365464,
-      "control_count": 187,
+      "hwnd": 32708166,
+      "control_count": 196,
       "sample": [
         {
           "type": "PaneControl",
@@ -159,19 +159,32 @@
       ]
     },
     {
+      "step": "word_replace",
+      "outcome": "COMPLETED",
+      "error_code": null,
+      "class_name": "_WwG",
+      "readback_verified": true
+    },
+    {
       "step": "excel_open",
       "status": "COMPLETED",
       "error": null,
-      "pid": 28732,
-      "window_hwnd": 49091540
+      "pid": 23424,
+      "window_hwnd": 11343944
     },
     {
       "step": "excel_observe",
-      "title": "lane2-excel-1789545328 - Excel",
+      "title": "lane2-excel-1789545918 - Excel",
       "class_name": "XLMAIN",
-      "hwnd": 49091540,
-      "control_count": 243,
+      "hwnd": 11343944,
+      "control_count": 245,
       "cell_value_sha": "a39930f7aaaaa3d472bbd2c6b7fdd74391afa3ffddff3da5f74e26f8b7cbc7b8"
+    },
+    {
+      "step": "excel_select",
+      "outcome": "COMPLETED",
+      "error_code": null,
+      "item_name": "A1"
     },
     {
       "step": "focus_second",
@@ -188,8 +201,8 @@
     },
     {
       "step": "identity_handoff",
-      "notepad_pid": 7356,
-      "second_pid": 4724,
+      "notepad_pid": 22280,
+      "second_pid": 6856,
       "notepad_pid_stable": true,
       "second_pid_stable": true,
       "swapped": false
@@ -198,7 +211,7 @@
       "step": "stale_identity",
       "status": "COMPLETED",
       "error_code": "process_identity_unavailable",
-      "detail": "PID 7356 could not be verified"
+      "detail": "PID 22280 could not be verified"
     },
     {
       "step": "inspect_after_kill",
@@ -210,13 +223,13 @@
       "step": "explorer",
       "status": "COMPLETED",
       "error": null,
-      "pid": 19512
+      "pid": 12160
     },
     {
       "step": "explorer_bind",
       "status": "COMPLETED",
       "error": null,
-      "pid": 21748
+      "pid": 5088
     },
     {
       "step": "explorer_select",
@@ -229,16 +242,16 @@
       "step": "calculator_launch",
       "status": "COMPLETED",
       "error": null,
-      "pid": 27804
+      "pid": 28868
     },
     {
       "step": "calculator_observe",
       "status": "COMPLETED",
       "title": "Calculator",
       "class_name": "ApplicationFrameWindow",
-      "hwnd": 2425874,
+      "hwnd": 4133302,
       "pid": 6196,
-      "launch_pid": 27804,
+      "launch_pid": 28868,
       "click_one": "COMPLETED",
       "close": "COMPLETED"
     }

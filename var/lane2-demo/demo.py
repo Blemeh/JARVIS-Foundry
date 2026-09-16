@@ -450,6 +450,30 @@ def main() -> int:
                         for item in controls[:8]
                     ],
                 )
+                if second_app == "lane2-word":
+                    document = office.find_document_control(observed.identity)
+                    typed_word = "JARVIS lane2 word typed"
+                    replaced = office.perform(
+                        OperatorAction(
+                            action_id="lane2-word-replace",
+                            kind="replace_text",
+                            window=observed.identity,
+                            control=document.selector,
+                            value=typed_word,
+                            timeout_s=8.0,
+                        )
+                    )
+                    read = office.find_document_control(observed.identity)
+                    observed_word = normalize_document_text(
+                        str(read.value or "")
+                    )
+                    note(
+                        "word_replace",
+                        outcome=replaced.outcome,
+                        error_code=replaced.error_code,
+                        class_name=document.selector.class_name,
+                        readback_verified=observed_word == typed_word,
+                    )
             except Exception as error:
                 note(
                     "office_observe",
@@ -507,6 +531,24 @@ def main() -> int:
                         cell_value_sha=(
                             _sha(cell.value) if cell is not None else None
                         ),
+                    )
+                    excel_cell = excel_provider.find_named_item(
+                        excel_window.identity, ("A1",)
+                    )
+                    selected = excel_provider.perform(
+                        OperatorAction(
+                            action_id="lane2-excel-select-a1",
+                            kind="select",
+                            window=excel_window.identity,
+                            control=excel_cell.selector,
+                            timeout_s=6.0,
+                        )
+                    )
+                    note(
+                        "excel_select",
+                        outcome=selected.outcome,
+                        error_code=selected.error_code,
+                        item_name=excel_cell.selector.name,
                     )
             except Exception as error:
                 note(
