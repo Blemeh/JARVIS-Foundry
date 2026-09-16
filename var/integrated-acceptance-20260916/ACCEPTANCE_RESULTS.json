@@ -90,7 +90,7 @@
       "time_s": 6240.048,
       "junit": "var/integrated-acceptance-20260916/proof/FOUNDRY_BROAD.junit.xml",
       "endurance_rerun": "PASS",
-      "packaging": "PENDING_CLEAN_COMMIT"
+      "packaging": "PASS on clean 0bfdfa851f6c3f4d0203d1e75216967587ecc4d6"
     },
     "command_center_vitest_junit": "var/integrated-acceptance-20260916/proof/COMMAND_CENTER.junit.xml",
     "frontend_command_center": "PASS 167/167 vitest; production build PASS"

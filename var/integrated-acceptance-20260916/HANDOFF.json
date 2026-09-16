@@ -1,7 +1,8 @@
 {
   "schema": "jarvis.integrated-acceptance.handoff.v1",
   "goal": "MASTER GOAL 02 — Integrated Product Acceptance + Defect Repair",
-  "status": "SCENARIOS_COMPLETE_SUITES_CLOSING",
+  "product_sha": "0bfdfa851f6c3f4d0203d1e75216967587ecc4d6",
+  "status": "ACCEPTANCE_COMPLETE_AWAITING_DOCS_PIN",
   "product_decision": "ACCEPTED_FOR_LIVE_PROMOTION",
   "base": "15a25536348d87be53ff115033c5012192d988be",
   "convergence_head": "15a25536348d87be53ff115033c5012192d988be",
@@ -21,7 +22,7 @@
   "broad_foundry_suite": {
     "collected": 3562,
     "dirty_tree_failures": [
-      "packaging (dirty worktree)",
+      "packaging (dirty worktree; PASS on clean 0bfdfa8)",
       "v12 endurance (stale RUNNING-after-PASS observation; rerun PASS)"
     ],
     "skipped": 2,
@@ -36,5 +37,5 @@
   ],
   "cap_workflow_run_readiness": "UNKNOWN until first verified outcome; READY after verified workflow.run; repeat work not deadlocked",
   "campaign_child_terminalization": "SUCCEEDED via canonical reconcile after verifier evidence; no direct DB terminal write",
-  "next": "commit candidate, re-run packaging on clean tree, pin CURRENT_STATE without live promotion, keep live/main/origin untouched"
+  "next": "docs-only CURRENT_STATE pin to this receipts parent; keep live/main/origin untouched"
 }

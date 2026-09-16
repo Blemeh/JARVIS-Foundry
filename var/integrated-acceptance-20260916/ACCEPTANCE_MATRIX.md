@@ -37,3 +37,5 @@ Classification key: `ACCEPTED` | `ACCEPTED_WITH_LIVE_PROOF_REMAINING` | `BLOCKED
 `ACCEPTED_FOR_LIVE_PROMOTION`
 
 No remaining Critical/High source defect on this candidate. Remaining work is genuinely live, external, hardware, or owner-in-loop proof. Production trust `SUSPENDED` is not this decision.
+
+Broad Foundry suite: 3562 collected on the dirty repair tree (2 expected dirty-tree failures). Endurance proof rerun PASS. Packaging PASS on clean product SHA `0bfdfa8`. Command Center vitest 167/167 and production build PASS. Live JARVIS, `main`, and origin were not touched.
