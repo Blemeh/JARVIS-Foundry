@@ -2,8 +2,9 @@
   "schema": "jarvis.v14-v16.convergence-handoff.v1",
   "goal": "MASTER GOAL 01 - V14 + V15 + V16 maximum semantic convergence",
   "status": "COMPLETE",
-  "final_head": "5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb",
-  "v14_checkpoint_head": "3afa23c8857602aa3e1f4dd42d8c3eaf2360",
+  "product_head": "5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb",
+  "final_head": "125d74e811ac4fb9f5d5940790189928e0dc0cbe",
+  "v14_checkpoint_head": "3afa23c8857602aa3e1f4dd42d8c3e8af42f2360",
   "worktree": "C:\\temp\\JARVIS\\v14-v16-max-semantic-convergence-20260916",
   "branch": "candidate/v14-v16-max-semantic-convergence-20260916",
   "base": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
@@ -86,10 +87,10 @@
     "command_center_build": "PASS",
     "compileall": "PASS",
     "git_diff_check": "PASS",
-    "broad_foundry_suite": "3461 collected; 2 FAIL live CURRENT_STATE pin vs candidate HEAD (not a product regression); 1 FAIL test_release_packaging_browser while worktree was dirty mid-suite, PASS on clean re-run"
+    "broad_foundry_suite": "3461 collected on first pass: 2 FAIL CURRENT_STATE pin vs candidate HEAD, 1 FAIL packaging while dirty. Packaging PASS on clean 125d74e. Docs-only CURRENT_STATE pin is the intended next/final commit."
   },
   "known_defects": [
-    "CURRENT_STATE.md still pins live documentation-state 41f0cd3; candidate HEAD is source and fails the live docs-only staleness contract until a docs-only pin commit.",
+    "Docs-only CURRENT_STATE.md pin is required for the candidate HEAD to satisfy scripts/doc_staleness_check.py; live V10/release pointers stay unchanged.",
     "Campaign children remain RUNNING after MissionLoop PASS until canonical acceptance; V16 proof uses max_parallel_children=8 rather than fake SUCCEEDED.",
     "cap.workflow.run Catalog observed_readiness stays UNKNOWN until a verified outcome is recorded.",
     "Albanian microphone STT has no Windows recognizer; classified NOT_TESTED."
