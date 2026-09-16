@@ -1,13 +1,15 @@
 {
   "lane": "Lane 1 — V14 Maximum Browser + Authenticated Web Operator",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "PENDING_FINAL_COMMIT",
+  "final_sha": "1b8283d5cd95448ffad46b2bedee8426c6380837",
   "branch": "candidate/max-lane-1-v14-browser-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-1-v14-browser-20260915",
   "commits": [
     "ed2fd5e Make browser.web.execute unattended-capable under an exact owner grant",
     "2eb78ce Add bounded iframe targeting and frame-race hardening to the browser operator",
-    "PENDING_FINAL_COMMIT lane artifacts: demo app, demo runner, orientation, handoff"
+    "754ad6b Land the Lane 1 browser-operator demo and orientation artifacts",
+    "ce1c8c8 Complete frame-scoped waiting and inspection for the browser operator",
+    "1b8283d Scope upload acknowledgement waits to the acted frame (last code+artifact commit; this HANDOFF.json final value lands in the following docs-only commit)"
   ],
   "files_changed": [
     "src/jarvis_foundry/connectors/web_research.py",
@@ -106,9 +108,9 @@
     "upload with acknowledgement postcondition": "BUILT_AND_PROVEN",
     "reauth provider seam + post-reauth identity rebound": "BUILT_AND_PROVEN",
     "popup/tab observe + switch_page": "BUILT_AND_PROVEN",
-    "bounded iframe targeting (frame_index)": "BUILT_AND_PROVEN",
+    "bounded iframe targeting (frame_index) incl. frame-scoped wait/inspect": "BUILT_AND_PROVEN",
     "owner-config wiring that builds BrowserExecutionAuthorization in the live product path": "STILL_MISSING",
-    "frame-aware wait_for_target": "STILL_MISSING",
+    "frame-aware wait_for_target": "BUILT_AND_PROVEN",
     "screenshot/PDF evidence artifact": "STILL_MISSING",
     "browser.web.session.health capability": "STILL_MISSING",
     "real third-party authenticated site (no owner credentials available)": "LIVE_PROOF_LATER"
