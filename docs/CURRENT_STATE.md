@@ -6,7 +6,24 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Sunday, September 13, 2026 for the bounded A4 proving-driver
+Last reconciled: Wednesday, September 16, 2026 for isolated V14+V15+V16
+maximum semantic convergence on
+`candidate/v14-v16-max-semantic-convergence-20260916` (product
+`5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb`, receipts through
+`4b39c1b5127fbd32e6f8bc92cda926c2aedc4759`). This candidate is source-only:
+it does not merge `main`, push, promote, install, retarget live CURRENT/PREVIOUS,
+mutate the live database, or change Scheduler/Supervisor/provider/trust.
+Live V10 and the frozen execution pointer remain unchanged. Historical live
+A4/Prompt 3 notes below are retained as live-surface history, not as a
+promotion claim for this candidate.
+
+ISOLATED CONVERGENCE CANDIDATE: V14+V15+V16 COMPLETE / SOURCE ONLY
+ISOLATED CANDIDATE BRANCH:     candidate/v14-v16-max-semantic-convergence-20260916
+ISOLATED CANDIDATE PRODUCT:    5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb
+ISOLATED CANDIDATE HANDOFF:    var/convergence-20260916/HANDOFF.json
+LIVE UNCHANGED:                YES
+
+Last previously reconciled: Sunday, September 13, 2026 for the bounded A4 proving-driver
 repair that followed the Prompt 3 provider recovery (see the next paragraph),
 and for the validation-only
 harness-stability repair that followed the first fresh preflight of the
@@ -84,7 +101,7 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `41f0cd3`
+DOCUMENTATION STATE BASE SHA: `4b39c1b5127fbd32e6f8bc92cda926c2aedc4759`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`.
