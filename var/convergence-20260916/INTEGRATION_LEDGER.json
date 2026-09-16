@@ -1,0 +1,68 @@
+{
+  "schema": "jarvis.v14-v16.integration-ledger.v1",
+  "goal": "MASTER GOAL 01 - V14 + V15 + V16 maximum semantic convergence",
+  "base": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
+  "branch": "candidate/v14-v16-max-semantic-convergence-20260916",
+  "worktree": "C:\\temp\\JARVIS\\v14-v16-max-semantic-convergence-20260916",
+  "live_boundary": "SOURCE_CANDIDATE_ONLY_LIVE_NOT_TOUCHED",
+  "owner_override": {
+    "description": "The active authenticated owner goal explicitly makes Voice/Albanian/English part of this source convergence. This supersedes frozen-roadmap decision D10 for this candidate only; it does not authorize promotion or live activation.",
+    "execution_state_file_mutated": false
+  },
+  "inputs": [
+    {"lane": 1, "head": "a40f25a4f2a54138758c9136a693e6da1e03d8a7", "reported_product": "1b8283d5cd95448ffad46b2bedee8426c6380837", "descends_from_base": true, "handoff": "var/lane1-demo/HANDOFF.json"},
+    {"lane": 2, "head": "dee99692ad828688f26409b9f44ef31115bd3774", "reported_product": "5dce7851a8ec738a12091bf251b29006dcb21dfd", "descends_from_base": true, "handoff": "var/lane2-demo/HANDOFF.json"},
+    {"lane": 3, "head": "f7591c1fa56bd634b2e67ed5316a826cdcdd4b8e", "reported_product": "0e30c5c7f0d4b392bb0b2968764b24a70cb406e8", "descends_from_base": true, "handoff": "var/lane3-demo/HANDOFF.json"},
+    {"lane": 4, "head": "278c94103c6737dc1ddc0c093f2281eda84bfc0d", "reported_product": "fe04cf80a63178964566d811996e6773ebf9f212", "descends_from_base": true, "handoff": "var/lane4-demo/HANDOFF.json"},
+    {"lane": 5, "head": "3ba9bf35050c2c7402662d95b7f5630c69bd147b", "reported_product": "45d05473fe01fe83c0fe1adcdd5bc22f6fac92d7", "descends_from_base": true, "handoff": "var/lane5-demo/HANDOFF.json"},
+    {"lane": 6, "head": "2b84c5c7c4f2614cf099cec7d175ed21a4507e5b", "reported_product": "497672489ffa8507988f2198acf67e83fa4516c9", "descends_from_base": true, "handoff": "var/lane6-demo/HANDOFF.json"}
+  ],
+  "central_conflict_intent": {
+    "fabric.loop": "One Catalog and MissionLoop. Preserve browser inspect/owner-grant enforcement, Git/GitHub reconciliation-only STOP allowance, workflow.run registration, nested-receipt verification, and all pre-existing capabilities.",
+    "fabric.executors": "One ExecutorContext and handler map carrying browser authorization/reauth, GitHub read/write transports, workflow nesting, Windows/general-work context, and existing runtime fields. No permissive fallback when configuration is absent.",
+    "fabric.adapter": "Preserve canonical context construction and default-off GitHub dispatch settings; later add browser owner-config injection at this existing seam, never from mission payload authority.",
+    "fabric.model_and_init": "Preserve Lane 4 failure policies and recipe exports without replacing canonical action/effect models.",
+    "command_center": "Command Center remains a projection and canonical owner-control transport; voice text, UI preferences, and toast delivery adapt to existing OwnerControlService and decision queue.",
+    "runtime.worker_loop": "Preserve one worker/recovery loop; campaign capacity reconciliation is an additive startup/recovery pass, not a scheduler.",
+    "executive": "Preserve the existing Continuous Executive and campaign authority; child workflow dispatch must use canonical missions/Fabric and retain original objective lineage."
+  },
+  "deltas": [
+    {"lane": 1, "concern": "BrowserExecutionAuthorization exact owner grant", "classification": "PORT_SEMANTIC", "target": "connectors/web_research.py + fabric context/runtime wiring", "reason": "Accept grant enforcement and add missing owner-config construction."},
+    {"lane": 1, "concern": "browser.web.inspect", "classification": "PORT_EXACT", "target": "fabric/loop.py + fabric/executors.py", "reason": "Read-only target/frame inspection is unique and bounded."},
+    {"lane": 1, "concern": "browser.web.execute unattended eligibility", "classification": "PORT_SEMANTIC", "target": "fabric/loop.py + fabric/executors.py", "reason": "Allowed only under injected exact owner grant; absent configuration remains blocked."},
+    {"lane": 1, "concern": "frame popup download upload reauth and run_steps behavior", "classification": "PORT_EXACT", "target": "connectors/web_research.py", "reason": "Unique browser substrate behavior with focused proof."},
+    {"lane": 1, "concern": "lane evidence and demo receipts", "classification": "EVIDENCE_ONLY", "target": "var/lane1-demo", "reason": "Retain as provenance; convergence produces new evidence."},
+    {"lane": 1, "concern": "real third-party authenticated proof", "classification": "DEFER_LIVE_ONLY", "target": null, "reason": "No credentials or live-site authorization in this goal."},
+
+    {"lane": 2, "concern": "Windows provider identity and application-frame preference", "classification": "PORT_EXACT", "target": "connectors/windows_operator.py", "reason": "Unique, already proven on real local Windows substrate."},
+    {"lane": 2, "concern": "desktop.open_artifact_and_assert", "classification": "PORT_EXACT", "target": "fabric/computer_operator.py", "reason": "Required native-app content verification action."},
+    {"lane": 2, "concern": "desktop.control.paste", "classification": "PORT_EXACT", "target": "fabric/computer_operator.py", "reason": "Required bounded control mutation with readback."},
+    {"lane": 2, "concern": "desktop.file_dialog", "classification": "PORT_EXACT", "target": "fabric/computer_operator.py", "reason": "Required fail-closed native dialog action."},
+    {"lane": 2, "concern": "lane demo binaries and receipts", "classification": "EVIDENCE_ONLY", "target": "var/lane2-demo", "reason": "Retain provenance; do not treat as integrated proof."},
+
+    {"lane": 3, "concern": "GitHub durable reconciliation and issue comment", "classification": "PORT_EXACT", "target": "connectors/github_write.py + fabric", "reason": "Unique canonical effect recovery behavior."},
+    {"lane": 3, "concern": "git.push provider-truth no-op and reconcile", "classification": "PORT_EXACT", "target": "connectors/git.py + v3_git.py + fabric", "reason": "Required exactly-once crash-window behavior."},
+    {"lane": 3, "concern": "default-off GitHub dispatch config", "classification": "PORT_EXACT", "target": "fabric/adapter.py", "reason": "Preserves explicit owner authorization boundary."},
+    {"lane": 3, "concern": "frozen developer-effect discovery and persisted intent", "classification": "SUPERSEDED_BY_COMBINED_IMPLEMENTATION", "target": "existing effect journal/startup repair seam", "reason": "Lane verbs require convergence-owned automatic discovery without a second daemon."},
+    {"lane": 3, "concern": "real GitHub API write", "classification": "DEFER_LIVE_ONLY", "target": null, "reason": "Explicit owner/provider authorization is absent."},
+
+    {"lane": 4, "concern": "recipe registry contracts checkpoint and resume", "classification": "PORT_EXACT", "target": "fabric/recipes + fabric/compose.py", "reason": "Unique composition engine extending canonical Fabric."},
+    {"lane": 4, "concern": "workflow.run action and nested verifier", "classification": "PORT_SEMANTIC", "target": "fabric/loop.py + fabric/executors.py", "reason": "Combine with browser/Git handlers and verify every nested receipt."},
+    {"lane": 4, "concern": "workflow CLI verbs", "classification": "PORT_EXACT", "target": "cli/main.py", "reason": "Bounded product entrypoint."},
+    {"lane": 4, "concern": "placeholder digital-operator recipe bindings", "classification": "SUPERSEDED_BY_COMBINED_IMPLEMENTATION", "target": "fabric/recipes/builtins.py", "reason": "Must bind actual Lane 1/2/3 payload and receipt fields."},
+    {"lane": 4, "concern": "lane demo", "classification": "EVIDENCE_ONLY", "target": "var/lane4-demo", "reason": "Useful engine proof but not final cross-lane proof."},
+
+    {"lane": 5, "concern": "bilingual command matcher and same-language confirmation", "classification": "PORT_EXACT", "target": "voice_commands.py + voice.py", "reason": "Explicitly required by active owner goal."},
+    {"lane": 5, "concern": "STT TTS PTT and voice session adapters", "classification": "PORT_EXACT", "target": "voice_speech.py + voice_session.py", "reason": "Adapter-only; OwnerControlService remains authority."},
+    {"lane": 5, "concern": "owner UI preferences and attention toast routing", "classification": "PORT_SEMANTIC", "target": "owner_ui.py + command_center.py + windows_toast.py", "reason": "Wire through existing runtime process and decision queue, never a second authority."},
+    {"lane": 5, "concern": "Command Center EN/SQ locale and owner surfaces", "classification": "PORT_EXACT", "target": "ui/command-center", "reason": "Required source build and localized control surface."},
+    {"lane": 5, "concern": "always-on wake word", "classification": "REJECT_WITH_REASON", "target": null, "reason": "Not requested; PTT accepted; avoids unapproved ambient listening."},
+    {"lane": 5, "concern": "Albanian real microphone recognition", "classification": "BLOCKED", "target": null, "reason": "May remain BUILT_NOT_REAL_WORLD_PROVEN without a local recognizer/model."},
+
+    {"lane": 6, "concern": "expansion to exact original objective resume", "classification": "PORT_SEMANTIC", "target": "self_expansion.py + canonical gap bridge", "reason": "Accept API and ensure original objective/mission lineage, not demo callback authority."},
+    {"lane": 6, "concern": "campaign resource capacity wait wake recovery", "classification": "PORT_EXACT", "target": "executive/campaigns.py + runtime/worker_loop.py", "reason": "Additive use of existing isolation key and recovery loop."},
+    {"lane": 6, "concern": "MCP probation/tooling", "classification": "ALREADY_REPRESENTED", "target": "FabricMcpBackend and existing Catalog", "reason": "Lane 6 exercises the existing sole MCP runtime; no second backend is imported."},
+    {"lane": 6, "concern": "campaign child invoking workflow.run", "classification": "SUPERSEDED_BY_COMBINED_IMPLEMENTATION", "target": "canonical campaign mission dispatch to Fabric", "reason": "Convergence must connect Lane 4 action through existing MissionLoop."},
+    {"lane": 6, "concern": "live catalog registration and external effect", "classification": "DEFER_LIVE_ONLY", "target": null, "reason": "Candidate-only disposable proof in this goal."}
+  ]
+}
