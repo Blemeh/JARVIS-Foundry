@@ -590,6 +590,65 @@ def test_github_write_dispatch_settings_default_off_and_env_optin(
         })
 
 
+def test_collection_scan_truncation_and_duplicates_stay_unknown(
+    tmp_path: Path,
+) -> None:
+    def unused_write(endpoint: str, payload: Mapping[str, Any]) -> tuple[int, bytes]:
+        raise AssertionError("reconciliation must never write")
+
+    first_page = [
+        {
+            "number": number,
+            "title": f"other issue {number}",
+            "body": "",
+            "html_url": f"https://github.com/owner/demo/issues/{number}",
+        }
+        for number in range(1, 101)
+    ]
+
+    def paged_read(_endpoint: str) -> tuple[int, bytes]:
+        return 200, json.dumps(first_page).encode("utf-8")
+
+    paged = GitHubWriteAdapter(
+        transport=unused_write,
+        read_transport=paged_read,
+        dispatch_enabled=True,
+        authorized_repositories=("owner/demo",),
+    )
+    truncated = paged.observe_request(
+        "github.issue.create", "/repos/owner/demo/issues",
+        {"title": "target", "body": ""},
+    )
+    assert truncated["claimed"] == "UNKNOWN"
+    assert truncated["error_code"] == "scan_truncated"
+    assert truncated["reconciliation_required"] is True
+    assert truncated["scan"]["items"] == 500
+
+    duplicate_document = {
+        "number": 5,
+        "title": "duplicate target",
+        "body": "b",
+        "html_url": "https://github.com/owner/demo/issues/5",
+    }
+
+    def duplicate_read(_endpoint: str) -> tuple[int, bytes]:
+        return 200, json.dumps([duplicate_document, duplicate_document]).encode("utf-8")
+
+    duplicated = GitHubWriteAdapter(
+        transport=unused_write,
+        read_transport=duplicate_read,
+        dispatch_enabled=True,
+        authorized_repositories=("owner/demo",),
+    )
+    ambiguous = duplicated.observe_request(
+        "github.issue.create", "/repos/owner/demo/issues",
+        {"title": "duplicate target", "body": "b"},
+    )
+    assert ambiguous["error_code"] == "duplicate_provider_matches"
+    assert ambiguous["duplicate_prevented"] is True
+    assert ambiguous["reconciliation_required"] is True
+
+
 def test_git_branch_action_verifies_against_observed_worktree(tmp_path: Path) -> None:
     database = _db(tmp_path)
     work, _bare, _head = _clone(tmp_path)

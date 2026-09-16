@@ -1,6 +1,6 @@
 {
   "branch": "lane3/feature",
-  "commit": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+  "commit": "741c34a51e7b1d83e70c407c4f911a981af26485",
   "divergent_push": {
     "action_key": "v3-git:lane3-demo-push-rejected",
     "outcome": "FAILED",
@@ -12,13 +12,13 @@
     "action_key": "v3-git:lane3-demo-push-1",
     "outcome": "COMPLETED",
     "performed": true,
-    "remote_head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a"
+    "remote_head": "741c34a51e7b1d83e70c407c4f911a981af26485"
   },
   "readback": {
     "branch": "lane3/feature",
     "exists": true,
-    "expected_head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
-    "head_sha": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+    "expected_head": "741c34a51e7b1d83e70c407c4f911a981af26485",
+    "head_sha": "741c34a51e7b1d83e70c407c4f911a981af26485",
     "matches_expected": true,
     "push_required": false,
     "remote": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git\\remote.git",
@@ -27,8 +27,8 @@
   "remote_preserved_after_rejection": {
     "branch": "lane3/feature",
     "exists": true,
-    "expected_head": "fbf5e7bdb2c4e7617b256df6605ec1bc86c791db",
-    "head_sha": "fbf5e7bdb2c4e7617b256df6605ec1bc86c791db",
+    "expected_head": "2fce17eb638ccd55ec6065b433f624195177d245",
+    "head_sha": "2fce17eb638ccd55ec6065b433f624195177d245",
     "matches_expected": true,
     "push_required": false,
     "remote": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git\\remote.git",
@@ -41,9 +41,9 @@
     "performed": false,
     "provider_state": {
       "branch": "lane3/feature",
-      "head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+      "head": "741c34a51e7b1d83e70c407c4f911a981af26485",
       "source": "git ls-remote"
     },
-    "remote_head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a"
+    "remote_head": "741c34a51e7b1d83e70c407c4f911a981af26485"
   }
 }

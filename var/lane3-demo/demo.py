@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -59,7 +60,12 @@ RECEIPTS_ROOT = DEMO_ROOT / "receipts"
 
 
 def _reset(path: Path) -> None:
-    shutil.rmtree(path, ignore_errors=True)
+    def _force_writable(func: Any, target: str, _exc: Any) -> None:
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+
+    if path.exists():
+        shutil.rmtree(path, onerror=_force_writable)
     path.mkdir(parents=True, exist_ok=True)
 
 

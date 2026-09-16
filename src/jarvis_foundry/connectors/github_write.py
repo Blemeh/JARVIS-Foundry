@@ -49,6 +49,8 @@ _ENDPOINT = re.compile(
     r"^/repos/([^/\s]+)/([^/\s]+)/(issues|pulls)(?:/([1-9]\d{0,9})/comments)?$"
 )
 _MAX_RESPONSE_BYTES = 256 * 1024
+_COLLECTION_PAGE_SIZE = 100
+_MAX_COLLECTION_PAGES = 5
 _WRITE_ACTIONS = frozenset({
     "github.issue.create",
     "github.issue.comment.create",
@@ -661,44 +663,80 @@ class GitHubWriteAdapter:
             if _is_comment_resource(request.resource)
             else f"{request.endpoint}?state=all&per_page=100"
         )
-        try:
-            status, raw = self.read_transport(endpoint)
-        except (TimeoutError, OSError):
+        matches: list[Mapping[str, Any]] = []
+        scanned = 0
+        truncated = False
+        response_hash: str | None = None
+        status_value: int | None = None
+        for page in range(1, _MAX_COLLECTION_PAGES + 1):
+            page_endpoint = endpoint if page == 1 else f"{endpoint}&page={page}"
+            try:
+                status, raw = self.read_transport(page_endpoint)
+            except (TimeoutError, OSError):
+                result = self._base_result(
+                    request, claimed="UNKNOWN", status=None, error_code="timeout"
+                )
+                result["reconciliation_required"] = True
+                return result
+            if status != 200:
+                result = self._base_result(
+                    request, claimed="UNKNOWN", status=status,
+                    error_code=f"http_{status}",
+                )
+                result["reconciliation_required"] = True
+                return result
+            value = self._raw_document(raw)
+            if not isinstance(value, list):
+                result = self._base_result(
+                    request, claimed="UNKNOWN", status=status,
+                    error_code="malformed_response",
+                )
+                result["reconciliation_required"] = True
+                return result
+            status_value = int(status)
+            response_hash = hashlib.sha256(bytes(raw)).hexdigest()
+            scanned += len(value)
+            matches.extend(
+                item for item in value
+                if isinstance(item, Mapping) and _matches_request(request, item)
+            )
+            if len(matches) > 1:
+                break
+            if len(value) < _COLLECTION_PAGE_SIZE:
+                break
+        else:
+            # Every allowed page was full: the scan is truncated and a
+            # "not observed" verdict would be dishonest.
+            truncated = True
+        if truncated and not matches:
             result = self._base_result(
-                request, claimed="UNKNOWN", status=None, error_code="timeout"
+                request,
+                claimed="UNKNOWN",
+                status=status_value,
+                error_code="scan_truncated",
+                response_hash=response_hash,
+                reconciled=False,
             )
             result["reconciliation_required"] = True
+            result["scan"] = {"pages": _MAX_COLLECTION_PAGES, "items": scanned}
             return result
-        if status != 200:
-            result = self._base_result(
-                request, claimed="UNKNOWN", status=status, error_code=f"http_{status}"
-            )
-            result["reconciliation_required"] = True
-            return result
-        value = self._raw_document(raw)
-        if not isinstance(value, list):
-            result = self._base_result(
-                request, claimed="UNKNOWN", status=status, error_code="malformed_response"
-            )
-            result["reconciliation_required"] = True
-            return result
-        matches = [item for item in value if isinstance(item, Mapping) and _matches_request(request, item)]
         if len(matches) != 1:
             result = self._base_result(
                 request,
                 claimed="UNKNOWN" if not matches else "FAILED",
-                status=status,
+                status=status_value,
                 error_code="not_observed" if not matches else "duplicate_provider_matches",
-                response_hash=hashlib.sha256(bytes(raw)).hexdigest(),
+                response_hash=response_hash,
                 reconciled=False,
                 duplicate_prevented=bool(matches),
             )
             result["reconciliation_required"] = True
+            result["scan"] = {"pages": min(_MAX_COLLECTION_PAGES, page), "items": scanned}
             return result
         result = self._from_document(
             request,
             matches[0],
-            status=status,
+            status=status_value or 200,
             raw=canonical_json(matches[0]).encode("utf-8"),
             reconciled=True,
         )
