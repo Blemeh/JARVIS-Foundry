@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -44,10 +45,13 @@ from ..systems import external_action_key
 from .contract import ConnectorSpec
 from .git import GitConnector
 
-_ENDPOINT = re.compile(r"^/repos/([^/\s]+)/([^/\s]+)/(issues|pulls)$")
+_ENDPOINT = re.compile(
+    r"^/repos/([^/\s]+)/([^/\s]+)/(issues|pulls)(?:/([1-9]\d{0,9})/comments)?$"
+)
 _MAX_RESPONSE_BYTES = 256 * 1024
 _WRITE_ACTIONS = frozenset({
     "github.issue.create",
+    "github.issue.comment.create",
     "github.pull_request.create",
 })
 _REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -94,9 +98,23 @@ def _endpoint_parts(endpoint: str) -> tuple[str, str, str]:
     match = _ENDPOINT.fullmatch(endpoint.strip())
     if match is None:
         raise GitHubWriteError(
-            "GitHub writes are limited to exact /repos/{owner}/{repo}/issues or /pulls endpoints"
+            "GitHub writes are limited to exact /repos/{owner}/{repo}/issues "
+            "or /pulls endpoints (with /{number}/comments for comments)"
         )
-    return match.group(1), match.group(2), match.group(3)
+    owner, repo, resource, number = match.groups()
+    if number is not None:
+        resource = f"{resource}/{number}/comments"
+    return owner, repo, resource
+
+
+def _is_comment_resource(resource: str) -> bool:
+    return isinstance(resource, str) and resource.endswith("/comments")
+
+
+def _item_endpoint(request: GitHubWriteRequest, number: int) -> str:
+    if _is_comment_resource(request.resource):
+        return f"/repos/{request.owner}/{request.repo}/issues/comments/{number}"
+    return f"{request.endpoint}/{number}"
 
 
 def _payload_hash(payload: Mapping[str, Any]) -> str:
@@ -137,6 +155,15 @@ def github_write_intent(
         return f"/repos/{owner}/{repo}/issues", {
             "title": str(payload["title"]),
             "body": str(payload.get("body") or ""),
+        }
+    if action_kind == "github.issue.comment.create":
+        owner = str(payload["owner"])
+        repo = str(payload["repo"])
+        number = str(payload["number"]).strip()
+        if not re.fullmatch(r"[1-9]\d{0,9}", number):
+            raise GitHubWriteError("GitHub issue comment requires an exact issue number")
+        return f"/repos/{owner}/{repo}/issues/{number}/comments", {
+            "body": str(payload["body"]),
         }
     if action_kind == "github.pull_request.create":
         owner = str(payload["owner"])
@@ -300,6 +327,28 @@ class GitHubWriteRequest:
 
 
 def _provider_identity(request: GitHubWriteRequest, document: Mapping[str, Any]) -> tuple[str, str, int] | None:
+    if _is_comment_resource(request.resource):
+        comment_id = document.get("id")
+        if (
+            isinstance(comment_id, bool)
+            or not isinstance(comment_id, int)
+            or comment_id <= 0
+        ):
+            return None
+        issue_number = request.resource.split("/")[1]
+        provider_id = (
+            f"github:comment:{request.owner}/{request.repo}#{comment_id}"
+        )
+        candidate = document.get("html_url")
+        provider_ref = (
+            str(candidate)
+            if isinstance(candidate, str) and candidate.startswith("https://github.com/")
+            else (
+                f"https://github.com/{request.owner}/{request.repo}"
+                f"/issues/{issue_number}#issuecomment-{comment_id}"
+            )
+        )
+        return provider_id, provider_ref, comment_id
     number = document.get("number")
     if isinstance(number, bool) or not isinstance(number, int) or number <= 0:
         return None
@@ -325,6 +374,8 @@ def _matches_request(request: GitHubWriteRequest, document: Mapping[str, Any]) -
     identity = _provider_identity(request, document)
     if identity is None:
         return False
+    if _is_comment_resource(request.resource):
+        return document.get("body") == request.payload.get("body")
     if document.get("title") != request.payload.get("title"):
         return False
     if request.resource == "pulls":
@@ -393,7 +444,7 @@ class GitHubWriteAdapter:
         identity = _provider_identity(request, document)
         if identity is None:
             return {"status": "UNKNOWN", "matches": False, "reason": "provider id is missing"}
-        endpoint = f"{request.endpoint}/{identity[2]}"
+        endpoint = _item_endpoint(request, identity[2])
         try:
             status, raw = self.read_transport(endpoint)
         except (TimeoutError, subprocess.TimeoutExpired, OSError) as error:
@@ -605,7 +656,11 @@ class GitHubWriteAdapter:
             )
             result["reconciliation_required"] = True
             return result
-        endpoint = f"{request.endpoint}?state=all&per_page=100"
+        endpoint = (
+            f"{request.endpoint}?per_page=100"
+            if _is_comment_resource(request.resource)
+            else f"{request.endpoint}?state=all&per_page=100"
+        )
         try:
             status, raw = self.read_transport(endpoint)
         except (TimeoutError, OSError):
@@ -678,7 +733,7 @@ class GitHubWriteAdapter:
                     "reconciliation_required": True,
                 })
                 return result
-            endpoint = f"{request.endpoint}/{prior['number']}"
+            endpoint = _item_endpoint(request, int(prior["number"]))
             try:
                 status, raw = self.read_transport(endpoint)
             except (TimeoutError, subprocess.TimeoutExpired, OSError):
@@ -953,6 +1008,108 @@ def reconcile_github_write_effect(
             "recovered_from_journal_state": status,
         },
         reconciled=True,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubWriteDispatchSettings:
+    """Owner-enabled GitHub write dispatch for one process context.
+
+    Default is fully off: dispatch requires an explicit environment opt-in
+    plus an exact ``owner/repo`` allow-list, and never performs OAuth or
+    account management.  Credentials stay in the existing authenticated
+    ``gh`` session.
+
+    Environment keys (read by :func:`github_write_dispatch_settings`):
+
+    * ``JARVIS_GITHUB_WRITES_ENABLED`` — ``1/true/yes`` enables writes;
+    * ``JARVIS_GITHUB_AUTHORIZED_REPOSITORIES`` — exact ``owner/repo`` list,
+      comma or semicolon separated;
+    * ``JARVIS_GITHUB_AUTHORIZATION_FILE`` — optional JSON owner grant for
+      ``github.pull_request.publish`` (authorization_id, repository, remote,
+      allowed_base_branches, owner_authorized, dispatch_enabled,
+      capability_trust).
+    """
+
+    writes_enabled: bool = False
+    authorized_repositories: tuple[str, ...] = ()
+    repository_authorization: GitHubRepositoryAuthorization | None = None
+    source: str = "default"
+
+    def executor_kwargs(self) -> dict[str, Any]:
+        return {
+            "github_writes_enabled": self.writes_enabled,
+            "github_authorized_repositories": self.authorized_repositories,
+            "github_repository_authorization": self.repository_authorization,
+        }
+
+
+def github_write_dispatch_settings(
+    environ: Mapping[str, str] | None = None,
+) -> GitHubWriteDispatchSettings:
+    """Resolve the environment opt-in for GitHub write dispatch.
+
+    Malformed owner configuration raises :class:`GitHubWriteError` instead of
+    silently disabling an explicitly requested capability.
+    """
+
+    env = os.environ if environ is None else environ
+    enabled = str(env.get("JARVIS_GITHUB_WRITES_ENABLED", "")).strip().lower() in {
+        "1", "true", "yes",
+    }
+    raw_repositories = str(env.get("JARVIS_GITHUB_AUTHORIZED_REPOSITORIES", ""))
+    repositories = tuple(dict.fromkeys(
+        part.strip()
+        for part in re.split(r"[;,]", raw_repositories)
+        if part.strip()
+    ))
+    for repository in repositories:
+        if not _REPOSITORY.fullmatch(repository):
+            raise GitHubWriteError(
+                "JARVIS_GITHUB_AUTHORIZED_REPOSITORIES entries must be exact "
+                "owner/repo identities"
+            )
+    authorization: GitHubRepositoryAuthorization | None = None
+    authorization_path = str(
+        env.get("JARVIS_GITHUB_AUTHORIZATION_FILE", "")
+    ).strip()
+    if authorization_path:
+        try:
+            document = json.loads(
+                Path(authorization_path).expanduser().read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as error:
+            raise GitHubWriteError(
+                "JARVIS_GITHUB_AUTHORIZATION_FILE must be readable JSON"
+            ) from error
+        if not isinstance(document, Mapping):
+            raise GitHubWriteError(
+                "JARVIS_GITHUB_AUTHORIZATION_FILE must contain one JSON object"
+            )
+        branches = document.get("allowed_base_branches") or ("main",)
+        if isinstance(branches, str):
+            branches = (branches,)
+        authorization = GitHubRepositoryAuthorization(
+            authorization_id=str(document.get("authorization_id") or ""),
+            repository=str(document.get("repository") or ""),
+            remote=str(document.get("remote") or ""),
+            allowed_base_branches=tuple(str(branch) for branch in branches),
+            owner_authorized=bool(document.get("owner_authorized", False)),
+            dispatch_enabled=bool(document.get("dispatch_enabled", False)),
+            capability_trust=str(document.get("capability_trust") or "ESTABLISHED"),
+        )
+        if authorization.repository.casefold() not in {
+            repository.casefold() for repository in repositories
+        }:
+            raise GitHubWriteError(
+                "JARVIS_GITHUB_AUTHORIZATION_FILE repository must also appear "
+                "in JARVIS_GITHUB_AUTHORIZED_REPOSITORIES"
+            )
+    return GitHubWriteDispatchSettings(
+        writes_enabled=enabled,
+        authorized_repositories=repositories,
+        repository_authorization=authorization,
+        source="environment",
     )
 
 
@@ -1743,8 +1900,10 @@ __all__ = [
     "GitHubWriteRequest",
     "GitHubWriteTransportError",
     "GITHUB_WRITE_SPEC",
+    "GitHubWriteDispatchSettings",
     "gh_api_write_transport",
     "github_effect_key",
+    "github_write_dispatch_settings",
     "github_write_input_hash",
     "github_write_intent",
     "reconcile_github_write_effect",

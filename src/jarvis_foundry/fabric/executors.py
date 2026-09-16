@@ -454,6 +454,21 @@ def github_issue_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dic
     )
 
 
+def github_issue_comment_create(
+    ctx: ExecutorContext, payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Add one issue comment through the explicit GitHub write seam."""
+    endpoint, provider_payload = github_write_intent(
+        "github.issue.comment.create", payload,
+    )
+    return _github_write(
+        ctx,
+        "github.issue.comment.create",
+        endpoint,
+        provider_payload,
+    )
+
+
 def github_pull_request_create(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Open a pull request via injected write transport. No silent live mutation."""
     endpoint, provider_payload = github_write_intent(
@@ -521,6 +536,7 @@ def github_pull_request_publish(
 
 _GITHUB_WRITE_EFFECT_KINDS = frozenset({
     "github.issue.create",
+    "github.issue.comment.create",
     "github.pull_request.create",
 })
 
@@ -2700,6 +2716,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "github.search.read": github_research,
     "github.identity.read": github_identity,
     "github.issue.create": github_issue_create,
+    "github.issue.comment.create": github_issue_comment_create,
     "github.pull_request.create": github_pull_request_create,
     "github.pull_request.publish": github_pull_request_publish,
     "github.write.reconcile": github_write_reconcile,

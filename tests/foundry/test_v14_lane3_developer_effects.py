@@ -13,6 +13,7 @@ import pytest
 from jarvis_foundry.connectors.git import GitConnector
 from jarvis_foundry.connectors.github_write import (
     GitHubWriteAdapter,
+    github_write_dispatch_settings,
     reconcile_github_write_effect,
 )
 from jarvis_foundry.database import FoundryDatabase
@@ -48,12 +49,32 @@ class FakeIssueProvider:
 
     def __init__(self) -> None:
         self.documents: list[dict[str, Any]] = []
+        self.comments: list[dict[str, Any]] = []
         self.write_calls = 0
         self.read_calls: list[str] = []
 
     def write(self, endpoint: str, payload: Mapping[str, Any]) -> tuple[int, bytes]:
-        assert endpoint == "/repos/owner/demo/issues"
         self.write_calls += 1
+        comment_match = re.fullmatch(
+            r"/repos/owner/demo/issues/(\d+)/comments", endpoint,
+        )
+        if comment_match is not None:
+            comment_id = 900 + len(self.comments) + 1
+            document = {
+                "id": comment_id,
+                "body": payload["body"],
+                "issue_url": (
+                    f"https://api.github.com/repos/owner/demo/issues/"
+                    f"{comment_match.group(1)}"
+                ),
+                "html_url": (
+                    f"https://github.com/owner/demo/issues/"
+                    f"{comment_match.group(1)}#issuecomment-{comment_id}"
+                ),
+            }
+            self.comments.append(document)
+            return 201, json.dumps(document).encode("utf-8")
+        assert endpoint == "/repos/owner/demo/issues"
         number = len(self.documents) + 1
         document = {
             "number": number,
@@ -66,6 +87,18 @@ class FakeIssueProvider:
 
     def read(self, endpoint: str) -> tuple[int, bytes]:
         self.read_calls.append(endpoint)
+        comment_list = re.fullmatch(
+            r"/repos/owner/demo/issues/(\d+)/comments\?per_page=100", endpoint,
+        )
+        if comment_list is not None:
+            return 200, json.dumps(self.comments).encode("utf-8")
+        comment_item = re.fullmatch(r"/repos/owner/demo/issues/comments/(\d+)", endpoint)
+        if comment_item is not None:
+            comment_id = int(comment_item.group(1))
+            for document in self.comments:
+                if document["id"] == comment_id:
+                    return 200, json.dumps(document).encode("utf-8")
+            return 404, b"{}"
         if "?state=all" in endpoint:
             return 200, json.dumps(self.documents).encode("utf-8")
         match = re.search(r"/issues/(\d+)$", endpoint)
@@ -309,6 +342,147 @@ def _clone(tmp_path: Path) -> tuple[Path, Path, str]:
         capture_output=True, text=True, check=True,
     ).stdout.strip()
     return work, bare, head
+
+
+def test_github_issue_comment_dedupe_readback_and_recovery(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    ctx = _write_ctx(tmp_path, database, provider)
+    seed_builtins(database)
+    payload = {
+        "owner": "owner",
+        "repo": "demo",
+        "number": 7,
+        "body": "exact owner text — never rewritten\nsecond line",
+    }
+
+    first = execute_action(
+        database, ctx, _intent("github.issue.comment.create"),
+        "github.issue.comment.create", payload,
+    )
+    assert first.success is True
+    assert first.claimed_effect["claimed"] == "COMPLETED"
+    assert first.claimed_effect["reconciled"] is True
+    assert first.claimed_effect["readback_status"] == "MATCH"
+    assert provider.write_calls == 1
+    assert provider.comments[0]["body"] == payload["body"]
+
+    second = execute_action(
+        database, ctx, _intent("github.issue.comment.create"),
+        "github.issue.comment.create", payload,
+    )
+    assert second.success is True
+    assert second.claimed_effect["replayed"] is True
+    assert provider.write_calls == 1
+
+    key = str(first.claimed_effect["action_key"])
+    state = effect_state(database, key)
+    assert state["status"] == "COMPLETED"
+    assert state["after_state"]
+
+    def lost_response() -> dict[str, Any]:
+        provider.write(
+            "/repos/owner/demo/issues/7/comments",
+            {"body": second_payload["body"]},
+        )
+        raise TimeoutError("response lost after provider accepted the comment")
+
+    second_payload = {**payload, "body": "another comment body"}
+    from jarvis_foundry.connectors.github_write import github_write_input_hash
+
+    second_key = fabric_effect_id(
+        system_id="github",
+        target_ref="github.issue.comment.create",
+        capability_id="cap.github.issue.comment.create",
+        capability_version="1.0.0",
+        action_kind="github.issue.comment.create",
+        input_payload=second_payload,
+    )
+    timed_out = execute_fabric_effect(
+        database,
+        action_key=second_key,
+        system_id="github",
+        target_ref="github.issue.comment.create",
+        payload_hash="lane3",
+        kind="github.issue.comment.create",
+        connector_id="fabric:cap.github.issue.comment.create",
+        request_identity={
+            "action_kind": "github.issue.comment.create",
+            "input_hash": github_write_input_hash(second_payload),
+        },
+        perform=lost_response,
+        claim_ttl_s=0.01,
+    )
+    assert timed_out["journal_state"] == "FROZEN"
+    writes_after_crash = provider.write_calls
+
+    recovered = execute_action(
+        database, _write_ctx(tmp_path, database, provider),
+        _intent("github.write.reconcile"),
+        "github.write.reconcile",
+        {
+            "original_effect_id": second_key,
+            "original_action": "github.issue.comment.create",
+            "request": second_payload,
+        },
+    )
+    assert recovered.success is True
+    assert recovered.claimed_effect["claimed"] == "COMPLETED"
+    assert recovered.claimed_effect["accepted"] is True
+    assert provider.write_calls == writes_after_crash
+    assert len(provider.comments) == 2
+
+
+def test_github_write_dispatch_settings_default_off_and_env_optin(
+    tmp_path: Path,
+) -> None:
+    default = github_write_dispatch_settings(environ={})
+    assert default.writes_enabled is False
+    assert default.authorized_repositories == ()
+    assert default.repository_authorization is None
+    assert default.executor_kwargs()["github_writes_enabled"] is False
+
+    opted_in = github_write_dispatch_settings(environ={
+        "JARVIS_GITHUB_WRITES_ENABLED": "true",
+        "JARVIS_GITHUB_AUTHORIZED_REPOSITORIES": "owner/demo; owner/other",
+    })
+    assert opted_in.writes_enabled is True
+    assert opted_in.authorized_repositories == ("owner/demo", "owner/other")
+
+    grant = tmp_path / "github-grant.json"
+    grant.write_text(json.dumps({
+        "authorization_id": "owner-grant:lane3",
+        "repository": "owner/demo",
+        "remote": "https://github.com/owner/demo.git",
+        "allowed_base_branches": ["main"],
+        "owner_authorized": True,
+        "dispatch_enabled": True,
+    }), encoding="utf-8")
+    with_grant = github_write_dispatch_settings(environ={
+        "JARVIS_GITHUB_WRITES_ENABLED": "yes",
+        "JARVIS_GITHUB_AUTHORIZED_REPOSITORIES": "owner/demo",
+        "JARVIS_GITHUB_AUTHORIZATION_FILE": str(grant),
+    })
+    authorization = with_grant.repository_authorization
+    assert authorization is not None
+    assert authorization.owner_authorized is True
+    assert authorization.refusal(
+        repository="owner/demo",
+        remote="https://github.com/owner/demo.git",
+        base="main",
+    ) is None
+
+    with pytest.raises(Exception, match="owner/repo"):
+        github_write_dispatch_settings(environ={
+            "JARVIS_GITHUB_WRITES_ENABLED": "true",
+            "JARVIS_GITHUB_AUTHORIZED_REPOSITORIES": "not-a-repository",
+        })
+    with pytest.raises(Exception, match="must also appear"):
+        github_write_dispatch_settings(environ={
+            "JARVIS_GITHUB_WRITES_ENABLED": "true",
+            "JARVIS_GITHUB_AUTHORIZED_REPOSITORIES": "owner/other",
+            "JARVIS_GITHUB_AUTHORIZATION_FILE": str(grant),
+        })
 
 
 def test_git_push_second_identical_is_already_satisfied_noop(tmp_path: Path) -> None:

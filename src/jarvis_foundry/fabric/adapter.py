@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 from ..effects import FAILED as EFFECT_FAILED
 from ..effects import FROZEN, effect_state, finalize_verified_effect
+from ..connectors.github_write import github_write_dispatch_settings
 from ..events import Event
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
@@ -548,6 +549,7 @@ def try_fabric_dispatch(
         owned_root=owned_root,
         mcp_backend=mcp_backend,
         mcp_mutation_verifier=mcp_mutation_verifier,
+        **github_write_dispatch_settings().executor_kwargs(),
     )
     try:
         receipt = execute_for_spine(

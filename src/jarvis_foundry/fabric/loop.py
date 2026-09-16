@@ -181,6 +181,16 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("explicit write transport required; no silent live mutation",),
         ),
         CapabilitySpec(
+            capability_id="cap.github.issue.comment.create", version="1.0.0",
+            kind=Kind.CONNECTOR, action_kind="github.issue.comment.create",
+            semantic=Semantic.EXTERNAL_EFFECT, executor="github_write",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "explicit write transport required; owner text preserved verbatim; "
+                "provider readback required",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.github.pull_request.create", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="github.pull_request.create", semantic=Semantic.EXTERNAL_EFFECT,
             executor="github_write",
@@ -769,6 +779,8 @@ def _verify_action(
             and readback.get("matches") is True
         )
     if action_kind == "github.issue.create":
+        return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
+    if action_kind == "github.issue.comment.create":
         return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
     if action_kind == "github.pull_request.create":
         return VerifyVerdict.MATCH if github_write_readback_verified() else VerifyVerdict.MISMATCH
