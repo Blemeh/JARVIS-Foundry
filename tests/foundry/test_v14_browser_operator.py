@@ -289,6 +289,42 @@ def _mutation_payload(site: str, state_path: Path) -> dict[str, Any]:
     }
 
 
+def test_authenticated_browser_read_returns_scalar_claim(
+    browser: PlaywrightBrowserConnector,
+    operator_site: Any,
+    tmp_path: Path,
+) -> None:
+    _server, site = operator_site
+    state_path = tmp_path / "read-state.json"
+    _persisted_session(browser, site, state_path)
+    database = _database(tmp_path / "read-database")
+    result = execute_action(
+        database,
+        ExecutorContext(database=database, owned_root=tmp_path / "owned"),
+        TaskIntent(
+            task_id="mission.browser.authenticated-read",
+            required_actions=("browser.web.read",),
+            unattended=True,
+        ),
+        "browser.web.read",
+        {
+            "url": f"{site}/app",
+            "profile_id": "v14-operator-profile",
+            "site_origin": site,
+            "session_state_path": str(state_path),
+            "auth_marker": {"role": "status", "name": "Signed in"},
+            "require_authenticated": True,
+            "persist_session": True,
+            "allowed_hosts": ("127.0.0.1",),
+            "allow_insecure_localhost": True,
+        },
+        workflow_id="workflow.browser.authenticated-read",
+        step_id="read",
+    )
+    assert result.success is True
+    assert result.claimed.value == "COMPLETED"
+
+
 def test_unattended_selection_admits_browser_mutation_and_inspect(
     tmp_path: Path,
 ) -> None:

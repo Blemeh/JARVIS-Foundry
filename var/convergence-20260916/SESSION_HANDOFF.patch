@@ -1,0 +1,429 @@
+diff --git a/src/jarvis_foundry/fabric/computer_operator.py b/src/jarvis_foundry/fabric/computer_operator.py
+index 376d293..ff1b201 100644
+--- a/src/jarvis_foundry/fabric/computer_operator.py
++++ b/src/jarvis_foundry/fabric/computer_operator.py
+@@ -539,6 +539,7 @@ def open_artifact_and_assert(
+     path: str,
+     expected: str,
+     idempotency_key: str,
++    args: tuple[str, ...] = (),
+     timeout_s: float = 15.0,
+     cwd: str = ".",
+     control: ControlSelector | None = None,
+@@ -551,6 +552,7 @@ def open_artifact_and_assert(
+         process_id,
+         executable,
+         path,
++        args=args,
+         cwd=cwd,
+         idempotency_key=idempotency_key,
+         show_window=True,
+@@ -939,6 +941,7 @@ def dispatch_computer_operator(
+                 path=_required_text(payload, "target", "path"),
+                 expected=expected,
+                 idempotency_key=_required_text(payload, "idempotency_key"),
++                args=tuple(str(value) for value in payload.get("args") or ()),
+                 timeout_s=_timeout_seconds(payload),
+                 cwd=str(payload.get("cwd") or "."),
+                 control=(
+diff --git a/src/jarvis_foundry/fabric/executors.py b/src/jarvis_foundry/fabric/executors.py
+index 1b5fe6b..13774ed 100644
+--- a/src/jarvis_foundry/fabric/executors.py
++++ b/src/jarvis_foundry/fabric/executors.py
+@@ -1129,7 +1129,7 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str,
+                         if capture.attempt.outcome in {"COMPLETED", "FAILED"}
+                         else "BLOCKED"
+                         if capture.attempt.error_code == "stop_requested"
+-                    else "UNKNOWN",
++                        else "UNKNOWN"
+                     ),
+                     "authority": "DATA_ONLY",
+                 }
+diff --git a/src/jarvis_foundry/fabric/recipes/builtins.py b/src/jarvis_foundry/fabric/recipes/builtins.py
+index fe1ee7b..49c2aaf 100644
+--- a/src/jarvis_foundry/fabric/recipes/builtins.py
++++ b/src/jarvis_foundry/fabric/recipes/builtins.py
+@@ -57,6 +57,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
+             "artifact_target": {"required": True, "description": "Owned-root artifact to open."},
+             "process_id": {"required": True, "description": "Stable logical process id for the open."},
+             "application": {"default": "notepad.exe", "description": "Native viewer executable."},
++            "application_args": {"default": [], "description": "Exact native viewer arguments before the artifact path."},
+             "idempotency_key": {"default": "v14-open-default", "description": "Stable open idempotency key."},
+             "expected_text": {"default": "", "description": "Text the assert step must observe."},
+         },
+@@ -134,6 +135,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
+         "description": "Close one owner objective: read, compose artifact, verify natively, publish.",
+         "required_capabilities": (
+             "browser.web.read",
++            "browser.web.inspect",
+             "file.write",
+             "file.read",
+             "desktop.open_artifact_and_assert",
+@@ -144,6 +146,15 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
+         ),
+         "parameters": {
+             "source_url": {"required": True, "description": "Bounded source to research."},
++            "site_origin": {"required": True, "description": "Owner-configured exact browser origin."},
++            "session_state_path": {"required": True, "description": "Brokered Playwright storage-state path."},
++            "profile_id": {"default": "v14-operator", "description": "Configured browser profile identity."},
++            "owner_scope": {"default": "owner-local", "description": "Configured owner scope."},
++            "credential_reference": {"default": "browser-session-configured", "description": "Opaque credential reference."},
++            "allowed_hosts": {"required": True, "description": "Owner-configured exact browser hosts."},
++            "allow_insecure_localhost": {"default": False, "description": "Disposable-localhost opt-in."},
++            "auth_marker_role": {"required": True, "description": "Authenticated-page marker role."},
++            "auth_marker_name": {"required": True, "description": "Authenticated-page marker name."},
+             "artifact_target": {"default": "research/close.md", "description": "Owned-root artifact target."},
+             "artifact_title": {"default": "Operator close-out", "description": "Artifact heading."},
+             "process_id": {"required": True, "description": "Stable logical process id for native open."},
+@@ -159,14 +170,49 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
+             {
+                 "step_id": "fetch",
+                 "action_kind": "browser.web.read",
+-                "payload": {"url": "$params.source_url"},
++                "payload": {
++                    "url": "$params.source_url",
++                    "site_origin": "$params.site_origin",
++                    "session_state_path": "$params.session_state_path",
++                    "profile_id": "$params.profile_id",
++                    "owner_scope": "$params.owner_scope",
++                    "credential_reference": "$params.credential_reference",
++                    "auth_marker": {
++                        "role": "$params.auth_marker_role",
++                        "name": "$params.auth_marker_name",
++                    },
++                    "require_authenticated": True,
++                    "persist_session": True,
++                    "allowed_hosts": "$params.allowed_hosts",
++                    "allow_insecure_localhost": "$params.allow_insecure_localhost",
++                },
++            },
++            {
++                "step_id": "inspect_source",
++                "action_kind": "browser.web.inspect",
++                "payload": {
++                    "url": "$params.source_url",
++                    "site_origin": "$params.site_origin",
++                    "session_state_path": "$params.session_state_path",
++                    "profile_id": "$params.profile_id",
++                    "owner_scope": "$params.owner_scope",
++                    "credential_reference": "$params.credential_reference",
++                    "auth_marker": {
++                        "role": "$params.auth_marker_role",
++                        "name": "$params.auth_marker_name",
++                    },
++                    "require_authenticated": True,
++                    "persist_session": True,
++                    "allowed_hosts": "$params.allowed_hosts",
++                    "allow_insecure_localhost": "$params.allow_insecure_localhost",
++                },
+             },
+             {
+                 "step_id": "compose",
+                 "action_kind": "file.write",
+                 "payload": {
+                     "target": "$params.artifact_target",
+-                    "content": "# ${params.artifact_title}\n\nSource: ${fetch.final_url}\nSource SHA: ${fetch.source_sha256}\n",
++                    "content": "# ${params.artifact_title}\n\nSource: ${fetch.final_url}\nSource SHA: ${fetch.source_sha256}\n\nAuthenticated source structure:\n${inspect_source.elements}\n",
+                 },
+             },
+             {
+@@ -180,6 +226,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
+                 "payload": {
+                     "process_id": "$params.process_id",
+                     "application": "$params.application",
++                    "args": "$params.application_args",
+                     "target": "$readback.target",
+                     "expected": "$readback.text",
+                     "idempotency_key": "$params.idempotency_key",
+diff --git a/tests/foundry/test_v14_browser_operator.py b/tests/foundry/test_v14_browser_operator.py
+index ad4a72c..e912c5c 100644
+--- a/tests/foundry/test_v14_browser_operator.py
++++ b/tests/foundry/test_v14_browser_operator.py
+@@ -289,6 +289,42 @@ def _mutation_payload(site: str, state_path: Path) -> dict[str, Any]:
+     }
+ 
+ 
++def test_authenticated_browser_read_returns_scalar_claim(
++    browser: PlaywrightBrowserConnector,
++    operator_site: Any,
++    tmp_path: Path,
++) -> None:
++    _server, site = operator_site
++    state_path = tmp_path / "read-state.json"
++    _persisted_session(browser, site, state_path)
++    database = _database(tmp_path / "read-database")
++    result = execute_action(
++        database,
++        ExecutorContext(database=database, owned_root=tmp_path / "owned"),
++        TaskIntent(
++            task_id="mission.browser.authenticated-read",
++            required_actions=("browser.web.read",),
++            unattended=True,
++        ),
++        "browser.web.read",
++        {
++            "url": f"{site}/app",
++            "profile_id": "v14-operator-profile",
++            "site_origin": site,
++            "session_state_path": str(state_path),
++            "auth_marker": {"role": "status", "name": "Signed in"},
++            "require_authenticated": True,
++            "persist_session": True,
++            "allowed_hosts": ("127.0.0.1",),
++            "allow_insecure_localhost": True,
++        },
++        workflow_id="workflow.browser.authenticated-read",
++        step_id="read",
++    )
++    assert result.success is True
++    assert result.claimed.value == "COMPLETED"
++
++
+ def test_unattended_selection_admits_browser_mutation_and_inspect(
+     tmp_path: Path,
+ ) -> None:
+diff --git a/tests/foundry/test_v14_v16_convergence.py b/tests/foundry/test_v14_v16_convergence.py
+index ad84d99..a1775a1 100644
+--- a/tests/foundry/test_v14_v16_convergence.py
++++ b/tests/foundry/test_v14_v16_convergence.py
+@@ -64,6 +64,7 @@ def test_digital_operator_recipe_uses_integrated_actions_and_commits() -> None:
+     actions = [step.action_kind for step in recipe.steps]
+     assert actions == [
+         "browser.web.read",
++        "browser.web.inspect",
+         "file.write",
+         "file.read",
+         "desktop.open_artifact_and_assert",
+diff --git a/tests/foundry/test_v14_windows_operator_lane2.py b/tests/foundry/test_v14_windows_operator_lane2.py
+index 7e8f2a1..eb30aba 100644
+--- a/tests/foundry/test_v14_windows_operator_lane2.py
++++ b/tests/foundry/test_v14_windows_operator_lane2.py
+@@ -398,6 +398,7 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
+         path=str(artifact),
+         expected="hello",
+         idempotency_key="lane2-open-1",
++        args=("/new",),
+         backend=backend,
+     )
+     assert result["claimed"] == "COMPLETED"
+@@ -424,6 +425,7 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
+             "path": str(artifact),
+             "expected": "hello",
+             "idempotency_key": "lane2-open-2",
++            "args": ["/new"],
+         },
+     )
+     assert dispatched is not None
+diff --git a/var/convergence-20260916/v14_real_scenario/run.py b/var/convergence-20260916/v14_real_scenario/run.py
+new file mode 100644
+index 0000000..14775b7
+--- /dev/null
++++ b/var/convergence-20260916/v14_real_scenario/run.py
+@@ -0,0 +1,207 @@
++"""Real disposable converged V14 browser -> artifact -> Windows -> Git proof."""
++from __future__ import annotations
++
++import importlib.util
++import json
++import os
++import shutil
++import stat
++import subprocess
++import sys
++from pathlib import Path
++from typing import Any
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[2]
++SRC = REPO / "src"
++if str(SRC) not in sys.path:
++    sys.path.insert(0, str(SRC))
++
++app_spec = importlib.util.spec_from_file_location(
++    "convergence_lane1_app", REPO / "var" / "lane1-demo" / "app.py"
++)
++assert app_spec is not None and app_spec.loader is not None
++app = importlib.util.module_from_spec(app_spec)
++app_spec.loader.exec_module(app)
++
++from jarvis_foundry.connectors.web_research import (  # noqa: E402
++    BrowserExecutionAuthorization,
++    PlaywrightBrowserConnector,
++)
++from jarvis_foundry.database import FoundryDatabase  # noqa: E402
++from jarvis_foundry.fabric.executors import ExecutorContext  # noqa: E402
++from jarvis_foundry.fabric.loop import seed_builtins  # noqa: E402
++from jarvis_foundry.fabric.recipes import run_recipe  # noqa: E402
++
++RUN = HERE / "run"
++NATIVE_VIEWER = Path(r"C:\Windows\System32\notepad.exe")
++
++
++def _git(*args: str, cwd: Path | None = None) -> str:
++    completed = subprocess.run(
++        ["git", *args], cwd=cwd, capture_output=True, text=True,
++        encoding="utf-8", timeout=60, check=False,
++    )
++    if completed.returncode != 0:
++        raise RuntimeError(completed.stderr.strip() or completed.stdout.strip())
++    return completed.stdout.strip()
++
++
++def _remove_readonly(function: Any, path: str, _error: Any) -> None:
++    os.chmod(path, stat.S_IWRITE)
++    function(path)
++
++
++def _login(session: Any) -> bool:
++    target = session.discover_target(
++        target_id="login-submit", role="button", name="Sign in", action="submit",
++    )
++    attempt = session.execute(
++        target,
++        effect_id="effect:convergence-v14-login",
++        idempotency_key="idempotency:convergence-v14-login",
++        readback_target={"role": "heading", "name": "Operator dashboard"},
++    )
++    return attempt.outcome == "COMPLETED"
++
++
++def main() -> int:
++    if RUN.exists():
++        shutil.rmtree(RUN, onexc=_remove_readonly)
++    RUN.mkdir(parents=True)
++    repo = RUN / "project"
++    remote = RUN / "remote.git"
++    state_path = RUN / "session" / "state.json"
++    state_path.parent.mkdir()
++    repo.mkdir()
++    _git("init", "--bare", str(remote))
++    _git("init", "-b", "main", cwd=repo)
++    _git("config", "user.name", "JARVIS Disposable Proof", cwd=repo)
++    _git("config", "user.email", "jarvis-proof@example.invalid", cwd=repo)
++    (repo / "README.md").write_text("# Disposable V14 proof\n", encoding="utf-8")
++    _git("add", "README.md", cwd=repo)
++    _git("commit", "-m", "Initialize disposable proof", cwd=repo)
++
++    server, _thread, site = app.serve(0)
++    operator = None
++    result: dict[str, Any]
++    try:
++        browser = PlaywrightBrowserConnector(
++            timeout_ms=10_000,
++            allowed_hosts=("127.0.0.1",),
++            allow_insecure_localhost=True,
++        )
++        with browser.session(
++            reauthenticate=_login,
++            profile_id="convergence-v14-profile",
++            site_origin=site,
++            session_state_path=state_path,
++            owner_scope="owner-disposable-convergence",
++            credential_reference="credential-browser-disposable",
++            auth_marker={"role": "status", "name": "Signed in"},
++            persist_session=True,
++        ) as session:
++            session.navigate(f"{site}/login")
++            status = session.ensure_authenticated()
++            if not status.authenticated:
++                raise RuntimeError(f"authenticated session setup failed: {status.state}")
++
++        database = FoundryDatabase(RUN / "foundry.db")
++        database.initialize()
++        seed_builtins(database)
++        grant = BrowserExecutionAuthorization(
++            authorization_id="grant:convergence-v14",
++            site_origin=site,
++            owner_authorized=True,
++            dispatch_enabled=True,
++            allowed_actions=("click", "fill", "submit"),
++            session_state_path=str(state_path),
++            profile_id="convergence-v14-profile",
++            owner_scope="owner-disposable-convergence",
++            credential_reference="credential-browser-disposable",
++            auth_marker=("status", "Signed in"),
++            require_authenticated=True,
++            persist_session=True,
++            allow_insecure_localhost=True,
++        )
++        ctx = ExecutorContext(
++            database=database,
++            owned_root=repo,
++            browser_execution_authorization=grant,
++            operator_executable_allowlist=(NATIVE_VIEWER,),
++        )
++        result = run_recipe(
++            database,
++            ctx,
++            "v14.digital_operator.close",
++            {
++                "source_url": f"{site}/dashboard",
++                "site_origin": site,
++                "session_state_path": str(state_path),
++                "profile_id": "convergence-v14-profile",
++                "owner_scope": "owner-disposable-convergence",
++                "credential_reference": "credential-browser-disposable",
++                "allowed_hosts": ["127.0.0.1"],
++                "allow_insecure_localhost": True,
++                "auth_marker_role": "status",
++                "auth_marker_name": "Signed in",
++                "artifact_target": "research/jarvis-v14-convergence-20260916.txt",
++                "artifact_title": "Authenticated operator close-out",
++                "process_id": "convergence-v14-notepad",
++                "application": str(NATIVE_VIEWER),
++                "application_args": ["/new"],
++                "idempotency_key": "convergence-v14-close",
++                "worktree": str(repo),
++                "remote": str(remote),
++                "branch": "main",
++                "commit_message": "Preserve authenticated operator result",
++            },
++            task_id="owner-goal:convergence-v14",
++            workflow_id="workflow:convergence-v14-real",
++            checkpoint_path=RUN / "workflow-checkpoint.json",
++        )
++        operator = ctx.operator_connector
++        remote_head = _git("--git-dir", str(remote), "rev-parse", "refs/heads/main")
++        artifact = repo / "research" / "jarvis-v14-convergence-20260916.txt"
++        summary = result.get("summary") or {}
++        checks = {
++            "workflow_success": result.get("success") is True,
++            "artifact_exists": artifact.is_file(),
++            "authenticated_source_recorded": (
++                artifact.is_file()
++                and "Operator dashboard" in artifact.read_text(encoding="utf-8")
++            ),
++            "native_readback_verified": summary.get("outputs", {}).get(
++                "native_readback_verified"
++            ) is True,
++            "remote_matches_worktree": remote_head == _git("rev-parse", "HEAD", cwd=repo),
++            "all_receipts_verified": all(
++                row.get("verified") == "VERIFIED"
++                for row in result.get("receipts") or []
++            ),
++        }
++        proof = {
++            "schema": "jarvis.v14.converged-real-scenario.v1",
++            "site": site,
++            "workflow": result,
++            "remote_head": remote_head,
++            "checks": checks,
++            "passed": all(checks.values()),
++        }
++        (HERE / "RESULT.json").write_text(
++            json.dumps(proof, indent=2, sort_keys=True, default=str), encoding="utf-8"
++        )
++        print(json.dumps({"passed": proof["passed"], "checks": checks}, indent=2))
++        return 0 if proof["passed"] else 1
++    finally:
++        if operator is not None:
++            try:
++                operator.close_process("convergence-v14-notepad")
++            except Exception:
++                pass
++        server.shutdown()
++        server.server_close()
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

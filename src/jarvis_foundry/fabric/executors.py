@@ -1129,7 +1129,7 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
                         if capture.attempt.outcome in {"COMPLETED", "FAILED"}
                         else "BLOCKED"
                         if capture.attempt.error_code == "stop_requested"
-                    else "UNKNOWN",
+                        else "UNKNOWN"
                     ),
                     "authority": "DATA_ONLY",
                 }

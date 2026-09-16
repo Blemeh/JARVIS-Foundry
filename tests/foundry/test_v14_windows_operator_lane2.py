@@ -398,6 +398,7 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
         path=str(artifact),
         expected="hello",
         idempotency_key="lane2-open-1",
+        args=("/new",),
         backend=backend,
     )
     assert result["claimed"] == "COMPLETED"
@@ -405,6 +406,19 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
     assert result["process"]["pid"] == process.pid
     assert result["window"]["identity"]["hwnd"] == 100
     assert result["control"]["name"] == "Text editor"
+
+    trailing = open_artifact_and_assert(
+        connector,  # type: ignore[arg-type]
+        process_id=process.logical_id,
+        executable=process.executable,
+        path=str(artifact),
+        expected="hello\n",
+        idempotency_key="lane2-open-newline",
+        args=("/new",),
+        backend=backend,
+    )
+    assert trailing["claimed"] == "COMPLETED"
+    assert trailing["readback_verified"] is True
 
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
@@ -424,6 +438,7 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
             "path": str(artifact),
             "expected": "hello",
             "idempotency_key": "lane2-open-2",
+            "args": ["/new"],
         },
     )
     assert dispatched is not None
@@ -431,6 +446,50 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
     assert "desktop.open_artifact_and_assert" in COMPUTER_OPERATOR_ACTIONS
     assert "desktop.control.paste" in COMPUTER_OPERATOR_ACTIONS
     assert "desktop.file_dialog" in COMPUTER_OPERATOR_ACTIONS
+
+
+def test_open_artifact_and_assert_waits_for_document_control(
+    tmp_path: Path,
+) -> None:
+    process = _process()
+    owned = tmp_path / "owned"
+    owned.mkdir()
+    artifact = owned / "hello.txt"
+    artifact.write_text("hello", encoding="utf-8")
+
+    class _DelayedDocumentBackend(_FakeBackend):
+        def __init__(self, snapshot: ProcessSnapshot) -> None:
+            super().__init__(snapshot)
+            self.control_calls = 0
+
+        def list_controls(self, window: BackendWindow) -> tuple[BackendControl, ...]:
+            self.control_calls += 1
+            if self.control_calls < 3:
+                return ()
+            return super().list_controls(window)
+
+    backend = _DelayedDocumentBackend(
+        ProcessSnapshot(
+            pid=process.pid,
+            create_time=process.create_time,
+            executable=process.executable,
+        )
+    )
+    connector = _FakeConnector(owned, process)
+    result = open_artifact_and_assert(
+        connector,  # type: ignore[arg-type]
+        process_id=process.logical_id,
+        executable=process.executable,
+        path=str(artifact),
+        expected="hello",
+        idempotency_key="lane2-open-delayed",
+        args=("/new",),
+        timeout_s=2.0,
+        backend=backend,
+    )
+    assert result["claimed"] == "COMPLETED"
+    assert result["readback_verified"] is True
+    assert backend.control_calls >= 3
 
 
 def test_named_alias_resolution() -> None:

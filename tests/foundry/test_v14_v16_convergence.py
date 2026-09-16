@@ -64,9 +64,11 @@ def test_digital_operator_recipe_uses_integrated_actions_and_commits() -> None:
     actions = [step.action_kind for step in recipe.steps]
     assert actions == [
         "browser.web.read",
+        "browser.web.inspect",
         "file.write",
         "file.read",
         "desktop.open_artifact_and_assert",
+        "desktop.close",
         "git.inspect",
         "git.commit",
         "git.log",
@@ -74,6 +76,7 @@ def test_digital_operator_recipe_uses_integrated_actions_and_commits() -> None:
     ]
     opened = next(step for step in recipe.steps if step.step_id == "open")
     assert opened.payload["expected"] == "$readback.text"
+    assert opened.payload["args"] == "$params.application_args"
     committed = next(step for step in recipe.steps if step.step_id == "commit")
     assert committed.payload["existing"] is True
     assert committed.payload["paths"] == ["$compose.target"]

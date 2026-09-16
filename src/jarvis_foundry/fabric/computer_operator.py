@@ -20,6 +20,7 @@ from ..connectors.windows_operator import (
     ExpectedDialog,
     OperatorAction,
     ProcessIdentity,
+    TargetMatchError,
     WindowIdentity,
     WindowSelector,
     WindowsOperatorError,
@@ -531,6 +532,14 @@ def _record_identity(record: Mapping[str, Any]) -> ProcessIdentity:
     )
 
 
+def _document_digest(text: str) -> tuple[str, str]:
+    """Editor-neutral document text and SHA-256 for native readback."""
+
+    normalized = normalize_document_text(text).rstrip("\n")
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return normalized, digest
+
+
 def open_artifact_and_assert(
     connector: PersonalOperatorConnector,
     *,
@@ -539,6 +548,7 @@ def open_artifact_and_assert(
     path: str,
     expected: str,
     idempotency_key: str,
+    args: tuple[str, ...] = (),
     timeout_s: float = 15.0,
     cwd: str = ".",
     control: ControlSelector | None = None,
@@ -551,6 +561,7 @@ def open_artifact_and_assert(
         process_id,
         executable,
         path,
+        args=args,
         cwd=cwd,
         idempotency_key=idempotency_key,
         show_window=True,
@@ -570,13 +581,24 @@ def open_artifact_and_assert(
         stop_check=stop_check or (lambda: False),
     )
     marker = Path(path).name
-    window = provider.observe_main_window(title_contains=marker)
-    document = provider.find_document_control(window.identity, control)
+    deadline = time.monotonic() + max(float(timeout_s), 0.0)
+    window = None
+    document = None
+    while True:
+        try:
+            window = provider.observe_main_window(title_contains=marker)
+            document = provider.find_document_control(window.identity, control)
+            break
+        except TargetMatchError as error:
+            if error.code not in {"window_not_found", "control_not_found"}:
+                raise
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
+    assert window is not None and document is not None
     observed = document.value if isinstance(document.value, str) else ""
-    expected_norm = normalize_document_text(expected)
-    observed_norm = normalize_document_text(observed)
-    expected_sha = hashlib.sha256(expected_norm.encode("utf-8")).hexdigest()
-    observed_sha = hashlib.sha256(observed_norm.encode("utf-8")).hexdigest()
+    expected_norm, expected_sha = _document_digest(expected)
+    observed_norm, observed_sha = _document_digest(observed)
     matched = expected_norm == observed_norm
     payload = {
         **result,
@@ -939,6 +961,7 @@ def dispatch_computer_operator(
                 path=_required_text(payload, "target", "path"),
                 expected=expected,
                 idempotency_key=_required_text(payload, "idempotency_key"),
+                args=tuple(str(value) for value in payload.get("args") or ()),
                 timeout_s=_timeout_seconds(payload),
                 cwd=str(payload.get("cwd") or "."),
                 control=(
@@ -1149,9 +1172,7 @@ def verify_computer_operator(
             observed_text = (
                 document.value if isinstance(document.value, str) else ""
             )
-            observed_sha = hashlib.sha256(
-                normalize_document_text(observed_text).encode("utf-8")
-            ).hexdigest()
+            observed_sha = _document_digest(observed_text)[1]
             return (
                 VerifyVerdict.MATCH
                 if observed_sha == claimed.get("observed_sha256")
