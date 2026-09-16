@@ -1,0 +1,10 @@
+{
+  "schema": "jarvis.integrated-acceptance.cc-receipt.v1",
+  "vitest": "PASS",
+  "tests": 167,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "junit": "var/integrated-acceptance-20260916/proof/COMMAND_CENTER.junit.xml",
+  "production_build": "PASS"
+}

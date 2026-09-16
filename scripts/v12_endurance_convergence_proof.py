@@ -37,6 +37,7 @@ from jarvis_foundry.executive.campaigns import (
     declare_child_mission,
     evaluate_joins,
     rebuild_campaign_state,
+    record_child_state,
     resume_campaign,
     startup_resume_pass,
 )
@@ -517,6 +518,33 @@ def _run_full(root: Path) -> dict[str, Any]:
         raise RuntimeError(
             f"bounded parallel admission expected 2, got {initial_dispatchable}"
         )
+    # Sequential MissionLoop completion now terminalizes a verified child.
+    # Occupy the parallel bound canonically before either child finishes, so
+    # provider dispatch can still observe two isolated RUNNING siblings.
+    campaign_state = rebuild_campaign_state(database)
+    admitted = [
+        child
+        for child in campaign_state.children.values()
+        if child.campaign_id == CAMPAIGN_ID
+        and child.mission_id in set(initial_dispatchable)
+    ]
+    if len(admitted) != 2:
+        raise RuntimeError(
+            "bounded parallel admission did not bind two isolated children"
+        )
+    isolation_keys = {
+        child.isolation_key for child in admitted if child.isolation_key
+    }
+    if len(isolation_keys) != 2:
+        raise RuntimeError("two dispatchable siblings were not isolation-distinct")
+    for child in sorted(admitted, key=lambda row: row.child_id):
+        if child.status != "RUNNING":
+            record_child_state(
+                database,
+                child.child_id,
+                "RUNNING",
+                reason="canonical parallel admission inside max_parallel_children",
+            )
 
     # Primary failure -> compatible alternate, with one run/effect identity.
     fallback_primary = CHILDREN["fallback-child"]["providers"][0]

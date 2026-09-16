@@ -202,3 +202,134 @@ def test_owner_goal_recipe_materializes_workflow_run_contract(tmp_path: Path) ->
     envelope = json.loads(contract.instructions)
     assert envelope["recipe_id"] == "v16.bounded_note"
     assert envelope["params"]["target"] == "notes/close.txt"
+
+
+def test_campaign_child_terminalizes_after_verified_missionloop_pass(tmp_path: Path) -> None:
+    """A campaign child must not remain RUNNING/UNKNOWN after verifier evidence exists."""
+
+    import subprocess
+
+    from jarvis_foundry.control.registration import inspect_git_resource, registration_event
+    from jarvis_foundry.events import Event
+    from jarvis_foundry.executive.autonomy import create_objective, update_objective
+    from jarvis_foundry.executive.campaigns import (
+        bind_child_mission,
+        create_campaign,
+        declare_child_mission,
+        record_child_state,
+        rebuild_campaign_state,
+    )
+    from jarvis_foundry.fabric.adapter import FabricRoleAdapter
+    from jarvis_foundry.fabric.loop import seed_builtins
+    from jarvis_foundry.mission.contracts import MissionStepContract, next_executable_contract, record_step_contract
+    from jarvis_foundry.mission.loop import PASSED, MissionLoop
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from jarvis_foundry.roles.router import RoleRouter
+
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", str(repository)], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(repository), "config", "user.email", "acc@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(repository), "config", "user.name", "Acceptance"], check=True)
+    (repository / "README.md").write_text("# campaign child\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repository), "add", "README.md"], check=True)
+    subprocess.run(["git", "-C", str(repository), "commit", "-m", "baseline"], check=True, capture_output=True)
+
+    database = _database(tmp_path)
+    seed_builtins(database)
+    resource = inspect_git_resource(repository, resource_id="resource-campaign-child")
+    resource["capabilities"]["cap.workflow.run"] = "READY"
+    resource["capabilities"]["write_registered_worktree_files"] = "READY"
+    database.append(registration_event(resource))
+    create_objective(
+        database,
+        "Keep the bounded note verified",
+        objective_id="objective-campaign-child",
+        resource_id="resource-campaign-child",
+        required_capabilities=("cap.workflow.run",),
+        success_criteria=("bounded note exists",),
+    )
+    create_campaign(database, "objective-campaign-child", campaign_id="campaign-child-term")
+    mission_id = "mission-campaign-child"
+    database.append(
+        Event.create(
+            "mission.created",
+            {
+                "mission_id": mission_id,
+                "objective": "write the bounded campaign note",
+                "resource_id": "resource-campaign-child",
+                "state": "PLANNED",
+                "acceptance_criteria": ["bounded child work is independently verified"],
+                "next_action": "execute",
+            },
+            source_type="supervisor",
+            source_id="acceptance",
+            idempotency_key=f"mission.created:{mission_id}",
+        )
+    )
+    for state in ("ORIENTING", "ACTION_SELECTION", "READY"):
+        database.append(
+            Event.create(
+                "mission.state_changed",
+                {"mission_id": mission_id, "state": state, "next_action": "execute"},
+                source_type="supervisor",
+                source_id="acceptance",
+                idempotency_key=f"mission.state_changed:{mission_id}:{state}",
+            )
+        )
+    envelope = json.dumps(
+        {
+            "recipe_id": "v16.bounded_note",
+            "params": {"target": "notes/term.txt", "content": "terminal-ok\n"},
+            "mission_id": mission_id,
+        },
+        ensure_ascii=True,
+        sort_keys=True,
+    )
+    record_step_contract(
+        database,
+        MissionStepContract(
+            mission_id=mission_id,
+            step_id="01-workflow",
+            version=1,
+            resource_id="resource-campaign-child",
+            capability="cap.workflow.run",
+            target_relative_path="notes/term.txt",
+            instructions=envelope,
+            expected_effects=("notes/term.txt exists",),
+            rollback={"method": "delete_file", "reversible": True},
+            risk_class="C1",
+            verification_criteria=("notes/term.txt exists",),
+            expected_artifacts=("notes/term.txt",),
+            forbidden_paths=(),
+            recorded_by="supervisor",
+            source="acceptance",
+            provenance={"recipe_id": "v16.bounded_note"},
+        ),
+    )
+    update_objective(database, "objective-campaign-child", {"mission_ids": [mission_id]})
+    declare_child_mission(
+        database,
+        "campaign-child-term",
+        child_id="child-term",
+        step_id="01-workflow",
+        required_capabilities=("cap.workflow.run",),
+        effect_action_key="workflow.run:v16.bounded_note",
+    )
+    bind_child_mission(database, "child-term", mission_id, step_id="01-workflow")
+    record_child_state(database, "child-term", "READY")
+    loop = MissionLoop(
+        database,
+        RoleRouter(),
+        FabricRoleAdapter(database, owned_root=repository, inner=FakeHermesAdapter(working_root=repository)),
+        max_repairs=1,
+        stop_path=tmp_path / "STOP",
+    )
+    contract = next_executable_contract(database, mission_id)
+    assert contract is not None
+    outcome = loop.run_until_settled(**contract.runtime_kwargs(database))
+    child = rebuild_campaign_state(database).children["child-term"]
+    assert outcome.outcome == PASSED
+    assert (repository / "notes" / "term.txt").is_file()
+    assert child.status == "SUCCEEDED"
+    assert child.acceptance_outcome_id

@@ -1,0 +1,29 @@
+{
+  "schema": "jarvis.integrated-acceptance.suite-receipt.v1",
+  "suite": "tests/foundry tests/convergence",
+  "junit": "var/integrated-acceptance-20260916/proof/FOUNDRY_BROAD.junit.xml",
+  "worktree": "C:\\temp\\JARVIS\\jarvis-integrated-acceptance-20260916",
+  "base": "15a25536348d87be53ff115033c5012192d988be",
+  "tree_state_during_run": "dirty_tracked_product_repair",
+  "collected": 3562,
+  "failures": 2,
+  "errors": 0,
+  "skipped": 2,
+  "time_s": 6240.048,
+  "skipped_tests": [
+    "tests.foundry.test_filesystem_connector::test_path_escape_symlink_and_reserved_ledger_are_refused",
+    "tests.foundry.test_v13_general_work_planner::test_planner_rejects_symbolic_links_inside_source_directories"
+  ],
+  "failed_tests": [
+    {
+      "id": "tests.foundry.test_release_packaging_browser::test_fresh_immutable_release_contains_and_runs_v10_web_runtime",
+      "class": "dirty_worktree_packaging_gate",
+      "disposition": "expected_until_clean_commit; same class as Goal 01 packaging on dirty tree"
+    },
+    {
+      "id": "tests.foundry.test_v12_endurance_convergence::test_real_disposable_endurance_campaign_script",
+      "class": "proof_observation_after_child_terminalization",
+      "disposition": "repaired in scripts/v12_endurance_convergence_proof.py; rerun PASS"
+    }
+  ]
+}

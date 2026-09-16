@@ -1628,6 +1628,23 @@ def _accepted_outcome(
     return None
 
 
+def _effect_attempted(database: FoundryDatabase, effect_key: str) -> bool:
+    """Return whether one declared effect identity ever entered the journal."""
+
+    for event in database.events(
+        readonly=True,
+        event_type_prefixes=("system.action_", "effect."),
+    ):
+        payload_key = str(
+            event.payload.get("action_key")
+            or event.payload.get("effect_id")
+            or ""
+        )
+        if payload_key == effect_key:
+            return True
+    return False
+
+
 def _effect_blockers(
     database: FoundryDatabase,
     child: ChildMissionRecord,
@@ -1637,6 +1654,11 @@ def _effect_blockers(
     blockers: dict[str, str] = {}
     for key in child.effect_keys:
         status = _safe_effect_status(database, key)
+        if status == "UNKNOWN" and not _effect_attempted(database, key):
+            # A campaign child's declared effect identity is isolation truth,
+            # not a started claim. Never-started keys must not strand a child
+            # after MissionLoop PASS and verifier acceptance already exist.
+            continue
         if status in {"STARTED", "FROZEN", "UNKNOWN", "FAILED"}:
             blockers[key] = status
     return blockers

@@ -1,0 +1,40 @@
+{
+  "schema": "jarvis.integrated-acceptance.handoff.v1",
+  "goal": "MASTER GOAL 02 — Integrated Product Acceptance + Defect Repair",
+  "status": "SCENARIOS_COMPLETE_SUITES_CLOSING",
+  "product_decision": "ACCEPTED_FOR_LIVE_PROMOTION",
+  "base": "15a25536348d87be53ff115033c5012192d988be",
+  "convergence_head": "15a25536348d87be53ff115033c5012192d988be",
+  "branch": "candidate/jarvis-integrated-acceptance-20260916",
+  "worktree": "C:\\temp\\JARVIS\\jarvis-integrated-acceptance-20260916",
+  "live_boundary": "SOURCE_CANDIDATE_ONLY_LIVE_NOT_TOUCHED",
+  "merged_main": false,
+  "pushed": false,
+  "promoted": false,
+  "owner_notepad_pid_forbidden": 29016,
+  "defects_fixed": [
+    "campaign child stranded RUNNING/UNKNOWN after verified MissionLoop PASS"
+  ],
+  "proof_updates": [
+    "v12 endurance script admits parallel RUNNING children before sequential PASS"
+  ],
+  "broad_foundry_suite": {
+    "collected": 3562,
+    "dirty_tree_failures": [
+      "packaging (dirty worktree)",
+      "v12 endurance (stale RUNNING-after-PASS observation; rerun PASS)"
+    ],
+    "skipped": 2,
+    "command_center_vitest": "PASS 167/167",
+    "command_center_build": "PASS"
+  },
+  "known_limitations": [
+    "Albanian microphone STT NOT_TESTED: no Windows recognizer",
+    "Native winotify toast NOT_TESTED: package not installed; in-app toast proved",
+    "Real GitHub API writes and third-party authenticated sites remain live-only",
+    "Gmail remains owner-deferred"
+  ],
+  "cap_workflow_run_readiness": "UNKNOWN until first verified outcome; READY after verified workflow.run; repeat work not deadlocked",
+  "campaign_child_terminalization": "SUCCEEDED via canonical reconcile after verifier evidence; no direct DB terminal write",
+  "next": "commit candidate, re-run packaging on clean tree, pin CURRENT_STATE without live promotion, keep live/main/origin untouched"
+}

@@ -421,8 +421,47 @@ class MissionLoop:
                 mission_id, "COMPLETE", event=completed,
                 next_action=None, run_id=run_id)
             invoke_fault_hook(self.fault_hook, "post mission.completed")
+            self._reconcile_accepted_campaign_child(mission_id)
             return
         self._advance(mission_id, "ACTION_SELECTION", next_action=None, run_id=run_id)
+
+    def _reconcile_accepted_campaign_child(self, mission_id: str) -> None:
+        """Close final-outcome and campaign-child truth after MissionLoop PASS.
+
+        Campaign children stay RUNNING only while verifier/acceptance evidence
+        is still missing. Once that evidence exists, the existing campaign
+        reconciler promotes the bound child without owner intervention and
+        without writing SUCCEEDED directly into the database.
+        """
+
+        try:
+            from ..executive.campaigns import (
+                rebuild_campaign_state,
+                reconcile_campaign_children,
+            )
+            from ..world_model.connector import reconcile_outcome_learning
+
+            reconcile_outcome_learning(
+                self.database,
+                mission_id=mission_id,
+                source_id="outcome-reconciler",
+            )
+            if self.database.event_count(event_type="campaign.created") <= 0:
+                return
+            campaign_ids = {
+                child.campaign_id
+                for child in rebuild_campaign_state(self.database).children.values()
+                if child.mission_id == mission_id
+            }
+            for campaign_id in sorted(campaign_ids):
+                reconcile_campaign_children(
+                    self.database,
+                    campaign_id,
+                    controller="supervisor",
+                    stop_path=self.stop_path,
+                )
+        except Exception:
+            return
 
     def _advance_with_event(
         self,
