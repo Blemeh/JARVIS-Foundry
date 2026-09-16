@@ -16,6 +16,7 @@ from typing import Any, Callable
 from ..effects import FAILED as EFFECT_FAILED
 from ..effects import FROZEN, effect_state, finalize_verified_effect
 from ..connectors.github_write import github_write_dispatch_settings
+from ..connectors.web_research import browser_execution_authorization_from_environment
 from ..events import Event
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
@@ -544,14 +545,17 @@ def try_fabric_dispatch(
         # the step. The inner Hermes path may still satisfy it.
         return None
     heartbeat()
-    ctx = ExecutorContext(
-        database=database,
-        owned_root=owned_root,
-        mcp_backend=mcp_backend,
-        mcp_mutation_verifier=mcp_mutation_verifier,
-        **github_write_dispatch_settings().executor_kwargs(),
-    )
     try:
+        ctx = ExecutorContext(
+            database=database,
+            owned_root=owned_root,
+            mcp_backend=mcp_backend,
+            mcp_mutation_verifier=mcp_mutation_verifier,
+            browser_execution_authorization=(
+                browser_execution_authorization_from_environment()
+            ),
+            **github_write_dispatch_settings().executor_kwargs(),
+        )
         receipt = execute_for_spine(
             database,
             ctx,

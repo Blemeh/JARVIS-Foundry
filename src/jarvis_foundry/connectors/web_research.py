@@ -618,6 +618,62 @@ class BrowserExecutionAuthorization:
         }
 
 
+def browser_execution_authorization_from_environment(
+    environ: Mapping[str, str] | None = None,
+) -> BrowserExecutionAuthorization | None:
+    """Load one explicit owner grant from a machine-local JSON config file.
+
+    The mission payload is intentionally not consulted.  Absence means browser
+    mutation remains disabled; a configured-but-invalid file fails closed.
+    The file contains only bounded grant/session references, never raw login
+    credentials.  Disposable demos may point the environment variable at an
+    isolated temporary file.
+    """
+
+    source = dict(os.environ if environ is None else environ)
+    configured = str(source.get("JARVIS_BROWSER_AUTHORIZATION_FILE") or "").strip()
+    if not configured:
+        return None
+    path = Path(configured).expanduser().resolve(strict=False)
+    if not path.is_file():
+        raise WebResearchError("configured browser authorization file is absent")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise WebResearchError("configured browser authorization file is unreadable") from error
+    if not isinstance(raw, Mapping):
+        raise WebResearchError("browser authorization config must be a JSON object")
+    grant = raw.get("browser_execution_authorization", raw)
+    if not isinstance(grant, Mapping):
+        raise WebResearchError("browser_execution_authorization must be an object")
+    allowed = {
+        "authorization_id", "site_origin", "owner_authorized", "dispatch_enabled",
+        "allowed_actions", "allow_downloads", "allow_uploads", "session_state_path",
+        "profile_id", "owner_scope", "credential_reference", "auth_marker",
+        "require_authenticated", "persist_session", "allowed_action_methods",
+        "max_action_requests", "allow_insecure_localhost", "capability_trust",
+    }
+    unexpected = sorted(set(grant) - allowed)
+    if unexpected:
+        raise WebResearchError(
+            "browser authorization config contains unsupported fields: "
+            + ", ".join(str(value) for value in unexpected)
+        )
+    values = dict(grant)
+    for key in ("allowed_actions", "allowed_action_methods"):
+        if key in values:
+            if not isinstance(values[key], list):
+                raise WebResearchError(f"{key} must be a JSON array")
+            values[key] = tuple(str(value) for value in values[key])
+    marker = values.get("auth_marker")
+    if isinstance(marker, list):
+        values["auth_marker"] = tuple(str(value) for value in marker)
+    try:
+        return BrowserExecutionAuthorization(**values)
+    except TypeError as error:
+        raise WebResearchError("browser authorization config is incomplete") from error
+
+
 class PlaywrightBrowserConnector:
     """Direct Playwright browser adapter with bounded read/target semantics."""
 

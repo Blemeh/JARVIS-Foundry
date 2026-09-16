@@ -136,9 +136,10 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "browser.web.read",
             "file.write",
             "file.read",
-            "desktop.open",
-            "desktop.control.assert",
+            "desktop.open_artifact_and_assert",
             "git.inspect",
+            "git.commit",
+            "git.log",
             "git.push",
         ),
         "parameters": {
@@ -151,6 +152,8 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "expected_text": {"default": "", "description": "Text the assert step must observe."},
             "worktree": {"required": True, "description": "Owned worktree to publish from."},
             "remote": {"default": "origin", "description": "Disposable remote name."},
+            "branch": {"default": "main", "description": "Disposable remote branch."},
+            "commit_message": {"default": "Preserve verified operator artifact", "description": "Local commit message."},
         },
         "steps": (
             {
@@ -173,37 +176,53 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             },
             {
                 "step_id": "open",
-                "action_kind": "desktop.open",
+                "action_kind": "desktop.open_artifact_and_assert",
                 "payload": {
                     "process_id": "$params.process_id",
                     "application": "$params.application",
                     "target": "$readback.target",
+                    "expected": "$readback.text",
                     "idempotency_key": "$params.idempotency_key",
                 },
             },
             {
-                "step_id": "assert",
-                "action_kind": "desktop.control.assert",
-                "payload": {
-                    "window": {"process_id": "$open.process_id"},
-                    "value": "$params.expected_text",
-                },
-                "on_failure": "soft",
-            },
-            {
                 "step_id": "inspect",
                 "action_kind": "git.inspect",
-                "payload": {"worktree": "$params.worktree"},
+                "payload": {
+                    "worktree": "$params.worktree",
+                },
+            },
+            {
+                "step_id": "commit",
+                "action_kind": "git.commit",
+                "payload": {
+                    "worktree": "$inspect.worktree",
+                    "message": "$params.commit_message",
+                    "existing": True,
+                    "paths": ["$compose.target"],
+                },
+            },
+            {
+                "step_id": "log",
+                "action_kind": "git.log",
+                "payload": {"worktree": "$inspect.worktree", "max_count": 1},
             },
             {
                 "step_id": "push",
                 "action_kind": "git.push",
-                "payload": {"worktree": "$inspect.worktree", "remote": "$params.remote"},
+                "payload": {
+                    "worktree": "$inspect.worktree",
+                    "remote": "$params.remote",
+                    "branch": "$params.branch",
+                    "action_id": "${params.idempotency_key}:push",
+                },
             },
         ),
         "outputs": {
             "artifact_target": "$compose.target",
             "artifact_hash": "$readback.content_hash",
+            "native_readback_verified": "$open.readback_verified",
+            "commit_head": "$log.head",
             "remote_head": "$push.remote_head",
         },
         "tags": ("v14", "digital-operator", "close"),

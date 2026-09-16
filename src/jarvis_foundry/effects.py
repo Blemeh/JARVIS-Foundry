@@ -293,6 +293,54 @@ def effect_state(database: FoundryDatabase,
     return state
 
 
+def discover_reconcilable_developer_effects(
+    database: FoundryDatabase,
+) -> list[dict[str, Any]]:
+    """Return stranded developer effects with their persisted safe intent.
+
+    Discovery is read-only and never retries an ambiguous effect.  Callers use
+    the existing explicit reconciliation verbs named in each row.
+    """
+
+    kinds = (
+        "git.push",
+        "github.issue.create",
+        "github.issue.comment.create",
+        "github.pull_request.create",
+        "github.pull_request.publish",
+    )
+    placeholders = ",".join("?" for _ in kinds)
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT DISTINCT json_extract(payload_json, '$.action_key') AS action_key "
+            "FROM events WHERE event_type = 'system.action_started' "
+            f"AND json_extract(payload_json, '$.kind') IN ({placeholders}) "
+            "ORDER BY action_key",
+            kinds,
+        ).fetchall()
+    discovered: list[dict[str, Any]] = []
+    for row in rows:
+        action_key = str(row["action_key"] or "")
+        if not action_key:
+            continue
+        state = effect_state(database, action_key)
+        if state.get("status") not in {STARTED, FROZEN}:
+            continue
+        identity = state.get("request_identity")
+        intent = identity.get("recovery_intent") if isinstance(identity, Mapping) else None
+        if not isinstance(intent, Mapping):
+            continue
+        discovered.append({
+            "action_key": action_key,
+            "status": str(state.get("status")),
+            "claim_active": bool(state.get("claim_active")),
+            "kind": str(intent.get("action_kind") or ""),
+            "reconciliation_action": str(intent.get("reconciliation_action") or ""),
+            "intent": dict(intent),
+        })
+    return discovered
+
+
 def _append(database: FoundryDatabase, event_type: str, payload: dict[str, Any],
             key_suffix: str, *, full_payload_key: bool = False) -> None:
     """Append an effect event. ``full_payload_key`` events (frozen/

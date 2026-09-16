@@ -465,10 +465,17 @@ def _fabric_run(
             "home": str(home),
         }, indent=2))
         return 1
+    from ..connectors.web_research import (
+        browser_execution_authorization_from_environment,
+    )
+
     ctx = ExecutorContext(
         database=database,
         owned_root=owned,
         mcp_backend=mcp_backend,
+        browser_execution_authorization=(
+            browser_execution_authorization_from_environment()
+        ),
     )
     intent = TaskIntent(
         task_id=str(spec.get("task_id") or "cli.workflow"),
@@ -553,7 +560,18 @@ def _fabric_workflow(
     except ValueError as error:
         print(json.dumps({"error": str(error), "home": str(home)}, indent=2))
         return 1
-    ctx = ExecutorContext(database=database, owned_root=owned, mcp_backend=mcp_backend)
+    from ..connectors.web_research import (
+        browser_execution_authorization_from_environment,
+    )
+
+    ctx = ExecutorContext(
+        database=database,
+        owned_root=owned,
+        mcp_backend=mcp_backend,
+        browser_execution_authorization=(
+            browser_execution_authorization_from_environment()
+        ),
+    )
     if command == "preflight":
         recipe = load_recipe(str(args.recipe))
         report = preflight_recipe(database, recipe, params, owned_root=owned)

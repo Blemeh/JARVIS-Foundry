@@ -1134,6 +1134,28 @@ def run_cycle(
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
         invoke_fault_hook(fault_hook, "post worker_loop.cycle_started")
+        from ..effects import discover_reconcilable_developer_effects
+
+        developer_effect_recovery = discover_reconcilable_developer_effects(database)
+        if developer_effect_recovery:
+            recovery_identity = hashlib.sha256(
+                canonical_json(developer_effect_recovery).encode("utf-8")
+            ).hexdigest()[:24]
+            database.append(Event.create(
+                "worker_loop.developer_effect_recovery_discovered",
+                {
+                    "loop_id": loop_id,
+                    "instance_id": instance_id,
+                    "candidate_count": len(developer_effect_recovery),
+                    "candidates": developer_effect_recovery,
+                },
+                source_type="supervisor",
+                source_id="worker-loop-recovery",
+                idempotency_key=(
+                    "worker_loop.developer_effect_recovery_discovered:"
+                    f"{recovery_identity}"
+                ),
+            ))
         initiative_mission_id: str | None = None
         campaign_resume_payload: dict[str, Any] | None = None
         campaign_blocked_mission_ids: tuple[str, ...] = ()

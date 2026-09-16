@@ -66,6 +66,66 @@ from .computer_operator import (
 )
 
 
+_DEVELOPER_RECOVERY_ACTIONS = frozenset({
+    "git.push",
+    "github.issue.create",
+    "github.issue.comment.create",
+    "github.pull_request.create",
+    "github.pull_request.publish",
+})
+
+
+def _developer_recovery_intent(
+    action_kind: str,
+    payload: Mapping[str, Any],
+    ctx: ExecutorContext,
+) -> dict[str, Any] | None:
+    """Persist the bounded original intent needed for restart reconciliation."""
+
+    if action_kind not in _DEVELOPER_RECOVERY_ACTIONS:
+        return None
+    request = {
+        str(key): (str(value) if isinstance(value, Path) else value)
+        for key, value in payload.items()
+        if key not in {"claim_ttl_s", "stop_path"}
+    }
+    intent: dict[str, Any] = {
+        "action_kind": action_kind,
+        "request": request,
+        "reconciliation_action": (
+            "git.push.reconcile"
+            if action_kind == "git.push"
+            else "github.write.reconcile"
+        ),
+    }
+    if action_kind == "git.push":
+        worktree = Path(str(payload.get("worktree") or ctx.owned_root)).resolve()
+        observed = subprocess.run(
+            ["git", "-C", str(worktree), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=30,
+            check=False,
+        )
+        if observed.returncode != 0 or not observed.stdout.strip():
+            raise FabricError("git.push recovery intent requires a readable local HEAD")
+        branch = str(payload.get("branch") or "main")
+        action_id = str(payload.get("action_id") or f"fabric-push:{branch}")
+        request.update({
+            "worktree": str(worktree),
+            "branch": branch,
+            "action_id": action_id,
+        })
+        intent.update({
+            "action_id": action_id,
+            "remote": str(payload.get("remote") or "origin"),
+            "branch": branch,
+            "expected_head": observed.stdout.strip(),
+        })
+    return intent
+
+
 def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
     """Register the practical built-in actions. Readiness stays UNKNOWN."""
     builtins = (
@@ -1520,6 +1580,14 @@ def execute_action(
     if canonical_effect_required:
         stop_identities = set(request.stop_scope)
         stop_identities.update({"GLOBAL", intent.task_id})
+        request_identity = request.to_evidence()
+        recovery_intent = _developer_recovery_intent(
+            action_kind,
+            execution_payload,
+            ctx,
+        )
+        if recovery_intent is not None:
+            request_identity["recovery_intent"] = recovery_intent
         claimed = execute_fabric_effect(
             database,
             action_key=request.effect_id,
@@ -1534,7 +1602,7 @@ def execute_action(
             ),
             expected_effects=(action_kind,),
             action_id=request.request_id,
-            request_identity=request.to_evidence(),
+            request_identity=request_identity,
             perform=perform,
             stop_check=lambda: bool(
                 emergency_stop_reason(
