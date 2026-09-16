@@ -21,7 +21,10 @@ from jarvis_foundry.fabric import (
     run_workflow,
     seed_builtins,
 )
-from jarvis_foundry.connectors.web_research import PlaywrightBrowserConnector
+from jarvis_foundry.connectors.web_research import (
+    BrowserExecutionAuthorization,
+    PlaywrightBrowserConnector,
+)
 from jarvis_foundry.events import Event
 
 
@@ -173,6 +176,26 @@ def _session_kwargs(site: str, state_path: Path) -> dict[str, Any]:
         "expired_url_prefixes": ("/login",),
         "persist_session": True,
     }
+
+
+def _browser_grant(
+    site: str,
+    state_path: Path | None = None,
+    **overrides: Any,
+) -> BrowserExecutionAuthorization:
+    values: dict[str, Any] = {
+        "authorization_id": "grant:v10-disposable",
+        "site_origin": site,
+        "owner_authorized": True,
+        "dispatch_enabled": True,
+        "session_state_path": str(state_path) if state_path is not None else None,
+        "profile_id": "v10-disposable-profile",
+        "owner_scope": "owner-local",
+        "auth_marker": ("heading", "Signed in"),
+        "allow_insecure_localhost": True,
+    }
+    values.update(overrides)
+    return BrowserExecutionAuthorization(**values)
 
 
 def _login(session: Any) -> bool:
@@ -440,7 +463,11 @@ def test_fabric_uses_one_effect_journal_and_replays_without_duplicate(
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
     seed_builtins(database)
-    ctx = ExecutorContext(database=database, owned_root=tmp_path / "owned")
+    ctx = ExecutorContext(
+        database=database,
+        owned_root=tmp_path / "owned",
+        browser_execution_authorization=_browser_grant(site, state_path),
+    )
     intent = TaskIntent(
         task_id="mission-browser-disposable",
         required_actions=("browser.web.execute",),
@@ -500,7 +527,11 @@ def test_fabric_uses_one_effect_journal_and_replays_without_duplicate(
     seed_builtins(world_database)
     world_result = run_workflow(
         world_database,
-        ExecutorContext(database=world_database, owned_root=tmp_path / "world-owned"),
+        ExecutorContext(
+            database=world_database,
+            owned_root=tmp_path / "world-owned",
+            browser_execution_authorization=_browser_grant(site, state_path),
+        ),
         TaskIntent(
             task_id="mission-browser-world",
             required_actions=("browser.web.execute",),
@@ -596,7 +627,15 @@ def test_blocked_browser_outcome_never_writes_world_model(
     database = FoundryDatabase(tmp_path / "foundry.db")
     database.initialize()
     seed_builtins(database)
-    context = ExecutorContext(database=database, owned_root=tmp_path / "owned")
+    context = ExecutorContext(
+        database=database,
+        owned_root=tmp_path / "owned",
+        browser_execution_authorization=_browser_grant(
+            site,
+            profile_id="expired-profile",
+            persist_session=False,
+        ),
+    )
     intent = TaskIntent(
         task_id="mission-browser-expired",
         required_actions=("browser.web.execute",),

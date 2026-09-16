@@ -40,6 +40,7 @@ from ..connectors.github_write import (
     GitHubWriteAdapter,
     GitPushTransport,
 )
+from ..connectors.web_research import BrowserExecutionAuthorization
 from ..database import FoundryDatabase
 from ..effects import (
     COMPLETED,
@@ -67,6 +68,8 @@ class ExecutorContext:
     gmail_credential: CredentialHandle | None = None
     gmail_identity: ProviderIdentity | None = None
     gmail_send_authorization: GmailSendAuthorization | None = None
+    browser_execution_authorization: BrowserExecutionAuthorization | None = None
+    browser_reauth_provider: Callable[[Any], bool] | None = None
     doc_transport: Callable[[str], tuple[int, bytes]] | None = None
     mcp_backend: Any | None = None
     mcp_mutation_verifier: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None
@@ -584,18 +587,26 @@ def _github_write(
     return result
 
 
-def _browser_connector(payload: Mapping[str, Any]) -> Any:
+def _browser_connector(
+    payload: Mapping[str, Any],
+    authorization: BrowserExecutionAuthorization | None = None,
+) -> Any:
     from ..connectors.web_research import PlaywrightBrowserConnector
 
     allowed_hosts = payload.get("allowed_hosts")
     if isinstance(allowed_hosts, str):
         allowed_hosts = (allowed_hosts,)
+    allow_insecure_localhost = bool(payload.get("allow_insecure_localhost", False))
+    if authorization is not None:
+        # The owner grant owns connector-level host policy for mutations.
+        allowed_hosts = (authorization.host,)
+        allow_insecure_localhost = authorization.allow_insecure_localhost
     return PlaywrightBrowserConnector(
         browser_name=str(payload.get("browser_name") or "chromium"),
         headless=bool(payload.get("headless", True)),
         timeout_ms=int(payload.get("timeout_ms") or 30_000),
         allowed_hosts=allowed_hosts,
-        allow_insecure_localhost=bool(payload.get("allow_insecure_localhost", False)),
+        allow_insecure_localhost=allow_insecure_localhost,
     )
 
 
@@ -618,15 +629,32 @@ def _browser_stop_check(
     return check
 
 
-def _browser_session_kwargs(payload: Mapping[str, Any]) -> dict[str, Any]:
-    kwargs: dict[str, Any] = {
+def _browser_session_kwargs(
+    payload: Mapping[str, Any],
+    authorization: BrowserExecutionAuthorization | None = None,
+    *,
+    reauthenticate: Callable[[Any], bool] | None = None,
+) -> dict[str, Any]:
+    if authorization is not None:
+        # The exact owner grant owns every session-binding field. The payload
+        # cannot widen it because overrides are refused before reaching here.
+        kwargs: dict[str, Any] = dict(authorization.session_kwargs())
+        kwargs["allowed_action_methods"] = tuple(authorization.allowed_action_methods)
+        kwargs["max_action_requests"] = int(authorization.max_action_requests)
+        if reauthenticate is not None:
+            kwargs["reauthenticate"] = reauthenticate
+        return kwargs
+    kwargs = {
         "profile_id": str(payload.get("profile_id") or "default"),
         "owner_scope": str(payload.get("owner_scope") or "owner-local"),
         "persist_session": bool(payload.get("persist_session", True)),
         "credential_reference": payload.get("credential_reference"),
         "auth_marker": payload.get("auth_marker"),
         "expired_url_prefixes": payload.get("expired_url_prefixes"),
-        "reauthenticate": payload.get("reauthenticate"),
+        "reauthenticate": (
+            reauthenticate if reauthenticate is not None
+            else payload.get("reauthenticate")
+        ),
         "allowed_action_methods": payload.get("allowed_action_methods") or ("POST",),
         "max_action_requests": int(payload.get("max_action_requests") or 8),
     }
@@ -634,6 +662,92 @@ def _browser_session_kwargs(payload: Mapping[str, Any]) -> dict[str, Any]:
         if payload.get(key) is not None:
             kwargs[key] = payload[key]
     return kwargs
+
+
+_BROWSER_AUTHORIZATION_BOUND_FIELDS = (
+    "site_origin",
+    "profile_id",
+    "owner_scope",
+    "credential_reference",
+    "session_state_path",
+    "persist_session",
+)
+
+
+def _normalized_browser_path(value: object) -> str | None:
+    if value is None:
+        return None
+    return str(Path(str(value)).expanduser().resolve(strict=False))
+
+
+def _payload_auth_marker(payload: Mapping[str, Any]) -> tuple[str, str] | None:
+    value = payload.get("auth_marker")
+    if value is None:
+        return None
+    if isinstance(value, Mapping):
+        role, name = value.get("role"), value.get("name")
+    elif isinstance(value, (list, tuple)) and len(value) == 2:
+        role, name = value[0], value[1]
+    else:
+        return ("", "")
+    return (str(role or ""), str(name or ""))
+
+
+def _browser_authorization_override(
+    payload: Mapping[str, Any],
+    authorization: BrowserExecutionAuthorization,
+) -> str | None:
+    """Refuse a payload that tries to replace or widen the owner grant."""
+
+    for field in _BROWSER_AUTHORIZATION_BOUND_FIELDS:
+        if field not in payload:
+            continue
+        expected = getattr(authorization, field)
+        supplied = payload.get(field)
+        if field == "session_state_path":
+            supplied = _normalized_browser_path(supplied)
+            expected = _normalized_browser_path(expected)
+        if field == "persist_session":
+            supplied = bool(supplied)
+        if supplied != expected:
+            return "browser_authorization_override_refused"
+    if "auth_marker" in payload:
+        marker = _payload_auth_marker(payload)
+        if marker != authorization.auth_marker:
+            return "browser_authorization_override_refused"
+    if payload.get("allowed_action_methods") is not None:
+        normalized = tuple(
+            str(method).strip().upper()
+            for method in (payload["allowed_action_methods"] or ())
+        )
+        if normalized != tuple(authorization.allowed_action_methods):
+            return "browser_authorization_override_refused"
+    if payload.get("max_action_requests") is not None:
+        try:
+            supplied_max = int(payload["max_action_requests"])
+        except (TypeError, ValueError):
+            return "browser_authorization_override_refused"
+        if supplied_max != authorization.max_action_requests:
+            return "browser_authorization_override_refused"
+    if payload.get("allowed_hosts") is not None:
+        hosts = payload["allowed_hosts"]
+        if isinstance(hosts, str):
+            hosts = (hosts,)
+        normalized_hosts = tuple(
+            sorted(str(host).strip().lower() for host in hosts)
+        )
+        if normalized_hosts != (authorization.host,):
+            return "browser_authorization_override_refused"
+    if "allow_insecure_localhost" in payload and (
+        bool(payload.get("allow_insecure_localhost"))
+        != authorization.allow_insecure_localhost
+    ):
+        return "browser_authorization_override_refused"
+    if payload.get("allow_downloads") is True and not authorization.allow_downloads:
+        return "download_not_authorized"
+    if payload.get("allow_uploads") is True and not authorization.allow_uploads:
+        return "upload_not_authorized"
+    return None
 
 
 def _browser_attempt_payload(
@@ -762,12 +876,15 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
         if session_requested:
             with connector.session(
                 stop_check=stop_check,
-                **_browser_session_kwargs(payload),
+                **_browser_session_kwargs(
+                    payload,
+                    reauthenticate=ctx.browser_reauth_provider,
+                ),
             ) as session:
                 capture = session.navigate(url)
                 status = session.session_status()
                 if bool(payload.get("require_authenticated")):
-                    if payload.get("auth_marker") is None:
+                    if session.auth_marker is None:
                         return {
                             "claimed": "BLOCKED",
                             "error_code": "auth_marker_required",
@@ -812,6 +929,81 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
         }
 
 
+def browser_inspect(
+    ctx: ExecutorContext,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Read one page and return its bounded accessibility structure.
+
+    This is the read-only discovery step of the browser operator: a mission
+    chooses exact role/name targets from this receipt before it dispatches a
+    mutation. Raw HTML, form values, and credentials never cross this path.
+    """
+
+    from ..connectors.web_research import WebResearchError
+
+    url = str(payload.get("url") or payload.get("target_ref") or "")
+    stop_check = _browser_stop_check(ctx, payload)
+    try:
+        connector = _browser_connector(payload)
+        with connector.session(
+            stop_check=stop_check,
+            **_browser_session_kwargs(
+                payload,
+                reauthenticate=ctx.browser_reauth_provider,
+            ),
+        ) as session:
+            capture = session.navigate(url)
+            if not capture.success:
+                return _browser_attempt_payload(
+                    capture.attempt, page=capture.page, session=session,
+                ) | {
+                    "claimed": (
+                        capture.attempt.outcome
+                        if capture.attempt.outcome in {"COMPLETED", "FAILED"}
+                        else "BLOCKED"
+                        if capture.attempt.error_code == "stop_requested"
+                        else "UNKNOWN"
+                    ),
+                    "authority": "DATA_ONLY",
+                }
+            status = session.session_status()
+            if bool(payload.get("require_authenticated")):
+                if session.auth_marker is None:
+                    return {
+                        "claimed": "BLOCKED",
+                        "error_code": "auth_marker_required",
+                        "session": status.to_evidence(),
+                        "authority": "DATA_ONLY",
+                    }
+                status = session.ensure_authenticated()
+                if not status.authenticated:
+                    return {
+                        "claimed": "BLOCKED",
+                        "error_code": (
+                            "session_expired"
+                            if status.state == "EXPIRED"
+                            else "session_not_authenticated"
+                        ),
+                        "session": status.to_evidence(),
+                        "authority": "DATA_ONLY",
+                    }
+            inspected = session.inspect()
+            inspected.update({
+                "claimed": "COMPLETED",
+                "connector_id": connector.spec.connector_id,
+                "final_url": inspected.get("final_url") or url,
+            })
+            return inspected
+    except (ImportError, WebResearchError, TypeError, ValueError) as error:
+        return {
+            "claimed": "FAILED",
+            "error_code": "browser_configuration_error",
+            "detail": redact_text(str(error))[:300],
+            "authority": "DATA_ONLY",
+        }
+
+
 def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     """Run one bounded browser action under the canonical effect journal."""
 
@@ -834,6 +1026,37 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
         return {
             "claimed": "BLOCKED",
             "error_code": "upload_policy_override_refused",
+            "authority": "DATA_ONLY",
+        }
+    # A browser mutation is dispatched only under an exact owner grant. The
+    # grant is owner configuration injected into the executor context, never
+    # a claim derived from a storage state or from the mission payload.
+    authorization = ctx.browser_execution_authorization
+    if authorization is None:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "owner_browser_authorization_required",
+            "authority": "DATA_ONLY",
+        }
+    refusal = authorization.refusal(
+        url=url,
+        action=action,
+        download=action == "download",
+        upload=action == "upload",
+    )
+    if refusal is not None:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": refusal,
+            "authorization_id": authorization.authorization_id,
+            "authority": "DATA_ONLY",
+        }
+    override = _browser_authorization_override(payload, authorization)
+    if override is not None:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": override,
+            "authorization_id": authorization.authorization_id,
             "authority": "DATA_ONLY",
         }
     if action == "download":
@@ -925,7 +1148,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     }
     stop_check = _browser_stop_check(ctx, payload)
     try:
-        connector = _browser_connector(payload)
+        connector = _browser_connector(payload, authorization)
     except (ImportError, WebResearchError, TypeError, ValueError) as error:
         return {
             "claimed": "FAILED",
@@ -933,7 +1156,7 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
             "detail": redact_text(str(error))[:300],
             "authority": "DATA_ONLY",
         }
-    state_path = payload.get("session_state_path")
+    state_path = authorization.session_state_path
     state_path = (
         Path(state_path).expanduser().resolve(strict=False)
         if state_path else None
@@ -941,10 +1164,21 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     metadata_path = Path(f"{state_path}.meta.json") if state_path else None
     persisted = False
 
+    def stamp(result: dict[str, Any]) -> dict[str, Any]:
+        result.setdefault("authorization_id", authorization.authorization_id)
+        result["authorization_require_authenticated"] = bool(
+            authorization.require_authenticated
+        )
+        return result
+
     def perform() -> Mapping[str, Any]:
         nonlocal persisted
         try:
-            session_kwargs = _browser_session_kwargs(payload)
+            session_kwargs = _browser_session_kwargs(
+                payload,
+                authorization,
+                reauthenticate=ctx.browser_reauth_provider,
+            )
             if action == "download":
                 session_kwargs.update({
                     "allow_downloads": True,
@@ -967,27 +1201,32 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
             ) as session:
                 capture = session.navigate(url)
                 if not capture.success:
-                    return _browser_attempt_payload(
+                    return stamp(_browser_attempt_payload(
                         capture.attempt, page=capture.page, session=session,
                         effect_id=effect_id or None,
-                    )
-                if bool(payload.get("require_authenticated")):
-                    if payload.get("auth_marker") is None:
-                        return {
+                    ))
+                # The grant can require authentication even when the payload
+                # does not; the grant is the stricter authority and wins.
+                if (
+                    bool(payload.get("require_authenticated"))
+                    or authorization.require_authenticated
+                ):
+                    if session.auth_marker is None:
+                        return stamp({
                             "claimed": "BLOCKED",
                             "error_code": "auth_marker_required",
                             "session": session.session_status().to_evidence(),
                             "authority": "DATA_ONLY",
-                        }
+                        })
                     auth = session.ensure_authenticated()
                     if not auth.authenticated:
-                        return {
+                        return stamp({
                             "claimed": "BLOCKED",
                             "error_code": "session_expired" if auth.state == "EXPIRED"
                             else "session_not_authenticated",
                             "session": auth.to_evidence(),
                             "authority": "DATA_ONLY",
-                        }
+                        })
                 target = session.discover_target(
                     target_id=target_id,
                     role=role,
@@ -1015,13 +1254,14 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                         if action == "upload"
                         else None
                     ),
+                    expect_new_page=bool(payload.get("expect_new_page")),
                 )
-                result = _browser_attempt_payload(
+                result = stamp(_browser_attempt_payload(
                     attempt,
                     page=capture.page,
                     session=session,
                     effect_id=effect_id or None,
-                )
+                ))
             persisted = bool(
                 state_path is not None
                 and metadata_path is not None
@@ -1031,19 +1271,19 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
             result["session_persisted"] = persisted
             return result
         except BrowserTargetError as error:
-            return {
+            return stamp({
                 "claimed": "FAILED",
                 "error_code": "browser_target_error",
                 "detail": redact_text(str(error))[:300],
                 "authority": "DATA_ONLY",
-            }
+            })
         except (ImportError, WebResearchError) as error:
-            return {
+            return stamp({
                 "claimed": "FAILED",
                 "error_code": "browser_configuration_error",
                 "detail": redact_text(str(error))[:300],
                 "authority": "DATA_ONLY",
-            }
+            })
 
     return execute_fabric_effect(
         ctx.database,
@@ -2367,6 +2607,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "http.write": http_write,
     "http.doc.read": http_doc_read,
     "browser.web.read": browser_read,
+    "browser.web.inspect": browser_inspect,
     "browser.web.wait": browser_wait,
     "browser.web.reconcile": browser_reconcile,
     "browser.web.execute": browser_execute,

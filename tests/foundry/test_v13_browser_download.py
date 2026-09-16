@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from jarvis_foundry.connectors.web_research import (
+    BrowserExecutionAuthorization,
     BrowserTargetError,
     PlaywrightBrowserConnector,
 )
@@ -101,6 +102,19 @@ def _target(session: Any, site: str) -> Any:
     )
 
 
+def _download_grant(site: str) -> BrowserExecutionAuthorization:
+    return BrowserExecutionAuthorization(
+        authorization_id="grant:v13-download",
+        site_origin=site,
+        owner_authorized=True,
+        dispatch_enabled=True,
+        allowed_actions=("download",),
+        allow_downloads=True,
+        require_authenticated=False,
+        allow_insecure_localhost=True,
+    )
+
+
 def test_download_requires_opt_in_and_refuses_escape_before_click(
     browser: PlaywrightBrowserConnector,
     disposable_download_site: Any,
@@ -181,7 +195,11 @@ def test_fabric_download_replays_without_a_second_request(
     database.initialize()
     seed_builtins(database)
     owned_root = tmp_path / "owned"
-    context = ExecutorContext(database=database, owned_root=owned_root)
+    context = ExecutorContext(
+        database=database,
+        owned_root=owned_root,
+        browser_execution_authorization=_download_grant(site),
+    )
     intent = TaskIntent(
         task_id="mission.v13.browser.download",
         required_actions=("browser.web.execute",),

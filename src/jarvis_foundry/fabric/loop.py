@@ -234,6 +234,16 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             ),
         ),
         CapabilitySpec(
+            capability_id="cap.browser.web.inspect", version="1.0.0",
+            kind=Kind.CONNECTOR, action_kind="browser.web.inspect",
+            semantic=Semantic.READ, executor="browser",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "bounded accessibility structure of one page; no form values, "
+                "no raw HTML; external page data is DATA_ONLY",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.browser.web.wait", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="browser.web.wait", semantic=Semantic.READ, executor="browser",
             unattended=UnattendedMode.ALLOWED,
@@ -256,11 +266,13 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             capability_id="cap.browser.web.execute", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="browser.web.execute", semantic=Semantic.EXTERNAL_EFFECT,
             executor="browser",
-            unattended=UnattendedMode.INTERACTIVE_REQUIRED,
+            unattended=UnattendedMode.ALLOWED,
             limitations=(
-                "owner-authorized bounded click/fill/select/check/submit/download/upload only; "
-                "file transfer requires explicit opt-in and owned-root paths; "
-                "effect journal and readback required; no destructive/public actions",
+                "disabled by default; exact owner BrowserExecutionAuthorization "
+                "required in the executor context (one origin, bounded verbs, "
+                "brokered session state); session authentication and effect-journal "
+                "readback required; file transfer requires explicit payload opt-in "
+                "and grant opt-in; no destructive/public actions",
             ),
         ),
         CapabilitySpec(
@@ -812,6 +824,18 @@ def _verify_action(
                 )
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind == "browser.web.inspect":
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("authority") == "DATA_ONLY"
+            and claimed.get("document_id")
+            and claimed.get("page_revision")
+            and claimed.get("structural_hash")
+            and isinstance(claimed.get("element_count"), int)
+            and isinstance(claimed.get("elements"), list)
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.MISMATCH
     if action_kind == "browser.web.wait":
         readback = claimed.get("readback")
         if (
@@ -845,8 +869,11 @@ def _verify_action(
         return VerifyVerdict.MISMATCH
     if action_kind == "browser.web.execute":
         session = claimed.get("session") or {}
+        require_authenticated = bool(
+            payload is not None and payload.get("require_authenticated")
+        ) or bool(claimed.get("authorization_require_authenticated"))
         auth_ok = (
-            not (payload is not None and payload.get("require_authenticated"))
+            not require_authenticated
             or session.get("state") == "AUTHENTICATED"
         )
         if payload is not None and payload.get("action") == "download":

@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from jarvis_foundry.connectors.web_research import (
+    BrowserExecutionAuthorization,
     BrowserTargetError,
     PlaywrightBrowserConnector,
 )
@@ -151,6 +152,19 @@ def _upload_target(session: Any, site: str) -> Any:
         role="button",
         name="Upload report",
         action="upload",
+    )
+
+
+def _upload_grant(site: str) -> BrowserExecutionAuthorization:
+    return BrowserExecutionAuthorization(
+        authorization_id="grant:v13-upload",
+        site_origin=site,
+        owner_authorized=True,
+        dispatch_enabled=True,
+        allowed_actions=("upload",),
+        allow_uploads=True,
+        require_authenticated=False,
+        allow_insecure_localhost=True,
     )
 
 
@@ -398,7 +412,11 @@ def test_fabric_upload_replays_without_a_second_post(
     source = owned_root / "uploads" / "report.csv"
     source.parent.mkdir()
     source.write_bytes(UPLOAD_BYTES)
-    context = ExecutorContext(database=database, owned_root=owned_root)
+    context = ExecutorContext(
+        database=database,
+        owned_root=owned_root,
+        browser_execution_authorization=_upload_grant(site),
+    )
     intent = TaskIntent(
         task_id="mission.v13.browser.upload",
         required_actions=("browser.web.execute",),
@@ -467,7 +485,11 @@ def test_fabric_upload_reconciles_frozen_effect_under_stop_without_second_post(
     source.write_bytes(UPLOAD_BYTES)
     stop_path = tmp_path / "EMERGENCY_STOP"
     server.stop_path = stop_path
-    context = ExecutorContext(database=database, owned_root=owned_root)
+    context = ExecutorContext(
+        database=database,
+        owned_root=owned_root,
+        browser_execution_authorization=_upload_grant(site),
+    )
     execute_intent = TaskIntent(
         task_id="mission.v13.browser.upload.ambiguous",
         required_actions=("browser.web.execute",),

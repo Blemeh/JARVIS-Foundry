@@ -50,7 +50,31 @@ MAX_SESSION_METADATA_BYTES = 16 * 1024
 MAX_ACTION_REQUESTS = 8
 MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
+MAX_STEP_COUNT = 16
+INSPECT_MAX_ELEMENTS = 256
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+_ACCESSIBILITY_ROLE_UNSET = object()
+_ACCESSIBILITY_ROLES = {
+    ("a", ""): "link",
+    ("button", ""): "button",
+    ("select", ""): "combobox",
+    ("textarea", ""): "textbox",
+    ("input", ""): "textbox",
+    ("input", "text"): "textbox",
+    ("input", "search"): "searchbox",
+    ("input", "email"): "textbox",
+    ("input", "url"): "textbox",
+    ("input", "tel"): "textbox",
+    ("input", "number"): "spinbutton",
+    ("input", "checkbox"): "checkbox",
+    ("input", "radio"): "radio",
+    ("input", "range"): "slider",
+    ("input", "file"): "button",
+    ("input", "submit"): "button",
+    ("input", "button"): "button",
+    ("input", "reset"): "button",
+    ("input", "password"): "",
+}
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 _OPAQUE_REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{2,255}$")
 
@@ -349,6 +373,247 @@ def _safe_url_ref(value: object) -> str:
     return value
 
 
+def _origin_of(url: str) -> str:
+    parsed = urlsplit(str(url))
+    host = (parsed.hostname or "").lower()
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    port = parsed.port
+    default_port = (parsed.scheme.lower() == "https" and port == 443) or (
+        parsed.scheme.lower() == "http" and port == 80
+    )
+    suffix = "" if port is None or default_port else f":{port}"
+    return f"{parsed.scheme.lower()}://{host}{suffix}"
+
+
+BROWSER_EXECUTE_ACTIONS = frozenset({
+    "click", "fill", "select", "check", "submit", "download", "upload",
+})
+BROWSER_ACTION_METHODS = frozenset({"POST", "PUT", "PATCH"})
+
+
+@dataclass(frozen=True, slots=True)
+class BrowserExecutionAuthorization:
+    """Exact owner grant for one bounded browser mutation target.
+
+    A storage state proves session state, never authorization.  This grant is
+    the owner-configured authority that makes ``browser.web.execute``
+    unattended-capable for one exact origin: it binds the brokered session
+    material, the allowed mutation verbs, and the file-transfer opt-ins.  It
+    carries no raw credentials -- only opaque references and a session-state
+    path that Playwright consumes.
+    """
+
+    authorization_id: str
+    site_origin: str
+    owner_authorized: bool = False
+    dispatch_enabled: bool = False
+    allowed_actions: tuple[str, ...] = (
+        "click", "fill", "select", "check", "submit",
+    )
+    allow_downloads: bool = False
+    allow_uploads: bool = False
+    session_state_path: str | None = None
+    profile_id: str = "default"
+    owner_scope: str = "owner-local"
+    credential_reference: str | None = None
+    auth_marker: tuple[str, str] | None = None
+    require_authenticated: bool = True
+    persist_session: bool = True
+    allowed_action_methods: tuple[str, ...] = ("POST",)
+    max_action_requests: int = MAX_ACTION_REQUESTS
+    allow_insecure_localhost: bool = False
+    capability_trust: str = "ESTABLISHED"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "authorization_id",
+            _safe_opaque_reference(self.authorization_id, "authorization_id"),
+        )
+        origin = self._normalized_origin(self.site_origin)
+        object.__setattr__(self, "site_origin", origin)
+        actions: list[str] = []
+        for item in self.allowed_actions:
+            value = str(item).strip().lower()
+            if value not in BROWSER_EXECUTE_ACTIONS:
+                raise WebResearchError(
+                    f"allowed action {value!r} is outside the bounded browser verb set"
+                )
+            if value not in actions:
+                actions.append(value)
+        if not actions:
+            raise WebResearchError(
+                "BrowserExecutionAuthorization requires at least one allowed action"
+            )
+        if "download" in actions and not self.allow_downloads:
+            raise WebResearchError(
+                "allowed action download requires allow_downloads=True"
+            )
+        if "upload" in actions and not self.allow_uploads:
+            raise WebResearchError(
+                "allowed action upload requires allow_uploads=True"
+            )
+        object.__setattr__(self, "allowed_actions", tuple(actions))
+        methods: list[str] = []
+        for item in self.allowed_action_methods:
+            value = str(item).strip().upper()
+            if value not in BROWSER_ACTION_METHODS:
+                raise WebResearchError(
+                    "allowed_action_methods must contain only POST/PUT/PATCH"
+                )
+            if value not in methods:
+                methods.append(value)
+        if not methods:
+            raise WebResearchError(
+                "BrowserExecutionAuthorization requires an allowed action method"
+            )
+        object.__setattr__(self, "allowed_action_methods", tuple(methods))
+        if (
+            not isinstance(self.max_action_requests, int)
+            or isinstance(self.max_action_requests, bool)
+            or self.max_action_requests < 1
+            or self.max_action_requests > 32
+        ):
+            raise WebResearchError(
+                "max_action_requests must be within [1, 32]"
+            )
+        object.__setattr__(
+            self,
+            "profile_id",
+            _safe_opaque_reference(self.profile_id, "profile_id"),
+        )
+        object.__setattr__(
+            self,
+            "owner_scope",
+            _safe_opaque_reference(self.owner_scope, "owner_scope"),
+        )
+        if self.credential_reference is not None:
+            object.__setattr__(
+                self,
+                "credential_reference",
+                _safe_opaque_reference(
+                    self.credential_reference, "credential_reference"
+                ),
+            )
+        if self.auth_marker is not None:
+            object.__setattr__(
+                self,
+                "auth_marker",
+                _normalize_auth_marker(self.auth_marker),
+            )
+        if self.session_state_path is not None:
+            raw_state = self.session_state_path
+            if (
+                not isinstance(raw_state, str)
+                or not raw_state.strip()
+                or any(ord(char) < 0x20 for char in raw_state)
+                or len(raw_state) > 4096
+            ):
+                raise WebResearchError(
+                    "session_state_path must be a bounded non-empty path"
+                )
+            if contains_secret_like(raw_state):
+                raise WebResearchError(
+                    "session_state_path contains secret-like material"
+                )
+            object.__setattr__(self, "session_state_path", raw_state.strip())
+        for flag in (
+            "owner_authorized", "dispatch_enabled", "allow_downloads",
+            "allow_uploads", "require_authenticated", "persist_session",
+            "allow_insecure_localhost",
+        ):
+            if not isinstance(getattr(self, flag), bool):
+                raise WebResearchError(f"{flag} must be boolean")
+        object.__setattr__(
+            self,
+            "capability_trust",
+            str(self.capability_trust or "ESTABLISHED").upper(),
+        )
+
+    @staticmethod
+    def _normalized_origin(value: object) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise WebResearchError("site_origin is required")
+        raw = value.strip().rstrip("/")
+        try:
+            parsed = urlsplit(raw)
+            if (
+                parsed.scheme.lower() not in {"http", "https"}
+                or not parsed.hostname
+                or parsed.path not in {"", "/"}
+                or parsed.query
+                or parsed.fragment
+                or parsed.username is not None
+                or parsed.password is not None
+            ):
+                raise ValueError
+            _ = parsed.port
+        except ValueError as error:
+            raise WebResearchError(
+                "site_origin must be one exact http(s) origin"
+            ) from error
+        if contains_secret_like(raw):
+            raise WebResearchError("site_origin contains secret-like material")
+        return _origin_of(raw)
+
+    @property
+    def host(self) -> str:
+        return (urlsplit(self.site_origin).hostname or "").lower()
+
+    def allows_origin(self, url: str) -> bool:
+        try:
+            return _origin_of(url) == self.site_origin
+        except ValueError:
+            return False
+
+    def refusal(
+        self,
+        *,
+        url: str,
+        action: str,
+        download: bool = False,
+        upload: bool = False,
+    ) -> str | None:
+        """Return a classified refusal for one attempted mutation, or None."""
+
+        if self.capability_trust == "PROBATION":
+            return "probation_capability_irreversible_effect_forbidden"
+        if not self.owner_authorized:
+            return "owner_authorization_required"
+        if not self.dispatch_enabled:
+            return "browser_execution_disabled"
+        normalized_action = str(action or "").strip().lower()
+        if normalized_action not in BROWSER_EXECUTE_ACTIONS:
+            return "browser_action_not_supported"
+        if normalized_action not in self.allowed_actions:
+            return "browser_action_not_authorized"
+        if download and not self.allow_downloads:
+            return "download_not_authorized"
+        if upload and not self.allow_uploads:
+            return "upload_not_authorized"
+        if not self.allows_origin(str(url)):
+            return "browser_origin_not_authorized"
+        if self.require_authenticated and self.auth_marker is None:
+            return "browser_authorization_auth_marker_required"
+        return None
+
+    def session_kwargs(self) -> dict[str, Any]:
+        """Return the exact connector session binding for this grant."""
+
+        return {
+            "profile_id": self.profile_id,
+            "site_origin": self.site_origin,
+            "owner_scope": self.owner_scope,
+            "session_state_path": self.session_state_path,
+            "credential_reference": self.credential_reference,
+            "auth_marker": self.auth_marker,
+            "persist_session": self.persist_session,
+            "allowed_action_methods": tuple(self.allowed_action_methods),
+            "max_action_requests": int(self.max_action_requests),
+        }
+
+
 class PlaywrightBrowserConnector:
     """Direct Playwright browser adapter with bounded read/target semantics."""
 
@@ -358,11 +623,13 @@ class PlaywrightBrowserConnector:
         version="1.0.0",
         actions={
             "browser.web.read": "read",
+            "browser.web.inspect": "read",
             "browser.web.wait": "read",
             "browser.web.execute": "execute",
         },
         capabilities={
             "web_read": "PROBING",
+            "web_inspect": "PROBING",
             "web_wait": "PROBING",
             "web_execute": "PROBING",
         },
@@ -930,6 +1197,7 @@ class PlaywrightBrowserSession:
         self._download_in_progress = False
         self._reauth_attempted = False
         self._reauth_in_progress = False
+        self._reauth_evidence: dict[str, Any] | None = None
 
     @staticmethod
     def _origin(url: str) -> str:
@@ -1085,7 +1353,7 @@ class PlaywrightBrowserSession:
                 )
             self.page = self._context.new_page()
             self.page.set_default_timeout(self.connector.timeout_ms)
-            self.page.route("**/*", self._route)
+            self._context.route("**/*", self._route)
             return self
         except BaseException:
             # Context entry can fail after a browser process has started. Run
@@ -1105,11 +1373,12 @@ class PlaywrightBrowserSession:
                 except Exception:
                     pass
             self._persist_session_state()
-            if self.page is not None:
+            if self._context is not None:
                 try:
-                    self.page.unroute_all(behavior="wait")
+                    self._context.unroute_all(behavior="wait")
                 except Exception:
                     pass
+            if self.page is not None:
                 try:
                     self.page.close(reason="bounded browser session complete")
                 except Exception:
@@ -1918,6 +2187,242 @@ class PlaywrightBrowserSession:
             name=name,
         )
 
+    def inspect(self) -> dict[str, Any]:
+        """Return the bounded accessibility structure of the current page.
+
+        This is the read-only discovery step of the operator loop: it lets a
+        caller choose exact role/name targets for later ``execute`` calls
+        without exposing raw HTML, form values, or credentials.
+        """
+
+        if self.page is None:
+            raise BrowserTargetError("browser session is not open")
+        self._reread_current_page()
+        if self._last_identity is None:
+            raise BrowserTargetError("navigate before inspecting the page")
+        final_url, revision, structural_hash = self._current_revision()
+        structure = self.connector._structure(self.page)
+        elements: list[dict[str, Any]] = []
+        for item in structure[:INSPECT_MAX_ELEMENTS]:
+            raw_name = str(item.get("name") or "")[:512]
+            try:
+                safe_name = sanitize_external_content(
+                    redact_text(raw_name),
+                    source_ref=final_url,
+                    max_chars=200,
+                ).text
+            except SafetyBoundaryError:
+                safe_name = "[UNTRUSTED_ELEMENT_NAME]"
+            tag = str(item.get("tag") or "")[:24]
+            explicit_role = str(item.get("role") or "")[:64]
+            mapped_role = _ACCESSIBILITY_ROLES.get(
+                (tag, str(item.get("type") or "").lower()),
+                _ACCESSIBILITY_ROLE_UNSET,
+            )
+            elements.append({
+                "tag": tag,
+                "role": (
+                    mapped_role if mapped_role is not _ACCESSIBILITY_ROLE_UNSET
+                    else (explicit_role or tag)
+                ),
+                "name": safe_name,
+                "type": str(item.get("type") or "")[:32],
+                "disabled": bool(item.get("disabled")),
+            })
+        status = self.session_status()
+        return {
+            "elements": elements,
+            "element_count": len(elements),
+            "final_url": _safe_url_ref(final_url),
+            "document_id": self._last_identity.document_id,
+            "page_revision": revision,
+            "structural_hash": structural_hash,
+            "session": status.to_evidence(),
+            "authority": "DATA_ONLY",
+        }
+
+    def _reread_current_page(self) -> bool:
+        """Rebuild bound page identity after a redirect changed the live URL.
+
+        A bounded same-origin GET only; it never repeats a mutation. Returns
+        True when the bound identity matches the live page afterwards.
+        """
+
+        if self.page is None:
+            return False
+        try:
+            live = str(self.page.url)
+        except Exception:
+            return False
+        if (
+            self._last_identity is not None
+            and self._last_identity.final_url == live
+        ):
+            return True
+        if not live or live == "about:blank":
+            return False
+        return self.navigate(live).success
+
+    def page_urls(self) -> list[str]:
+        """Return bounded URL references for every open tab, in order."""
+
+        if self._context is None:
+            return []
+        return [_safe_url_ref(str(page.url)) for page in self._context.pages]
+
+    def active_page_index(self) -> int:
+        if self._context is None or self.page is None:
+            return -1
+        for index, page in enumerate(self._context.pages):
+            if page is self.page:
+                return index
+        return -1
+
+    def _adopt_page(self, page: Any) -> None:
+        self.page = page
+        try:
+            self.page.set_default_timeout(self.connector.timeout_ms)
+        except Exception:  # pragma: no cover - driver-specific
+            pass
+
+    def switch_page(
+        self,
+        *,
+        index: int | None = None,
+        url: str | None = None,
+        reload_identity: bool = True,
+    ) -> dict[str, Any]:
+        """Select one open tab deterministically and rebuild page identity."""
+
+        if self._context is None or self.page is None:
+            raise BrowserTargetError("browser session is not open")
+        pages = list(self._context.pages)
+        if url is not None:
+            matches = [
+                position
+                for position, page in enumerate(pages)
+                if str(page.url) == str(url)
+            ]
+            if len(matches) != 1:
+                raise BrowserTargetError(
+                    "tab selection by url must match exactly one open page"
+                )
+            chosen = matches[0]
+        elif index is not None:
+            if not isinstance(index, int) or isinstance(index, bool):
+                raise BrowserTargetError("tab index must be an integer")
+            if index < 0 or index >= len(pages):
+                raise BrowserTargetError("tab index is out of range")
+            chosen = index
+        else:
+            raise BrowserTargetError(
+                "tab selection requires an exact index or url"
+            )
+        page = pages[chosen]
+        self._adopt_page(page)
+        evidence: dict[str, Any] = {
+            "index": chosen,
+            "page_count": len(pages),
+            "url": _safe_url_ref(str(page.url)),
+            "authority": "DATA_ONLY",
+        }
+        if reload_identity:
+            current = str(page.url)
+            if current and current != "about:blank":
+                result = self.navigate(current)
+                evidence["navigated"] = result.success
+                evidence["page"] = (
+                    result.page.to_evidence() if result.page is not None else None
+                )
+            else:
+                self._last_identity = None
+                evidence["navigated"] = False
+        else:
+            self._last_identity = None
+            evidence["navigated"] = False
+        evidence["session"] = self.session_status().to_evidence()
+        return evidence
+
+    def wait_for_new_page(
+        self,
+        *,
+        timeout_ms: int | None = None,
+        url: str | None = None,
+        stop_check: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
+        """Wait for a tab that was already triggered to appear.
+
+        This never clicks anything itself; it only observes the context.
+        """
+
+        if self._context is None:
+            raise BrowserTargetError("browser session is not open")
+        effective_timeout = (
+            self.connector.timeout_ms if timeout_ms is None else timeout_ms
+        )
+        if (
+            not isinstance(effective_timeout, int)
+            or isinstance(effective_timeout, bool)
+            or effective_timeout < 100
+            or effective_timeout > 120_000
+        ):
+            raise BrowserTargetError(
+                "wait timeout_ms must be between 100 and 120000"
+            )
+        stop_check = stop_check or self.stop_check
+        deadline = time.monotonic() + (effective_timeout / 1000.0)
+        initial = len(self._context.pages)
+        while True:
+            if stop_check is not None and stop_check():
+                return {
+                    "state": "CANCELLED",
+                    "error_code": "stop_requested",
+                    "page_count": len(self._context.pages),
+                    "authority": "DATA_ONLY",
+                }
+            pages = list(self._context.pages)
+            candidates = [
+                position
+                for position, page in enumerate(pages)
+                if url is None or str(page.url) == str(url)
+            ]
+            if url is not None and len(candidates) == 1:
+                self._adopt_page(pages[candidates[0]])
+                return {
+                    "state": "OBSERVED",
+                    "index": candidates[0],
+                    "page_count": len(pages),
+                    "url": _safe_url_ref(str(pages[candidates[0]].url)),
+                    "authority": "DATA_ONLY",
+                }
+            if url is None and len(pages) > initial:
+                return {
+                    "state": "OBSERVED",
+                    "index": len(pages) - 1,
+                    "page_count": len(pages),
+                    "url": _safe_url_ref(str(pages[-1].url)),
+                    "authority": "DATA_ONLY",
+                }
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return {
+                    "state": "FAILED",
+                    "error_code": "new_page_timeout",
+                    "page_count": len(pages),
+                    "authority": "DATA_ONLY",
+                }
+            try:
+                self.page.wait_for_timeout(
+                    min(50, max(1, int(remaining * 1000)))
+                )
+            except Exception as error:
+                return {
+                    "state": "FAILED",
+                    "error_code": "new_page_wait_failed",
+                    "detail": redact_text(str(error))[:300],
+                    "authority": "DATA_ONLY",
+                }
+
     @staticmethod
     def _action_reference(value: str | None, field_name: str) -> str | None:
         if value is None:
@@ -2276,6 +2781,7 @@ class PlaywrightBrowserSession:
         readback_target: Mapping[str, Any] | None = None,
         download_target: str | Path | None = None,
         upload_source: str | Path | None = None,
+        expect_new_page: bool = False,
     ) -> ConnectorAttempt:
         if self.page is None:
             raise BrowserTargetError("browser session is not open")
@@ -2515,9 +3021,29 @@ class PlaywrightBrowserSession:
         download_evidence: dict[str, Any] | None = None
         upload_started = False
         upload_evidence: dict[str, Any] | None = None
+        new_page_evidence: dict[str, Any] | None = None
         try:
             if target.action in {"click", "submit"}:
-                locator.click(timeout=self.connector.timeout_ms)
+                if expect_new_page:
+                    if self._context is None:
+                        raise BrowserTargetError("browser session is not open")
+                    with self._context.expect_page(
+                        timeout=self.connector.timeout_ms,
+                    ) as page_info:
+                        locator.click(timeout=self.connector.timeout_ms)
+                    opened = page_info.value
+                    self._action_request_seen = True
+                    self._action_request_count = max(
+                        1, self._action_request_count,
+                    )
+                    new_page_evidence = {
+                        "url": _safe_url_ref(str(opened.url)),
+                        "page_count": len(self._context.pages),
+                        "index": max(len(self._context.pages) - 1, 0),
+                        "adopted": False,
+                    }
+                else:
+                    locator.click(timeout=self.connector.timeout_ms)
             elif target.action == "fill":
                 locator.fill(value, timeout=self.connector.timeout_ms)
             elif target.action == "select":
@@ -2661,6 +3187,8 @@ class PlaywrightBrowserSession:
             }
             if upload_evidence is not None:
                 after_state["upload"] = upload_evidence
+            if new_page_evidence is not None:
+                after_state["new_page"] = new_page_evidence
             try:
                 if readback_target is not None:
                     after_state["readback"] = self.readback(
@@ -2804,6 +3332,8 @@ class PlaywrightBrowserSession:
             "action_request_count": self._action_request_count,
             "action_request_seen": self._action_request_seen,
         }
+        if new_page_evidence is not None:
+            after["new_page"] = new_page_evidence
         if self._route_error in {
             "mutating_request_blocked", "action_method_blocked", "action_origin_blocked",
             "action_request_limit", "redirect_policy_rejected", "redirect_limit",
@@ -2885,6 +3415,288 @@ class PlaywrightBrowserSession:
             outcome="COMPLETED", before_state=before,
             after_state=after, provider_ref=after_url, reconciled=True,
         )
+
+    def _safe_page_title(self, *, source_ref: str) -> str | None:
+        if self.page is None:
+            return None
+        try:
+            raw = str(self.page.title())[:MAX_TARGET_NAME_LENGTH]
+        except Exception:
+            return None
+        try:
+            return sanitize_external_content(
+                redact_text(raw), source_ref=source_ref,
+                max_chars=MAX_TARGET_NAME_LENGTH,
+            ).text
+        except SafetyBoundaryError:
+            return "[UNTRUSTED_PAGE_TITLE]"
+
+    def run_steps(
+        self,
+        steps: Sequence[Mapping[str, Any]],
+        *,
+        stop_check: Callable[[], bool] | None = None,
+        step_scope: str | None = None,
+        max_steps: int = MAX_STEP_COUNT,
+    ) -> dict[str, Any]:
+        """Execute ordered steps on this one session with step-level evidence.
+
+        Steps are data, not code: ``navigate``, ``inspect``, ``authenticate``,
+        ``wait``, ``readback``, ``switch_page``, and the bounded mutation
+        verbs.  A failed or ambiguous step stops the sequence (honest partial
+        result); nothing is retried inside this helper.  This is a bounded
+        convenience over the existing single-action methods, never a second
+        orchestrator or effect journal.
+        """
+
+        if self.page is None:
+            raise BrowserTargetError("browser session is not open")
+        ordered = tuple(steps)
+        if not ordered:
+            raise BrowserTargetError("run_steps requires at least one step")
+        if not isinstance(max_steps, int) or isinstance(max_steps, bool) or max_steps < 1:
+            raise BrowserTargetError("max_steps must be a positive integer")
+        if len(ordered) > max_steps:
+            raise BrowserTargetError(
+                f"run_steps accepts at most {max_steps} steps"
+            )
+        stop_check = stop_check or self.stop_check
+        scope = (
+            _safe_opaque_reference(step_scope, "step_scope")
+            if step_scope is not None else None
+        )
+        step_ids: list[str] = []
+        for item in ordered:
+            if not isinstance(item, Mapping):
+                raise BrowserTargetError("each step must be an object")
+            step_ids.append(_safe_identity(item.get("step_id"), "step_id"))
+        if len(step_ids) != len(set(step_ids)):
+            raise BrowserTargetError("step_id values must be unique")
+
+        results: list[dict[str, Any]] = []
+        stopped_at: str | None = None
+        for position, item in enumerate(ordered):
+            step_id = step_ids[position]
+            action = str(item.get("action") or "").strip().lower()
+            key = (
+                f"{scope or 'browser-steps'}:{step_id}:{position}"
+            )
+            if stop_check is not None and stop_check():
+                results.append({
+                    "step_id": step_id, "action": action,
+                    "outcome": "CANCELLED", "error_code": "stop_requested",
+                })
+                stopped_at = step_id
+                break
+            try:
+                row = self._run_one_step(
+                    step_id,
+                    action,
+                    item,
+                    idempotency_key=key,
+                    stop_check=stop_check,
+                )
+            except BrowserTargetError as error:
+                row = {
+                    "step_id": step_id, "action": action,
+                    "outcome": "FAILED",
+                    "error_code": "browser_target_error",
+                    "detail": redact_text(str(error))[:300],
+                }
+            except (WebResearchError, TypeError, ValueError) as error:
+                row = {
+                    "step_id": step_id, "action": action,
+                    "outcome": "FAILED",
+                    "error_code": "browser_step_invalid",
+                    "detail": redact_text(str(error))[:300],
+                }
+            results.append(row)
+            if row["outcome"] != "COMPLETED":
+                stopped_at = step_id
+                break
+
+        success = (
+            stopped_at is None
+            and len(results) == len(ordered)
+            and all(row["outcome"] == "COMPLETED" for row in results)
+        )
+        final: dict[str, Any] = {}
+        try:
+            final_url, revision, structural_hash = self._current_revision()
+            status = self.session_status()
+            final = {
+                "final_url": _safe_url_ref(final_url),
+                "title": self._safe_page_title(source_ref=final_url),
+                "page_revision": revision,
+                "structural_hash": structural_hash,
+                "session": status.to_evidence(),
+                "pages": self.page_urls(),
+                "active_page": self.active_page_index(),
+            }
+        except Exception as error:
+            final = {
+                "error_code": "page_snapshot_unavailable",
+                "detail": redact_text(str(error))[:300],
+            }
+        return {
+            "success": success,
+            "step_count": len(results),
+            "requested_step_count": len(ordered),
+            "stopped_at": stopped_at,
+            "steps": results,
+            "final": final,
+            "authority": "DATA_ONLY",
+        }
+
+    def _run_one_step(
+        self,
+        step_id: str,
+        action: str,
+        item: Mapping[str, Any],
+        *,
+        idempotency_key: str,
+        stop_check: Callable[[], bool] | None,
+    ) -> dict[str, Any]:
+        if action == "navigate":
+            url = item.get("url")
+            if not isinstance(url, str) or not url.strip():
+                raise BrowserTargetError("navigate step requires a url")
+            capture = self.navigate(url.strip())
+            row = {
+                "step_id": step_id, "action": action,
+                "outcome": capture.attempt.outcome,
+                "error_code": capture.attempt.error_code,
+            }
+            if capture.page is not None:
+                row["final_url"] = capture.page.final_url
+                row["page_revision"] = capture.page.page_revision
+                row["structural_hash"] = capture.page.structural_hash
+                row["document_id"] = capture.page.document_id
+            return row
+        if action == "inspect":
+            inspected = self.inspect()
+            return {
+                "step_id": step_id, "action": action,
+                "outcome": "COMPLETED",
+                "final_url": inspected["final_url"],
+                "page_revision": inspected["page_revision"],
+                "structural_hash": inspected["structural_hash"],
+                "element_count": inspected["element_count"],
+                "elements": inspected["elements"],
+            }
+        if action == "authenticate":
+            status = self.ensure_authenticated()
+            return {
+                "step_id": step_id, "action": action,
+                "outcome": "COMPLETED" if status.authenticated else "BLOCKED",
+                "error_code": (
+                    None if status.authenticated
+                    else "session_expired" if status.state == "EXPIRED"
+                    else "session_not_authenticated"
+                ),
+                "session": status.to_evidence(),
+            }
+        if action == "switch_page":
+            evidence = self.switch_page(
+                index=(
+                    int(item["index"]) if item.get("index") is not None else None
+                ),
+                url=(
+                    str(item["url"]) if item.get("url") is not None else None
+                ),
+            )
+            return {"step_id": step_id, "action": action, **evidence}
+        if action == "readback":
+            rb = self.readback(
+                role=(
+                    str(item["role"]) if item.get("role") is not None else None
+                ),
+                name=(
+                    str(item["name"]) if item.get("name") is not None else None
+                ),
+                expected_value=item.get("expected_value"),
+                action=(
+                    str(item["readback_action"])
+                    if item.get("readback_action") is not None else None
+                ),
+            )
+            return {
+                "step_id": step_id, "action": action,
+                "outcome": "COMPLETED" if rb.get("verified") else "FAILED",
+                "error_code": None if rb.get("verified") else str(
+                    rb.get("error_code") or "readback_not_verified"
+                ),
+                "readback": rb,
+                "final_url": rb.get("final_url"),
+                "page_revision": rb.get("page_revision"),
+            }
+        if action == "wait":
+            attempt = self.wait_for_target(
+                target_id=str(item.get("target_id") or f"wait-{step_id}"),
+                role=str(item.get("role") or ""),
+                name=str(item.get("name") or ""),
+                state=str(item.get("wait_state") or "visible"),
+                timeout_ms=(
+                    int(item["timeout_ms"])
+                    if item.get("timeout_ms") is not None else None
+                ),
+                stop_check=stop_check,
+                idempotency_key=idempotency_key,
+            )
+            after = dict(attempt.after_state or {})
+            return {
+                "step_id": step_id, "action": action,
+                "outcome": attempt.outcome,
+                "error_code": attempt.error_code,
+                "final_url": after.get("final_url"),
+                "page_revision": after.get("page_revision"),
+                "structural_hash": after.get("structural_hash"),
+                "readback": after.get("readback"),
+            }
+        if action not in BROWSER_EXECUTE_ACTIONS:
+            raise BrowserTargetError(
+                f"unsupported step action {action!r}"
+            )
+        # A prior step may have redirected the page; rebuild the bound
+        # identity with a bounded same-origin GET before discovering targets.
+        self._reread_current_page()
+        target = self.discover_target(
+            target_id=str(item.get("target_id") or step_id),
+            role=str(item.get("role") or ""),
+            name=str(item.get("name") or ""),
+            action=action,
+        )
+        attempt = self.execute(
+            target,
+            value=item.get("value"),
+            stop_check=stop_check,
+            idempotency_key=idempotency_key,
+            readback_target=(
+                item.get("readback_target")
+                if isinstance(item.get("readback_target"), Mapping) else None
+            ),
+            download_target=(
+                item.get("download_target") if action == "download" else None
+            ),
+            upload_source=(
+                item.get("upload_source") if action == "upload" else None
+            ),
+            expect_new_page=bool(item.get("expect_new_page")),
+        )
+        after = dict(attempt.after_state or {})
+        return {
+            "step_id": step_id, "action": action,
+            "outcome": attempt.outcome,
+            "error_code": attempt.error_code,
+            "final_url": after.get("final_url"),
+            "page_revision": after.get("page_revision"),
+            "structural_hash": after.get("structural_hash"),
+            "readback": after.get("readback"),
+            "download": after.get("download"),
+            "upload": after.get("upload"),
+            "session": after.get("session"),
+            "action_request_seen": after.get("action_request_seen"),
+        }
 
     def reconcile(
         self,
@@ -3325,6 +4137,9 @@ def render_research_brief(
 
 
 __all__ = [
+    "BROWSER_ACTION_METHODS",
+    "BROWSER_EXECUTE_ACTIONS",
+    "BrowserExecutionAuthorization",
     "BrowserPageIdentity",
     "BrowserReadResult",
     "BrowserSessionStatus",
