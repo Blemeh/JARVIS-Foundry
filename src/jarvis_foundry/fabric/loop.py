@@ -133,6 +133,16 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             limitations=("owned disposable remote only; no live production remotes",),
         ),
         CapabilitySpec(
+            capability_id="cap.git.push.reconcile", version="1.0.0",
+            kind=Kind.CONNECTOR, action_kind="git.push.reconcile",
+            semantic=Semantic.READ, executor="git",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=(
+                "read-only ls-remote reconciliation of one ambiguous push; "
+                "confirms the original effect without a second push",
+            ),
+        ),
+        CapabilitySpec(
             capability_id="cap.github.repo.read", version="1.0.0", kind=Kind.CONNECTOR,
             action_kind="github.repo.read", semantic=Semantic.READ, executor="github_research",
             unattended=UnattendedMode.ALLOWED,
@@ -777,6 +787,15 @@ def _verify_action(
         if claimed.get("remote_head") and claimed.get("remote_head") == claimed.get("observed_remote_head"):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind == "git.push.reconcile":
+        if (
+            claimed_status == "COMPLETED"
+            and claimed.get("reconciled") is True
+            and claimed.get("expected_head")
+            and claimed.get("remote_head") == claimed.get("expected_head")
+        ):
+            return VerifyVerdict.MATCH
+        return VerifyVerdict.UNKNOWN if claimed_status in {"UNKNOWN", "BLOCKED"} else VerifyVerdict.MISMATCH
     if action_kind == "git.read_ref":
         return VerifyVerdict.MATCH if claimed.get("head") else VerifyVerdict.MISMATCH
     if action_kind == "git.log":
@@ -1326,7 +1345,10 @@ def execute_action(
         identities={"GLOBAL", intent.task_id},
     )
     reconciliation_capable = (
-        action_kind in {"github.pull_request.publish", "gmail.send", "github.write.reconcile"}
+        action_kind in {
+            "github.pull_request.publish", "gmail.send", "github.write.reconcile",
+            "git.push.reconcile",
+        }
         or action_kind.startswith("mcp.")
         or action_kind in {
             "browser.web.reconcile",

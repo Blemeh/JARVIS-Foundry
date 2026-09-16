@@ -649,6 +649,106 @@ def test_collection_scan_truncation_and_duplicates_stay_unknown(
     assert ambiguous["reconciliation_required"] is True
 
 
+def test_git_push_reconcile_confirms_ambiguous_push_without_repush(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    work, bare, _seed_head = _clone(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    connector = GitConnector(database, owned_root=tmp_path / "owned")
+    head = subprocess.run(
+        ["git", "-C", str(work), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    pushes = 0
+
+    def land_then_timeout(worktree: Path, remote: str, branch: str) -> None:
+        nonlocal pushes
+        pushes += 1
+        subprocess.run(
+            ["git", "-C", str(worktree), "push", remote, branch],
+            check=True, capture_output=True,
+        )
+        raise TimeoutError("response lost after the remote accepted the push")
+
+    from jarvis_foundry.v3_git import GitReconcilePending
+
+    with pytest.raises(GitReconcilePending):
+        connector.push(
+            action_id="lane3-ambiguous", worktree=work, remote=str(bare),
+            branch="main", execute=land_then_timeout,
+        )
+    assert pushes == 1
+
+    payload = {
+        "action_id": "lane3-ambiguous",
+        "remote": str(bare),
+        "branch": "main",
+        "expected_head": head,
+    }
+    reconciled = execute_action(
+        database, ctx, _intent("git.push.reconcile"), "git.push.reconcile", payload,
+    )
+    assert reconciled.success is True
+    assert reconciled.claimed_effect["reconciled"] is True
+    assert reconciled.claimed_effect["remote_head"] == head
+    assert pushes == 1
+
+    replayed = execute_action(
+        database, ctx, _intent("git.push.reconcile"), "git.push.reconcile", payload,
+    )
+    assert replayed.claimed_effect["reconciled"] is True
+    assert replayed.claimed_effect["replayed"] is True
+    assert pushes == 1
+
+
+def test_git_push_reconcile_reports_provider_mismatch_truthfully(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    work, bare, _local_head = _clone(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    connector = GitConnector(database, owned_root=tmp_path / "owned")
+    seed_head = connector.read_ref(str(bare), "main")
+    head = subprocess.run(
+        ["git", "-C", str(work), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    assert seed_head is not None and seed_head != head
+
+    def timeout_without_landing(_worktree: Path, _remote: str, _branch: str) -> None:
+        raise TimeoutError("response lost before the remote accepted anything")
+
+    from jarvis_foundry.v3_git import GitReconcilePending
+
+    with pytest.raises(GitReconcilePending):
+        connector.push(
+            action_id="lane3-not-landed", worktree=work, remote=str(bare),
+            branch="main", execute=timeout_without_landing,
+        )
+
+    payload = {
+        "action_id": "lane3-not-landed",
+        "remote": str(bare),
+        "branch": "main",
+        "expected_head": head,
+    }
+    mismatch = execute_action(
+        database, ctx, _intent("git.push.reconcile"), "git.push.reconcile", payload,
+    )
+    assert mismatch.claimed_effect["claimed"] == "FAILED"
+    assert mismatch.claimed_effect["error_code"] == "remote_branch_mismatch"
+    assert mismatch.claimed_effect["observed_remote_head"] == seed_head
+
+    again = execute_action(
+        database, ctx, _intent("git.push.reconcile"), "git.push.reconcile", payload,
+    )
+    assert again.claimed_effect["claimed"] == "FAILED"
+    assert connector.read_ref(str(bare), "main") == seed_head
+
+
 def test_git_branch_action_verifies_against_observed_worktree(tmp_path: Path) -> None:
     database = _db(tmp_path)
     work, _bare, _head = _clone(tmp_path)

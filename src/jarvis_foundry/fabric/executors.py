@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -407,6 +408,98 @@ def git_push(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]
         "observed_remote_head": observed,
         "performed": pushed.get("performed"),
         "action_id": action_id,
+    }
+
+
+def git_push_reconcile(
+    ctx: ExecutorContext, payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Resolve one ambiguous Git push against provider truth. Read-only.
+
+    The V3 push journal is the durable identity. A matching remote head
+    confirms the ORIGINAL effect without a second push; a mismatch records
+    provider truth and reports the push as not landed. Replays never append
+    reconciliation events twice.
+    """
+
+    action_id = str(payload.get("action_id") or "").strip()
+    if not action_id:
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "action_id_required",
+        }
+    remote = str(payload.get("remote") or "").strip()
+    if not remote:
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "remote_required",
+        }
+    branch = str(payload.get("branch") or "main")
+    expected_head = str(payload.get("expected_head") or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_head):
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "expected_head_required",
+        }
+    action_key = f"v3-git:{action_id}"
+    state = effect_state(ctx.database, action_key)
+    status = state.get("status")
+    if status == "UNKNOWN":
+        return {
+            "claimed": "BLOCKED", "performed": False,
+            "error_code": "effect_not_found", "action_key": action_key,
+        }
+    observed = GitConnector.read_ref(remote, branch)
+    with ctx.database.connect(readonly=True) as connection:
+        reconciled = connection.execute(
+            "SELECT 1 FROM events WHERE event_type = 'effect.reconciled' "
+            "AND json_extract(payload_json, '$.action_key') = ? LIMIT 1",
+            (action_key,),
+        ).fetchone()
+        mismatched = connection.execute(
+            "SELECT 1 FROM events WHERE event_type = 'effect.reconcile_mismatch' "
+            "AND json_extract(payload_json, '$.action_key') = ? LIMIT 1",
+            (action_key,),
+        ).fetchone()
+    connector = _git_connector(ctx)
+    if observed == expected_head:
+        if status == "FROZEN" and not reconciled:
+            connector.reconcile(
+                action_id=action_id, remote=remote, branch=branch,
+                expected_head=expected_head,
+            )
+        return {
+            "claimed": "COMPLETED",
+            "action_key": action_key,
+            "action_id": action_id,
+            "remote": remote,
+            "branch": branch,
+            "expected_head": expected_head,
+            "remote_head": observed,
+            "observed_remote_head": observed,
+            "reconciled": True,
+            "performed": False,
+            "replayed": bool(reconciled),
+            "provider_state": {"source": "git ls-remote", "head": observed},
+        }
+    if status == "FROZEN" and not mismatched:
+        connector.reconcile(
+            action_id=action_id, remote=remote, branch=branch,
+            expected_head=expected_head,
+        )
+    return {
+        "claimed": "FAILED",
+        "action_key": action_key,
+        "action_id": action_id,
+        "remote": remote,
+        "branch": branch,
+        "expected_head": expected_head,
+        "remote_head": observed,
+        "observed_remote_head": observed,
+        "reconciled": False,
+        "performed": False,
+        "error_code": "remote_branch_mismatch",
+        "provider_state": {"source": "git ls-remote", "head": observed},
     }
 
 
@@ -2707,6 +2800,7 @@ HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any
     "git.read_ref": git_read_ref,
     "git.log": git_log,
     "git.push": git_push,
+    "git.push.reconcile": git_push_reconcile,
     "github.repo.read": github_research,
     "github.issue.read": github_research,
     "github.pull_request.read": github_research,
