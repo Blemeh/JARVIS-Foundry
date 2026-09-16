@@ -12,6 +12,7 @@ import { ContextChip, EntityRefLink } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatHash } from "../lib/format";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 import { NOT_REPORTED_NUMERIC, formatCoveragePercent } from "../lib/truthFormat";
 
 const PAGE_SIZE = 6;
@@ -20,6 +21,7 @@ type SourceFilter = (typeof sources)[number];
 
 export function Evidence() {
   const { client, version, sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const itemsQuery = useRouteQuery(
     () => client.listEvidence(),
@@ -69,7 +71,7 @@ export function Evidence() {
     <div className="shell-content">
       <SectionHeader
         kicker="Evidence"
-        title="Evidence Ledger"
+        title={t("page.evidence")}
         description={sourceCopy(sourceMode, {
           live: "Canonical evidence artifacts collected by JARVIS workers and verifiers, read from the Foundry ledger.",
           simulated: "Simulated artifacts collected by JARVIS workers and verifiers for tests and demos. Every row is fixture data with a plausible hash; no canonical ledger is touched.",

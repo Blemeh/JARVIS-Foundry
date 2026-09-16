@@ -5,6 +5,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { useCommandCenter } from "../context/CommandCenterContext";
+import { useLocale } from "../i18n/LocaleContext";
 import type { Mission } from "../lib/contracts";
 
 function MissionOperationCard({ mission }: { mission: Mission }) {
@@ -43,13 +44,14 @@ function MissionOperationCard({ mission }: { mission: Mission }) {
 
 export function OperationsHub() {
   const { client, version, trustSummary } = useCommandCenter();
+  const { t } = useLocale();
   const query = useRouteQuery(() => client.listMissions(), [client, version]);
 
   return (
     <div className="shell-content ops-hub">
       <div className="ops-hub-head">
         <SectionHeader
-          title="Operations"
+          title={t("page.operations")}
           description="Mission and project operations — narrative progress over tables."
         />
         <JarvisCoreBadge

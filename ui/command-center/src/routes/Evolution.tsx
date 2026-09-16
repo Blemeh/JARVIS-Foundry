@@ -8,6 +8,7 @@ import { EmptyState } from "../components/states";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 function text(value: unknown): string {
   if (typeof value === "string" && value.trim()) return value;
@@ -30,6 +31,7 @@ function badge(value: string): "READY" | "NOT_TESTED" | "DEGRADED" | "FAIL" | "U
 
 function EvolutionContent({ surface }: { surface: OwnerControlSurface | null }) {
   const { sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const truth = surface?.evolutionTruth ?? null;
   const records = truth && Array.isArray(truth.records)
     ? truth.records.filter((record): record is Record<string, unknown> => Boolean(record) && typeof record === "object" && !Array.isArray(record))
@@ -40,7 +42,7 @@ function EvolutionContent({ surface }: { surface: OwnerControlSurface | null }) 
     <div className="shell-content">
       <SectionHeader
         kicker="Evidence gates"
-        title="Evolution"
+        title={t("page.evolution")}
         description={sourceCopy(sourceMode, {
           live: "Authoritative evolution evidence and independent-gate projection. This page cannot promote a candidate or change runtime authority.",
           simulated: "Evolution projection is unavailable in simulated mode; no fixture gate is presented as production truth.",

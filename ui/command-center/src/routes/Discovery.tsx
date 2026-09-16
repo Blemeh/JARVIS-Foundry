@@ -16,6 +16,7 @@ import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { EmptyState, LoadingState } from "../components/states";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 import type {
   V3Candidate,
   V3CandidateStatus,
@@ -406,6 +407,7 @@ function OutcomesCard({ view }: { view: Extract<V3DiscoveryView, { available: tr
 
 export function Discovery() {
   const { client, version, sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [view, setView] = useState<V3DiscoveryView | null>(null);
 
   useEffect(() => {
@@ -431,7 +433,7 @@ export function Discovery() {
       <div className="shell-content">
         <SectionHeader
           kicker="V3 Discovery"
-          title="Discovery"
+          title={t("page.discovery")}
           description={sourceCopy(sourceMode, {
             live: "The connected runtime does not expose the V3 discovery projection yet.",
             simulated: "Simulated mode has no discovery projection.",
@@ -452,7 +454,7 @@ export function Discovery() {
     <div className="shell-content">
       <SectionHeader
         kicker="V3 Discovery"
-        title="Discovery"
+        title={t("page.discovery")}
         description={sourceCopy(sourceMode, {
           live: "Live V3 discovery projection: candidates, scoring under a versioned policy, portfolio state, and honest idle reasons from the canonical ledger.",
           simulated: "Simulated V3 discovery following the docs/v3 worked examples: candidates, policy-scored dimensions, portfolio, and cycle reports.",

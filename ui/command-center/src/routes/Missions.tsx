@@ -13,6 +13,7 @@ import { ContextChip } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatArchivedMissionLabel } from "../lib/routeResilience";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 type Filter = "ALL" | "ACTIVE" | "STANDBY" | "BLOCKED" | "ARCHIVED";
 type View = "grid" | "list";
@@ -36,6 +37,7 @@ const priorityRank: Record<string, number> = {
 
 export function Missions() {
   const { client, version, mode, mutationsEnabled, sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFromUrl = statusParam[searchParams.get("status") ?? ""] ?? "ALL";
   const [filter, setFilter] = useState<Filter>(statusFromUrl);
@@ -135,7 +137,7 @@ export function Missions() {
     <div className="shell-content cinematic-surface">
       <SectionHeader
         kicker="Mission Vectors"
-        title="Mission Vectors"
+        title={t("page.missions")}
         activeMissionCount={missions.filter((m) => m.status === "ACTIVE" || m.status === "IN_PROGRESS").length}
         description={
           sourceCopy(sourceMode, {

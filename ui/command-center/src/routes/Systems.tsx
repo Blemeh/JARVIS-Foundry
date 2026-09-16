@@ -12,10 +12,12 @@ import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip, RefChipRow } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 import { formatResourceMetric } from "../lib/truthFormat";
 
 export function Systems() {
   const { client, version, stopActive, sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<SystemComponent | null>(null);
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -61,7 +63,7 @@ export function Systems() {
     <div className="shell-content">
       <SectionHeader
         kicker="Telemetry"
-        title="Telemetry"
+        title={t("page.systems")}
         description={sourceCopy(sourceMode, {
           live: "Canonical projection of JARVIS components: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health.",
           simulated: "Simulated projection of JARVIS components for tests and demos: supervisor, gateway, durable state, hybrid memory, workers, routing, STOP, ledger, verification, and resource health.",

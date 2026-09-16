@@ -6,6 +6,7 @@ import {
   BookOpenCheck, CircleAlert, Layers3, Lightbulb, ListChecks,
 } from "lucide-react";
 import { useCommandCenter } from "../context/CommandCenterContext";
+import { useLocale } from "../i18n/LocaleContext";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { SectionHeader } from "../components/SectionHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -408,13 +409,14 @@ function CurrentWork({ projection }: { projection: AutonomyProjection }) {
 export function AutonomyView({
   projection, filter, onFilter,
 }: { projection: AutonomyProjection; filter: AutonomyCandidateFilter; onFilter: (filter: AutonomyCandidateFilter) => void }) {
+  const { t } = useLocale();
   const unavailable = projection.status === "UNAVAILABLE";
   const [selectedCandidate, setSelectedCandidate] = useState<AutonomyCandidate | null>(null);
   return (
     <div className="shell-content autonomy-page">
       <SectionHeader
         kicker="Autonomy control"
-        title="Autonomous Executive"
+        title={t("page.autonomy")}
         description="A bounded read-only evidence chain: what JARVIS observed, judged, selected, verified, and learned."
         cinematic={false}
       />

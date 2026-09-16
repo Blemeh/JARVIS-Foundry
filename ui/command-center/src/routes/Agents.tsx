@@ -11,9 +11,11 @@ import { RouteQueryGate } from "../components/RouteQueryGate";
 import { ContextChip } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
+import { useLocale } from "../i18n/LocaleContext";
 
 export function Agents() {
   const { client, version, stopActive, sourceMode } = useCommandCenter();
+  const { t } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const workersQuery = useRouteQuery(
     () => client.listWorkers(),
@@ -58,7 +60,7 @@ export function Agents() {
     <div className="shell-content">
       <SectionHeader
         kicker="Specialist Fleet"
-        title="Specialist Fleet"
+        title={t("page.agents")}
         description={sourceCopy(sourceMode, {
           live: "Canonical JARVIS workers: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper.",
           simulated: "Simulated JARVIS workers for tests and demos: orchestrators, build executors, verifiers, memory reconcilers, routing, and the deterministic STOP gatekeeper.",

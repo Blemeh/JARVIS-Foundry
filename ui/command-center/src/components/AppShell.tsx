@@ -48,6 +48,13 @@ export function AppShell() {
     "/executive": t("page.executive"),
     "/world": t("page.world"),
     "/capabilities": t("page.capabilities"),
+    "/evidence": t("page.evidence"),
+    "/missions": t("page.missions"),
+    "/agents": t("page.agents"),
+    "/systems": t("page.systems"),
+    "/evolution": t("page.evolution"),
+    "/discovery": t("page.discovery"),
+    "/operations": t("page.operations"),
   };
   const pageTitle = titled[location.pathname] ?? titled[basePath] ?? routeTitles[location.pathname] ?? routeTitles[basePath] ?? t("nav.commandCenter");
   useDocumentTitle(pageTitle);

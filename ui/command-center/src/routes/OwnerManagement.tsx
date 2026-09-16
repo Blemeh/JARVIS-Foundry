@@ -260,6 +260,7 @@ function ResultTraceability({
 
 export function OwnerManagement() {
   const { client, version, sourceMode, connection } = useCommandCenter();
+  const { t } = useLocale();
   const query = useRouteQuery<OwnerControlSurface | null>(
     () => client.getOwnerControlSurface ? client.getOwnerControlSurface() : Promise.resolve(null),
     [client, version],
@@ -284,7 +285,7 @@ export function OwnerManagement() {
     <div className="shell-content">
       <SectionHeader
         kicker="Control plane / ledger projection"
-        title="Owner control / management by exception"
+        title={t("owner.page")}
         description="A read-only view of authenticated owner directives, runtime state, briefings, and unresolved decisions. This surface reports canonical evidence; it is not a second authority."
         actions={<Link to="/notifications" className="btn btn-ghost">Exception center <ArrowUpRight size={14} aria-hidden="true" /></Link>}
       />
