@@ -216,9 +216,10 @@ class PlaywrightTarget(BrowserTarget):
     page_revision: str
     role: str
     name: str
+    frame_index: int | None = None
 
     def to_evidence(self) -> dict[str, Any]:
-        return {
+        evidence = {
             "target_id": self.target_id,
             "document_id": self.document_id,
             "final_url": self.final_url,
@@ -229,6 +230,9 @@ class PlaywrightTarget(BrowserTarget):
             "action": self.action,
             "targeting": "accessibility",
         }
+        if self.frame_index is not None:
+            evidence["frame_index"] = self.frame_index
+        return evidence
 
 
 @dataclass(frozen=True, slots=True)
@@ -1457,11 +1461,19 @@ class PlaywrightBrowserSession:
                 self._route_error = "redirect_policy_rejected"
                 route.abort()
                 return
-            self._navigation_urls.append(request.url)
-            if len(self._navigation_urls) > MAX_REDIRECTS + 1:
-                self._route_error = "redirect_limit"
-                route.abort()
-                return
+            # Only main-document navigations participate in redirect
+            # accounting; a child frame navigating to the same origin is not
+            # a redirect hop of the bounded page identity.
+            try:
+                is_main_frame = request.frame == self.page.main_frame
+            except Exception:  # pragma: no cover - driver-specific
+                is_main_frame = True
+            if is_main_frame:
+                self._navigation_urls.append(request.url)
+                if len(self._navigation_urls) > MAX_REDIRECTS + 1:
+                    self._route_error = "redirect_limit"
+                    route.abort()
+                    return
         route.continue_()
 
     def _is_expiry_url(self, url: str) -> bool:
@@ -1579,7 +1591,13 @@ class PlaywrightBrowserSession:
             self._reauth_in_progress = False
         refreshed = self.session_status()
         if reauthenticated and refreshed.authenticated:
-            return refreshed
+            # A login redirect leaves the bound page identity on the login
+            # page. Rebuild it with a bounded same-origin GET so the caller
+            # can continue the original operation where it is safe to do so.
+            self._reread_current_page()
+            refreshed = self.session_status()
+            if refreshed.authenticated:
+                return refreshed
         return BrowserSessionStatus(
             state="BLOCKED",
             session_ref=refreshed.session_ref,
@@ -2127,6 +2145,44 @@ class PlaywrightBrowserSession:
                     },
                 )
 
+    def _frame(self, frame_index: int | None) -> Any:
+        """Resolve one bounded frame scope; index 0 is the main frame."""
+
+        if self.page is None:
+            raise BrowserTargetError("browser session is not open")
+        if frame_index is None:
+            return self.page
+        if (
+            not isinstance(frame_index, int)
+            or isinstance(frame_index, bool)
+            or frame_index < 0
+        ):
+            raise BrowserTargetError(
+                "frame_index must be a non-negative integer"
+            )
+        frames = self.page.frames
+        if frame_index >= len(frames):
+            raise BrowserTargetError("frame_index is out of range")
+        return frames[frame_index]
+
+    def frame_targets(self) -> list[dict[str, Any]]:
+        """Return bounded frame identity for the current page, in order."""
+
+        if self.page is None:
+            return []
+        rows: list[dict[str, Any]] = []
+        for index, frame in enumerate(self.page.frames):
+            try:
+                url = _safe_url_ref(str(frame.url))
+            except Exception:
+                url = "[INVALID_URL]"
+            try:
+                name = str(frame.name or "")[:MAX_TARGET_NAME_LENGTH]
+            except Exception:
+                name = ""
+            rows.append({"index": index, "url": url, "name": name})
+        return rows
+
     def discover_target(
         self,
         *,
@@ -2134,6 +2190,7 @@ class PlaywrightBrowserSession:
         role: str,
         name: str,
         action: str = "click",
+        frame_index: int | None = None,
     ) -> PlaywrightTarget:
         if self.page is None or self._last_identity is None:
             raise BrowserTargetError("navigate before discovering a target")
@@ -2160,7 +2217,9 @@ class PlaywrightBrowserSession:
             )
         if action == "input":
             action = "fill"
-        locator = self.page.get_by_role(role, name=name, exact=True)
+        locator = self._frame(frame_index).get_by_role(
+            role, name=name, exact=True,
+        )
         count = locator.count()
         if count != 1:
             raise BrowserTargetError(
@@ -2185,6 +2244,11 @@ class PlaywrightBrowserSession:
             page_revision=page_revision,
             role=role,
             name=name,
+            frame_index=(
+                frame_index
+                if frame_index not in (None, 0)
+                else None
+            ),
         )
 
     def inspect(self) -> dict[str, Any]:
@@ -2233,6 +2297,7 @@ class PlaywrightBrowserSession:
         return {
             "elements": elements,
             "element_count": len(elements),
+            "frames": self.frame_targets(),
             "final_url": _safe_url_ref(final_url),
             "document_id": self._last_identity.document_id,
             "page_revision": revision,
@@ -2673,6 +2738,7 @@ class PlaywrightBrowserSession:
         target: PlaywrightTarget | None = None,
         role: str | None = None,
         name: str | None = None,
+        frame_index: int | None = None,
     ) -> tuple[Any | None, str | None]:
         if self.page is None:
             return None, "browser session is not open"
@@ -2680,7 +2746,11 @@ class PlaywrightBrowserSession:
         target_name = target.name if target is not None else name
         if not target_role or not target_name:
             return None, None
-        locator = self.page.get_by_role(target_role, name=target_name, exact=True)
+        try:
+            scope = self._frame(frame_index)
+        except BrowserTargetError as error:
+            return None, str(error)
+        locator = scope.get_by_role(target_role, name=target_name, exact=True)
         count = locator.count()
         if count != 1:
             return None, "target_missing" if count == 0 else "target_ambiguous"
@@ -2694,6 +2764,7 @@ class PlaywrightBrowserSession:
         name: str | None = None,
         expected_value: Any = None,
         action: str | None = None,
+        frame_index: int | None = None,
     ) -> dict[str, Any]:
         """Read bounded page state for independent action reconciliation."""
 
@@ -2718,6 +2789,9 @@ class PlaywrightBrowserSession:
         }
         locator, error_code = self._readback_locator(
             target=target, role=role, name=name,
+            frame_index=(
+                frame_index if target is None else target.frame_index
+            ),
         )
         if error_code:
             result.update({"verified": False, "error_code": error_code})
@@ -2949,7 +3023,9 @@ class PlaywrightBrowserSession:
                     "structural_hash": structural_hash,
                 },
             )
-        locator = self.page.get_by_role(target.role, name=target.name, exact=True)
+        locator = self._frame(target.frame_index).get_by_role(
+            target.role, name=target.name, exact=True,
+        )
         if locator.count() != 1:
             return self.connector._attempt(
                 action_kind="browser.web.execute", url=final_url,
@@ -3139,6 +3215,26 @@ class PlaywrightBrowserSession:
                     }
             else:  # pragma: no cover - discover_target normalizes before this point
                 raise BrowserTargetError("unsupported browser action")
+            if (
+                target.action in {"click", "submit"}
+                and not self._action_request_seen
+                and not download_started
+                and not upload_started
+            ):
+                # A form submission inside a child frame can be dispatched a
+                # few event-loop turns after the click returns Playwright
+                # control. Keep the in-progress authority open for one short,
+                # bounded window so the frame's own request is still governed
+                # by this action instead of being refused as out-of-band.
+                drain_deadline = time.monotonic() + 0.4
+                while (
+                    time.monotonic() < drain_deadline
+                    and not self._action_request_seen
+                ):
+                    try:
+                        self.page.wait_for_timeout(20)
+                    except Exception:
+                        break
         except Exception as error:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
@@ -3201,6 +3297,7 @@ class PlaywrightBrowserSession:
                             if readback_target.get("name") is not None else None
                         ),
                         expected_value=readback_target.get("expected_value"),
+                        frame_index=target.frame_index,
                     )
                 else:
                     after_state["readback"] = self.readback(
@@ -3396,6 +3493,7 @@ class PlaywrightBrowserSession:
                 name=(str(readback_target["name"])
                       if readback_target.get("name") is not None else None),
                 expected_value=readback_target.get("expected_value"),
+                frame_index=target.frame_index,
             )
         else:
             rb = self.readback(target=target, expected_value=value)
@@ -3619,6 +3717,10 @@ class PlaywrightBrowserSession:
                     str(item["readback_action"])
                     if item.get("readback_action") is not None else None
                 ),
+                frame_index=(
+                    int(item["frame_index"])
+                    if item.get("frame_index") is not None else None
+                ),
             )
             return {
                 "step_id": step_id, "action": action,
@@ -3665,6 +3767,10 @@ class PlaywrightBrowserSession:
             role=str(item.get("role") or ""),
             name=str(item.get("name") or ""),
             action=action,
+            frame_index=(
+                int(item["frame_index"])
+                if item.get("frame_index") is not None else None
+            ),
         )
         attempt = self.execute(
             target,

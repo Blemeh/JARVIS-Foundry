@@ -33,7 +33,8 @@ class _OperatorHandler(BaseHTTPRequestHandler):
     server: "_OperatorServer"
 
     def _authenticated(self) -> bool:
-        return "jarvis_auth=1" in (self.headers.get("Cookie") or "")
+        cookie = self.headers.get("Cookie") or ""
+        return f"jarvis_auth={self.server.auth_epoch}" in cookie
 
     def _send(
         self,
@@ -72,6 +73,7 @@ class _OperatorHandler(BaseHTTPRequestHandler):
             )
             return
         if self.path == "/expire":
+            self.server.auth_epoch += 1
             self._redirect(
                 "/login",
                 headers={"Set-Cookie": "jarvis_auth=; Max-Age=0; Path=/"},
@@ -84,6 +86,7 @@ class _OperatorHandler(BaseHTTPRequestHandler):
             label = "Updated" if self.server.toggle_count else "Ready"
             self._send(
                 "<!doctype html><h1>Signed in</h1>"
+                '<p role="status" aria-label="Signed in">Signed in</p>'
                 f'<p role="status" aria-label="{label}">{label}</p>'
                 '<label for="query">Query</label>'
                 '<input id="query" aria-label="Query" name="query">'
@@ -97,15 +100,50 @@ class _OperatorHandler(BaseHTTPRequestHandler):
                 self._redirect("/login")
                 return
             self.server.newtab_count += 1
-            self._send("<!doctype html><h1>Tab</h1><p role='status' aria-label='Tab ready'>Tab ready</p>")
+            self._send(
+                "<!doctype html><h1>Tab</h1>"
+                '<p role="status" aria-label="Signed in">Signed in</p>'
+                "<p role='status' aria-label='Tab ready'>Tab ready</p>"
+            )
+            return
+        if self.path == "/frame":
+            if not self._authenticated():
+                self._redirect("/login")
+                return
+            self._send(
+                "<!doctype html><h1>Signed in</h1>"
+                '<p role="status" aria-label="Signed in">Signed in</p>'
+                "<iframe name='embedded' src='/frame-inner' "
+                "title='Embedded form'></iframe>"
+            )
+            return
+        if self.path.startswith("/frame-inner"):
+            body = (
+                "<!doctype html>"
+                '<p role="status" aria-label="Frame ready">Frame ready</p>'
+                "<form method='post' action='/frame-submit'>"
+                "<label>Frame note</label>"
+                "<input aria-label='Frame note' name='note'>"
+                "<button type='submit' aria-label='Frame send'>Frame send</button>"
+                "</form>"
+            )
+            if "done=1" in self.path:
+                body += (
+                    "<p role='status' aria-label='Frame accepted'>"
+                    "Frame accepted</p>"
+                )
+            self._send(body)
             return
         self.send_error(404)
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib protocol name
         if self.path == "/login":
+            self.server.login_count += 1
             self._redirect(
                 "/app",
-                headers={"Set-Cookie": "jarvis_auth=1; Path=/"},
+                headers={
+                    "Set-Cookie": f"jarvis_auth={self.server.auth_epoch}; Path=/"
+                },
             )
             return
         if self.path == "/toggle":
@@ -114,6 +152,13 @@ class _OperatorHandler(BaseHTTPRequestHandler):
                 return
             self.server.toggle_count += 1
             self._redirect("/app")
+            return
+        if self.path == "/frame-submit":
+            if not self._authenticated():
+                self._redirect("/login")
+                return
+            self.server.frame_submissions += 1
+            self._redirect("/frame-inner?done=1")
             return
         self.send_error(404)
 
@@ -124,11 +169,17 @@ class _OperatorHandler(BaseHTTPRequestHandler):
 class _OperatorServer(ThreadingHTTPServer):
     toggle_count: int
     newtab_count: int
+    login_count: int
+    frame_submissions: int
+    auth_epoch: int
 
     def __init__(self) -> None:
         super().__init__(("127.0.0.1", 0), _OperatorHandler)
         self.toggle_count = 0
         self.newtab_count = 0
+        self.login_count = 0
+        self.frame_submissions = 0
+        self.auth_epoch = 1
 
 
 @pytest.fixture()
@@ -168,7 +219,7 @@ def _grant(
         "dispatch_enabled": True,
         "session_state_path": str(state_path) if state_path is not None else None,
         "profile_id": "v14-operator-profile",
-        "auth_marker": ("heading", "Signed in"),
+        "auth_marker": ("status", "Signed in"),
         "allow_insecure_localhost": True,
     }
     values.update(overrides)
@@ -208,7 +259,7 @@ def _persisted_session(
         profile_id="v14-operator-profile",
         site_origin=site,
         session_state_path=state_path,
-        auth_marker={"role": "heading", "name": "Signed in"},
+        auth_marker={"role": "status", "name": "Signed in"},
         persist_session=True,
     ) as session:
         capture = session.navigate(f"{site}/login")
@@ -231,7 +282,7 @@ def _mutation_payload(site: str, state_path: Path) -> dict[str, Any]:
         "profile_id": "v14-operator-profile",
         "site_origin": site,
         "session_state_path": str(state_path),
-        "auth_marker": {"role": "heading", "name": "Signed in"},
+        "auth_marker": {"role": "status", "name": "Signed in"},
         "persist_session": True,
         "allowed_hosts": ("127.0.0.1",),
         "allow_insecure_localhost": True,
@@ -464,7 +515,7 @@ def test_unattended_mutation_and_inspect_over_a_real_session(
             "profile_id": "v14-operator-profile",
             "site_origin": site,
             "session_state_path": str(state_path),
-            "auth_marker": {"role": "heading", "name": "Signed in"},
+            "auth_marker": {"role": "status", "name": "Signed in"},
             "persist_session": True,
             "allowed_hosts": ("127.0.0.1",),
             "allow_insecure_localhost": True,
@@ -498,7 +549,7 @@ def test_run_steps_executes_an_ordered_flow_on_one_session(
         profile_id="v14-operator-profile",
         site_origin=site,
         session_state_path=tmp_path / "steps-state.json",
-        auth_marker={"role": "heading", "name": "Signed in"},
+        auth_marker={"role": "status", "name": "Signed in"},
         persist_session=True,
     ) as session:
         result = session.run_steps(
@@ -559,6 +610,84 @@ def test_run_steps_stops_at_the_first_missing_target(
     assert server.toggle_count == 0
 
 
+def test_expired_session_blocks_then_the_reauth_provider_recovers(
+    browser: PlaywrightBrowserConnector,
+    operator_site: Any,
+    tmp_path: Path,
+) -> None:
+    server, site = operator_site
+    state_path = tmp_path / "reauth-state.json"
+    _persisted_session(browser, site, state_path)
+    with browser.session(
+        profile_id="v14-operator-profile",
+        site_origin=site,
+        session_state_path=state_path,
+        auth_marker={"role": "status", "name": "Signed in"},
+        persist_session=True,
+    ) as session:
+        session.navigate(f"{site}/expire")
+    assert server.auth_epoch == 2
+
+    intent = TaskIntent(
+        task_id="mission.browser.reauth",
+        required_actions=("browser.web.execute",),
+        unattended=True,
+    )
+    payload = _mutation_payload(site, state_path)
+    blocked_database = _database(tmp_path / "blocked")
+    blocked = execute_action(
+        blocked_database,
+        ExecutorContext(
+            database=blocked_database,
+            owned_root=tmp_path / "blocked-owned",
+            browser_execution_authorization=_grant(site, state_path),
+        ),
+        intent,
+        "browser.web.execute",
+        payload,
+        workflow_id="workflow.browser.reauth",
+        step_id="toggle",
+    )
+    assert blocked.claimed.value == "BLOCKED"
+    assert blocked.observed["error_code"] == "session_expired"
+    assert server.toggle_count == 0
+
+    recovered_database = _database(tmp_path / "recovered")
+    recovered = execute_action(
+        recovered_database,
+        ExecutorContext(
+            database=recovered_database,
+            owned_root=tmp_path / "recovered-owned",
+            browser_execution_authorization=_grant(site, state_path),
+            browser_reauth_provider=_login,
+        ),
+        intent,
+        "browser.web.execute",
+        payload,
+        workflow_id="workflow.browser.reauth",
+        step_id="toggle",
+    )
+    assert recovered.success is True
+    assert recovered.verified.value == "MATCH"
+    assert recovered.observed["session"]["state"] == "AUTHENTICATED"
+    assert server.toggle_count == 1
+    assert server.login_count >= 2
+    metadata = json.loads(
+        Path(f"{state_path}.meta.json").read_text(encoding="utf-8")
+    )
+    assert metadata["auth_state"] == "AUTHENTICATED"
+
+    with browser.session(
+        profile_id="v14-operator-profile",
+        site_origin=site,
+        session_state_path=state_path,
+        auth_marker={"role": "status", "name": "Signed in"},
+        persist_session=True,
+    ) as session:
+        session.navigate(f"{site}/app")
+        assert session.session_status().authenticated
+
+
 def test_execute_can_open_a_popup_and_switch_between_tabs(
     browser: PlaywrightBrowserConnector,
     operator_site: Any,
@@ -570,7 +699,7 @@ def test_execute_can_open_a_popup_and_switch_between_tabs(
         profile_id="v14-operator-profile",
         site_origin=site,
         session_state_path=tmp_path / "tab-state.json",
-        auth_marker={"role": "heading", "name": "Signed in"},
+        auth_marker={"role": "status", "name": "Signed in"},
         persist_session=True,
     ) as session:
         assert session.navigate(f"{site}/login").success
@@ -599,3 +728,53 @@ def test_execute_can_open_a_popup_and_switch_between_tabs(
         assert back["navigated"] is True
         assert session.active_page_index() == 0
         assert session.session_status().authenticated
+
+
+def test_run_steps_can_target_an_iframe(
+    browser: PlaywrightBrowserConnector,
+    operator_site: Any,
+    tmp_path: Path,
+) -> None:
+    server, site = operator_site
+    with browser.session(
+        reauthenticate=_login,
+        profile_id="v14-operator-profile",
+        site_origin=site,
+        session_state_path=tmp_path / "frame-state.json",
+        auth_marker={"role": "status", "name": "Signed in"},
+        persist_session=True,
+    ) as session:
+        assert session.navigate(f"{site}/login").success
+        assert session.ensure_authenticated().authenticated
+        session.navigate(f"{site}/frame")
+        frames = session.frame_targets()
+        assert len(frames) == 2
+        assert frames[1]["index"] == 1
+        inspected = session.inspect()
+        assert len(inspected["frames"]) == 2
+        result = session.run_steps(
+            [
+                {
+                    "step_id": "fill", "action": "fill", "frame_index": 1,
+                    "target_id": "frame-note", "role": "textbox",
+                    "name": "Frame note", "value": "inside frame",
+                },
+                {
+                    "step_id": "send", "action": "submit", "frame_index": 1,
+                    "target_id": "frame-send", "role": "button",
+                    "name": "Frame send",
+                    "readback_target": {
+                        "role": "status", "name": "Frame accepted",
+                    },
+                },
+                {
+                    "step_id": "readback", "action": "readback",
+                    "frame_index": 1, "role": "status",
+                    "name": "Frame accepted",
+                },
+            ],
+            step_scope="grant:v14-frame",
+        )
+    assert result["success"] is True, result["stopped_at"]
+    assert [row["outcome"] for row in result["steps"]] == ["COMPLETED"] * 3
+    assert server.frame_submissions == 1

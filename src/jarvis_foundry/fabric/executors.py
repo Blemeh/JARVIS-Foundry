@@ -1232,6 +1232,10 @@ def browser_execute(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
                     role=role,
                     name=name,
                     action=action,
+                    frame_index=(
+                        int(payload["frame_index"])
+                        if payload.get("frame_index") is not None else None
+                    ),
                 )
                 attempt = session.execute(
                     target,
