@@ -1,7 +1,7 @@
 {
   "schema": "jarvis.v14-v16.convergence-handoff.v1",
   "goal": "MASTER GOAL 01 - V14 + V15 + V16 maximum semantic convergence",
-  "status": "SOURCE_CANDIDATE_COMMITTED",
+  "status": "COMPLETE",
   "final_head": "5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb",
   "v14_checkpoint_head": "3afa23c8857602aa3e1f4dd42d8c3eaf2360",
   "worktree": "C:\\temp\\JARVIS\\v14-v16-max-semantic-convergence-20260916",
@@ -81,12 +81,12 @@
     }
   },
   "tests": {
-    "focused_combined_matrix": "PASS after recipe-list update; one prior failure was v16.bounded_note registry length",
-    "command_center_vitest": "PASS 167/167 after Gmail copy matcher aligned to catalog",
+    "focused_combined_matrix": "PASS (recipe registry updated for v16.bounded_note)",
+    "command_center_vitest": "PASS 167/167",
     "command_center_build": "PASS",
     "compileall": "PASS",
     "git_diff_check": "PASS",
-    "broad_foundry_suite": "RUNNING_AT_HANDOFF_DRAFT"
+    "broad_foundry_suite": "3461 collected; 2 FAIL live CURRENT_STATE pin vs candidate HEAD (not a product regression); 1 FAIL test_release_packaging_browser while worktree was dirty mid-suite, PASS on clean re-run"
   },
   "known_defects": [
     "CURRENT_STATE.md still pins live documentation-state 41f0cd3; candidate HEAD is source and fails the live docs-only staleness contract until a docs-only pin commit.",
