@@ -1,7 +1,8 @@
 {
   "lane": "lane-3-v14-developer-effects",
   "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "final_sha": "PENDING_FINAL_COMMIT",
+  "final_sha": "0e30c5c7f0d4b392bb0b2968764b24a70cb406e8",
+  "final_sha_note": "Tip of candidate/max-lane-3-v14-effects-20260915 containing all capability + evidence work. This HANDOFF.json pin commit itself only updates this field; a fresh session should read the branch tip with git rev-parse and treat any commit after this SHA as handoff metadata only.",
   "branch": "candidate/max-lane-3-v14-effects-20260915",
   "worktree": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915",
   "commits": [
