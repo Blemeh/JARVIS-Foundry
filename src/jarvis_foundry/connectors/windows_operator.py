@@ -1753,9 +1753,9 @@ class WindowsOperatorProvider:
             return self._receipt(
                 OperatorAction(
                     action_id=action_id,
-                    kind="click",
+                    kind="assert",
                     window=window,
-                    control=ControlSelector(name="File"),
+                    condition=ControlCondition("window_exists", True),
                     timeout_s=min(timeout_s, 5.0),
                 ),
                 "FAILED",
