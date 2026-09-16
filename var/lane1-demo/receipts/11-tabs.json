@@ -4,20 +4,20 @@
     "action_request_count": 1,
     "action_request_seen": true,
     "effect_id": null,
-    "final_url": "http://127.0.0.1:51522/newtab",
-    "idempotency_key": "browser-execute:e4b41551251c990fa6462b2fdff34a92d849966ce4e35b523713b53866c60f62",
+    "final_url": "http://127.0.0.1:50341/newtab",
+    "idempotency_key": "browser-execute:7cee645977167dc14fb987b75a5a59d17f5ffe6e36d42326bf20296390c7ff03",
     "new_page": {
       "adopted": false,
       "index": 1,
       "page_count": 2,
-      "url": "http://127.0.0.1:51522/tab"
+      "url": "http://127.0.0.1:50341/tab"
     },
-    "page_revision": "34dbe27db5c16b176906979a64b9c36c2df627e17acd62cc518b37c6c4cf0528",
+    "page_revision": "34d2bb599373047d1b375fc16750d6df6161f59d42d192588fc8519e8f36ff68",
     "readback": {
       "authority": "DATA_ONLY",
-      "final_url": "http://127.0.0.1:51522/newtab",
-      "page_revision": "34dbe27db5c16b176906979a64b9c36c2df627e17acd62cc518b37c6c4cf0528",
-      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
+      "final_url": "http://127.0.0.1:50341/newtab",
+      "page_revision": "34d2bb599373047d1b375fc16750d6df6161f59d42d192588fc8519e8f36ff68",
+      "session_ref": "session:4452daaf7c7e1f3ce607fd9fd4ed6d0f64cb697e",
       "session_state": "AUTHENTICATED",
       "structural_hash": "c6b5addb64710ec8e06c3a3029cf8dba7b321868884c4fad574c2e5bdf5047c7",
       "target_enabled": true,
@@ -28,14 +28,14 @@
     "readback_verified": true,
     "session": {
       "auth_marker_found": true,
-      "checked_at": "2026-09-16T08:51:49.808082Z",
-      "current_url": "http://127.0.0.1:51522/newtab",
+      "checked_at": "2026-09-16T08:56:32.688683Z",
+      "current_url": "http://127.0.0.1:50341/newtab",
       "owner_scope": "owner-local",
       "profile_id": "lane1-demo-profile",
       "reason": null,
       "restored": true,
-      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
-      "site_origin": "http://127.0.0.1:51522",
+      "session_ref": "session:4452daaf7c7e1f3ce607fd9fd4ed6d0f64cb697e",
+      "site_origin": "http://127.0.0.1:50341",
       "state": "AUTHENTICATED",
       "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
       "storage_state_present": true
@@ -45,8 +45,8 @@
   },
   "attempt_outcome": "COMPLETED",
   "page_urls": [
-    "http://127.0.0.1:51522/newtab",
-    "http://127.0.0.1:51522/tab"
+    "http://127.0.0.1:50341/newtab",
+    "http://127.0.0.1:50341/tab"
   ],
   "switch": {
     "authority": "DATA_ONLY",
@@ -55,12 +55,12 @@
     "page": {
       "authority": "DATA_ONLY",
       "content_type": "text/html",
-      "document_id": "4d3e135886b1e4c039dab391eb079bceab4bea2b1bcca4eba45a871cc35dad30",
-      "fetched_at": "2026-09-16T08:51:49.881499Z",
-      "final_url": "http://127.0.0.1:51522/tab",
-      "page_revision": "7bead04ec3eaba052a6d708393de1175cf292316994e28038a34eb9165b51104",
+      "document_id": "84d836f99a1a06215775a2788a49f1293605a1c3895fc8019a1984fe19da1ad2",
+      "fetched_at": "2026-09-16T08:56:32.761136Z",
+      "final_url": "http://127.0.0.1:50341/tab",
+      "page_revision": "eefeb5081ca475af4057b47e4a881861f2d665176baaed13dcb2b50405cfafbb",
       "redirects": [],
-      "requested_url": "http://127.0.0.1:51522/tab",
+      "requested_url": "http://127.0.0.1:50341/tab",
       "source_bytes": 163,
       "source_sha256": "097bc72a42dd160d91598a5043872f8e7dbb03f9b1e6506f3ecd8e17641effcd",
       "status": 200,
@@ -71,18 +71,18 @@
     "page_count": 2,
     "session": {
       "auth_marker_found": true,
-      "checked_at": "2026-09-16T08:51:49.893497Z",
-      "current_url": "http://127.0.0.1:51522/tab",
+      "checked_at": "2026-09-16T08:56:32.772415Z",
+      "current_url": "http://127.0.0.1:50341/tab",
       "owner_scope": "owner-local",
       "profile_id": "lane1-demo-profile",
       "reason": null,
       "restored": true,
-      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
-      "site_origin": "http://127.0.0.1:51522",
+      "session_ref": "session:4452daaf7c7e1f3ce607fd9fd4ed6d0f64cb697e",
+      "site_origin": "http://127.0.0.1:50341",
       "state": "AUTHENTICATED",
       "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
       "storage_state_present": true
     },
-    "url": "http://127.0.0.1:51522/tab"
+    "url": "http://127.0.0.1:50341/tab"
   }
 }

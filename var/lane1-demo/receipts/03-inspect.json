@@ -6,7 +6,7 @@
     "authority": "DATA_ONLY",
     "claimed": "COMPLETED",
     "connector_id": "conn-browser-playwright-v10",
-    "document_id": "4dec748f45460ba817638b68a96165ebdbd4b774c8b58870924d55b17975a1e7",
+    "document_id": "cc68844e786050994f616977bec97e561c572db8affdd8ec1878bd567d3922b6",
     "element_count": 11,
     "elements": [
       {
@@ -87,32 +87,32 @@
         "type": ""
       }
     ],
-    "final_url": "http://127.0.0.1:51522/dashboard",
+    "final_url": "http://127.0.0.1:50341/dashboard",
     "frame_index": null,
     "frames": [
       {
         "index": 0,
         "name": "",
-        "url": "http://127.0.0.1:51522/dashboard"
+        "url": "http://127.0.0.1:50341/dashboard"
       }
     ],
-    "page_revision": "59a129ede3e2c1d66f9f9d035198f99fd8f9ec90e8e1497daf16b1bd14776dbb",
+    "page_revision": "778346d9803db04865b9bf4a5b9e6aff4bde17cb28f4d5889f202147d3a1e454",
     "session": {
       "auth_marker_found": true,
-      "checked_at": "2026-09-16T08:51:21.314625Z",
-      "current_url": "http://127.0.0.1:51522/dashboard",
+      "checked_at": "2026-09-16T08:56:06.561283Z",
+      "current_url": "http://127.0.0.1:50341/dashboard",
       "owner_scope": "owner-local",
       "profile_id": "lane1-demo-profile",
       "reason": null,
       "restored": true,
-      "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
-      "site_origin": "http://127.0.0.1:51522",
+      "session_ref": "session:4452daaf7c7e1f3ce607fd9fd4ed6d0f64cb697e",
+      "site_origin": "http://127.0.0.1:50341",
       "state": "AUTHENTICATED",
       "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
       "storage_state_present": true
     },
     "structural_hash": "89a2df72f462e2e139d195d338ddba7aba9826bb93ca21f7edd6b10b0f58c3d4",
-    "verified_at": "2026-09-16T08:51:21.399356Z"
+    "verified_at": "2026-09-16T08:56:06.646981Z"
   },
   "receipt": {
     "action_kind": "browser.web.inspect",
@@ -125,19 +125,19 @@
     "contract_version": "jarvis.v10.adapter.v1",
     "cost": {},
     "effect_class": "READ_ONLY",
-    "effect_id": "effect:063cca65c6f7458afd2eb87cf8533c02c5a9b5bebceaa8cbd9e6660b16f4a990",
+    "effect_id": "effect:49870a93b7718a62b1d15bd5f88e6da69b49faec6bb6e7aae186dab6d4c65ee1",
     "error": null,
     "evidence_refs": [
       "capability:cap.browser.web.inspect",
-      "effect:effect:063cca65c6f7458afd2eb87cf8533c02c5a9b5bebceaa8cbd9e6660b16f4a990"
+      "effect:effect:49870a93b7718a62b1d15bd5f88e6da69b49faec6bb6e7aae186dab6d4c65ee1"
     ],
-    "idempotency_key": "idempotency:fcbdfd5893bf5e63338cf221cddec1d91aa1ba0d5ddc0228a227cc61bb7455ac",
+    "idempotency_key": "idempotency:f4f25a770c932ef87c17994d3a176982e5ac38c538c94e0dd1661d90383be0c5",
     "mission_id": "mission.lane1.browser.demo",
     "observed": {
       "authority": "DATA_ONLY",
       "claimed": "COMPLETED",
       "connector_id": "conn-browser-playwright-v10",
-      "document_id": "4dec748f45460ba817638b68a96165ebdbd4b774c8b58870924d55b17975a1e7",
+      "document_id": "cc68844e786050994f616977bec97e561c572db8affdd8ec1878bd567d3922b6",
       "element_count": 11,
       "elements": [
         {
@@ -218,26 +218,26 @@
           "type": ""
         }
       ],
-      "final_url": "http://127.0.0.1:51522/dashboard",
+      "final_url": "http://127.0.0.1:50341/dashboard",
       "frame_index": null,
       "frames": [
         {
           "index": 0,
           "name": "",
-          "url": "http://127.0.0.1:51522/dashboard"
+          "url": "http://127.0.0.1:50341/dashboard"
         }
       ],
-      "page_revision": "59a129ede3e2c1d66f9f9d035198f99fd8f9ec90e8e1497daf16b1bd14776dbb",
+      "page_revision": "778346d9803db04865b9bf4a5b9e6aff4bde17cb28f4d5889f202147d3a1e454",
       "session": {
         "auth_marker_found": true,
-        "checked_at": "2026-09-16T08:51:21.314625Z",
-        "current_url": "http://127.0.0.1:51522/dashboard",
+        "checked_at": "2026-09-16T08:56:06.561283Z",
+        "current_url": "http://127.0.0.1:50341/dashboard",
         "owner_scope": "owner-local",
         "profile_id": "lane1-demo-profile",
         "reason": null,
         "restored": true,
-        "session_ref": "session:0309c43c7e85e2ad2b11c4f9c4ab5be05aac587d",
-        "site_origin": "http://127.0.0.1:51522",
+        "session_ref": "session:4452daaf7c7e1f3ce607fd9fd4ed6d0f64cb697e",
+        "site_origin": "http://127.0.0.1:50341",
         "state": "AUTHENTICATED",
         "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
         "storage_state_present": true
@@ -247,7 +247,7 @@
     "observed_outcome": "VERIFIED",
     "postcondition_results": [],
     "provider_ref": null,
-    "receipt_id": "receipt:effect:063cca65c6f7458afd2eb87cf8533c02c5a9b5bebceaa8cbd9e6660b16f4a990:attempt:1",
+    "receipt_id": "receipt:effect:49870a93b7718a62b1d15bd5f88e6da69b49faec6bb6e7aae186dab6d4c65ee1:attempt:1",
     "state": "VERIFIED",
     "step_id": "inspect",
     "workflow_id": "workflow.lane1-demo",

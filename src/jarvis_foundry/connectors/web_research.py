@@ -3201,6 +3201,7 @@ class PlaywrightBrowserSession:
                         state=upload_postcondition["wait_state"],
                         timeout_ms=upload_postcondition["timeout_ms"],
                         stop_check=stop_check,
+                        frame_index=target.frame_index,
                     )
                     if wait_attempt.outcome != "COMPLETED":
                         if wait_attempt.error_code == "stop_requested":

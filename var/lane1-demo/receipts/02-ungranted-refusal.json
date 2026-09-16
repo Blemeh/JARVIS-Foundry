@@ -6,7 +6,7 @@
     "authority": "DATA_ONLY",
     "claimed": "BLOCKED",
     "error_code": "owner_browser_authorization_required",
-    "verified_at": "2026-09-16T08:51:18.806138Z"
+    "verified_at": "2026-09-16T08:56:04.210044Z"
   },
   "receipt": {
     "action_kind": "browser.web.execute",
@@ -19,7 +19,7 @@
     "contract_version": "jarvis.v10.adapter.v1",
     "cost": {},
     "effect_class": "REVERSIBLE_EXTERNAL",
-    "effect_id": "effect:e32b314caac951e761d83db420ceee3413b6134f54a06c142f2e92a08b1d7f62",
+    "effect_id": "effect:d12cd84fdb301a0935c6ceb48c10d7b78a8ef1d597dab1def151e6da759fcf43",
     "error": {
       "class": "owner_browser_authorization_required",
       "detail": "owner_browser_authorization_required",
@@ -27,9 +27,9 @@
     },
     "evidence_refs": [
       "capability:cap.browser.web.execute",
-      "effect:effect:e32b314caac951e761d83db420ceee3413b6134f54a06c142f2e92a08b1d7f62"
+      "effect:effect:d12cd84fdb301a0935c6ceb48c10d7b78a8ef1d597dab1def151e6da759fcf43"
     ],
-    "idempotency_key": "idempotency:e06f35cea5fd57bdf1d92015f6133da197f46f3a1af92de38fd77733f4c975c4",
+    "idempotency_key": "idempotency:0e5d806b8a97da2e00d3a0f4c754d059cbef6bdb95c0c1ea5a035fb8f9f18884",
     "mission_id": "mission.lane1.browser.demo",
     "observed": {
       "authority": "DATA_ONLY",
@@ -39,7 +39,7 @@
     "observed_outcome": "BLOCKED",
     "postcondition_results": [],
     "provider_ref": null,
-    "receipt_id": "receipt:effect:e32b314caac951e761d83db420ceee3413b6134f54a06c142f2e92a08b1d7f62:attempt:1",
+    "receipt_id": "receipt:effect:d12cd84fdb301a0935c6ceb48c10d7b78a8ef1d597dab1def151e6da759fcf43:attempt:1",
     "state": "BLOCKED",
     "step_id": "ungranted",
     "workflow_id": "workflow.lane1-demo",

@@ -160,8 +160,8 @@
     },
     {
       "detail": [
-        "http://127.0.0.1:51522/newtab",
-        "http://127.0.0.1:51522/tab"
+        "http://127.0.0.1:50341/newtab",
+        "http://127.0.0.1:50341/tab"
       ],
       "label": "two tabs are open",
       "passed": true
@@ -186,6 +186,6 @@
     "11-tabs.json",
     "12-summary.json"
   ],
-  "site": "http://127.0.0.1:51522",
+  "site": "http://127.0.0.1:50341",
   "verdict": "DEMO_PASS"
 }
