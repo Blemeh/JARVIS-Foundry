@@ -1,6 +1,7 @@
 """INTENT and NEED loops for the V9 capability fabric."""
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -748,6 +749,30 @@ def _verify_action(
         if claimed.get("head") and claimed.get("head") == claimed.get("observed_head"):
             return VerifyVerdict.MATCH
         return VerifyVerdict.MISMATCH
+    if action_kind == "git.branch":
+        worktree = claimed.get("worktree") or (payload or {}).get("worktree")
+        branch = claimed.get("branch")
+        head = claimed.get("head")
+        if not worktree or not branch:
+            return VerifyVerdict.MISMATCH
+        try:
+            observed_branch = subprocess.run(
+                ["git", "-C", str(worktree), "branch", "--show-current"],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+            observed_head = subprocess.run(
+                ["git", "-C", str(worktree), "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+        except OSError:
+            return VerifyVerdict.MISMATCH
+        if observed_branch.returncode != 0 or observed_head.returncode != 0:
+            return VerifyVerdict.MISMATCH
+        matches = (
+            observed_branch.stdout.strip() == str(branch)
+            and (not head or observed_head.stdout.strip() == str(head))
+        )
+        return VerifyVerdict.MATCH if matches else VerifyVerdict.MISMATCH
     if action_kind == "git.push":
         if claimed.get("remote_head") and claimed.get("remote_head") == claimed.get("observed_remote_head"):
             return VerifyVerdict.MATCH

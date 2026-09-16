@@ -485,6 +485,19 @@ def test_github_write_dispatch_settings_default_off_and_env_optin(
         })
 
 
+def test_git_branch_action_verifies_against_observed_worktree(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    work, _bare, _head = _clone(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    result = execute_action(
+        database, ctx, _intent("git.branch"), "git.branch",
+        {"worktree": str(work), "name": "lane3/topic"},
+    )
+    assert result.success is True
+    assert result.claimed_effect["branch"] == "lane3/topic"
+
+
 def test_git_push_second_identical_is_already_satisfied_noop(tmp_path: Path) -> None:
     database = _db(tmp_path)
     work, bare, head = _clone(tmp_path)
