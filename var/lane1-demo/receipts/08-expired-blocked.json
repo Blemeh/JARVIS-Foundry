@@ -1,0 +1,86 @@
+{
+  "action": "browser.web.execute",
+  "claimed": "BLOCKED",
+  "note": "session_expired",
+  "observed": {
+    "action_key": "effect:3738d97f0d203f55acb665d8b6ef8696293359338e6cdf7fd43d14ba3518be9e",
+    "authority": "DATA_ONLY",
+    "authorization_id": "grant:lane1-demo",
+    "authorization_require_authenticated": true,
+    "claimed": "BLOCKED",
+    "error_code": "session_expired",
+    "journal_state": "FAILED",
+    "performed": false,
+    "replayed": false,
+    "session": {
+      "auth_marker_found": false,
+      "checked_at": "2026-09-16T08:43:48.675442Z",
+      "current_url": "http://127.0.0.1:58904/login",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": "session expiry URL observed",
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "EXPIRED",
+      "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+      "storage_state_present": true
+    },
+    "verified_at": "2026-09-16T08:43:48.773410Z"
+  },
+  "receipt": {
+    "action_kind": "browser.web.execute",
+    "after_state_ref": null,
+    "attempt": 1,
+    "before_state_ref": null,
+    "capability_id": "cap.browser.web.execute",
+    "capability_version": "1.0.0",
+    "claimed_outcome": "BLOCKED",
+    "contract_version": "jarvis.v10.adapter.v1",
+    "cost": {},
+    "effect_class": "REVERSIBLE_EXTERNAL",
+    "effect_id": "effect:3738d97f0d203f55acb665d8b6ef8696293359338e6cdf7fd43d14ba3518be9e",
+    "error": {
+      "class": "session_expired",
+      "detail": "session_expired",
+      "retryable": false
+    },
+    "evidence_refs": [
+      "capability:cap.browser.web.execute",
+      "effect:effect:3738d97f0d203f55acb665d8b6ef8696293359338e6cdf7fd43d14ba3518be9e"
+    ],
+    "idempotency_key": "idempotency:ee90abd5cc3ab1dfc4aa6f92550d231aae7c64276bbb2d2229f823967b02bca8",
+    "mission_id": "mission.lane1.browser.demo",
+    "observed": {
+      "authority": "DATA_ONLY",
+      "authorization_id": "grant:lane1-demo",
+      "authorization_require_authenticated": true,
+      "claimed": "BLOCKED",
+      "error_code": "session_expired",
+      "session": {
+        "auth_marker_found": false,
+        "checked_at": "2026-09-16T08:43:48.675442Z",
+        "current_url": "http://127.0.0.1:58904/login",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": "session expiry URL observed",
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "EXPIRED",
+        "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+        "storage_state_present": true
+      }
+    },
+    "observed_outcome": "BLOCKED",
+    "postcondition_results": [],
+    "provider_ref": null,
+    "receipt_id": "receipt:effect:3738d97f0d203f55acb665d8b6ef8696293359338e6cdf7fd43d14ba3518be9e:attempt:1",
+    "state": "BLOCKED",
+    "step_id": "expired",
+    "workflow_id": "workflow.lane1-demo",
+    "world_model_refs": []
+  },
+  "step": "expired",
+  "verified": "UNKNOWN"
+}

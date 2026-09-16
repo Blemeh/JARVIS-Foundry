@@ -1,0 +1,88 @@
+{
+  "after_state": {
+    "action": "click",
+    "action_request_count": 1,
+    "action_request_seen": true,
+    "effect_id": null,
+    "final_url": "http://127.0.0.1:58904/newtab",
+    "idempotency_key": "browser-execute:eb0afa86948127d8c37e6fcbb420c7e9eb52186d5f3f801e4a50dcf29ae8d9f9",
+    "new_page": {
+      "adopted": false,
+      "index": 1,
+      "page_count": 2,
+      "url": "http://127.0.0.1:58904/tab"
+    },
+    "page_revision": "b497019d11af593fda9eab7cb1ecc0aa09b3fede006f9deb979e45c608887f41",
+    "readback": {
+      "authority": "DATA_ONLY",
+      "final_url": "http://127.0.0.1:58904/newtab",
+      "page_revision": "b497019d11af593fda9eab7cb1ecc0aa09b3fede006f9deb979e45c608887f41",
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "session_state": "AUTHENTICATED",
+      "structural_hash": "c6b5addb64710ec8e06c3a3029cf8dba7b321868884c4fad574c2e5bdf5047c7",
+      "target_enabled": true,
+      "target_present": true,
+      "target_visible": true,
+      "verified": true
+    },
+    "readback_verified": true,
+    "session": {
+      "auth_marker_found": true,
+      "checked_at": "2026-09-16T08:44:00.941515Z",
+      "current_url": "http://127.0.0.1:58904/newtab",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": null,
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "AUTHENTICATED",
+      "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
+      "storage_state_present": true
+    },
+    "structural_hash": "c6b5addb64710ec8e06c3a3029cf8dba7b321868884c4fad574c2e5bdf5047c7",
+    "target_id": "open-notes-tab"
+  },
+  "attempt_outcome": "COMPLETED",
+  "page_urls": [
+    "http://127.0.0.1:58904/newtab",
+    "http://127.0.0.1:58904/tab"
+  ],
+  "switch": {
+    "authority": "DATA_ONLY",
+    "index": 1,
+    "navigated": true,
+    "page": {
+      "authority": "DATA_ONLY",
+      "content_type": "text/html",
+      "document_id": "8ebb6f2f1bde00997c8371dcbe675d9633d19e2440c49157cb18f2c5f69539c5",
+      "fetched_at": "2026-09-16T08:44:01.014295Z",
+      "final_url": "http://127.0.0.1:58904/tab",
+      "page_revision": "58c0be823fd8cad9277ec37cd59363f73cda4753584042d3fd181ed2f048934a",
+      "redirects": [],
+      "requested_url": "http://127.0.0.1:58904/tab",
+      "source_bytes": 163,
+      "source_sha256": "097bc72a42dd160d91598a5043872f8e7dbb03f9b1e6506f3ecd8e17641effcd",
+      "status": 200,
+      "structural_hash": "cb05fe94382666a53417f686474bc370d62a8d1acaecf86070f02f445f9dbf8e",
+      "target_count": 2,
+      "title": "Notes tab"
+    },
+    "page_count": 2,
+    "session": {
+      "auth_marker_found": true,
+      "checked_at": "2026-09-16T08:44:01.026777Z",
+      "current_url": "http://127.0.0.1:58904/tab",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": null,
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "AUTHENTICATED",
+      "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
+      "storage_state_present": true
+    },
+    "url": "http://127.0.0.1:58904/tab"
+  }
+}

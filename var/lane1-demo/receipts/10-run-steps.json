@@ -1,0 +1,282 @@
+{
+  "authority": "DATA_ONLY",
+  "final": {
+    "active_page": 0,
+    "final_url": "http://127.0.0.1:58904/dashboard",
+    "page_revision": "e8e45b8c83e97400ec2d55acec7ae9d1ba276e5849a0ba3cca87c6c97074bec8",
+    "pages": [
+      "http://127.0.0.1:58904/dashboard"
+    ],
+    "session": {
+      "auth_marker_found": true,
+      "checked_at": "2026-09-16T08:43:58.484139Z",
+      "current_url": "http://127.0.0.1:58904/dashboard",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": null,
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "AUTHENTICATED",
+      "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
+      "storage_state_present": true
+    },
+    "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+    "title": "Operator dashboard"
+  },
+  "requested_step_count": 7,
+  "step_count": 7,
+  "steps": [
+    {
+      "action": "navigate",
+      "document_id": "6dec06cc24c2e8943298d52a9187352cbc8d7f7c33b026993a59baa2529ff962",
+      "error_code": null,
+      "final_url": "http://127.0.0.1:58904/login",
+      "outcome": "COMPLETED",
+      "page_revision": "e01babfb67c665560e3c281a1d578e5fb42ac465989e962c7094e26451390b44",
+      "step_id": "open",
+      "structural_hash": "9ee2abeb38eb8c22b2084bddb228ed949ad39e7cc681a8698c7d88b8dd980906"
+    },
+    {
+      "action": "authenticate",
+      "error_code": null,
+      "outcome": "COMPLETED",
+      "session": {
+        "auth_marker_found": true,
+        "checked_at": "2026-09-16T08:43:57.983157Z",
+        "current_url": "http://127.0.0.1:58904/dashboard",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": null,
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "AUTHENTICATED",
+        "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
+        "storage_state_present": true
+      },
+      "step_id": "login"
+    },
+    {
+      "action": "inspect",
+      "element_count": 11,
+      "elements": [
+        {
+          "disabled": false,
+          "name": "Signed in",
+          "role": "status",
+          "tag": "p",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Task accepted",
+          "role": "status",
+          "tag": "p",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Task title",
+          "role": "textbox",
+          "tag": "input",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Submit task",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Quick accept",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Accept review",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Accept order",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Download report",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Upload evidence",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Open notes tab",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Expire session",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        }
+      ],
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "outcome": "COMPLETED",
+      "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
+      "step_id": "inspect",
+      "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8"
+    },
+    {
+      "action": "fill",
+      "action_request_seen": false,
+      "download": null,
+      "error_code": null,
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "outcome": "COMPLETED",
+      "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
+      "readback": {
+        "authority": "DATA_ONLY",
+        "final_url": "http://127.0.0.1:58904/dashboard",
+        "page_revision": "0290e8e1da031f823592e17fe4eb937dc1829c62f742731699b4b709aedb6852",
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "session_state": "AUTHENTICATED",
+        "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+        "target_enabled": true,
+        "target_present": true,
+        "target_visible": true,
+        "value_sha256": "75cc7e5e3cb4f071ac6297c9eb93fa2ed18ddf7114ef63d5871075ee5de5603e",
+        "verified": true
+      },
+      "session": {
+        "auth_marker_found": true,
+        "checked_at": "2026-09-16T08:43:58.062433Z",
+        "current_url": "http://127.0.0.1:58904/dashboard",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": null,
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "AUTHENTICATED",
+        "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
+        "storage_state_present": true
+      },
+      "step_id": "fill",
+      "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+      "upload": null
+    },
+    {
+      "action": "submit",
+      "action_request_seen": true,
+      "download": null,
+      "error_code": null,
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "outcome": "COMPLETED",
+      "page_revision": "e8e45b8c83e97400ec2d55acec7ae9d1ba276e5849a0ba3cca87c6c97074bec8",
+      "readback": {
+        "authority": "DATA_ONLY",
+        "final_url": "http://127.0.0.1:58904/dashboard",
+        "page_revision": "e8e45b8c83e97400ec2d55acec7ae9d1ba276e5849a0ba3cca87c6c97074bec8",
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "session_state": "AUTHENTICATED",
+        "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+        "target_enabled": true,
+        "target_present": true,
+        "target_visible": true,
+        "verified": true
+      },
+      "session": {
+        "auth_marker_found": true,
+        "checked_at": "2026-09-16T08:43:58.200997Z",
+        "current_url": "http://127.0.0.1:58904/dashboard",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": null,
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "AUTHENTICATED",
+        "state_sha256": "db4d3d54c558d78786c364c822a9846390bf83dad409863781277378c67861ef",
+        "storage_state_present": true
+      },
+      "step_id": "submit",
+      "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+      "upload": null
+    },
+    {
+      "action": "readback",
+      "error_code": null,
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "outcome": "COMPLETED",
+      "page_revision": "e8e45b8c83e97400ec2d55acec7ae9d1ba276e5849a0ba3cca87c6c97074bec8",
+      "readback": {
+        "authority": "DATA_ONLY",
+        "final_url": "http://127.0.0.1:58904/dashboard",
+        "page_revision": "e8e45b8c83e97400ec2d55acec7ae9d1ba276e5849a0ba3cca87c6c97074bec8",
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "session_state": "AUTHENTICATED",
+        "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+        "target_enabled": true,
+        "target_present": true,
+        "target_visible": true,
+        "verified": true
+      },
+      "step_id": "readback"
+    },
+    {
+      "action": "download",
+      "action_request_seen": true,
+      "download": {
+        "path": "C:\\temp\\JARVIS\\max-lane-1-v14-browser-20260915\\var\\lane1-demo\\work\\steps-downloads\\steps\\report.csv",
+        "readback": {
+          "exists": true,
+          "matches": true,
+          "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+          "size_bytes": 33,
+          "status": "MATCH"
+        },
+        "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+        "size_bytes": 33,
+        "suggested_filename_length": 16,
+        "suggested_filename_sha256": "7ce79e075b2fe9d480cc30dd7666ba989fbfa61f0460c2abec2978f47237c448",
+        "target_ref": "steps/report.csv"
+      },
+      "error_code": null,
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "outcome": "COMPLETED",
+      "page_revision": "e8e45b8c83e97400ec2d55acec7ae9d1ba276e5849a0ba3cca87c6c97074bec8",
+      "readback": {
+        "exists": true,
+        "matches": true,
+        "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+        "size_bytes": 33,
+        "status": "MATCH"
+      },
+      "session": null,
+      "step_id": "download",
+      "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+      "upload": null
+    }
+  ],
+  "stopped_at": null,
+  "success": true
+}

@@ -1,0 +1,255 @@
+{
+  "action": "browser.web.execute",
+  "claimed": "COMPLETED",
+  "note": "",
+  "observed": {
+    "action": "upload",
+    "action_key": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+    "action_request_count": 1,
+    "action_request_seen": true,
+    "attempt_id": "playwright-859009ee89f9e8af2f8d6605",
+    "authority": "DATA_ONLY",
+    "authorization_id": "grant:lane1-demo",
+    "authorization_require_authenticated": true,
+    "claimed": "COMPLETED",
+    "connector_id": "conn-browser-playwright-v10",
+    "cost": {
+      "browser_sessions": 1
+    },
+    "document_id": "8a29c87b41c8e5119d82396db4779952e0c272fb1ee460e9f7397372cdd3aa43",
+    "download": null,
+    "effect_id": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+    "error_code": null,
+    "evidence_refs": [
+      "browser-url:4d85ffdc68f6b8758fc85d81"
+    ],
+    "final_url": "http://127.0.0.1:58904/upload",
+    "idempotency_key": "idempotency:8988326503f86598c9c70b90610ed5eaddbc692dae2d8d4039d322daaf9cad95",
+    "journal_state": "COMPLETED",
+    "page_revision": "e82b01ea63e2c660b480c221087bb308022e3546c6f8a0e235b1cd573311c643",
+    "payload_hash": "002cbb0e8fe275bb55a23a13590739b3f68327cfbd3b97e990b16c52664cee88",
+    "performed": true,
+    "provider_ref": "http://127.0.0.1:58904/upload",
+    "readback": {
+      "authority": "DATA_ONLY",
+      "files": [
+        {
+          "name_length": 12,
+          "name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
+          "sha256": "f91a530ba76e9e2302cbdbf1d6b70910facdc31d2190b336a0247087a84125d0",
+          "size_bytes": 36
+        }
+      ],
+      "selected_count": 1,
+      "status": "MATCH",
+      "verified": true
+    },
+    "readback_verified": true,
+    "reconciled": true,
+    "redirects": [],
+    "replayed": false,
+    "session": {
+      "auth_marker_found": true,
+      "checked_at": "2026-09-16T08:43:41.522285Z",
+      "current_url": "http://127.0.0.1:58904/upload",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": null,
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "AUTHENTICATED",
+      "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+      "storage_state_present": true
+    },
+    "session_persisted": true,
+    "source_bytes": 864,
+    "source_sha256": "3ac57e691f1b878318cc6dbd0dcb2ba43b75adf9b5c47da6532619cb759d1140",
+    "status": 200,
+    "structural_hash": "2ab08eb8674ed459683037ea9eade2d3e7ee617250f0c1b3d26b818ce8715410",
+    "target_count": 4,
+    "target_id": "evidence-file",
+    "target_ref": "http://127.0.0.1:58904/upload",
+    "upload": {
+      "postcondition": {
+        "authority": "DATA_ONLY",
+        "matched": true,
+        "target_count": 1,
+        "target_enabled": true,
+        "target_visible": true,
+        "verified": true,
+        "wait_state": "visible"
+      },
+      "precondition": {
+        "authority": "DATA_ONLY",
+        "matched": false,
+        "name": "Upload complete",
+        "role": "status",
+        "target_count": 0,
+        "target_enabled": null,
+        "target_visible": null,
+        "wait_state": "visible"
+      },
+      "readback": {
+        "authority": "DATA_ONLY",
+        "files": [
+          {
+            "name_length": 12,
+            "name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
+            "sha256": "f91a530ba76e9e2302cbdbf1d6b70910facdc31d2190b336a0247087a84125d0",
+            "size_bytes": 36
+          }
+        ],
+        "selected_count": 1,
+        "status": "MATCH",
+        "verified": true
+      },
+      "sha256": "f91a530ba76e9e2302cbdbf1d6b70910facdc31d2190b336a0247087a84125d0",
+      "size_bytes": 36,
+      "source_name_length": 12,
+      "source_name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
+      "source_ref": "uploads/evidence.txt"
+    },
+    "verified_at": "2026-09-16T08:43:41.638992Z",
+    "wait_state": null
+  },
+  "receipt": {
+    "action_kind": "browser.web.execute",
+    "after_state_ref": null,
+    "attempt": 1,
+    "before_state_ref": null,
+    "capability_id": "cap.browser.web.execute",
+    "capability_version": "1.0.0",
+    "claimed_outcome": "COMPLETED",
+    "contract_version": "jarvis.v10.adapter.v1",
+    "cost": {
+      "browser_sessions": 1
+    },
+    "effect_class": "REVERSIBLE_EXTERNAL",
+    "effect_id": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+    "error": null,
+    "evidence_refs": [
+      "browser-url:4d85ffdc68f6b8758fc85d81",
+      "capability:cap.browser.web.execute",
+      "effect:effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52"
+    ],
+    "idempotency_key": "idempotency:8988326503f86598c9c70b90610ed5eaddbc692dae2d8d4039d322daaf9cad95",
+    "mission_id": "mission.lane1.browser.demo",
+    "observed": {
+      "action": "upload",
+      "action_request_count": 1,
+      "action_request_seen": true,
+      "attempt_id": "playwright-859009ee89f9e8af2f8d6605",
+      "authority": "DATA_ONLY",
+      "authorization_id": "grant:lane1-demo",
+      "authorization_require_authenticated": true,
+      "claimed": "COMPLETED",
+      "connector_id": "conn-browser-playwright-v10",
+      "cost": {
+        "browser_sessions": 1
+      },
+      "document_id": "8a29c87b41c8e5119d82396db4779952e0c272fb1ee460e9f7397372cdd3aa43",
+      "download": null,
+      "effect_id": "effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52",
+      "error_code": null,
+      "evidence_refs": [
+        "browser-url:4d85ffdc68f6b8758fc85d81"
+      ],
+      "final_url": "http://127.0.0.1:58904/upload",
+      "idempotency_key": "idempotency:8988326503f86598c9c70b90610ed5eaddbc692dae2d8d4039d322daaf9cad95",
+      "page_revision": "e82b01ea63e2c660b480c221087bb308022e3546c6f8a0e235b1cd573311c643",
+      "payload_hash": "002cbb0e8fe275bb55a23a13590739b3f68327cfbd3b97e990b16c52664cee88",
+      "provider_ref": "http://127.0.0.1:58904/upload",
+      "readback": {
+        "authority": "DATA_ONLY",
+        "files": [
+          {
+            "name_length": 12,
+            "name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
+            "sha256": "f91a530ba76e9e2302cbdbf1d6b70910facdc31d2190b336a0247087a84125d0",
+            "size_bytes": 36
+          }
+        ],
+        "selected_count": 1,
+        "status": "MATCH",
+        "verified": true
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "redirects": [],
+      "session": {
+        "auth_marker_found": true,
+        "checked_at": "2026-09-16T08:43:41.522285Z",
+        "current_url": "http://127.0.0.1:58904/upload",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": null,
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "AUTHENTICATED",
+        "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+        "storage_state_present": true
+      },
+      "session_persisted": true,
+      "source_bytes": 864,
+      "source_sha256": "3ac57e691f1b878318cc6dbd0dcb2ba43b75adf9b5c47da6532619cb759d1140",
+      "status": 200,
+      "structural_hash": "2ab08eb8674ed459683037ea9eade2d3e7ee617250f0c1b3d26b818ce8715410",
+      "target_count": 4,
+      "target_id": "evidence-file",
+      "target_ref": "http://127.0.0.1:58904/upload",
+      "upload": {
+        "postcondition": {
+          "authority": "DATA_ONLY",
+          "matched": true,
+          "target_count": 1,
+          "target_enabled": true,
+          "target_visible": true,
+          "verified": true,
+          "wait_state": "visible"
+        },
+        "precondition": {
+          "authority": "DATA_ONLY",
+          "matched": false,
+          "name": "Upload complete",
+          "role": "status",
+          "target_count": 0,
+          "target_enabled": null,
+          "target_visible": null,
+          "wait_state": "visible"
+        },
+        "readback": {
+          "authority": "DATA_ONLY",
+          "files": [
+            {
+              "name_length": 12,
+              "name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
+              "sha256": "f91a530ba76e9e2302cbdbf1d6b70910facdc31d2190b336a0247087a84125d0",
+              "size_bytes": 36
+            }
+          ],
+          "selected_count": 1,
+          "status": "MATCH",
+          "verified": true
+        },
+        "sha256": "f91a530ba76e9e2302cbdbf1d6b70910facdc31d2190b336a0247087a84125d0",
+        "size_bytes": 36,
+        "source_name_length": 12,
+        "source_name_sha256": "1bd8c14039408b17f8824f3b6947777558abd7d18af5dd91c7301681917528aa",
+        "source_ref": "uploads/evidence.txt"
+      },
+      "wait_state": null
+    },
+    "observed_outcome": "VERIFIED",
+    "postcondition_results": [],
+    "provider_ref": "http://127.0.0.1:58904/upload",
+    "receipt_id": "receipt:effect:4dd8967012d0f70c7c88e1b09def98dec1336f33ac4f3df866edfa53cdc2ac52:attempt:1",
+    "state": "VERIFIED",
+    "step_id": "upload",
+    "workflow_id": "workflow.lane1-demo",
+    "world_model_refs": []
+  },
+  "step": "upload",
+  "verified": "MATCH"
+}

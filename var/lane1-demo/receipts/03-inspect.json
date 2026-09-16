@@ -1,0 +1,256 @@
+{
+  "action": "browser.web.inspect",
+  "claimed": "COMPLETED",
+  "note": "",
+  "observed": {
+    "authority": "DATA_ONLY",
+    "claimed": "COMPLETED",
+    "connector_id": "conn-browser-playwright-v10",
+    "document_id": "22d4208471cb4f530db372e3863c76a2e0c6b0bb5fefb3ad647ddfc5eb410ee7",
+    "element_count": 11,
+    "elements": [
+      {
+        "disabled": false,
+        "name": "Signed in",
+        "role": "status",
+        "tag": "p",
+        "type": ""
+      },
+      {
+        "disabled": false,
+        "name": "No task yet",
+        "role": "status",
+        "tag": "p",
+        "type": ""
+      },
+      {
+        "disabled": false,
+        "name": "Task title",
+        "role": "textbox",
+        "tag": "input",
+        "type": ""
+      },
+      {
+        "disabled": false,
+        "name": "Submit task",
+        "role": "button",
+        "tag": "button",
+        "type": "submit"
+      },
+      {
+        "disabled": false,
+        "name": "Quick accept",
+        "role": "button",
+        "tag": "button",
+        "type": "submit"
+      },
+      {
+        "disabled": false,
+        "name": "Accept review",
+        "role": "button",
+        "tag": "button",
+        "type": "submit"
+      },
+      {
+        "disabled": false,
+        "name": "Accept order",
+        "role": "button",
+        "tag": "button",
+        "type": "submit"
+      },
+      {
+        "disabled": false,
+        "name": "Download report",
+        "role": "link",
+        "tag": "a",
+        "type": ""
+      },
+      {
+        "disabled": false,
+        "name": "Upload evidence",
+        "role": "link",
+        "tag": "a",
+        "type": ""
+      },
+      {
+        "disabled": false,
+        "name": "Open notes tab",
+        "role": "link",
+        "tag": "a",
+        "type": ""
+      },
+      {
+        "disabled": false,
+        "name": "Expire session",
+        "role": "link",
+        "tag": "a",
+        "type": ""
+      }
+    ],
+    "final_url": "http://127.0.0.1:58904/dashboard",
+    "frames": [
+      {
+        "index": 0,
+        "name": "",
+        "url": "http://127.0.0.1:58904/dashboard"
+      }
+    ],
+    "page_revision": "ec0bfb9efaf92fcd7031688208175cf163ea3aac17e78a8d9a75eefdab96d029",
+    "session": {
+      "auth_marker_found": true,
+      "checked_at": "2026-09-16T08:43:32.694079Z",
+      "current_url": "http://127.0.0.1:58904/dashboard",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": null,
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "AUTHENTICATED",
+      "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+      "storage_state_present": true
+    },
+    "structural_hash": "89a2df72f462e2e139d195d338ddba7aba9826bb93ca21f7edd6b10b0f58c3d4",
+    "verified_at": "2026-09-16T08:43:32.779964Z"
+  },
+  "receipt": {
+    "action_kind": "browser.web.inspect",
+    "after_state_ref": null,
+    "attempt": 1,
+    "before_state_ref": null,
+    "capability_id": "cap.browser.web.inspect",
+    "capability_version": "1.0.0",
+    "claimed_outcome": "COMPLETED",
+    "contract_version": "jarvis.v10.adapter.v1",
+    "cost": {},
+    "effect_class": "READ_ONLY",
+    "effect_id": "effect:219d6cdda012c2374cef09ef5a34215fe9c8ae38053ccb3fff73142dcc956f73",
+    "error": null,
+    "evidence_refs": [
+      "capability:cap.browser.web.inspect",
+      "effect:effect:219d6cdda012c2374cef09ef5a34215fe9c8ae38053ccb3fff73142dcc956f73"
+    ],
+    "idempotency_key": "idempotency:f43c380a5b1750e58d7652d07c22c9116140f15b4acd2b3934edae5a81aeb369",
+    "mission_id": "mission.lane1.browser.demo",
+    "observed": {
+      "authority": "DATA_ONLY",
+      "claimed": "COMPLETED",
+      "connector_id": "conn-browser-playwright-v10",
+      "document_id": "22d4208471cb4f530db372e3863c76a2e0c6b0bb5fefb3ad647ddfc5eb410ee7",
+      "element_count": 11,
+      "elements": [
+        {
+          "disabled": false,
+          "name": "Signed in",
+          "role": "status",
+          "tag": "p",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "No task yet",
+          "role": "status",
+          "tag": "p",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Task title",
+          "role": "textbox",
+          "tag": "input",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Submit task",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Quick accept",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Accept review",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Accept order",
+          "role": "button",
+          "tag": "button",
+          "type": "submit"
+        },
+        {
+          "disabled": false,
+          "name": "Download report",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Upload evidence",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Open notes tab",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        },
+        {
+          "disabled": false,
+          "name": "Expire session",
+          "role": "link",
+          "tag": "a",
+          "type": ""
+        }
+      ],
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "frames": [
+        {
+          "index": 0,
+          "name": "",
+          "url": "http://127.0.0.1:58904/dashboard"
+        }
+      ],
+      "page_revision": "ec0bfb9efaf92fcd7031688208175cf163ea3aac17e78a8d9a75eefdab96d029",
+      "session": {
+        "auth_marker_found": true,
+        "checked_at": "2026-09-16T08:43:32.694079Z",
+        "current_url": "http://127.0.0.1:58904/dashboard",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": null,
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "AUTHENTICATED",
+        "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+        "storage_state_present": true
+      },
+      "structural_hash": "89a2df72f462e2e139d195d338ddba7aba9826bb93ca21f7edd6b10b0f58c3d4"
+    },
+    "observed_outcome": "VERIFIED",
+    "postcondition_results": [],
+    "provider_ref": null,
+    "receipt_id": "receipt:effect:219d6cdda012c2374cef09ef5a34215fe9c8ae38053ccb3fff73142dcc956f73:attempt:1",
+    "state": "VERIFIED",
+    "step_id": "inspect",
+    "workflow_id": "workflow.lane1-demo",
+    "world_model_refs": []
+  },
+  "step": "inspect",
+  "verified": "MATCH"
+}

@@ -1,0 +1,191 @@
+{
+  "action": "browser.web.execute",
+  "claimed": "COMPLETED",
+  "note": "",
+  "observed": {
+    "action": "download",
+    "action_key": "effect:d3e4e852b1e97362996b672413bac769acf82585b7d443b0b499afd54dc50be5",
+    "action_request_count": 1,
+    "action_request_seen": true,
+    "attempt_id": "playwright-09c18a1810c2d26b6c59fd6e",
+    "authority": "DATA_ONLY",
+    "authorization_id": "grant:lane1-demo",
+    "authorization_require_authenticated": true,
+    "claimed": "COMPLETED",
+    "connector_id": "conn-browser-playwright-v10",
+    "cost": {
+      "browser_sessions": 1
+    },
+    "document_id": "4f84dfeb13462d637124322574599575a2a34873f5d538b6a69d89ee2f859816",
+    "download": {
+      "path": "C:\\temp\\JARVIS\\max-lane-1-v14-browser-20260915\\var\\lane1-demo\\work\\owned\\downloads\\report.csv",
+      "readback": {
+        "exists": true,
+        "matches": true,
+        "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+        "size_bytes": 33,
+        "status": "MATCH"
+      },
+      "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+      "size_bytes": 33,
+      "suggested_filename_length": 16,
+      "suggested_filename_sha256": "7ce79e075b2fe9d480cc30dd7666ba989fbfa61f0460c2abec2978f47237c448",
+      "target_ref": "downloads/report.csv"
+    },
+    "effect_id": "effect:d3e4e852b1e97362996b672413bac769acf82585b7d443b0b499afd54dc50be5",
+    "error_code": null,
+    "evidence_refs": [
+      "browser-url:245cf094f10530f5efe767dc"
+    ],
+    "final_url": "http://127.0.0.1:58904/dashboard",
+    "idempotency_key": "idempotency:19732096f637c4b4ac7c7daeac47fa455a7460bf790e0c28f3b2e15fc1735a1a",
+    "journal_state": "COMPLETED",
+    "page_revision": "265c8765e6910ce5ce8e9c12700e9410c5f1942cff40e0d2c28b471454dacf8b",
+    "payload_hash": "a4f6bc41356233e57f610aa53ea7020d2a3a6fb22a72c1e2f8e46975e14f893b",
+    "performed": true,
+    "provider_ref": "http://127.0.0.1:58904/dashboard",
+    "readback": {
+      "exists": true,
+      "matches": true,
+      "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+      "size_bytes": 33,
+      "status": "MATCH"
+    },
+    "readback_verified": true,
+    "reconciled": true,
+    "redirects": [],
+    "replayed": false,
+    "session": {
+      "auth_marker_found": true,
+      "checked_at": "2026-09-16T08:43:38.576169Z",
+      "current_url": "http://127.0.0.1:58904/dashboard",
+      "owner_scope": "owner-local",
+      "profile_id": "lane1-demo-profile",
+      "reason": null,
+      "restored": true,
+      "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+      "site_origin": "http://127.0.0.1:58904",
+      "state": "AUTHENTICATED",
+      "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+      "storage_state_present": true
+    },
+    "session_persisted": true,
+    "source_bytes": 1292,
+    "source_sha256": "4f89fb8fafdec83b1c64b5444759af1694458a507a5ddb619dc3afcc4f6c4173",
+    "status": 200,
+    "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+    "target_count": 11,
+    "target_id": "download-report",
+    "target_ref": "http://127.0.0.1:58904/dashboard",
+    "upload": null,
+    "verified_at": "2026-09-16T08:43:38.758899Z",
+    "wait_state": null
+  },
+  "receipt": {
+    "action_kind": "browser.web.execute",
+    "after_state_ref": null,
+    "attempt": 1,
+    "before_state_ref": null,
+    "capability_id": "cap.browser.web.execute",
+    "capability_version": "1.0.0",
+    "claimed_outcome": "COMPLETED",
+    "contract_version": "jarvis.v10.adapter.v1",
+    "cost": {
+      "browser_sessions": 1
+    },
+    "effect_class": "REVERSIBLE_EXTERNAL",
+    "effect_id": "effect:d3e4e852b1e97362996b672413bac769acf82585b7d443b0b499afd54dc50be5",
+    "error": null,
+    "evidence_refs": [
+      "browser-url:245cf094f10530f5efe767dc",
+      "capability:cap.browser.web.execute",
+      "effect:effect:d3e4e852b1e97362996b672413bac769acf82585b7d443b0b499afd54dc50be5"
+    ],
+    "idempotency_key": "idempotency:19732096f637c4b4ac7c7daeac47fa455a7460bf790e0c28f3b2e15fc1735a1a",
+    "mission_id": "mission.lane1.browser.demo",
+    "observed": {
+      "action": "download",
+      "action_request_count": 1,
+      "action_request_seen": true,
+      "attempt_id": "playwright-09c18a1810c2d26b6c59fd6e",
+      "authority": "DATA_ONLY",
+      "authorization_id": "grant:lane1-demo",
+      "authorization_require_authenticated": true,
+      "claimed": "COMPLETED",
+      "connector_id": "conn-browser-playwright-v10",
+      "cost": {
+        "browser_sessions": 1
+      },
+      "document_id": "4f84dfeb13462d637124322574599575a2a34873f5d538b6a69d89ee2f859816",
+      "download": {
+        "path": "C:\\temp\\JARVIS\\max-lane-1-v14-browser-20260915\\var\\lane1-demo\\work\\owned\\downloads\\report.csv",
+        "readback": {
+          "exists": true,
+          "matches": true,
+          "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+          "size_bytes": 33,
+          "status": "MATCH"
+        },
+        "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+        "size_bytes": 33,
+        "suggested_filename_length": 16,
+        "suggested_filename_sha256": "7ce79e075b2fe9d480cc30dd7666ba989fbfa61f0460c2abec2978f47237c448",
+        "target_ref": "downloads/report.csv"
+      },
+      "effect_id": "effect:d3e4e852b1e97362996b672413bac769acf82585b7d443b0b499afd54dc50be5",
+      "error_code": null,
+      "evidence_refs": [
+        "browser-url:245cf094f10530f5efe767dc"
+      ],
+      "final_url": "http://127.0.0.1:58904/dashboard",
+      "idempotency_key": "idempotency:19732096f637c4b4ac7c7daeac47fa455a7460bf790e0c28f3b2e15fc1735a1a",
+      "page_revision": "265c8765e6910ce5ce8e9c12700e9410c5f1942cff40e0d2c28b471454dacf8b",
+      "payload_hash": "a4f6bc41356233e57f610aa53ea7020d2a3a6fb22a72c1e2f8e46975e14f893b",
+      "provider_ref": "http://127.0.0.1:58904/dashboard",
+      "readback": {
+        "exists": true,
+        "matches": true,
+        "sha256": "8065c27c648caec5db2bc37e0433710de18896faf7fc76ad6b8a3a16fd45937e",
+        "size_bytes": 33,
+        "status": "MATCH"
+      },
+      "readback_verified": true,
+      "reconciled": true,
+      "redirects": [],
+      "session": {
+        "auth_marker_found": true,
+        "checked_at": "2026-09-16T08:43:38.576169Z",
+        "current_url": "http://127.0.0.1:58904/dashboard",
+        "owner_scope": "owner-local",
+        "profile_id": "lane1-demo-profile",
+        "reason": null,
+        "restored": true,
+        "session_ref": "session:dddadfe85d21c0568b6a0d91be15c899209b81ce",
+        "site_origin": "http://127.0.0.1:58904",
+        "state": "AUTHENTICATED",
+        "state_sha256": "2f4a901796d194e299c2a6003f4ee3e20692c5482e26960e3527c66e7498aaa4",
+        "storage_state_present": true
+      },
+      "session_persisted": true,
+      "source_bytes": 1292,
+      "source_sha256": "4f89fb8fafdec83b1c64b5444759af1694458a507a5ddb619dc3afcc4f6c4173",
+      "status": 200,
+      "structural_hash": "745607fac769c47797a35128ab04577e115e9b280cb79d2c01ece62628fbcce8",
+      "target_count": 11,
+      "target_id": "download-report",
+      "target_ref": "http://127.0.0.1:58904/dashboard",
+      "upload": null,
+      "wait_state": null
+    },
+    "observed_outcome": "VERIFIED",
+    "postcondition_results": [],
+    "provider_ref": "http://127.0.0.1:58904/dashboard",
+    "receipt_id": "receipt:effect:d3e4e852b1e97362996b672413bac769acf82585b7d443b0b499afd54dc50be5:attempt:1",
+    "state": "VERIFIED",
+    "step_id": "download",
+    "workflow_id": "workflow.lane1-demo",
+    "world_model_refs": []
+  },
+  "step": "download",
+  "verified": "MATCH"
+}

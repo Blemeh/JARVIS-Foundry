@@ -1,0 +1,50 @@
+{
+  "action": "browser.web.execute",
+  "claimed": "BLOCKED",
+  "note": "owner_browser_authorization_required",
+  "observed": {
+    "authority": "DATA_ONLY",
+    "claimed": "BLOCKED",
+    "error_code": "owner_browser_authorization_required",
+    "verified_at": "2026-09-16T08:43:30.351860Z"
+  },
+  "receipt": {
+    "action_kind": "browser.web.execute",
+    "after_state_ref": null,
+    "attempt": 1,
+    "before_state_ref": null,
+    "capability_id": "cap.browser.web.execute",
+    "capability_version": "1.0.0",
+    "claimed_outcome": "BLOCKED",
+    "contract_version": "jarvis.v10.adapter.v1",
+    "cost": {},
+    "effect_class": "REVERSIBLE_EXTERNAL",
+    "effect_id": "effect:7710714d216f53161f8f3e67984a0fca8f83c8d2ed1a9c1ec385328d030c4b46",
+    "error": {
+      "class": "owner_browser_authorization_required",
+      "detail": "owner_browser_authorization_required",
+      "retryable": false
+    },
+    "evidence_refs": [
+      "capability:cap.browser.web.execute",
+      "effect:effect:7710714d216f53161f8f3e67984a0fca8f83c8d2ed1a9c1ec385328d030c4b46"
+    ],
+    "idempotency_key": "idempotency:ba76cb5651f08f48285901b323e04b9c71343da8df258a8b035a758abf6e01f9",
+    "mission_id": "mission.lane1.browser.demo",
+    "observed": {
+      "authority": "DATA_ONLY",
+      "claimed": "BLOCKED",
+      "error_code": "owner_browser_authorization_required"
+    },
+    "observed_outcome": "BLOCKED",
+    "postcondition_results": [],
+    "provider_ref": null,
+    "receipt_id": "receipt:effect:7710714d216f53161f8f3e67984a0fca8f83c8d2ed1a9c1ec385328d030c4b46:attempt:1",
+    "state": "BLOCKED",
+    "step_id": "ungranted",
+    "workflow_id": "workflow.lane1-demo",
+    "world_model_refs": []
+  },
+  "step": "ungranted",
+  "verified": "UNKNOWN"
+}
