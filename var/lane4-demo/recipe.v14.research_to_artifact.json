@@ -1,0 +1,72 @@
+{
+  "description": "Read one bounded web source, compose a local markdown artifact, verify by readback.",
+  "outputs": {
+    "artifact_hash": "$verify.content_hash",
+    "artifact_target": "$compose.target",
+    "source_url": "$fetch.final_url"
+  },
+  "parameters": [
+    {
+      "description": "Bounded HTTPS source to read.",
+      "name": "source_url",
+      "required": true
+    },
+    {
+      "default": "research/artifact.md",
+      "description": "Owned-root markdown target.",
+      "name": "artifact_target",
+      "required": false
+    },
+    {
+      "default": "Research artifact",
+      "description": "Artifact heading.",
+      "name": "artifact_title",
+      "required": false
+    }
+  ],
+  "recipe_id": "v14.research_to_artifact",
+  "required_capabilities": [
+    "browser.web.read",
+    "file.write",
+    "file.read"
+  ],
+  "steps": [
+    {
+      "action_kind": "browser.web.read",
+      "on_failure": "stop",
+      "payload": {
+        "url": "$params.source_url"
+      },
+      "postconditions": [],
+      "step_id": "fetch",
+      "step_version": 1
+    },
+    {
+      "action_kind": "file.write",
+      "on_failure": "stop",
+      "payload": {
+        "content": "# ${params.artifact_title}\n\nSource: ${fetch.final_url}\nSource SHA: ${fetch.source_sha256}\nDocument: ${fetch.document_id}\n",
+        "target": "$params.artifact_target"
+      },
+      "postconditions": [],
+      "step_id": "compose",
+      "step_version": 1
+    },
+    {
+      "action_kind": "file.read",
+      "on_failure": "stop",
+      "payload": {
+        "target": "$compose.target"
+      },
+      "postconditions": [],
+      "step_id": "verify",
+      "step_version": 1
+    }
+  ],
+  "tags": [
+    "v14",
+    "research",
+    "artifact"
+  ],
+  "version": "1.0.0"
+}

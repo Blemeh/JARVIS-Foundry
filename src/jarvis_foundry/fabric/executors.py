@@ -2803,7 +2803,93 @@ def finalize_mcp_mutation_effect(
     )
 
 
+def workflow_run(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Execute one named recipe through the canonical composition engine.
+
+    This is the Fabric/MissionLoop entrypoint for workflows (Slice 8). It
+    owns no second MissionLoop: it delegates to the recipe runner, which
+    delegates to ``compose.run_workflow`` and the canonical effect journal.
+    Nesting is bounded to fail closed on recursive recipes.
+    """
+    from .recipes.preflight import resolve_params
+    from .recipes.registry import load_recipe
+
+    depth_raw = payload.get("workflow_depth", payload.get("_workflow_depth", 0))
+    try:
+        depth = int(depth_raw or 0)
+    except (TypeError, ValueError):
+        depth = 0
+    if depth >= 3:
+        return {
+            "claimed": "BLOCKED",
+            "error_code": "workflow_nesting_too_deep",
+            "error": "workflow.run nesting is bounded at 3 levels",
+        }
+    recipe_id = str(payload.get("recipe_id") or payload.get("recipe") or "").strip()
+    if not recipe_id:
+        return {"claimed": "BLOCKED", "error_code": "recipe_id_required", "error": "recipe_id is required"}
+    params = payload.get("params", payload.get("parameters", {}))
+    if params is None:
+        params = {}
+    if not isinstance(params, Mapping):
+        return {"claimed": "FAILED", "error_code": "invalid_params", "error": "params must be a mapping"}
+    try:
+        recipe = load_recipe(recipe_id)
+        resolved = resolve_params(recipe, dict(params))
+    except Exception as error:  # noqa: BLE001 - executor fails closed with truthful claim
+        text = str(error)
+        blocked = "missing required params" in text or "unknown recipe" in text
+        return {
+            "claimed": "BLOCKED" if blocked else "FAILED",
+            "error_code": "recipe_preflight_failed",
+            "error": text[:400],
+            "recipe_id": recipe_id,
+        }
+    try:
+        from .recipes.runner import run_recipe as _run_recipe
+
+        nested_task = str(payload.get("task_id") or payload.get("mission_id") or f"workflow-{recipe_id}".replace(".", "-"))
+        nested_workflow = str(
+            payload.get("workflow_id")
+            or payload.get("nested_workflow_id")
+            or f"workflow:{nested_task}"
+        )
+        nested_params = dict(resolved)
+        nested_params["workflow_depth"] = depth + 1
+        nested_params["_workflow_depth"] = depth + 1
+        result = _run_recipe(
+            ctx.database,
+            ctx,
+            recipe,
+            {key: value for key, value in resolved.items()},
+            task_id=nested_task,
+            workflow_id=nested_workflow,
+            write_world_model=False,
+        )
+    except Exception as error:  # noqa: BLE001 - executor fails closed with truthful claim
+        return {
+            "claimed": "FAILED",
+            "error_code": "workflow_execution_failed",
+            "error": f"{type(error).__name__}: {error}"[:400],
+            "recipe_id": recipe_id,
+        }
+    summary = result.get("summary") if isinstance(result.get("summary"), Mapping) else {}
+    success = bool(result.get("success"))
+    return {
+        "claimed": "COMPLETED" if success else "FAILED",
+        "recipe_id": recipe_id,
+        "recipe_version": recipe.version,
+        "nested_success": success,
+        "nested_outcome": str(result.get("outcome") or summary.get("outcome") or ""),
+        "outputs": dict(summary.get("outputs") or {}),
+        "nested_summary": dict(summary),
+        "nested_receipts": list(result.get("receipts") or []),
+        "error_code": "" if success else "nested_workflow_failed",
+    }
+
+
 HANDLERS: dict[str, Callable[[ExecutorContext, Mapping[str, Any]], dict[str, Any]]] = {
+    "workflow.run": workflow_run,
     "file.write": filesystem_write,
     "file.read": filesystem_read,
     "file.replace": file_replace,

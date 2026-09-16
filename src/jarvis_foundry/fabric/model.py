@@ -266,8 +266,8 @@ class WorkflowStep:
     def __post_init__(self) -> None:
         object.__setattr__(self, "step_id", _identity(self.step_id, "step_id"))
         object.__setattr__(self, "action_kind", _identity(self.action_kind, "action_kind"))
-        if self.on_failure not in {"stop", "continue"}:
-            raise FabricError("on_failure must be stop or continue")
+        if self.on_failure not in {"stop", "continue", "soft", "optional", "retry"}:
+            raise FabricError("on_failure must be stop, continue, soft, optional, or retry")
         if (
             not isinstance(self.step_version, int)
             or isinstance(self.step_version, bool)

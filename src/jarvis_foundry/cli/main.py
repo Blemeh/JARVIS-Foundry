@@ -141,6 +141,39 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="MCP YAML config inside the disposable home",
     )
+    fabric_workflow = fabric_sub.add_parser("workflow", parents=[home_option])
+    fabric_workflow.add_argument(
+        "--mcp-config",
+        type=Path,
+        default=None,
+        help="MCP YAML config inside the disposable home",
+    )
+    workflow_sub = fabric_workflow.add_subparsers(dest="workflow_command", required=True)
+    workflow_sub.add_parser("list", parents=[home_option])
+    workflow_inspect = workflow_sub.add_parser("inspect", parents=[home_option])
+    workflow_inspect.add_argument("--recipe", required=True)
+    workflow_preflight = workflow_sub.add_parser("preflight", parents=[home_option])
+    workflow_preflight.add_argument("--recipe", required=True)
+    workflow_preflight.add_argument("--param", action="append", default=[])
+    workflow_preflight.add_argument("--params-file", type=Path, default=None)
+    workflow_preflight.add_argument("--owned-root", type=Path, default=None)
+    workflow_run = workflow_sub.add_parser("run", parents=[home_option])
+    workflow_run.add_argument("--recipe", required=True)
+    workflow_run.add_argument("--param", action="append", default=[])
+    workflow_run.add_argument("--params-file", type=Path, default=None)
+    workflow_run.add_argument("--task-id", default=None)
+    workflow_run.add_argument("--workflow-id", default=None)
+    workflow_run.add_argument("--owned-root", type=Path, default=None)
+    workflow_run.add_argument("--checkpoint", type=Path, default=None)
+    workflow_resume = workflow_sub.add_parser("resume", parents=[home_option])
+    workflow_resume.add_argument("--recipe", required=True)
+    workflow_resume.add_argument("--checkpoint", type=Path, required=True)
+    workflow_resume.add_argument("--param", action="append", default=[])
+    workflow_resume.add_argument("--params-file", type=Path, default=None)
+    workflow_resume.add_argument("--task-id", default=None)
+    workflow_resume.add_argument("--workflow-id", default=None)
+    workflow_resume.add_argument("--owned-root", type=Path, default=None)
+    workflow_resume.add_argument("--out-checkpoint", type=Path, default=None)
     backup = release_sub.add_parser("backup-db")
     backup.add_argument("--destination", type=Path, required=True)
     migrate = release_sub.add_parser("migrate-clone")
@@ -348,6 +381,14 @@ def main(argv: list[str] | None = None) -> int:
                     mcp_backend=mcp_backend,
                     mcp_report=mcp_report,
                 )
+            if getattr(args, "fabric_command", "catalog") == "workflow":
+                return _fabric_workflow(
+                    args,
+                    paths,
+                    database,
+                    mcp_backend=mcp_backend,
+                    mcp_report=mcp_report,
+                )
             catalog = catalog_snapshot(database)
             output = (
                 {"catalog": catalog, "mcp": mcp_report}
@@ -438,6 +479,127 @@ def _fabric_run(
         result["mcp"] = mcp_report
     print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("success") else 1
+
+
+def _workflow_params(args, home: Path) -> dict:
+    params: dict = {}
+    params_file = getattr(args, "params_file", None)
+    if params_file is not None:
+        params_path = _disposable_path(Path(params_file), home, label="params file")
+        if params_path.is_file():
+            loaded = json.loads(params_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                params.update(loaded)
+    for item in getattr(args, "param", None) or []:
+        if "=" not in str(item):
+            raise ValueError(f"param must be key=value, got {item!r}")
+        key, _, raw = str(item).partition("=")
+        try:
+            params[key] = json.loads(raw)
+        except (ValueError, json.JSONDecodeError):
+            params[key] = raw
+    return params
+
+
+def _workflow_owned(args, home: Path) -> Path:
+    owned = getattr(args, "owned_root", None)
+    owned = Path(owned) if owned is not None else (home / "fabric-work")
+    if not owned.is_absolute():
+        owned = home / owned
+    owned = owned.resolve()
+    owned.relative_to(home)
+    return owned
+
+
+def _fabric_workflow(
+    args,
+    paths: FoundryPaths,
+    database: FoundryDatabase,
+    *,
+    mcp_backend=None,
+    mcp_report=None,
+) -> int:
+    from ..fabric import ExecutorContext
+    from ..fabric.recipes import (
+        dump_recipe,
+        list_recipes,
+        load_checkpoint,
+        load_recipe,
+        preflight_recipe,
+        resume_recipe,
+        run_recipe,
+        validate_recipe,
+    )
+
+    home = paths.home.resolve()
+    command = getattr(args, "workflow_command", "list")
+    if command == "list":
+        output: dict = {"recipes": list_recipes()}
+        if mcp_report is not None:
+            output["mcp"] = mcp_report
+        print(json.dumps(output, indent=2, default=str))
+        return 0
+    if command == "inspect":
+        recipe = load_recipe(str(args.recipe))
+        errors = validate_recipe(recipe)
+        output = {"recipe": dump_recipe(recipe), "valid": not errors, "errors": errors}
+        if mcp_report is not None:
+            output["mcp"] = mcp_report
+        print(json.dumps(output, indent=2, default=str))
+        return 0 if not errors else 1
+    try:
+        params = _workflow_params(args, home)
+        owned = _workflow_owned(args, home)
+    except ValueError as error:
+        print(json.dumps({"error": str(error), "home": str(home)}, indent=2))
+        return 1
+    ctx = ExecutorContext(database=database, owned_root=owned, mcp_backend=mcp_backend)
+    if command == "preflight":
+        recipe = load_recipe(str(args.recipe))
+        report = preflight_recipe(database, recipe, params, owned_root=owned)
+        if mcp_report is not None:
+            report["mcp"] = mcp_report
+        print(json.dumps(report, indent=2, default=str))
+        return 0 if report.get("ready") else 1
+    if command == "run":
+        checkpoint = getattr(args, "checkpoint", None)
+        checkpoint_path = None
+        if checkpoint is not None:
+            checkpoint_path = _disposable_path(Path(checkpoint), home, label="checkpoint file")
+        result = run_recipe(
+            database,
+            ctx,
+            str(args.recipe),
+            params,
+            task_id=getattr(args, "task_id", None),
+            workflow_id=getattr(args, "workflow_id", None),
+            checkpoint_path=checkpoint_path,
+        )
+        if mcp_report is not None:
+            result["mcp"] = mcp_report
+        print(json.dumps(result, indent=2, default=str))
+        return 0 if result.get("success") else 1
+    if command == "resume":
+        checkpoint_path = _disposable_path(Path(args.checkpoint), home, label="checkpoint file")
+        checkpoint_data = load_checkpoint(checkpoint_path)
+        out = getattr(args, "out_checkpoint", None) or args.checkpoint
+        out_path = _disposable_path(Path(out), home, label="checkpoint file")
+        result = resume_recipe(
+            database,
+            ctx,
+            str(args.recipe),
+            params,
+            checkpoint=checkpoint_data,
+            task_id=getattr(args, "task_id", None) or str(checkpoint_data.get("task_id") or "cli.workflow.resume"),
+            workflow_id=getattr(args, "workflow_id", None) or str(checkpoint_data.get("workflow_id") or "workflow:cli-resume"),
+            checkpoint_path=out_path,
+        )
+        if mcp_report is not None:
+            result["mcp"] = mcp_report
+        print(json.dumps(result, indent=2, default=str))
+        return 0 if result.get("success") else 1
+    print(json.dumps({"error": f"unknown workflow command: {command}"}, indent=2))
+    return 1
 
 
 def _release_command(args, paths: FoundryPaths) -> int:

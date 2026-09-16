@@ -334,6 +334,12 @@ def seed_builtins(database: FoundryDatabase) -> tuple[CapabilitySpec, ...]:
             unattended=UnattendedMode.ALLOWED,
         ),
         CapabilitySpec(
+            capability_id="cap.workflow.run", version="1.0.0", kind=Kind.WORKFLOW,
+            action_kind="workflow.run", semantic=Semantic.EXECUTE, executor="compose",
+            unattended=UnattendedMode.ALLOWED,
+            limitations=("named recipe only; bounded nesting; canonical effect journal retained",),
+        ),
+        CapabilitySpec(
             capability_id="cap.artifact.parse", version="1.0.0", kind=Kind.ADAPTER,
             action_kind="artifact.parse", semantic=Semantic.READ, executor="local_artifacts",
             unattended=UnattendedMode.ALLOWED,
@@ -1126,6 +1132,18 @@ def _verify_action(
     personal_verdict = personal_operator_verdict()
     if personal_verdict is not None:
         return personal_verdict
+    if action_kind == "workflow.run":
+        if claimed_status == "COMPLETED" and claimed.get("nested_success") is True:
+            nested = claimed.get("nested_receipts")
+            if isinstance(nested, list) and nested and all(
+                isinstance(item, Mapping) and item.get("state") == "VERIFIED"
+                for item in nested
+            ):
+                return VerifyVerdict.MATCH
+            return VerifyVerdict.MISMATCH
+        if claimed_status == "COMPLETED":
+            return VerifyVerdict.MISMATCH
+        return VerifyVerdict.UNKNOWN
     if action_kind == "llm.dispatch":
         return VerifyVerdict.UNKNOWN
     return VerifyVerdict.UNKNOWN
