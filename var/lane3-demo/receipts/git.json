@@ -1,0 +1,49 @@
+{
+  "branch": "lane3/feature",
+  "commit": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+  "divergent_push": {
+    "action_key": "v3-git:lane3-demo-push-rejected",
+    "outcome": "FAILED",
+    "performed": true,
+    "reason": "To C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git\\remote.git\n ! [rejected]        lane3/feature -> lane3/feature (fetch first)\nerror: failed to push some refs to 'C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git\\remote.git'\nhint: Updates were rejected because the remote contains work that you do not\nhint: have locally. This is usually caused by another repository pushing to\nhint: the same ref. If you want to integrate the remote changes, use\nhint: 'git pull' before pushing again.\nhint: See the 'Note about fast-forwards' in 'git push --help' for details."
+  },
+  "duplicate_material_effects": 0,
+  "first_push": {
+    "action_key": "v3-git:lane3-demo-push-1",
+    "outcome": "COMPLETED",
+    "performed": true,
+    "remote_head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a"
+  },
+  "readback": {
+    "branch": "lane3/feature",
+    "exists": true,
+    "expected_head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+    "head_sha": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+    "matches_expected": true,
+    "push_required": false,
+    "remote": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git\\remote.git",
+    "source": "git ls-remote"
+  },
+  "remote_preserved_after_rejection": {
+    "branch": "lane3/feature",
+    "exists": true,
+    "expected_head": "fbf5e7bdb2c4e7617b256df6605ec1bc86c791db",
+    "head_sha": "fbf5e7bdb2c4e7617b256df6605ec1bc86c791db",
+    "matches_expected": true,
+    "push_required": false,
+    "remote": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git\\remote.git",
+    "source": "git ls-remote"
+  },
+  "second_push": {
+    "action_key": "v3-git:lane3-demo-push-2",
+    "already_satisfied": true,
+    "outcome": "COMPLETED",
+    "performed": false,
+    "provider_state": {
+      "branch": "lane3/feature",
+      "head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a",
+      "source": "git ls-remote"
+    },
+    "remote_head": "c10813a17e835c084a1c4e1ed09f7cadf60b478a"
+  }
+}

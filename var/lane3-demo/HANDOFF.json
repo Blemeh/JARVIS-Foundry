@@ -1,0 +1,133 @@
+{
+  "lane": "lane-3-v14-developer-effects",
+  "base_sha": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
+  "final_sha": "PENDING_DOCS_COMMIT",
+  "branch": "candidate/max-lane-3-v14-effects-20260915",
+  "worktree": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915",
+  "commits": [
+    {
+      "sha": "0c5e5e4",
+      "message": "Lane 3: durable GitHub write recovery + Git remote no-op truth"
+    },
+    {
+      "sha": "b1045f7",
+      "message": "Lane 3: issue comments, env dispatch seam, recovery coverage"
+    },
+    {
+      "sha": "2bd46df",
+      "message": "Lane 3: git.branch independent verification + demo workspace"
+    }
+  ],
+  "files_changed": [
+    "src/jarvis_foundry/connectors/github_write.py",
+    "src/jarvis_foundry/connectors/git.py",
+    "src/jarvis_foundry/fabric/executors.py",
+    "src/jarvis_foundry/fabric/loop.py",
+    "src/jarvis_foundry/fabric/adapter.py",
+    "tests/foundry/test_v14_lane3_developer_effects.py",
+    "var/lane3-demo/ORIENTATION.md",
+    "var/lane3-demo/VERBS.md",
+    "var/lane3-demo/DEMO.md",
+    "var/lane3-demo/demo.py",
+    "var/lane3-demo/fake_github_provider.py",
+    "var/lane3-demo/HANDOFF.json",
+    "var/lane3-demo/receipts/git.json",
+    "var/lane3-demo/receipts/github-issue.json",
+    "var/lane3-demo/receipts/github-pr.json",
+    "var/lane3-demo/receipts/crash-recovery.json"
+  ],
+  "public_apis_added_or_changed": [
+    "connectors.github_write.github_write_intent(action_kind, payload) -> (endpoint, provider_payload)",
+    "connectors.github_write.github_write_input_hash(payload) -> sha256 of the canonical Fabric effect input",
+    "connectors.github_write.reconcile_github_write_effect(database, *, action_key, adapter, action_kind, endpoint, request_payload) -> dict",
+    "connectors.github_write.GitHubWriteDispatchSettings (+ .executor_kwargs())",
+    "connectors.github_write.github_write_dispatch_settings(environ=None)",
+    "connectors.github_write.GitHubWriteAdapter.observe_request(action_kind, endpoint, payload) -> dict (read-only)",
+    "connectors.git.GitConnector.remote_branch_state(remote, branch, *, expected_head=None) -> dict",
+    "connectors.git.GitConnector.push now returns already_satisfied/performed=False when provider truth already matches (no transport call)"
+  ],
+  "fabric_capabilities": [
+    "cap.github.write.reconcile (v1.0.0, READ, executor github_write)",
+    "cap.github.issue.comment.create (v1.0.0, EXTERNAL_EFFECT, executor github_write)"
+  ],
+  "action_kinds": [
+    "github.write.reconcile",
+    "github.issue.comment.create"
+  ],
+  "payload_schemas": {
+    "github.write.reconcile": "{original_effect_id, original_action?, request: <exact original Fabric payload>}",
+    "github.issue.comment.create": "{owner, repo, number, body}"
+  },
+  "receipt_schemas": {
+    "github.write.reconcile": "{claimed, accepted, reconciled, original_effect_id, provider_id, provider_ref, number, readback:{status:MATCH,matches:true}, journal_state, reconciliation_required}",
+    "github.issue.comment.create": "same shape as github.issue.create: {claimed, action_kind, endpoint, owner, repo, resource, idempotency_key, payload_hash, response_hash, status, number, provider_id, provider_ref, html_url, readback_status, readback, reconciliation_required, reconciled, replayed, duplicate_prevented, error_code, title, head, base}"
+  },
+  "config_keys": [
+    "JARVIS_GITHUB_WRITES_ENABLED (default off)",
+    "JARVIS_GITHUB_AUTHORIZED_REPOSITORIES (exact owner/repo list, ; or , separated)",
+    "JARVIS_GITHUB_AUTHORIZATION_FILE (optional JSON owner grant for github.pull_request.publish)"
+  ],
+  "dependencies_added": [],
+  "tests_run": [
+    "tests/foundry/test_v14_lane3_developer_effects.py (10 tests, pass)",
+    "tests/foundry/test_v12_irreversible_github.py (pass)",
+    "tests/foundry/test_v12_irreversible_fabric.py (pass)",
+    "tests/foundry/test_v10_c_developer_provider.py (pass)",
+    "tests/foundry/test_v10_exit_audit.py (pass)",
+    "tests/foundry/test_git_connector.py (pass)",
+    "tests/foundry/test_v3_git_reconcile.py (pass)",
+    "tests/foundry/test_v9_capability_fabric.py (pass)",
+    "tests/foundry/test_effects.py (pass)"
+  ],
+  "demos_run": [
+    "python var/lane3-demo/demo.py all (git, github-issue, github-pr, crash-recovery)"
+  ],
+  "real_substrate_proofs": [
+    "Local bare remote git branch/commit/push with git ls-remote readback and duplicate no-op",
+    "Real divergent push rejection with truthful FAILED receipt and preserved remote head",
+    "Real SQLite canonical effect journal for every scenario",
+    "Real child-process death (os._exit(9)) after a provider POST, then fresh-process readback recovery with zero duplicate writes (provider store file proves writes=1)",
+    "Harness: var/lane3-demo/receipts/*.json; fake provider var/lane3-demo/fake_github_provider.py is local-only"
+  ],
+  "capability_states": {
+    "github_issue_create_dedupe_readback": "BUILT_AND_PROVEN",
+    "github_issue_comment_create_dedupe_readback": "BUILT_AND_PROVEN",
+    "github_pull_request_create_recovery": "BUILT_AND_PROVEN",
+    "github_write_reconcile_action": "BUILT_AND_PROVEN",
+    "crash_started_fresh_process_recovery": "BUILT_AND_PROVEN",
+    "git_push_already_satisfied_no_op": "BUILT_AND_PROVEN",
+    "git_remote_branch_state": "BUILT_AND_PROVEN",
+    "git_branch_independent_verification": "BUILT_AND_PROVEN",
+    "github_write_env_dispatch_seam": "BUILT_AND_PROVEN (configuration parse + resolver; live enablement not exercised)",
+    "github_pull_request_publish": "BUILT_AND_PROVEN (local bare remote + fake provider; existing v12 tests)",
+    "real_gh_api_write": "LIVE_PROOF_LATER",
+    "real_github_pr_publish": "LIVE_PROOF_LATER",
+    "production_worker_path_with_seam_enabled": "LIVE_PROOF_LATER"
+  },
+  "cross_lane_assumptions": [
+    "Lane 4 composes verbs through execute_action with the payloads in VERBS.md.",
+    "Recovery callers must persist and re-supply the exact original Fabric intent payload; the journal binds it by input hash and refuses mismatches.",
+    "ExecutorContext.github_api is the read transport for write readback/reconciliation; production must set it together with the write transport when the owner enables the seam.",
+    "github.write.reconcile is read-only and deliberately allowed under STOP (added to loop.reconciliation_capable)."
+  ],
+  "likely_conflicts": [
+    "src/jarvis_foundry/fabric/loop.py: capability seeds, verifier predicates, reconciliation_capable set (small additions; merge cleanly if other lanes touch nearby lines).",
+    "src/jarvis_foundry/fabric/executors.py: github handler block and HANDLERS map.",
+    "src/jarvis_foundry/fabric/adapter.py: ExecutorContext construction now spreads github_write_dispatch_settings().executor_kwargs().",
+    "src/jarvis_foundry/connectors/git.py: GitConnector.push no-op pre-check calls git status + ls-remote before delegating to v3_git.GitEffectAdapter.",
+    "connectors/github_write.py endpoint regex now accepts optional /{number}/comments."
+  ],
+  "integration_order_notes": [
+    "Land connectors/github_write.py + connectors/git.py first; fabric/executors.py and fabric/loop.py depend on them.",
+    "github_write_dispatch_settings is default-off; no behavior change for existing contexts.",
+    "Existing github.issue.create / github.pull_request.create semantics are preserved; the executor refactor to github_write_intent produces identical provider payloads."
+  ],
+  "known_semantic_conflicts": [],
+  "next_highest_value_work": [
+    "Real live proof against an owner-provided throwaway GitHub repository (needs explicit owner authorization; do not invent it).",
+    "Wire a mission/Executive recovery step that automatically emits github.write.reconcile for FROZEN github write effects discovered in the journal (Lane 4/Executive composition).",
+    "Extend reconciliation to github.pull_request.publish sub-effects when the driver plan is unavailable (currently the caller re-supplies the plan through publish).",
+    "Bound the provider collection scan (pagination) if repositories exceed 100 matching issues/PRs (currently per_page=100 single page).",
+    "Git push reconciliation currently requires the caller to remember action_id; consider exposing the intended SHA in the push receipt for a generic remote-compare verb."
+  ]
+}
