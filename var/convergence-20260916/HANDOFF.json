@@ -1,11 +1,12 @@
 {
   "schema": "jarvis.v14-v16.convergence-handoff.v1",
   "goal": "MASTER GOAL 01 - V14 + V15 + V16 maximum semantic convergence",
-  "status": "SOURCE_CANDIDATE_COMPLETE_PENDING_BROAD_SUITE_RECEIPT",
+  "status": "SOURCE_CANDIDATE_COMMITTED",
+  "final_head": "5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb",
+  "v14_checkpoint_head": "3afa23c8857602aa3e1f4dd42d8c3eaf2360",
   "worktree": "C:\\temp\\JARVIS\\v14-v16-max-semantic-convergence-20260916",
   "branch": "candidate/v14-v16-max-semantic-convergence-20260916",
   "base": "4b2ae28da582b369982661c2a1d2b1792e2f48cb",
-  "v14_checkpoint_head": "3afa23c8857602aa3e1f4dd42d8c3eaf2360",
   "six_lane_heads": {
     "lane1": "a40f25a4f2a54138758c9136a693e6da1e03d8a7",
     "lane2": "dee99692ad828688f26409b9f44ef31115bd3774",
