@@ -50,11 +50,24 @@ class FakeIssueProvider:
     def __init__(self) -> None:
         self.documents: list[dict[str, Any]] = []
         self.comments: list[dict[str, Any]] = []
+        self.pulls: list[dict[str, Any]] = []
         self.write_calls = 0
         self.read_calls: list[str] = []
 
     def write(self, endpoint: str, payload: Mapping[str, Any]) -> tuple[int, bytes]:
         self.write_calls += 1
+        if endpoint == "/repos/owner/demo/pulls":
+            number = len(self.pulls) + 1
+            document = {
+                "number": number,
+                "title": payload["title"],
+                "body": payload.get("body", ""),
+                "head": {"ref": payload["head"]},
+                "base": {"ref": payload["base"]},
+                "html_url": f"https://github.com/owner/demo/pull/{number}",
+            }
+            self.pulls.append(document)
+            return 201, json.dumps(document).encode("utf-8")
         comment_match = re.fullmatch(
             r"/repos/owner/demo/issues/(\d+)/comments", endpoint,
         )
@@ -87,6 +100,14 @@ class FakeIssueProvider:
 
     def read(self, endpoint: str) -> tuple[int, bytes]:
         self.read_calls.append(endpoint)
+        if endpoint == "/repos/owner/demo/pulls?state=all&per_page=100":
+            return 200, json.dumps(self.pulls).encode("utf-8")
+        pull_item = re.fullmatch(r"/repos/owner/demo/pulls/(\d+)", endpoint)
+        if pull_item is not None:
+            number = int(pull_item.group(1))
+            if 1 <= number <= len(self.pulls):
+                return 200, json.dumps(self.pulls[number - 1]).encode("utf-8")
+            return 404, b"{}"
         comment_list = re.fullmatch(
             r"/repos/owner/demo/issues/(\d+)/comments\?per_page=100", endpoint,
         )
@@ -292,6 +313,8 @@ def test_github_write_reconcile_finalizes_one_provider_object(
     assert timed_out["journal_state"] == "FROZEN"
     assert provider.write_calls == 1
 
+    stop = tmp_path / "STOP"
+    stop.write_text("owner stop", encoding="utf-8")
     recovered = reconcile_github_write_effect(
         database,
         action_key=request,
@@ -307,6 +330,88 @@ def test_github_write_reconcile_finalizes_one_provider_object(
     assert provider.write_calls == 1
     assert effect_state(database, request)["accepted"] is True
     assert effect_state(database, request)["terminal_outcome"] == "COMPLETED"
+
+    replayed = reconcile_github_write_effect(
+        database,
+        action_key=request,
+        adapter=adapter,
+        action_kind="github.issue.create",
+        endpoint="/repos/owner/demo/issues",
+        request_payload=payload,
+    )
+    assert replayed["replayed"] is True
+    assert replayed["accepted"] is True
+    assert provider.write_calls == 1
+
+
+def test_github_pull_request_create_recovers_after_lost_response(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    provider = FakeIssueProvider()
+    adapter = GitHubWriteAdapter(
+        transport=provider.write,
+        read_transport=provider.read,
+        dispatch_enabled=True,
+        authorized_repositories=("owner/demo",),
+    )
+    payload = {
+        "owner": "owner",
+        "repo": "demo",
+        "title": "Recovered pull request",
+        "head": "jarvis/effect-recovery",
+        "base": "main",
+        "body": "one provider object",
+    }
+    endpoint = "/repos/owner/demo/pulls"
+    request = fabric_effect_id(
+        system_id="github",
+        target_ref="github.pull_request.create",
+        capability_id="cap.github.pull_request.create",
+        capability_version="1.0.0",
+        action_kind="github.pull_request.create",
+        input_payload=payload,
+    )
+
+    def lost_response() -> dict[str, Any]:
+        provider.write(endpoint, {
+            "title": payload["title"],
+            "head": payload["head"],
+            "base": payload["base"],
+            "body": payload["body"],
+        })
+        raise TimeoutError("response lost after the provider opened the PR")
+
+    timed_out = execute_fabric_effect(
+        database,
+        action_key=request,
+        system_id="github",
+        target_ref="github.pull_request.create",
+        payload_hash="lane3",
+        kind="github.pull_request.create",
+        connector_id="fabric:cap.github.pull_request.create",
+        request_identity={
+            "action_kind": "github.pull_request.create",
+            "input_hash": _fabric_hash(payload),
+        },
+        perform=lost_response,
+        claim_ttl_s=0.01,
+    )
+    assert timed_out["journal_state"] == "FROZEN"
+
+    recovered = reconcile_github_write_effect(
+        database,
+        action_key=request,
+        adapter=adapter,
+        action_kind="github.pull_request.create",
+        endpoint=endpoint,
+        request_payload=payload,
+    )
+    assert recovered["claimed"] == "COMPLETED"
+    assert recovered["accepted"] is True
+    assert recovered["number"] == 1
+    assert provider.write_calls == 1
+    assert provider.pulls[0]["head"] == {"ref": "jarvis/effect-recovery"}
 
 
 def _fabric_hash(payload: Mapping[str, Any]) -> str:
