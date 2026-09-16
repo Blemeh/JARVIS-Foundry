@@ -430,6 +430,7 @@ def test_open_artifact_and_assert_helper_and_fabric_dispatch(
     assert dispatched["claimed"] == "COMPLETED"
     assert "desktop.open_artifact_and_assert" in COMPUTER_OPERATOR_ACTIONS
     assert "desktop.control.paste" in COMPUTER_OPERATOR_ACTIONS
+    assert "desktop.file_dialog" in COMPUTER_OPERATOR_ACTIONS
 
 
 def test_named_alias_resolution() -> None:

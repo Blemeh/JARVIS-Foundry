@@ -84,6 +84,8 @@ CONTROL_NAME_ALIASES: dict[str, tuple[str, ...]] = {
     "file_name": ("File name", "File name:", "Nom du fichier", "Dateiname"),
     "open_button": ("Open", "Ouvrir", "Öffnen"),
     "save_button": ("Save", "Enregistrer", "Speichern"),
+    "yes_button": ("Yes", "Oui", "Ja"),
+    "word_wrap": ("Word wrap", "Word Wrap", "Retour automatique à la ligne"),
 }
 _CONDITION_FIELDS = frozenset(
     {
@@ -856,6 +858,12 @@ class _UIAutomationBackend:
             selected = bool(
                 self._property(selection_pattern, "IsSelected", False)
             )
+        if selected is None:
+            toggle_pattern = self._pattern(control, "TogglePattern")
+            if toggle_pattern is not None:
+                state = self._property(toggle_pattern, "ToggleState", None)
+                token = str(state)
+                selected = token in {"1", "On"} or token.endswith("On")
         return BackendControl(
             ref=control,
             control_type=str(
@@ -1468,6 +1476,35 @@ class WindowsOperatorProvider:
             )
         return pool[0]
 
+    def find_named_item(
+        self,
+        window: WindowIdentity,
+        names: Sequence[str],
+        *,
+        control_types: Sequence[str] = (
+            "ListItemControl",
+            "DataItemControl",
+            "TreeItemControl",
+        ),
+    ) -> ControlObservation:
+        """Resolve a unique named list/tree item under one window."""
+
+        last_error: TargetMatchError | None = None
+        for control_type in control_types:
+            try:
+                return self.resolve_named_control(
+                    window,
+                    names=names,
+                    control_type=control_type,
+                )
+            except TargetMatchError as error:
+                last_error = error
+                continue
+        raise last_error or TargetMatchError(
+            "control_not_found",
+            "no named list or tree item matched",
+        )
+
     def invoke_file_dialog(
         self,
         window: WindowIdentity,
@@ -1479,8 +1516,10 @@ class WindowsOperatorProvider:
     ) -> ActionReceipt:
         """Open or Save As via named UIA aliases, then assert the landed path.
 
-        ``action`` is ``open`` or ``save_as``. Receipt ``after.value`` is not
-        raw path text; callers should use window title / document readback.
+        ``action`` is ``open`` or ``save_as``. The filename is committed with
+        keyboard paste of the full path because COMDLG32 ignores ValuePattern
+        SetValue. Receipt ``after.value`` is not raw path text; callers should
+        use window title / document readback.
         """
 
         if action not in {"open", "save_as"}:
@@ -1574,12 +1613,16 @@ class WindowsOperatorProvider:
                 dialog_window,
                 names=CONTROL_NAME_ALIASES["file_name"],
                 control_type="EditControl",
-                automation_ids=("1148", "1001"),
+                automation_ids=(
+                    ("1001", "1148") if action == "save_as" else ("1148", "1001")
+                ),
             )
+            # COMDLG32 File name Edit ValuePattern.SetValue updates UIA but not
+            # the pending path. Keyboard paste is what the dialog actually saves.
             typed = self.perform(
                 OperatorAction(
                     action_id=f"{action_id}:filename",
-                    kind="replace_text",
+                    kind="paste",
                     window=dialog_window,
                     control=name_box.selector,
                     value=path,
@@ -1591,20 +1634,30 @@ class WindowsOperatorProvider:
             if typed.outcome != "COMPLETED" and not typed.effect_possible:
                 return typed
             try:
-                confirm = self.resolve_named_control(
-                    dialog_window,
-                    names=CONTROL_NAME_ALIASES[confirm_key],
-                    control_type="SplitButtonControl",
-                    automation_ids=("1",),
-                )
+                if action == "open":
+                    confirm = self.resolve_named_control(
+                        dialog_window,
+                        names=CONTROL_NAME_ALIASES[confirm_key],
+                        control_type="SplitButtonControl",
+                        automation_ids=("1",),
+                    )
+                else:
+                    confirm = self.resolve_named_control(
+                        dialog_window,
+                        names=CONTROL_NAME_ALIASES[confirm_key],
+                        control_type="ButtonControl",
+                        automation_ids=("1",),
+                    )
             except TargetMatchError:
                 confirm = self.resolve_named_control(
                     dialog_window,
                     names=CONTROL_NAME_ALIASES[confirm_key],
-                    control_type="ButtonControl",
+                    control_type=(
+                        "ButtonControl" if action == "open" else "SplitButtonControl"
+                    ),
                     automation_ids=("1",),
                 )
-            return self.perform(
+            last = self.perform(
                 OperatorAction(
                     action_id=f"{action_id}:confirm",
                     kind="click",
@@ -1613,6 +1666,74 @@ class WindowsOperatorProvider:
                     condition=ControlCondition("window_exists", False),
                     timeout_s=min(timeout_s, 15.0),
                 )
+            )
+            if (
+                last.outcome == "UNKNOWN"
+                and last.error_code == "unexpected_dialog"
+                and last.dialog is not None
+                and last.dialog.identity.class_name == "#32770"
+                and "confirm" in last.dialog.identity.title.casefold()
+            ):
+                confirm_text = self._dialog_plain_text(last.dialog.identity)
+                intended = ntpath.basename(path)
+                if intended.casefold() not in confirm_text.casefold():
+                    return self._receipt(
+                        OperatorAction(
+                            action_id=f"{action_id}:overwrite",
+                            kind="assert",
+                            window=last.dialog.identity,
+                            condition=ControlCondition("window_exists", True),
+                            timeout_s=min(timeout_s, 5.0),
+                        ),
+                        "FAILED",
+                        dialog=last.dialog,
+                        error_code="wrong_overwrite_target",
+                        detail=(
+                            "Confirm Save As named a different file than the "
+                            "path the operator submitted"
+                        ),
+                    )
+                yes = self.resolve_named_control(
+                    last.dialog.identity,
+                    names=CONTROL_NAME_ALIASES["yes_button"],
+                    control_type="ButtonControl",
+                    automation_ids=("6", "Yes"),
+                )
+                last = self.perform(
+                    OperatorAction(
+                        action_id=f"{action_id}:overwrite",
+                        kind="click",
+                        window=last.dialog.identity,
+                        control=yes.selector,
+                        condition=ControlCondition("window_exists", False),
+                        timeout_s=min(timeout_s, 10.0),
+                    )
+                )
+            if last.outcome != "COMPLETED":
+                return last
+            stem = ntpath.splitext(ntpath.basename(path))[0]
+            landed_deadline = self._clock() + min(float(timeout_s), 8.0)
+            while self._clock() < landed_deadline:
+                try:
+                    main = self.observe_main_window(title_contains=stem)
+                    if stem.casefold() in main.identity.title.casefold():
+                        return last
+                except TargetMatchError:
+                    pass
+                if os.path.isfile(path):
+                    return last
+                self._sleep(min(self._poll_interval_s, 0.2))
+            return self._receipt(
+                OperatorAction(
+                    action_id=f"{action_id}:landed",
+                    kind="assert",
+                    window=window,
+                    condition=ControlCondition("window_exists", True),
+                    timeout_s=min(timeout_s, 5.0),
+                ),
+                "FAILED",
+                error_code="landed_path_mismatch",
+                detail="file dialog closed without the expected window title or file",
             )
         except TargetMatchError as error:
             return self._receipt(
@@ -1627,6 +1748,18 @@ class WindowsOperatorProvider:
                 error_code=error.code,
                 detail=self._safe_detail(error),
             )
+
+    def _dialog_plain_text(self, window: WindowIdentity) -> str:
+        """Concatenated visible text on one dialog, for overwrite targeting."""
+
+        parts: list[str] = []
+        for control in self.inspect(window):
+            name = str(control.selector.name or "").strip()
+            if name:
+                parts.append(name)
+            if isinstance(control.value, str) and control.value.strip():
+                parts.append(control.value.strip())
+        return "\n".join(parts)
 
     def set_clipboard_text(self, text: str) -> None:
         if not isinstance(text, str) or len(text) > 4096:

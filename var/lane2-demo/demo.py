@@ -19,25 +19,36 @@ SOURCE_ROOT = ROOT / "src"
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
+from dataclasses import asdict
+
 from jarvis_foundry.connectors.personal_operator import (
     PersonalOperatorConnector,
     _visible_application_windows,
 )
 from jarvis_foundry.connectors.windows_operator import (
     ControlCondition,
+    ControlSelector,
     OperatorAction,
     ProcessIdentity,
     ProcessIdentityMismatch,
     WindowsOperatorProvider,
     normalize_document_text,
 )
-from jarvis_foundry.fabric.computer_operator import open_artifact_and_assert
+from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.fabric.computer_operator import (
+    dispatch_computer_operator,
+    open_artifact_and_assert,
+)
+from jarvis_foundry.fabric.executors import ExecutorContext
+from jarvis_foundry.fabric.loop import seed_builtins
+from jarvis_foundry.supervisor.worker import process_creation_identity
 
 DEMO_DIR = Path(__file__).resolve().parent
 NOTEPAD = Path(r"C:\Windows\System32\notepad.exe")
 WORD = Path(r"C:\Program Files (x86)\Microsoft Office\Office16\WINWORD.EXE")
 EXCEL = Path(r"C:\Program Files (x86)\Microsoft Office\Office16\EXCEL.EXE")
 EXPLORER = Path(r"C:\Windows\explorer.exe")
+CALC = Path(r"C:\Windows\System32\calc.exe")
 HELLO_TEXT = "JARVIS lane2 hello\n"
 
 
@@ -74,6 +85,7 @@ def _close(
 def main() -> int:
     steps: list[dict[str, object]] = []
     owned_ids: list[str] = []
+    calc_owned_pids: list[int] = []
     report: dict[str, object] = {
         "demo": "lane2-windows-operator",
         "steps": steps,
@@ -112,6 +124,8 @@ def main() -> int:
         allow.append(WORD)
     if EXCEL.exists():
         allow.append(EXCEL)
+    if CALC.exists():
+        allow.append(CALC)
 
     import shutil
 
@@ -240,20 +254,37 @@ def main() -> int:
                         readback_verified=observed_text == expected_open,
                     )
                     save_as_path = DEMO_DIR / f"hello-save-{run_token}.txt"
-                    saved = provider.invoke_file_dialog(
-                        after_open.identity,
-                        path=str(save_as_path),
-                        action="save_as",
-                        timeout_s=20.0,
-                        action_id="lane2-file-save-as",
+                    fabric_db = FoundryDatabase(
+                        DEMO_DIR
+                        / ".jarvis-personal-operator"
+                        / "lane2-fabric.db"
+                    )
+                    fabric_db.initialize()
+                    seed_builtins(fabric_db)
+                    fabric_ctx = ExecutorContext(
+                        database=fabric_db,
+                        owned_root=DEMO_DIR,
+                        operator_connector=connector,
+                    )
+                    saved = dispatch_computer_operator(
+                        fabric_ctx,
+                        "desktop.file_dialog",
+                        {
+                            "process_id": "lane2-notepad",
+                            "window": asdict(after_open.identity),
+                            "path": save_as_path.name,
+                            "action": "save_as",
+                            "timeout_s": 20.0,
+                            "action_id": "lane2-file-save-as",
+                        },
                     )
                     note(
                         "file_save_as_dialog",
-                        outcome=saved.outcome,
-                        error_code=saved.error_code,
-                        detail=saved.detail,
+                        outcome=(saved or {}).get("claimed"),
+                        error_code=(saved or {}).get("error_code"),
+                        via="desktop.file_dialog",
                     )
-                    if saved.outcome == "COMPLETED":
+                    if (saved or {}).get("claimed") == "COMPLETED":
                         after_save = provider.observe_main_window(
                             title_contains=save_as_path.stem
                         )
@@ -265,6 +296,74 @@ def main() -> int:
             except Exception as error:
                 note(
                     "file_open_dialog",
+                    outcome="FAILED",
+                    detail=f"{type(error).__name__}: {error}",
+                )
+            live_window = provider.observe_main_window()
+            document = provider.find_document_control(live_window.identity)
+            waited = provider.perform(
+                OperatorAction(
+                    action_id="lane2-wait-enabled",
+                    kind="wait",
+                    window=live_window.identity,
+                    control=document.selector,
+                    condition=ControlCondition("enabled", True),
+                    timeout_s=5.0,
+                )
+            )
+            note(
+                "wait_until_enabled",
+                outcome=waited.outcome,
+                error_code=waited.error_code,
+            )
+            try:
+                view = provider.resolve_named_control(
+                    live_window.identity,
+                    names=("View",),
+                    control_type="MenuItemControl",
+                    automation_ids=("View",),
+                )
+                expanded = provider.perform(
+                    OperatorAction(
+                        action_id="lane2-view",
+                        kind="click",
+                        window=live_window.identity,
+                        control=view.selector,
+                        readback_control=ControlSelector(
+                            control_type="MenuItemControl",
+                            name="Word wrap",
+                        ),
+                        condition=ControlCondition("control_exists", True),
+                        timeout_s=5.0,
+                    )
+                )
+                wrap = provider.resolve_named_control(
+                    live_window.identity,
+                    names=("Word wrap", "Word Wrap"),
+                    control_type="MenuItemControl",
+                )
+                before_wrap = wrap.selected
+                toggled = provider.perform(
+                    OperatorAction(
+                        action_id="lane2-word-wrap",
+                        kind="click",
+                        window=live_window.identity,
+                        control=wrap.selector,
+                        readback_control=document.selector,
+                        condition=ControlCondition("enabled", True),
+                        timeout_s=6.0,
+                    )
+                )
+                note(
+                    "word_wrap_toggle",
+                    outcome=toggled.outcome,
+                    error_code=toggled.error_code,
+                    before_selected=before_wrap,
+                    view_outcome=expanded.outcome,
+                )
+            except Exception as error:
+                note(
+                    "word_wrap_toggle",
                     outcome="FAILED",
                     detail=f"{type(error).__name__}: {error}",
                 )
@@ -297,7 +396,7 @@ def main() -> int:
             launched = connector.launch_process(
                 second_app,
                 str(second_exe),
-                ["/separate", "."],
+                [str(DEMO_DIR)],
                 cwd=".",
                 idempotency_key=f"lane2-explorer-app-{run_token}",
                 show_window=True,
@@ -482,10 +581,11 @@ def main() -> int:
                 alive=(inspect.get("readback") or {}).get("alive"),
             )
 
+        before_explorer = _visible_application_windows()
         explorer = connector.launch_process(
             "lane2-folder",
             str(EXPLORER),
-            ["/separate", "."],
+            [str(DEMO_DIR)],
             cwd=".",
             idempotency_key=f"lane2-folder-{run_token}",
             show_window=True,
@@ -497,6 +597,181 @@ def main() -> int:
             error=(explorer.get("error") or {}).get("classification"),
             pid=(explorer.get("result") or {}).get("pid"),
         )
+        if explorer.get("status") == "COMPLETED":
+            bound = connector.bind_new_window(
+                "lane2-folder",
+                title_contains="lane2-demo",
+                before=before_explorer,
+                timeout_s=12.0,
+            )
+            bound_pid = (bound.get("result") or {}).get("pid")
+            note(
+                "explorer_bind",
+                status=bound.get("status"),
+                error=(bound.get("error") or {}).get("classification"),
+                pid=bound_pid,
+            )
+            if bound.get("status") == "COMPLETED" and int(bound_pid or 0) != 13212:
+                try:
+                    folder = _provider(connector, "lane2-folder")
+                    exp_window = folder.observe_main_window(
+                        title_contains="lane2-demo"
+                    )
+                    item = folder.find_named_item(
+                        exp_window.identity,
+                        ("hello.txt", "hello"),
+                    )
+                    selected = folder.perform(
+                        OperatorAction(
+                            action_id="lane2-explorer-select",
+                            kind="select",
+                            window=exp_window.identity,
+                            control=item.selector,
+                            timeout_s=6.0,
+                        )
+                    )
+                    note(
+                        "explorer_select",
+                        outcome=selected.outcome,
+                        error_code=selected.error_code,
+                        item_name=item.selector.name,
+                        window_title=exp_window.identity.title,
+                    )
+                except Exception as error:
+                    note(
+                        "explorer_select",
+                        outcome="FAILED",
+                        detail=f"{type(error).__name__}: {error}",
+                    )
+
+        if CALC.exists():
+            before_calc = _visible_application_windows()
+            calc = connector.launch_process(
+                "lane2-calc",
+                str(CALC),
+                (),
+                cwd=".",
+                idempotency_key=f"lane2-calc-{run_token}",
+                show_window=True,
+            )
+            owned_ids.append("lane2-calc")
+            note(
+                "calculator_launch",
+                status=calc.get("status"),
+                error=(calc.get("error") or {}).get("classification"),
+                pid=(calc.get("result") or {}).get("pid"),
+            )
+            if calc.get("status") == "COMPLETED":
+                deadline = time.time() + 8.0
+                calc_window = None
+                while time.time() < deadline and calc_window is None:
+                    after = _visible_application_windows()
+                    before_keys = {window.key() for window in before_calc}
+                    fresh = [
+                        window
+                        for window in after
+                        if window.key() not in before_keys
+                        and "calculator" in window.title.casefold()
+                    ]
+                    if len(fresh) == 1:
+                        calc_window = fresh[0]
+                        break
+                    titled = [
+                        window
+                        for window in after
+                        if "calculator" in window.title.casefold()
+                    ]
+                    if len(titled) == 1:
+                        calc_window = titled[0]
+                        break
+                    time.sleep(0.2)
+                if calc_window is not None:
+                    calc_exe = str(
+                        process_creation_identity(calc_window.pid).get("exe") or ""
+                    )
+                    if "ApplicationFrameHost" not in calc_exe:
+                        calc_owned_pids.append(int(calc_window.pid))
+                if calc_window is None:
+                    note(
+                        "calculator_observe",
+                        status="FAILED",
+                        detail="no unique Calculator window appeared",
+                    )
+                else:
+                    identity = process_creation_identity(calc_window.pid)
+                    if identity.get("create_time") is None:
+                        note(
+                            "calculator_observe",
+                            status="FAILED",
+                            detail="calculator window pid lacked create_time",
+                            pid=calc_window.pid,
+                        )
+                    else:
+                        time.sleep(0.8)
+                        calc_provider = WindowsOperatorProvider(
+                            ProcessIdentity(
+                                logical_id="lane2-calc",
+                                pid=int(calc_window.pid),
+                                create_time=int(identity["create_time"]),
+                                executable=str(identity.get("exe") or CALC),
+                            )
+                        )
+                        try:
+                            time.sleep(2.0)
+                            observed = calc_provider.observe_main_window(
+                                title_contains="Calculator"
+                            )
+                            one = calc_provider.find_control_on_any_window(
+                                names=("One",),
+                                control_type="ButtonControl",
+                                automation_ids=("num1Button",),
+                            )
+                            clicked = calc_provider.perform(
+                                OperatorAction(
+                                    action_id="lane2-calc-one",
+                                    kind="click",
+                                    window=one.window,
+                                    control=one.selector,
+                                    condition=ControlCondition("enabled", True),
+                                    timeout_s=5.0,
+                                )
+                            )
+                            closer = calc_provider.resolve_named_control(
+                                observed.identity,
+                                names=("Close Calculator",),
+                                control_type="ButtonControl",
+                                automation_ids=("Close",),
+                            )
+                            closed_click = calc_provider.perform(
+                                OperatorAction(
+                                    action_id="lane2-calc-close",
+                                    kind="click",
+                                    window=observed.identity,
+                                    control=closer.selector,
+                                    condition=ControlCondition(
+                                        "window_exists", False
+                                    ),
+                                    timeout_s=6.0,
+                                )
+                            )
+                            note(
+                                "calculator_observe",
+                                status="COMPLETED",
+                                title=observed.identity.title,
+                                class_name=observed.identity.class_name,
+                                hwnd=observed.identity.hwnd,
+                                pid=calc_window.pid,
+                                launch_pid=(calc.get("result") or {}).get("pid"),
+                                click_one=clicked.outcome,
+                                close=closed_click.outcome,
+                            )
+                        except Exception as error:
+                            note(
+                                "calculator_observe",
+                                status="FAILED",
+                                detail=f"{type(error).__name__}: {error}",
+                                pid=calc_window.pid,
+                            )
 
         report["ok"] = any(
             step.get("step") == "open_artifact_and_assert"
@@ -522,6 +797,11 @@ def main() -> int:
                 }
             )
         report["closed"] = closed
+        for pid in calc_owned_pids:
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                pass
         result_path = DEMO_DIR / "DEMO_RESULT.json"
         result_path.write_text(
             json.dumps(report, indent=2, default=str), encoding="utf-8"

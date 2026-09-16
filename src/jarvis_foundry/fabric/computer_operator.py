@@ -56,6 +56,7 @@ COMPUTER_OPERATOR_ACTIONS = frozenset({
     "desktop.control.assert",
     "desktop.control.paste",
     "desktop.open_artifact_and_assert",
+    "desktop.file_dialog",
     "desktop.action.reconcile",
 })
 PERSONAL_OPERATOR_SHARED_CAPABILITY_IDS = frozenset({
@@ -276,6 +277,18 @@ def computer_operator_specs() -> tuple[CapabilitySpec, ...]:
             unattended=allowed,
             limitations=(
                 "allow-listed app; owned-root file; window-owning process identity; document value hash",
+            ),
+        ),
+        CapabilitySpec(
+            capability_id="cap.desktop.file_dialog",
+            version="1.0.0",
+            kind=Kind.CONNECTOR,
+            action_kind="desktop.file_dialog",
+            semantic=Semantic.EXECUTE,
+            executor="computer_operator",
+            unattended=allowed,
+            limitations=(
+                "named UIA File Open/Save As; keyboard-paste full path; #32770; Confirm Yes only for the submitted basename",
             ),
         ),
         CapabilitySpec(
@@ -935,6 +948,22 @@ def dispatch_computer_operator(
                 ),
                 backend=getattr(ctx, "windows_operator_backend", None),
             )
+        if action_kind == "desktop.file_dialog":
+            action = str(payload.get("action") or "open").strip()
+            if action not in {"open", "save_as"}:
+                raise ValueError("action must be open or save_as")
+            path_text = _required_text(payload, "path", "target")
+            path = Path(path_text)
+            if not path.is_absolute():
+                path = Path(ctx.owned_root) / path_text
+            receipt = _provider(ctx, payload).invoke_file_dialog(
+                _window_identity(payload.get("window")),
+                path=str(path),
+                action=action,
+                timeout_s=max(_timeout_seconds(payload), 15.0),
+                action_id=str(payload.get("action_id") or "file-dialog"),
+            )
+            return _operator_result(action_kind, receipt)
         if action_kind == "desktop.action.reconcile":
             return _reconcile_action(ctx, payload)
         action = _operator_action(payload, action_kind)
@@ -1127,6 +1156,32 @@ def verify_computer_operator(
                 VerifyVerdict.MATCH
                 if observed_sha == claimed.get("observed_sha256")
                 and observed_sha == claimed.get("expected_sha256")
+                else VerifyVerdict.MISMATCH
+            )
+        if action_kind == "desktop.file_dialog":
+            process_id = _required_text(payload, "process_id")
+            observed = connector.inspect_process(process_id)
+            running = (
+                observed.get("status") == "COMPLETED"
+                and (observed.get("result") or {}).get("state") == "running"
+                and (observed.get("result") or {}).get("matches") is True
+            )
+            if not running:
+                return VerifyVerdict.MISMATCH
+            path_text = _required_text(payload, "path", "target")
+            stem = Path(path_text).stem
+            provider = _provider(ctx, payload, honor_stop=False)
+            window = provider.observe_main_window(title_contains=stem)
+            action = str(payload.get("action") or "open").strip()
+            if action == "save_as":
+                saved = Path(path_text)
+                if not saved.is_absolute():
+                    saved = Path(ctx.owned_root) / path_text
+                if not saved.is_file():
+                    return VerifyVerdict.MISMATCH
+            return (
+                VerifyVerdict.MATCH
+                if stem.casefold() in window.identity.title.casefold()
                 else VerifyVerdict.MISMATCH
             )
         if action_kind == "desktop.action.reconcile":

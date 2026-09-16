@@ -1858,6 +1858,40 @@ class PersonalOperatorConnector:
             opened_identity=None,
         )
 
+    def bind_new_window(
+        self,
+        process_id: str,
+        *,
+        title_contains: str,
+        before: Sequence[VisibleWindow],
+        timeout_s: float = 15.0,
+    ) -> dict[str, Any]:
+        """Rebind a launched GUI process onto a newly appeared window owner."""
+
+        logical_id = self._validate_process_id(process_id)
+        with self._lock:
+            record = self._load_process_registry().get(logical_id)
+        if record is None:
+            return self._error_receipt(
+                "desktop.focus",
+                PersonalOperatorError(
+                    "process_not_registered",
+                    "process_id is not registry-owned",
+                ),
+            )
+        receipt = {
+            "target_identity": record,
+            "request_id": record.get("idempotency_key") or "",
+            "status": "COMPLETED",
+        }
+        return self._bind_window_owning_process(
+            logical_id,
+            title_contains=title_contains,
+            before=before,
+            launch_receipt=receipt,
+            timeout_s=timeout_s,
+        )
+
     def desktop_open(
         self,
         process_id: str,

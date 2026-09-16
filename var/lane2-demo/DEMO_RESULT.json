@@ -7,25 +7,25 @@
       "error_code": null,
       "process": {
         "logical_id": "lane2-notepad",
-        "pid": 15096,
-        "create_time": 134339862287212932,
+        "pid": 7356,
+        "create_time": 134340189283884806,
         "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
       },
       "window": {
         "identity": {
           "process": {
             "logical_id": "lane2-notepad",
-            "pid": 15096,
-            "create_time": 134339862287212932,
+            "pid": 7356,
+            "create_time": 134340189283884806,
             "executable": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe"
           },
-          "hwnd": 5969186,
+          "hwnd": 11080244,
           "title": "Notepad",
           "class_name": "Notepad",
           "automation_id": "",
           "runtime_id": [
             42,
-            5969186
+            11080244
           ],
           "observation_generation": 1
         },
@@ -40,7 +40,7 @@
         "class_name": "RichEditD2DPT",
         "runtime_id": [
           42,
-          7083516
+          5773164
         ]
       },
       "expected_sha256": "32df0f57b52335e1f44fde5cb939a0614aba3e84a8c2e875d0b78154f8d413f4",
@@ -72,7 +72,7 @@
     },
     {
       "step": "file_open_readback",
-      "window_title": "hello-open-1789512628.txt - Notepad",
+      "window_title": "hello-open-1789545328.txt - Notepad",
       "value_length": 31,
       "value_sha256": "4da85416aa8c883534fbe96775626b6723ae27bd3e8dfeab787b6b2797a8893d",
       "expected_sha256": "4da85416aa8c883534fbe96775626b6723ae27bd3e8dfeab787b6b2797a8893d",
@@ -80,24 +80,41 @@
     },
     {
       "step": "file_save_as_dialog",
-      "outcome": "UNKNOWN",
-      "error_code": "unexpected_dialog",
-      "detail": "an undeclared dialog appeared after dispatch"
+      "outcome": "COMPLETED",
+      "error_code": null,
+      "via": "desktop.file_dialog"
+    },
+    {
+      "step": "file_save_as_readback",
+      "window_title": "hello-save-1789545328.txt - Notepad",
+      "saved_exists": true
+    },
+    {
+      "step": "wait_until_enabled",
+      "outcome": "COMPLETED",
+      "error_code": null
+    },
+    {
+      "step": "word_wrap_toggle",
+      "outcome": "COMPLETED",
+      "error_code": null,
+      "before_selected": true,
+      "view_outcome": "COMPLETED"
     },
     {
       "step": "second_app",
       "app": "lane2-word",
       "status": "COMPLETED",
       "error": null,
-      "pid": 25220,
-      "window_hwnd": 529948
+      "pid": 4724,
+      "window_hwnd": 2365464
     },
     {
       "step": "office_observe",
       "title": "lane2 [Compatibility Mode] - Word",
       "class_name": "OpusApp",
-      "hwnd": 529948,
-      "control_count": 195,
+      "hwnd": 2365464,
+      "control_count": 187,
       "sample": [
         {
           "type": "PaneControl",
@@ -145,15 +162,15 @@
       "step": "excel_open",
       "status": "COMPLETED",
       "error": null,
-      "pid": 27756,
-      "window_hwnd": 1774454
+      "pid": 28732,
+      "window_hwnd": 49091540
     },
     {
       "step": "excel_observe",
-      "title": "lane2-excel-1789512628 - Excel",
+      "title": "lane2-excel-1789545328 - Excel",
       "class_name": "XLMAIN",
-      "hwnd": 1774454,
-      "control_count": 238,
+      "hwnd": 49091540,
+      "control_count": 243,
       "cell_value_sha": "a39930f7aaaaa3d472bbd2c6b7fdd74391afa3ffddff3da5f74e26f8b7cbc7b8"
     },
     {
@@ -171,8 +188,8 @@
     },
     {
       "step": "identity_handoff",
-      "notepad_pid": 15096,
-      "second_pid": 25220,
+      "notepad_pid": 7356,
+      "second_pid": 4724,
       "notepad_pid_stable": true,
       "second_pid_stable": true,
       "swapped": false
@@ -181,7 +198,7 @@
       "step": "stale_identity",
       "status": "COMPLETED",
       "error_code": "process_identity_unavailable",
-      "detail": "PID 15096 could not be verified"
+      "detail": "PID 7356 could not be verified"
     },
     {
       "step": "inspect_after_kill",
@@ -193,7 +210,37 @@
       "step": "explorer",
       "status": "COMPLETED",
       "error": null,
-      "pid": 27968
+      "pid": 19512
+    },
+    {
+      "step": "explorer_bind",
+      "status": "COMPLETED",
+      "error": null,
+      "pid": 21748
+    },
+    {
+      "step": "explorer_select",
+      "outcome": "COMPLETED",
+      "error_code": null,
+      "item_name": "hello",
+      "window_title": "lane2-demo - File Explorer"
+    },
+    {
+      "step": "calculator_launch",
+      "status": "COMPLETED",
+      "error": null,
+      "pid": 27804
+    },
+    {
+      "step": "calculator_observe",
+      "status": "COMPLETED",
+      "title": "Calculator",
+      "class_name": "ApplicationFrameWindow",
+      "hwnd": 2425874,
+      "pid": 6196,
+      "launch_pid": 27804,
+      "click_one": "COMPLETED",
+      "close": "COMPLETED"
     }
   ],
   "closed": [
@@ -214,6 +261,11 @@
     },
     {
       "process_id": "lane2-folder",
+      "status": "COMPLETED",
+      "error": null
+    },
+    {
+      "process_id": "lane2-calc",
       "status": "COMPLETED",
       "error": null
     }
