@@ -7,7 +7,7 @@ python var/lane3-demo/demo.py all
 ```
 
 The demo creates its own disposable workspace under `var/lane3-demo/work/`
-(ignored by Git), executes four scenarios against real code paths, and writes
+(ignored by Git), executes five scenarios against real code paths, and writes
 machine-readable receipts to `var/lane3-demo/receipts/`. It never touches live
 JARVIS: no live database, release pointer, trust window, Scheduler entry,
 runtime state, or provider credential is read or written, and the
@@ -74,6 +74,25 @@ A fresh parent process then:
 Observed on this run: `child_exit_code=9`, provider `writes=1`, final state
 `status=FROZEN` (the crash reap is preserved) with `terminal_outcome=COMPLETED`,
 `accepted=true`, `reconciled=true`. No second POST existed to issue.
+
+## Scenario 5 — Git push crash recovery (`receipts/git-crash-recovery.json`)
+
+A child process pushes a deterministic commit to the local bare remote and then
+dies with `os._exit(9)` before the V3 push journal completes, leaving the push
+identity `STARTED`. A fresh parent process runs the read-only
+`git.push.reconcile` action:
+
+* the stale claim is frozen (`interrupted git push requires ls-remote
+  reconciliation`), never re-executed;
+* `git ls-remote` confirms the remote carries the expected SHA;
+* `effect.reconciled` is appended to the ORIGINAL action key;
+* a later push of the same action id returns
+  `outcome=COMPLETED, performed=false, reconciled=true` with zero additional
+  transport calls.
+
+Observed: `child_exit_code=9`, before=`STARTED`, reconcile
+`claimed=COMPLETED verified=MATCH`, replay `performed=false reconciled=true`,
+remote head equals the expected head.
 
 ## Why FROZEN + accepted is correct
 

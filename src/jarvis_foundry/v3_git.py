@@ -150,6 +150,16 @@ class GitEffectAdapter:
             raise RuntimeError(
                 f"git push {action_id} previously failed — record a new "
                 "action after repairing the cause; no silent re-push")
+        if state["status"] == "STARTED":
+            # A crash between the durable claim and any terminal event. The
+            # push may or may not have landed: never re-execute; freeze for
+            # ls-remote reconciliation exactly like an ambiguous timeout.
+            if not state.get("claim_active"):
+                self._append("effect.frozen", {
+                    "action_key": key,
+                    "reason": "interrupted git push — frozen pending "
+                              "ls-remote reconciliation"}, "frozen.interrupted")
+            raise GitReconcilePending(key)
 
         identity = preflight_identity(
             worktree=worktree, remote=remote, branch=branch,

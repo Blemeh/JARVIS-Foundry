@@ -11,7 +11,8 @@ authority was introduced.
 |---|---|---|---|
 | `git.branch` | `{worktree, name}` | Fabric `effect:` from payload | none needed (local) |
 | `git.commit` | `{worktree, message, changes}` or `{worktree, existing: true, paths, message}` | Fabric `effect:` | none needed (local) |
-| `git.push` | `{worktree, remote, branch?, action_id?}` | V3 key `v3-git:{action_id}` | `GitConnector.reconcile(action_id, remote, branch, expected_head)` after `effect.frozen` |
+| `git.push` | `{worktree, remote, branch?, action_id?}` | V3 key `v3-git:{action_id}` | `git.push.reconcile` after `effect.frozen`/crash window |
+| `git.push.reconcile` | `{action_id, remote, branch?, expected_head}` | read-only; appends only reconciliation events | n/a (is the recovery verb) |
 | `git.read_ref` | `{remote, branch?}` | none (read) | n/a |
 | `github.issue.create` | `{owner, repo, title, body?}` | Fabric `effect:` (input-hash bound) | `github.write.reconcile` with the exact original payload |
 | `github.issue.comment.create` | `{owner, repo, number, body}` | Fabric `effect:` | `github.write.reconcile` |
@@ -57,6 +58,14 @@ Without a read transport the verifier stays `NOT_TESTED`/MISMATCH (honest).
 already_satisfied?, provider_state, reason?}`; Fabric-level adds
 `observed_remote_head` for the `remote_head == observed_remote_head` check.
 
+`git.push.reconcile` receipt: `{claimed: COMPLETED, reconciled: true,
+performed: false, action_key, action_id, remote, branch, expected_head,
+remote_head, observed_remote_head, provider_state}` when the remote carries
+the expected head; otherwise `{claimed: FAILED, error_code:
+remote_branch_mismatch, observed_remote_head, ...}`. `effect_claim_active`
+returns `{claimed: UNKNOWN, reconciliation_required: true}` while another
+process' claim is unexpired.
+
 `github.pull_request.publish` receipt: `{claimed, stage, accepted,
 terminal_truth, provider_id, provider_ref, number, push_effect,
 pull_request_effect, external_effects, branch, head_sha, intent_id}`.
@@ -87,7 +96,14 @@ effect_claim_active}`.
 * If exactly one provider object matches the intent → the ORIGINAL effect is
   finalized with `finalize_verified_effect` (durable receipt + acceptance).
   Zero matches → `not_observed`; multiple matches → `duplicate_provider_matches`
-  (both stay UNKNOWN; no guessing).
+  (both stay UNKNOWN; no guessing). A scan that exhausts the bounded page
+  limit without a match reports `scan_truncated`, never a false `not_observed`.
+* Git push after a crash window: a `STARTED` V3 push claim is frozen by the
+  next `push` attempt (never re-executed) and must be resolved with
+  `git.push.reconcile`. Matching remote head → `effect.reconciled` on the
+  original key; a mismatch records provider truth and reports
+  `remote_branch_mismatch`. `git.push.reconcile` is allowed under STOP and
+  appends reconciliation events at most once per outcome.
 
 ## 5. Remote / provider identity
 

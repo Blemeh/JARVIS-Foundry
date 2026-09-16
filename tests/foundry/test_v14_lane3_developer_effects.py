@@ -749,6 +749,70 @@ def test_git_push_reconcile_reports_provider_mismatch_truthfully(
     assert connector.read_ref(str(bare), "main") == seed_head
 
 
+def test_git_push_crash_window_never_repushes_and_reconciles(
+    tmp_path: Path,
+) -> None:
+    database = _db(tmp_path)
+    work, bare, _seed = _clone(tmp_path)
+    ctx = _ctx(tmp_path, database)
+    seed_builtins(database)
+    connector = GitConnector(database, owned_root=tmp_path / "owned")
+    head = subprocess.run(
+        ["git", "-C", str(work), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    pushes = 0
+
+    def land_then_crash(worktree: Path, remote: str, branch: str) -> None:
+        nonlocal pushes
+        pushes += 1
+        subprocess.run(
+            ["git", "-C", str(worktree), "push", remote, branch],
+            check=True, capture_output=True,
+        )
+        raise KeyboardInterrupt("simulated process death after the remote accepted")
+
+    from jarvis_foundry.v3_git import GitReconcilePending
+
+    with pytest.raises(KeyboardInterrupt):
+        connector.push(
+            action_id="lane3-crashed", worktree=work, remote=str(bare),
+            branch="main", execute=land_then_crash,
+        )
+    assert pushes == 1
+    assert effect_state(database, "v3-git:lane3-crashed")["status"] == "STARTED"
+
+    with pytest.raises(GitReconcilePending):
+        connector.push(
+            action_id="lane3-crashed", worktree=work, remote=str(bare),
+            branch="main",
+        )
+    assert pushes == 1
+    assert effect_state(database, "v3-git:lane3-crashed")["status"] == "FROZEN"
+
+    reconciled = execute_action(
+        database, ctx, _intent("git.push.reconcile"), "git.push.reconcile",
+        {
+            "action_id": "lane3-crashed",
+            "remote": str(bare),
+            "branch": "main",
+            "expected_head": head,
+        },
+    )
+    assert reconciled.success is True
+    assert reconciled.claimed_effect["reconciled"] is True
+    assert reconciled.claimed_effect["remote_head"] == head
+    assert pushes == 1
+
+    replay = connector.push(
+        action_id="lane3-crashed", worktree=work, remote=str(bare), branch="main",
+    )
+    assert replay["outcome"] == "COMPLETED"
+    assert replay["performed"] is False
+    assert replay["reconciled"] is True
+    assert pushes == 1
+
+
 def test_git_branch_action_verifies_against_observed_worktree(tmp_path: Path) -> None:
     database = _db(tmp_path)
     work, _bare, _head = _clone(tmp_path)

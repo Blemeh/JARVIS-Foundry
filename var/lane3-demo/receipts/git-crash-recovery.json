@@ -1,0 +1,110 @@
+{
+  "action_key": "v3-git:lane3-demo-crash-push",
+  "child_exit_code": 9,
+  "child_stdout": "{\"remote_accepted\": true}",
+  "expected_head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+  "reconciled": {
+    "action_kind": "git.push.reconcile",
+    "capability_id": "cap.git.push.reconcile",
+    "claimed": "COMPLETED",
+    "note": "",
+    "observed": {
+      "action_id": "lane3-demo-crash-push",
+      "action_key": "v3-git:lane3-demo-crash-push",
+      "branch": "main",
+      "claimed": "COMPLETED",
+      "expected_head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+      "observed_remote_head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+      "performed": false,
+      "provider_state": {
+        "head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+        "source": "git ls-remote"
+      },
+      "reconciled": true,
+      "remote": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git-crash\\remote.git",
+      "remote_head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+      "replayed": false,
+      "verified_at": "2026-09-16T07:14:53.822776Z"
+    },
+    "receipt": {
+      "action_kind": "git.push.reconcile",
+      "after_state_ref": null,
+      "attempt": 1,
+      "before_state_ref": null,
+      "capability_id": "cap.git.push.reconcile",
+      "capability_version": "1.0.0",
+      "claimed_outcome": "COMPLETED",
+      "contract_version": "jarvis.v10.adapter.v1",
+      "cost": {},
+      "effect_class": "READ_ONLY",
+      "effect_id": "effect:2a2e9e8c77616d24e9d70ca6dae6a414633b89b8c1370ff3af5122e8d645de44",
+      "error": null,
+      "evidence_refs": [
+        "capability:cap.git.push.reconcile",
+        "effect:effect:2a2e9e8c77616d24e9d70ca6dae6a414633b89b8c1370ff3af5122e8d645de44"
+      ],
+      "idempotency_key": "idempotency:af5a3c7990336c90bea6900d8f0625abc0e1ac6ea7d5b9ee60fd4c9dce659d2c",
+      "mission_id": "task.lane3.git-crash",
+      "observed": {
+        "action_id": "lane3-demo-crash-push",
+        "branch": "main",
+        "claimed": "COMPLETED",
+        "expected_head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+        "observed_remote_head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+        "provider_state": {
+          "head": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+          "source": "git ls-remote"
+        },
+        "reconciled": true,
+        "remote": "C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git-crash\\remote.git",
+        "remote_head": "0c4d8f25de088a71350e097bd226fb8a68a70749"
+      },
+      "observed_outcome": "VERIFIED",
+      "postcondition_results": [],
+      "provider_ref": null,
+      "receipt_id": "receipt:effect:2a2e9e8c77616d24e9d70ca6dae6a414633b89b8c1370ff3af5122e8d645de44:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "git.push.reconcile",
+      "workflow_id": "workflow:task.lane3.git-crash",
+      "world_model_refs": []
+    },
+    "success": true,
+    "verified": "MATCH"
+  },
+  "remote_head_after": "0c4d8f25de088a71350e097bd226fb8a68a70749",
+  "replayed_push": {
+    "action_key": "v3-git:lane3-demo-crash-push",
+    "outcome": "COMPLETED",
+    "performed": false,
+    "reconciled": true
+  },
+  "state_after_recovery": {
+    "action_key": "v3-git:lane3-demo-crash-push",
+    "before_state": {
+      "remote_head": "a56ee29dd70ba4ec803e5e1f9a6cd6060c4ae4a9"
+    },
+    "claim_active": false,
+    "claim_expires_at": null,
+    "claimed_at": null,
+    "expected_effects": [
+      "main at 0c4d8f25de08 on C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git-crash\\remote.git"
+    ],
+    "frozen_reason": "interrupted git push requires ls-remote reconciliation",
+    "request_identity": null,
+    "status": "FROZEN"
+  },
+  "state_before_recovery": {
+    "action_key": "v3-git:lane3-demo-crash-push",
+    "before_state": {
+      "remote_head": "a56ee29dd70ba4ec803e5e1f9a6cd6060c4ae4a9"
+    },
+    "claim_active": false,
+    "claim_expires_at": null,
+    "claimed_at": null,
+    "expected_effects": [
+      "main at 0c4d8f25de08 on C:\\temp\\JARVIS\\max-lane-3-v14-effects-20260915\\var\\lane3-demo\\work\\git-crash\\remote.git"
+    ],
+    "request_identity": null,
+    "status": "STARTED"
+  }
+}

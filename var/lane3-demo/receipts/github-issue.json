@@ -37,7 +37,7 @@
       "response_hash": "ac10de2b94e085c13f9e78668d529f9d723e182bdca899683b1e4276524d70ce",
       "status": 201,
       "title": "Lane 3 durable issue",
-      "verified_at": "2026-09-16T06:57:32.079620Z"
+      "verified_at": "2026-09-16T07:14:37.055344Z"
     },
     "receipt": {
       "action_kind": "github.issue.create",
@@ -147,7 +147,7 @@
       "response_hash": "ac10de2b94e085c13f9e78668d529f9d723e182bdca899683b1e4276524d70ce",
       "status": 201,
       "title": "Lane 3 durable issue",
-      "verified_at": "2026-09-16T06:57:32.316896Z"
+      "verified_at": "2026-09-16T07:14:37.267559Z"
     },
     "receipt": {
       "action_kind": "github.issue.create",

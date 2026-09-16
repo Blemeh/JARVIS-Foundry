@@ -422,10 +422,108 @@ def run_crash_scenario() -> dict[str, Any]:
     })
 
 
+# ---------------------------------------------------------------------------
+# 5. Git push crash recovery: child dies after the remote accepted
+# ---------------------------------------------------------------------------
+
+GIT_CRASH_ACTION_ID = "lane3-demo-crash-push"
+
+
+def run_git_crash_child(root: Path) -> int:
+    database = _database(root / "foundry.db")
+    connector = GitConnector(database, owned_root=root / "owned")
+    bare = root / "remote.git"
+    work = root / "owned" / "repo"
+
+    def land_then_die(worktree: Path, remote: str, branch: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(worktree), "push", remote, branch],
+            check=True, capture_output=True,
+        )
+        print(json.dumps({"remote_accepted": True}))
+        sys.stdout.flush()
+        os._exit(9)
+
+    connector.push(
+        action_id=GIT_CRASH_ACTION_ID,
+        worktree=work,
+        remote=str(bare),
+        branch="main",
+        execute=land_then_die,
+    )
+    return 3
+
+
+def run_git_crash_scenario() -> dict[str, Any]:
+    root = WORK_ROOT / "git-crash"
+    _reset(root)
+    bare = root / "remote.git"
+    seed = root / "seed"
+    _init_repo(seed, bare)
+    database = _database(root / "foundry.db")
+    connector = GitConnector(database, owned_root=root / "owned")
+    work = root / "owned" / "repo"
+    work.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "clone", "-q", str(bare), str(work)], check=True)
+    _run_git(work, "config", "user.email", "lane3-demo@local")
+    _run_git(work, "config", "user.name", "Lane 3 Demo")
+    head = connector.create_commit(
+        work, {"crash.txt": "pushed once before process death\n"},
+        "Lane 3 crash-recovery commit",
+    )
+
+    child = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve()), "git-crash-child", str(root)],
+        capture_output=True, text=True, timeout=120,
+    )
+    if child.returncode != 9:
+        raise RuntimeError(
+            f"git crash child did not die as intended: rc={child.returncode} "
+            f"stderr={child.stderr[-500:]}"
+        )
+    action_key = f"v3-git:{GIT_CRASH_ACTION_ID}"
+    before = effect_state(database, action_key)
+    if before.get("status") != "STARTED":
+        raise RuntimeError(f"expected STARTED after crash, found {before.get('status')}")
+
+    ctx = ExecutorContext(
+        database=database,
+        owned_root=root / "owned",
+    )
+    seed_builtins(database)
+    reconciled = execute_action(
+        database, ctx,
+        TaskIntent(task_id="task.lane3.git-crash", required_actions=("git.push.reconcile",)),
+        "git.push.reconcile",
+        {
+            "action_id": GIT_CRASH_ACTION_ID,
+            "remote": str(bare),
+            "branch": "main",
+            "expected_head": head,
+        },
+    )
+    replay = connector.push(
+        action_id=GIT_CRASH_ACTION_ID, worktree=work, remote=str(bare), branch="main",
+    )
+    return _receipt("git-crash-recovery", {
+        "child_exit_code": child.returncode,
+        "child_stdout": child.stdout.strip(),
+        "action_key": action_key,
+        "state_before_recovery": before,
+        "reconciled": _action_receipt(reconciled),
+        "replayed_push": replay,
+        "remote_head_after": connector.read_ref(str(bare), "main"),
+        "expected_head": head,
+        "state_after_recovery": effect_state(database, action_key),
+    })
+
+
 def main(argv: list[str]) -> int:
     command = argv[1] if len(argv) > 1 else "all"
     if command == "crash-child":
         return run_crash_child(Path(argv[2]))
+    if command == "git-crash-child":
+        return run_git_crash_child(Path(argv[2]))
     if command == "git":
         print(json.dumps(run_git_scenario(), indent=2, default=str))
         return 0
@@ -438,12 +536,16 @@ def main(argv: list[str]) -> int:
     if command == "crash":
         print(json.dumps(run_crash_scenario(), indent=2, default=str))
         return 0
+    if command == "git-crash":
+        print(json.dumps(run_git_crash_scenario(), indent=2, default=str))
+        return 0
     if command == "all":
         results = {
             "git": run_git_scenario(),
             "github_issue": run_issue_scenario(),
             "github_pr": run_pr_scenario(),
             "crash_recovery": run_crash_scenario(),
+            "git_crash_recovery": run_git_crash_scenario(),
         }
         print(json.dumps(results, indent=2, default=str))
         return 0

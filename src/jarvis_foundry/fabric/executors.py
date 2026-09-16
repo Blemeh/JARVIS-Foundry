@@ -52,6 +52,7 @@ from ..effects import (
     effect_state,
     execute_fabric_effect,
     finalize_verified_effect,
+    freeze_effect,
 )
 from .general_work import dispatch_general_work
 from .model import ClaimOutcome, FabricError
@@ -449,6 +450,18 @@ def git_push_reconcile(
             "claimed": "BLOCKED", "performed": False,
             "error_code": "effect_not_found", "action_key": action_key,
         }
+    if status == "STARTED":
+        if state.get("claim_active"):
+            return {
+                "claimed": "UNKNOWN", "performed": False,
+                "error_code": "effect_claim_active", "action_key": action_key,
+                "reconciliation_required": True,
+            }
+        freeze_effect(
+            ctx.database, action_key,
+            reason="interrupted git push requires ls-remote reconciliation",
+        )
+        status = FROZEN
     observed = GitConnector.read_ref(remote, branch)
     with ctx.database.connect(readonly=True) as connection:
         reconciled = connection.execute(
