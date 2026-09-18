@@ -27,12 +27,25 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from dataclasses import replace
 from typing import Any, Iterable, Mapping
 
 from ..control.broker import emergency_stop_reason, matching_veto_reason
+from ..control.capabilities import capability_state_recorded, set_capability_state
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict
+from ..fabric.catalog import get_spec, observed_readiness
 from ..mission.contracts import MissionStepContract, record_step_contract
+from ..mission.intent import (
+    ACTIONS as INTENT_ACTIONS,
+    BLOCKED as INTENT_BLOCKED,
+    GAP as INTENT_GAP,
+    WORKFLOW as INTENT_WORKFLOW,
+    MissionIntent,
+    MissionIntentError,
+    MissionResolution,
+    resolve_mission_intent,
+)
 from ..operations.procedure import (
     OperationError,
     OperationStep,
@@ -173,6 +186,228 @@ def _materialization_for_decision(
             mission_id = str(event.payload.get("mission_id") or "")
             return mission_id or None
     return None
+
+
+def _intent_token(value: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char in "-_." else "-" for char in str(value))
+    return cleaned.strip("-.")[:80] or "intent"
+
+
+def _owner_goal_intent(
+    *,
+    mission_id: str,
+    resource_id: str,
+    objective: str,
+    metadata: Mapping[str, Any],
+) -> tuple[MissionIntent | None, str]:
+    block = metadata.get("intent")
+    if not isinstance(block, Mapping):
+        return None, "owner goal carries no normalized intent block"
+    try:
+        intent = MissionIntent.from_mapping(
+            block,
+            intent_id=f"owner-goal:{mission_id}",
+            resource_id=resource_id,
+            objective=objective,
+            source="owner-goal-admission",
+        )
+    except MissionIntentError as error:
+        return None, f"owner goal intent is invalid: {error}"
+    return intent, ""
+
+
+def _bind_resolution_capabilities(
+    database: FoundryDatabase,
+    resource_id: str,
+    capability_ids: Iterable[str],
+    *,
+    source_id: str,
+    resolution: MissionResolution,
+) -> None:
+    """Bind Catalog-proven runtime capabilities onto the mission resource.
+
+    The mission step gate requires the capability to be declared for the
+    resource.  The resolver already proved the Catalog registration; recording
+    the canonical ``capability.state_changed`` binding here is what removes
+    the developer-supplied driver step from the normal path.
+    """
+    for capability_id in capability_ids:
+        spec = get_spec(database, capability_id)
+        if spec is None:
+            continue
+        if capability_state_recorded(database, resource_id, capability_id):
+            # The binding is recorded once per (resource, capability); the
+            # per-mission resolution lineage lives in the contract provenance.
+            continue
+        readiness = observed_readiness(database, capability_id)
+        trust = str(getattr(readiness, "trust_state", "") or "")
+        state = "DISCOVERED" if trust == "DISABLED" else "READY"
+        set_capability_state(
+            database,
+            resource_id,
+            capability_id,
+            state,
+            source_id=source_id,
+            evidence={
+                "source": "mission-intent-resolution",
+                "intent_id": resolution.intent_id,
+                "resolution_kind": resolution.kind,
+                "catalog_state": str(getattr(readiness, "state", "") or ""),
+                "catalog_trust": trust,
+                "catalog_version": spec.version,
+            },
+        )
+
+
+def _action_target(
+    payload: Mapping[str, Any], *, intent_id: str, index: int,
+) -> str:
+    candidate = str(payload.get("target") or "")
+    if candidate and not candidate.startswith("/") and ":" not in candidate.split("/")[0]:
+        parts = [part for part in candidate.replace("\\", "/").split("/") if part not in ("", ".")]
+        if parts and ".." not in parts:
+            return "/".join(parts)
+    return f".jarvis/intents/{_intent_token(intent_id)}/step-{index:02d}"
+
+
+def _materialize_intent_action_plan(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    resource_id: str,
+    objective: str,
+    decision_id: str,
+    item_id: str,
+    kind: str,
+    resolution: MissionResolution,
+    provenance: Mapping[str, Any],
+    source_id: str,
+) -> dict[str, Any]:
+    """Materialize a resolved action plan as ordered immutable contracts."""
+    contracts: list[MissionStepContract] = []
+    for index, action in enumerate(resolution.actions, start=1):
+        action_kind = str(action.get("action_kind") or "").strip()
+        capability_id = str(action.get("capability_id") or f"cap.{action_kind}")
+        payload = dict(action.get("payload") or {})
+        target = _action_target(payload, intent_id=resolution.intent_id, index=index)
+        criteria = tuple(resolution.provenance.get("success_criteria") or ()) if isinstance(
+            resolution.provenance.get("success_criteria"), (list, tuple)) else ()
+        contract = MissionStepContract(
+            mission_id=mission_id,
+            step_id=f"{index:02d}-action",
+            version=1,
+            resource_id=resource_id,
+            capability=capability_id,
+            target_relative_path=target,
+            instructions=json.dumps(payload, ensure_ascii=True, sort_keys=True),
+            expected_effects=(
+                f"{action_kind} executes once inside the registered resource",
+                f"{action_kind} result is independently verified",
+            ),
+            rollback={
+                "method": "revert registered-resource effects of this action step",
+                "reversible": True,
+            },
+            risk_class="C1",
+            verification_criteria=tuple(criteria) or (
+                f"{action_kind} completes and is independently verified",
+            ),
+            expected_artifacts=(),
+            forbidden_paths=(),
+            recorded_by="supervisor",
+            source="owner-goal-intent-resolution",
+            provenance={
+                **dict(provenance),
+                "need": action.get("need"),
+                "action_kind": action_kind,
+            },
+        )
+        record_step_contract(database, contract)
+        contracts.append(contract)
+    _bind_resolution_capabilities(
+        database, resource_id,
+        (contract.capability for contract in contracts),
+        source_id=source_id, resolution=resolution,
+    )
+    database.append(Event.create(
+        "portfolio.selection_materialized",
+        {
+            "decision_id": decision_id,
+            "item_id": item_id,
+            "kind": kind,
+            "mission_id": mission_id,
+            "contract_ids": [contract.contract_id for contract in contracts],
+            "intent_id": resolution.intent_id,
+            "resolution": resolution.as_dict(),
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+    ))
+    return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
+
+
+def _record_unrealizable_intent(
+    database: FoundryDatabase,
+    *,
+    objective_id: str,
+    mission_id: str,
+    missing_capability_ids: tuple[str, ...],
+    next_action: str,
+    source_id: str,
+) -> None:
+    """Fail the attempt honestly and release the mission for the retry path.
+
+    A mission whose intent cannot be realized must not stay stranded in READY:
+    its attempt failed, the required capabilities are recorded on the plan step
+    (so the canonical gap/WAIT/expansion bridge owns them), and the Executive's
+    bounded retry is what resumes the same objective once the capability
+    exists.
+    """
+    from ..events import Event as _Event
+
+    from .autonomy import PlanRecord as _PlanRecord, active_plan
+
+    plan = active_plan(database, objective_id)
+    if plan is not None:
+        updated_steps = []
+        for step in plan.steps:
+            required = tuple(dict.fromkeys(
+                (*step.required_capabilities, *missing_capability_ids)))
+            if step.status == "RUNNING" or step.mission_id == mission_id:
+                updated_steps.append(replace(
+                    step, status="FAILED", mission_id=None,
+                    required_capabilities=required,
+                ))
+            elif required != step.required_capabilities:
+                updated_steps.append(replace(step, required_capabilities=required))
+            else:
+                updated_steps.append(step)
+        if tuple(updated_steps) != plan.steps:
+            updated = _PlanRecord(
+                plan_id=plan.plan_id, objective_id=plan.objective_id,
+                steps=tuple(updated_steps), critical_path=plan.critical_path,
+                status=plan.status, version=plan.version + 1,
+            )
+            database.append(_Event.create(
+                "executive.plan_updated",
+                updated.to_payload(),
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=f"executive.plan_updated:{plan.plan_id}:{updated.version}",
+                correlation_id=objective_id,
+            ))
+    database.append(_Event.create(
+        "mission.state_changed",
+        {
+            "mission_id": mission_id,
+            "state": "BLOCKED",
+            "next_action": next_action,
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"mission.state_changed:{mission_id}:BLOCKED:intent-unrealizable",
+    ))
 
 
 def materialize_portfolio_selection(
@@ -507,6 +742,118 @@ def materialize_portfolio_selection(
             "portfolio_class": kind,
             "goal_id": metadata.get("goal_id"),
         }
+        if not recipe_id and isinstance(metadata.get("intent"), Mapping):
+            # Normal path: the owner goal carries a normalized intent (needs +
+            # supplied inputs).  The runtime resolves the workflow/action plan
+            # itself; no recipe id and no recipe-shaped parameter block is
+            # required from the caller.
+            intent, intent_error = _owner_goal_intent(
+                mission_id=mission_id,
+                resource_id=resource_id,
+                objective=objective,
+                metadata=metadata,
+            )
+            if intent is None:
+                database.append(Event.create(
+                    "portfolio.intent_unresolved",
+                    {
+                        "decision_id": decision_id,
+                        "item_id": item_id,
+                        "mission_id": mission_id,
+                        "reason": intent_error,
+                    },
+                    source_type="supervisor",
+                    source_id=source_id,
+                    idempotency_key=f"portfolio.intent_unresolved:{decision_id}",
+                ))
+                return {"materialized": False, "mission_id": None,
+                        "blocked_reason": intent_error}
+            resolution = resolve_mission_intent(database, intent)
+            provenance = {
+                **provenance,
+                "intent_id": intent.intent_id,
+                "intent_needs": list(intent.needs),
+                "resolution": resolution.as_dict(),
+            }
+            if resolution.kind == INTENT_GAP:
+                _record_unrealizable_intent(
+                    database,
+                    objective_id=str(metadata.get("executive_objective_id") or ""),
+                    mission_id=mission_id,
+                    missing_capability_ids=tuple(
+                        f"cap.{action}" if not str(action).startswith("cap.") else str(action)
+                        for action in (resolution.missing or ())
+                    ),
+                    next_action=(
+                        "resume: " + resolution.reason
+                        + " -- retry once the capability is registered"
+                    ),
+                    source_id=source_id,
+                )
+                database.append(Event.create(
+                    "portfolio.intent_unresolved",
+                    {
+                        "decision_id": decision_id,
+                        "item_id": item_id,
+                        "mission_id": mission_id,
+                        "intent_id": intent.intent_id,
+                        "intent_needs": list(intent.needs),
+                        "gap": dict(resolution.gap or {}),
+                        "reason": resolution.reason,
+                    },
+                    source_type="supervisor",
+                    source_id=source_id,
+                    idempotency_key=f"portfolio.intent_unresolved:{decision_id}",
+                ))
+                return {"materialized": False, "mission_id": None,
+                        "blocked_reason": resolution.reason}
+            if resolution.kind == INTENT_BLOCKED:
+                _record_unrealizable_intent(
+                    database,
+                    objective_id=str(metadata.get("executive_objective_id") or ""),
+                    mission_id=mission_id,
+                    missing_capability_ids=(),
+                    next_action=(
+                        "resume: " + resolution.reason
+                        + " -- retry once the intent supplies those inputs"
+                    ),
+                    source_id=source_id,
+                )
+                database.append(Event.create(
+                    "portfolio.intent_unresolved",
+                    {
+                        "decision_id": decision_id,
+                        "item_id": item_id,
+                        "mission_id": mission_id,
+                        "intent_id": intent.intent_id,
+                        "missing_inputs": list(resolution.missing),
+                        "reason": resolution.reason,
+                    },
+                    source_type="supervisor",
+                    source_id=source_id,
+                    idempotency_key=f"portfolio.intent_unresolved:{decision_id}",
+                ))
+                return {"materialized": False, "mission_id": None,
+                        "blocked_reason": resolution.reason}
+            if resolution.kind == INTENT_ACTIONS:
+                return _materialize_intent_action_plan(
+                    database,
+                    mission_id=mission_id,
+                    resource_id=resource_id,
+                    objective=objective,
+                    decision_id=decision_id,
+                    item_id=item_id,
+                    kind=kind,
+                    resolution=resolution,
+                    provenance=provenance,
+                    source_id=source_id,
+                )
+            recipe_id = str(resolution.recipe_id or "")
+            metadata = {**metadata, "recipe_params": dict(resolution.params)}
+            _bind_resolution_capabilities(
+                database, resource_id, ("cap.workflow.run",),
+                source_id=source_id, resolution=resolution,
+            )
         if recipe_id:
             params = dict(metadata.get("recipe_params") or {})
             artifact = str(

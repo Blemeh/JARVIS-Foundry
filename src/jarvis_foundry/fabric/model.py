@@ -95,6 +95,13 @@ class VerifyVerdict(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+# Evidence marker a verifier session emits only when the canonical JARVIS
+# predicate re-derived the step's verdict itself (see ``fabric/adapter.py``).
+# It is written by the runtime, never taken from model text, so an acceptance
+# gate may treat it as proof of a JARVIS-owned predicate rather than a claim.
+CANONICAL_PREDICATE_EVIDENCE = "verification:canonical-fabric-predicate"
+
+
 _SEMVER = __import__("re").compile(r"^\d+\.\d+\.\d+$")
 _IDENTITY = __import__("re").compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 

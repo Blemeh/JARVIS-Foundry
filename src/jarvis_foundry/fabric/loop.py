@@ -1314,6 +1314,57 @@ def _verify_canonical_artifact(
         }
 
 
+def canonical_predicate_verdict(
+    database: FoundryDatabase,
+    *,
+    action_kind: str,
+    capability_id: str,
+    declared: Mapping[str, Any],
+    claimed: Mapping[str, Any],
+    owned_root: Path,
+    executor_context: ExecutorContext | None = None,
+) -> VerifyVerdict:
+    """Re-derive an action's verdict with the canonical JARVIS predicate.
+
+    Shares the exact predicate the Fabric spine applies to the action itself
+    (a Factory artifact replay when the capability is a canonical adapter,
+    otherwise the action verifier plus declared postconditions), so an
+    independent verifier session re-derives the same truth from reality
+    instead of re-judging a deterministic effect.
+    """
+
+    spec = get_spec(database, capability_id)
+    if spec is not None and spec.kind is Kind.ADAPTER:
+        metadata = metadata_for_spec(spec)
+        if metadata.execute.get("artifact_id"):
+            try:
+                verdict, _ = _verify_canonical_artifact(
+                    spec.executor,
+                    spec.capability_id,
+                    declared,
+                    claimed,
+                    python_executable=(
+                        str(metadata.execute.get("python_executable") or "") or None
+                    ),
+                    owned_root=owned_root,
+                )
+            except Exception:  # noqa: BLE001 - a re-derivation that cannot run
+                return VerifyVerdict.UNKNOWN  # is not a verdict; fail closed.
+            return verdict
+    try:
+        verdict, _ = _verify_with_postconditions(
+            action_kind,
+            claimed,
+            owned_root,
+            declared,
+            executor_context,
+            None,
+        )
+    except Exception:  # noqa: BLE001 - predicates may raise on vanished
+        return VerifyVerdict.UNKNOWN  # subjects; never a verdict, never a crash.
+    return verdict
+
+
 _SPECIALIZED_EFFECT_ACTIONS = frozenset({
     "git.push",
     "browser.web.execute",

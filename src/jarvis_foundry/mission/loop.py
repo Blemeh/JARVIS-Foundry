@@ -36,7 +36,7 @@ from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
 from ..database import FoundryDatabase
 from ..domain import ActionEnvelope
-from ..events import Event
+from ..events import Event, EventConflict
 from ..roles.adapter import RoleAdapter
 from ..roles.dispatcher import RoleDispatcher
 from ..roles.results import (
@@ -342,12 +342,45 @@ class MissionLoop:
         )
 
     @staticmethod
+    def _jarvis_predicate_satisfied(*, verifier: RoleResult) -> str | None:
+        """Name the runtime-owned predicate that certified this step.
+
+        Only the Fabric's canonical verifier sets this marker, and it sets it
+        from the re-derived verdict rather than from model text, so it can
+        stand in for the path-shaped artifact predicate the acceptance rule
+        looks for elsewhere.
+        """
+
+        from ..fabric.model import CANONICAL_PREDICATE_EVIDENCE, VerifyVerdict
+
+        if str(verifier.provider or "") != "fabric":
+            return None
+        evidence = [str(item) for item in (verifier.evidence or ())]
+        if CANONICAL_PREDICATE_EVIDENCE not in evidence:
+            return None
+        if f"verified:{VerifyVerdict.MATCH.value}" not in evidence:
+            return None
+        return CANONICAL_PREDICATE_EVIDENCE
+
+    @staticmethod
     def _pass_requires_jarvis_predicate(
         *,
         target: Path,
         expected_artifacts: tuple[str, ...],
+        jarvis_predicate: str | None = None,
     ) -> str | None:
         """Model PASS is insufficient: JARVIS must see an artifact predicate."""
+        if jarvis_predicate is not None:
+            # The verification was itself a JARVIS-owned predicate re-derived
+            # from the durable receipt (see the Fabric canonical verifier in
+            # fabric/adapter.py).  That is a stronger artifact predicate than
+            # the path checks below, so it satisfies the rule without
+            # weakening it — but only the one marker the runtime writes does.
+            from ..fabric.model import CANONICAL_PREDICATE_EVIDENCE
+
+            if jarvis_predicate != CANONICAL_PREDICATE_EVIDENCE:
+                return f"unknown JARVIS predicate marker: {jarvis_predicate}"
+            return None
         if expected_artifacts:
             missing = []
             root = target if target.is_dir() else target.parent
@@ -2008,31 +2041,59 @@ class MissionLoop:
 
         # Master Goal 2: the verifier is a fresh isolated run and the verdict
         # binding is frozen BEFORE any verifier session starts.
-        capture = capture_binding(
-            self.database,
-            verdict_id=verdict_id,
-            mission_id=mission_id,
-            step_id=step_id,
-            target=target,
-            builder_run_id=run_id,
-            verifier_run_id=verifier_run_id,
-            context_manifest_hash=verifier_manifest.content_hash(),
-            independence={
-                "builder_provider": result.provider,
-                "verifier_provider": verifier_provider,
-                "provider_diverse": result.provider != verifier_provider,
-                "session_independent": True,
-                "provider_independent": result.provider != verifier_provider,
-                "same_provider_limitation": (
-                    "same-provider verification: reduced provider "
-                    "independence; isolation enforced through a fresh "
-                    "verifier session with distinct run identity"
-                    if result.provider == verifier_provider else ""
-                ),
-                "session_isolation": "fresh-session",
-            },
-            criteria=criteria,
-        )
+        try:
+            capture = capture_binding(
+                self.database,
+                verdict_id=verdict_id,
+                mission_id=mission_id,
+                step_id=step_id,
+                target=target,
+                builder_run_id=run_id,
+                verifier_run_id=verifier_run_id,
+                context_manifest_hash=verifier_manifest.content_hash(),
+                independence={
+                    "builder_provider": result.provider,
+                    "verifier_provider": verifier_provider,
+                    "provider_diverse": result.provider != verifier_provider,
+                    "session_independent": True,
+                    "provider_independent": result.provider != verifier_provider,
+                    "same_provider_limitation": (
+                        "same-provider verification: reduced provider "
+                        "independence; isolation enforced through a fresh "
+                        "verifier session with distinct run identity"
+                        if result.provider == verifier_provider else ""
+                    ),
+                    "session_isolation": "fresh-session",
+                },
+                criteria=criteria,
+            )
+        except EventConflict as error:
+            # The verdict identity is derived from the pass contract, not from
+            # the working tree, so a pass that is resumed after the frozen
+            # state drifted cannot re-freeze a different binding under the same
+            # identity.  The ledger refuses it; the loop refuses honestly with
+            # a precise reason and leaves the resume to a fresh attempt instead
+            # of propagating a control-plane exception.
+            reason = (
+                "the frozen verification binding changed while a verification "
+                "pass was open; the ledger refused a second STARTED record for "
+                f"{verdict_id} ({error})"
+            )
+            record_verification_outcome(
+                self.database, verdict_id=verdict_id, outcome="BLOCKED",
+                findings=[reason],
+                evidence={
+                    "builder_run_id": run_id,
+                    "verifier_run_id": verifier_run_id,
+                },
+                reason=reason,
+                blocking_dependency="verification_binding_drift",
+            )
+            self._advance(mission_id, "BLOCKED", run_id=run_id)
+            return StepOutcome(
+                outcome=BLOCKED_OUTCOME, step_id=step_id, run_id=run_id,
+                verdict_id=verdict_id, reason=reason,
+            )
         invoke_fault_hook(self.fault_hook, "post verification.started")
         stopped = self._stop_blocked(mission_id, step_id=step_id,
                                      run_id=run_id)
@@ -2188,8 +2249,10 @@ class MissionLoop:
                                          run_id=run_id)
             if stopped is not None:
                 return stopped
+            jarvis_predicate = self._jarvis_predicate_satisfied(verifier=verifier)
             refused = self._pass_requires_jarvis_predicate(
                 target=target, expected_artifacts=expected_artifacts,
+                jarvis_predicate=jarvis_predicate,
             )
             if refused or result.error_class == "evidence_mismatch":
                 reason = refused or (result.error_detail or "evidence reconciliation disagreed")
@@ -2214,6 +2277,15 @@ class MissionLoop:
                 evidence=build_terminal_evidence(
                     capture=capture,
                     verifier_session_id=getattr(verifier, "session_id", "") or verifier_run_id,
+                    extra=(
+                        {
+                            "jarvis_predicate": jarvis_predicate,
+                            "verifier_answered_by": (
+                                getattr(verifier, "provider", "") or ""
+                            ),
+                        }
+                        if jarvis_predicate is not None else None
+                    ),
                 ),
             )
             # Master Goal 2: the fail-closed acceptance gate re-evaluates the
@@ -2286,7 +2358,18 @@ class MissionLoop:
                 step_id=step_id,
                 builder_run_id=run_id,
                 verifier_run_id=getattr(verifier, "session_id", "") or verifier_run_id,
-                checks=decision.checks,
+                checks={
+                    **decision.checks,
+                    **(
+                        {
+                            "jarvis_predicate": jarvis_predicate,
+                            "verifier_answered_by": (
+                                getattr(verifier, "provider", "") or ""
+                            ),
+                        }
+                        if jarvis_predicate is not None else {}
+                    ),
+                },
             )
             invoke_fault_hook(self.fault_hook, "post verification.accepted")
             invoke_fault_hook(

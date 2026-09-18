@@ -1352,6 +1352,33 @@ def generate_missions_for_objective(
         if blockers:
             _append(database, "executive.mission_generation_blocked", {"objective_id": objective_id, "step_id": step.step_id, "blockers": list(blockers)}, key=f"executive.mission_generation_blocked:{item_id}", source_id=source_id, correlation_id=objective_id)
             continue
+        item_metadata: dict[str, Any] = {
+            "executive_objective_id": objective_id, "executive_plan_id": plan.plan_id,
+            "executive_step_id": step.step_id,
+            "required_capabilities": list(dict.fromkeys((
+                *step.required_capabilities,
+                *(
+                    str(value)
+                    for value in (objective.metadata.get("required_capabilities") or ())
+                    if str(value).strip()
+                ),
+                *((("cap.workflow.run",) if objective.metadata.get("recipe_id")
+                   else ())),
+            ))),
+            "probation_capabilities": list(step.probation_capabilities),
+            "goal_id": objective.provenance.get("directive_id"),
+            "success_criteria": list(objective.success_criteria),
+            "constraints": list(objective.constraints),
+            "time_horizon": objective.deadline,
+            "recipe_id": objective.metadata.get("recipe_id"),
+            "recipe_params": dict(objective.metadata.get("recipe_params") or {}),
+        }
+        intent_block = objective.metadata.get("intent")
+        if isinstance(intent_block, Mapping):
+            # A normalized mission intent travels with the work item so the
+            # materialization boundary can resolve the workflow/action plan
+            # itself instead of requiring a declared recipe id.
+            item_metadata["intent"] = dict(intent_block)
         register_work_item(
             database, item_id=item_id, kind="OWNER_GOAL", objective=step.description,
             controller=controller, goal_ids=(directive_id or objective_id,), project_id=objective.metadata.get("project_id"),
@@ -1361,25 +1388,7 @@ def generate_missions_for_objective(
             dependencies=tuple(f"executive-step:{objective_id}:{dep}" for dep in step.dependencies),
             due_at=objective.deadline, owner_only=False, requires_verifier=True,
             evidence_refs=step.evidence_refs, provenance={**objective.provenance, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id},
-            metadata={"executive_objective_id": objective_id, "executive_plan_id": plan.plan_id,
-                      "executive_step_id": step.step_id,
-                      "required_capabilities": list(dict.fromkeys((
-                          *step.required_capabilities,
-                          *(
-                              str(value)
-                              for value in (objective.metadata.get("required_capabilities") or ())
-                              if str(value).strip()
-                          ),
-                          *(("cap.workflow.run",) if objective.metadata.get("recipe_id") else ()),
-                      ))),
-                      "probation_capabilities": list(step.probation_capabilities),
-                      "goal_id": objective.provenance.get("directive_id"),
-                      "success_criteria": list(objective.success_criteria),
-                      "constraints": list(objective.constraints),
-                      "time_horizon": objective.deadline,
-                      "recipe_id": objective.metadata.get("recipe_id"),
-                      "recipe_params": dict(objective.metadata.get("recipe_params") or {}),
-                      },
+            metadata=item_metadata,
             source_type="supervisor", source_id=source_id,
         )
         request = {"request_id": item_id, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id, "item_id": item_id, "status": "REQUESTED"}
@@ -2276,6 +2285,13 @@ def run_autonomy_cycle(
         reconcile_ready_gaps,
     )
     reconcile_ready_gaps(database)
+    # Registration declares a resource's initial capability readiness; the
+    # durable capability plane treats a missing record as UNKNOWN/not-ready,
+    # so project the declared state once here.  Later control-plane
+    # transitions own the state and are never overwritten.
+    from ..control.registration import sync_registered_resource_capabilities
+
+    sync_registered_resource_capabilities(database, source_id="v8-executive-autonomy")
     reconcile_terminal_mission_outcomes(database, controller=controller)
     operational_proposals = tuple(propose_operational_followups(
         database,

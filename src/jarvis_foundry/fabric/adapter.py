@@ -8,6 +8,7 @@ and returns a structured RoleResult. It is not a second mission loop.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
@@ -17,7 +18,7 @@ from ..effects import FAILED as EFFECT_FAILED
 from ..effects import FROZEN, effect_state, finalize_verified_effect
 from ..connectors.github_write import github_write_dispatch_settings
 from ..connectors.web_research import browser_execution_authorization_from_environment
-from ..events import Event
+from ..events import Event, payload_hash
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
 from ..roles.results import (
@@ -39,9 +40,14 @@ from .general_work import (
     RECONCILABLE_ACTIONS,
     inspect_general_work_reconciliation,
 )
-from .loop import seed_builtins, select_capability
-from .model import FabricError, TaskIntent
-from .spine import execute_for_spine
+from .loop import canonical_predicate_verdict, seed_builtins, select_capability
+from .model import (
+    CANONICAL_PREDICATE_EVIDENCE,
+    FabricError,
+    TaskIntent,
+    VerifyVerdict,
+)
+from .spine import SPINE_RESULT, execute_for_spine
 
 V5_TO_FABRIC = {
     "write_registered_worktree_files": "file.write",
@@ -170,6 +176,249 @@ def resolve_general_work_dispatch(
     return action, resolved_capability, instructions
 
 
+_SPINE_SUBJECT_KEYS = ("path", "target", "source_ref", "worktree")
+
+
+def pending_spine_receipt(
+    database,
+    *,
+    mission_id: str,
+    step_id: str,
+    action_kind: str,
+) -> dict[str, Any] | None:
+    """Newest recorded ``fabric.spine.result`` receipt for one mission step.
+
+    The receipt is the durable record of what the builder's action produced.
+    Only its recorded observation is read: its own ``verified``/``success``
+    fields are never treated as proof, because the verifier re-derives the
+    verdict from reality itself.
+    """
+
+    latest: dict[str, Any] | None = None
+    for event in database.events(event_types=(SPINE_RESULT,)):
+        payload = event.payload
+        if not isinstance(payload, Mapping):
+            continue
+        if str(payload.get("mission_id") or "") != mission_id:
+            continue
+        if str(payload.get("step_id") or "") != step_id:
+            continue
+        if str(payload.get("action_kind") or "") != action_kind:
+            continue
+        latest = dict(payload)
+    return latest
+
+
+def _same_subject(declared: Any, observed: Any) -> bool:
+    """True when a recorded subject ref still names the declared subject."""
+
+    left = str(declared or "").strip()
+    right = str(observed or "").strip()
+    if not left or not right:
+        return True
+    if left == right:
+        return True
+    try:
+        return os.path.normcase(str(Path(left).expanduser())) == os.path.normcase(
+            str(Path(right).expanduser())
+        )
+    except (OSError, ValueError):
+        return False
+
+
+def _subject_diverges(
+    declared: Mapping[str, Any],
+    claimed: Mapping[str, Any],
+) -> bool:
+    """True when the observation does not name the contract's own subject.
+
+    Certifying an effect for a subject other than the one the contract
+    declared is never allowed, so a declared subject the observation does not
+    name — or names blank — is a divergence, not a missing comparison.  A
+    contract that declares no subject ref has nothing to compare here; the
+    predicate still re-derives from reality.
+    """
+
+    for key in _SPINE_SUBJECT_KEYS:
+        declared_ref = str(declared.get(key) or "").strip()
+        if not declared_ref:
+            continue
+        claimed_ref = str(claimed.get(key) or "").strip()
+        if not claimed_ref or not _same_subject(declared_ref, claimed_ref):
+            return True
+    return False
+
+
+def _receipt_is_decisive(receipt: Mapping[str, Any]) -> bool:
+    """True when the spine's own predicate decided this claim.
+
+    The re-derivation is deterministic for a given claim, so a recorded
+    undecided verdict means the re-run can only be undecided too.  Skipping it
+    keeps an action the Fabric cannot decide on the judgment path at no cost,
+    while every decidable action is still re-derived from reality now.
+    """
+
+    return str(receipt.get("verified") or "") in {
+        VerifyVerdict.MATCH.value,
+        VerifyVerdict.MISMATCH.value,
+    }
+
+
+def resolve_verification_subject(
+    database,
+    *,
+    mission_id: str,
+    step_id: str | None,
+) -> tuple[str, str, Any] | None:
+    """Resolve a mission step's contract capability to a Fabric action."""
+
+    from ..mission.contracts import latest_contract
+
+    contract = latest_contract(
+        database, mission_id, step_id=step_id, allow_invalid=False,
+    )
+    if contract is None:
+        return None
+    action_kind = resolve_fabric_action(contract.capability, database)
+    if action_kind is None:
+        return None
+    return action_kind, str(contract.capability), contract
+
+
+def canonical_verifier_dispatch(
+    database,
+    manifest: ContextManifest,
+    *,
+    owned_root: Path,
+    mcp_backend=None,
+    mcp_mutation_verifier=None,
+    operator_executable_allowlist: tuple[str | Path, ...] = (),
+    browser_execution_authorization=None,
+) -> RoleResult | None:
+    """Certify a mission step with the runtime's own predicate.
+
+    A verifier session for a step whose contract capability resolves to a
+    Fabric action kind is answered by re-running the canonical JARVIS
+    predicate over the step's recorded receipt.  A deterministic local effect
+    is never certified by a model's opinion of it: models are asked only for
+    what JARVIS cannot re-derive.
+
+    Declines (``None``) when the step has no recorded receipt, when the
+    predicate is undecided (UNKNOWN), or when the recorded subject diverges
+    from the declared intent — the judgment path is then untouched.
+    """
+
+    resolved = resolve_verification_subject(
+        database, mission_id=manifest.mission_id, step_id=manifest.step_id,
+    )
+    if resolved is None:
+        return None
+    action_kind, capability_id, contract = resolved
+    receipt = pending_spine_receipt(
+        database,
+        mission_id=manifest.mission_id,
+        step_id=str(manifest.step_id or "step"),
+        action_kind=action_kind,
+    )
+    if receipt is None:
+        return None
+    if not _receipt_is_decisive(receipt):
+        # The spine's own predicate could not decide this claim, so a
+        # re-derivation cannot decide it either: leave it to the judgment path
+        # rather than spending a predicate run to reach the same undecided end.
+        return None
+    observed = receipt.get("observed")
+    if not isinstance(observed, Mapping) or not observed:
+        return None
+    claimed = dict(observed)
+    declared = _json_object(str(contract.instructions or "")) or {}
+    if _subject_diverges(declared, claimed):
+        return None
+    verdict = canonical_predicate_verdict(
+        database,
+        action_kind=action_kind,
+        capability_id=capability_id,
+        declared=declared,
+        claimed=claimed,
+        owned_root=owned_root,
+        executor_context=ExecutorContext(
+            database=database,
+            owned_root=owned_root,
+            mcp_backend=mcp_backend,
+            mcp_mutation_verifier=mcp_mutation_verifier,
+            browser_execution_authorization=browser_execution_authorization,
+            operator_executable_allowlist=tuple(operator_executable_allowlist),
+        ),
+    )
+    if verdict not in {VerifyVerdict.MATCH, VerifyVerdict.MISMATCH}:
+        return None
+    matches = verdict is VerifyVerdict.MATCH
+    subject_ref = next(
+        (str(claimed[key]) for key in _SPINE_SUBJECT_KEYS if claimed.get(key)),
+        "",
+    )
+    observation = {
+        "mission_id": manifest.mission_id,
+        "step_id": manifest.step_id,
+        "run_id": manifest.run_id,
+        "action_kind": action_kind,
+        "capability_id": capability_id,
+        "predicate": "canonical-fabric-predicate",
+        "reverified": verdict.value,
+        "receipt_id": receipt.get("receipt_id"),
+        "effect_id": receipt.get("effect_id"),
+        "subject_ref": subject_ref,
+        "declared": dict(declared),
+    }
+    database.append(Event.create(
+        "fabric.canonical_verification_observed",
+        observation,
+        source_type="verifier",
+        source_id="fabric-canonical-verifier",
+        correlation_id=manifest.mission_id,
+        # The key covers the whole observation: re-delivering the same
+        # re-derivation dedupes, while a verifier session that re-derives
+        # against a NEW receipt records a new observation instead of raising
+        # EventConflict on an identity the ledger already holds.
+        idempotency_key=(
+            "fabric.canonical_verification_observed:"
+            f"{manifest.run_id}:{verdict.value}:{payload_hash(observation)}"
+        ),
+    ))
+    evidence = [
+        f"fabric:{action_kind}",
+        CANONICAL_PREDICATE_EVIDENCE,
+        f"predicate:{action_kind}",
+        f"verified:{verdict.value}",
+        f"capability:{capability_id}",
+    ]
+    if receipt.get("receipt_id"):
+        evidence.append(f"receipt:{receipt['receipt_id']}")
+    if receipt.get("effect_id"):
+        evidence.append(f"effect:{receipt['effect_id']}")
+    if subject_ref:
+        evidence.append(f"subject:{subject_ref}")
+    return RoleResult(
+        run_id=manifest.run_id,
+        role=manifest.role,
+        status=COMPLETED,
+        provider="fabric",
+        model="local",
+        verdict=VERDICT_PASS if matches else VERDICT_FAIL,
+        evidence=tuple(evidence),
+        error_class=None if matches else "canonical_predicate_mismatch",
+        error_detail=(
+            None
+            if matches
+            else (
+                f"the recorded {action_kind} observation does not match reality "
+                f"({verdict.value})"
+            )
+        ),
+        identity_transition_authorized=True,
+    )
+
+
 def _json_object(text: str) -> dict[str, Any] | None:
     """Return a structured envelope, but only one that ends the text.
 
@@ -270,6 +519,7 @@ def try_fabric_dispatch(
     mcp_mutation_verifier=None,
     operator_executable_allowlist: tuple[str | Path, ...] = (),
     browser_execution_authorization=None,
+    browser_reauth_provider=None,
 ) -> RoleResult | None:
     """Run a mapped fabric action or return None so the inner adapter can."""
     dispatch_manifest = manifest
@@ -298,6 +548,20 @@ def try_fabric_dispatch(
         and action in {*GENERAL_WORK_ACTIONS, "workflow.run"}
     )
     if not role_allowed:
+        if manifest.role == "verifier":
+            # A deterministic local effect is certified by the runtime's own
+            # predicate, not by a model's opinion of it.  This declines when
+            # the Fabric cannot re-derive the step, leaving the judgment path
+            # untouched.
+            return canonical_verifier_dispatch(
+                database,
+                manifest,
+                owned_root=owned_root,
+                mcp_backend=mcp_backend,
+                mcp_mutation_verifier=mcp_mutation_verifier,
+                operator_executable_allowlist=operator_executable_allowlist,
+                browser_execution_authorization=browser_execution_authorization,
+            )
         return None
     mcp_fabric_only = _is_mcp_fabric_only(manifest.capability, action)
     if action is None:
@@ -581,6 +845,7 @@ def try_fabric_dispatch(
             mcp_backend=mcp_backend,
             mcp_mutation_verifier=mcp_mutation_verifier,
             browser_execution_authorization=grant,
+            browser_reauth_provider=browser_reauth_provider,
             operator_executable_allowlist=tuple(operator_executable_allowlist),
             **github_write_dispatch_settings().executor_kwargs(),
         )
@@ -674,6 +939,7 @@ class FabricRoleAdapter:
         mcp_mutation_verifier=None,
         operator_executable_allowlist: tuple[str | Path, ...] = (),
         browser_execution_authorization=None,
+        browser_reauth_provider=None,
     ) -> None:
         self.database = database
         self.owned_root = Path(owned_root).expanduser().resolve()
@@ -683,6 +949,10 @@ class FabricRoleAdapter:
         self.mcp_mutation_verifier = mcp_mutation_verifier
         self.operator_executable_allowlist = tuple(operator_executable_allowlist)
         self.browser_execution_authorization = browser_execution_authorization
+        # Canonical browser-session recovery seam: a mission action that meets
+        # an expired/absent session must be able to run the owner-configured
+        # reauthentication procedure instead of failing unrecoverably.
+        self.browser_reauth_provider = browser_reauth_provider
 
     def dispatch(self, manifest: ContextManifest, *, heartbeat) -> RoleResult:
         root = owned_root_for_manifest(
@@ -703,6 +973,7 @@ class FabricRoleAdapter:
             mcp_mutation_verifier=self.mcp_mutation_verifier,
             operator_executable_allowlist=self.operator_executable_allowlist,
             browser_execution_authorization=self.browser_execution_authorization,
+            browser_reauth_provider=self.browser_reauth_provider,
         )
         if result is None:
             return self.inner.dispatch(manifest, heartbeat=heartbeat)

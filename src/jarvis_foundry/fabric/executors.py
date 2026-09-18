@@ -1112,6 +1112,7 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
                             "session": status.to_evidence(),
                             "authority": "DATA_ONLY",
                         }
+                    was_authenticated = bool(status.authenticated)
                     status = session.ensure_authenticated()
                     if not status.authenticated:
                         return {
@@ -1121,6 +1122,13 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
                             "session": status.to_evidence(),
                             "authority": "DATA_ONLY",
                         }
+                    if not was_authenticated:
+                        # Repair: the first navigation ran against the expired
+                        # session and only reached the login page.  Re-read the
+                        # requested target on the recovered session so the
+                        # receipt and the document describe the same page
+                        # instead of reporting the pre-recovery redirect.
+                        capture = session.navigate(url)
                 return _browser_attempt_payload(
                     capture.attempt, page=capture.page, session=session,
                 ) | {

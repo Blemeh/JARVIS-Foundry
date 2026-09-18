@@ -14,10 +14,34 @@ from ..domain import CapabilityState
 from ..events import Event
 
 _VALID_STATES = frozenset(state.value for state in CapabilityState)
+# States a resource registration may declare as initial readiness.  A missing
+# durable record is UNKNOWN/not-ready, so the runtime projects the declared
+# state exactly once; later control-plane transitions own it from then on.
+DECLARED_STATES = frozenset({
+    CapabilityState.DISCOVERED.value,
+    CapabilityState.PROBING.value,
+    CapabilityState.READY.value,
+})
 
 
 class InvalidCapabilityState(ValueError):
     pass
+
+
+def capability_state_recorded(
+    database: FoundryDatabase,
+    resource_id: str,
+    capability: str,
+) -> bool:
+    """True when a durable capability state exists for the resource pair."""
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT 1 FROM events WHERE event_type = 'capability.state_changed' "
+            "AND json_extract(payload_json, '$.resource_id') = ? "
+            "AND json_extract(payload_json, '$.capability') = ? LIMIT 1",
+            (str(resource_id), str(capability)),
+        ).fetchone()
+    return row is not None
 
 
 def set_capability_state(

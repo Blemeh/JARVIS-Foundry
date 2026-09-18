@@ -12,6 +12,61 @@ class RegistrationError(RuntimeError):
     pass
 
 
+def sync_registered_resource_capabilities(
+    database: Any,
+    *,
+    source_id: str = "capability-plane-sync",
+) -> int:
+    """Project each registered resource's DECLARED capability readiness once.
+
+    Registration declares initial readiness (a clean worktree is READY for
+    ``write_registered_worktree_files``).  The durable capability plane is the
+    execution authority and treats a missing record as UNKNOWN/not-ready, so
+    without this pass a freshly registered resource could never become
+    eligible.  Only the first record per (resource, capability) is written:
+    later control-plane transitions own the state and are never overwritten by
+    re-projection.
+    """
+    import json
+
+    from .capabilities import (
+        DECLARED_STATES,
+        capability_state_recorded,
+        set_capability_state,
+    )
+
+    with database.connect(readonly=True) as connection:
+        rows = connection.execute(
+            "SELECT resource_id, capabilities_json FROM resources ORDER BY resource_id"
+        ).fetchall()
+    written = 0
+    for row in rows:
+        resource_id = str(row["resource_id"])
+        try:
+            capabilities = json.loads(str(row["capabilities_json"]))
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(capabilities, dict):
+            continue
+        for capability, state in sorted(capabilities.items()):
+            declared = str(state or "")
+            if declared not in DECLARED_STATES:
+                continue
+            if capability_state_recorded(database, resource_id, str(capability)):
+                continue
+            set_capability_state(
+                database, resource_id, str(capability), declared,
+                source_id=source_id,
+                evidence={
+                    "source": "resource-registration",
+                    "declared_state": declared,
+                    "projected_by": "control.registration.sync_registered_resource_capabilities",
+                },
+            )
+            written += 1
+    return written
+
+
 def _git(root: Path, *args: str) -> str:
     from ..platform.windows_subprocess import headless_run_kwargs
 

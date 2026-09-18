@@ -14,6 +14,9 @@ from ..model import FabricError, WorkflowStep
 _SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 _IDENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 _RECIPE_ID = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
+# Normalized need vocabulary: lowercase namespaced intent requirements
+# ("web.authenticated_interaction") that a recipe declares it can satisfy.
+_NEED = re.compile(r"^[a-z][a-z0-9_.-]*$")
 
 
 def _recipe_identity(value: object, field_name: str) -> str:
@@ -32,6 +35,7 @@ class RecipeParameter:
     default: Any = None
     has_default: bool = False
     description: str = ""
+    bind: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -41,6 +45,8 @@ class RecipeParameter:
         }
         if self.has_default:
             payload["default"] = self.default
+        if self.bind:
+            payload["bind"] = self.bind
         return payload
 
 
@@ -54,6 +60,7 @@ class Recipe:
     steps: tuple[WorkflowStep, ...] = ()
     outputs: Mapping[str, str] = field(default_factory=dict)
     tags: tuple[str, ...] = ()
+    needs: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         cleaned_id = str(self.recipe_id or "").strip()
@@ -83,6 +90,13 @@ class Recipe:
             if not isinstance(ref, str) or not ref.startswith("$"):
                 raise FabricError(f"recipe output {key!r} must be a $step.field reference")
         object.__setattr__(self, "tags", tuple(str(tag) for tag in self.tags))
+        cleaned_needs: list[str] = []
+        for item in self.needs:
+            need = str(item or "").strip()
+            if not _NEED.fullmatch(need):
+                raise FabricError(f"need must be a normalized lowercase identity, got {item!r}")
+            cleaned_needs.append(need)
+        object.__setattr__(self, "needs", tuple(cleaned_needs))
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -104,6 +118,7 @@ class Recipe:
             ],
             "outputs": dict(self.outputs),
             "tags": list(self.tags),
+            "needs": list(self.needs),
         }
 
 
@@ -117,6 +132,7 @@ def parameter_from_mapping(name: str, value: Mapping[str, Any] | Any) -> RecipeP
         default=value.get("default"),
         has_default=has_default,
         description=str(value.get("description") or ""),
+        bind=str(value.get("bind") or ""),
     )
 
 
@@ -147,4 +163,5 @@ def recipe_from_mapping(payload: Mapping[str, Any]) -> Recipe:
         steps=tuple(steps),
         outputs=dict(payload.get("outputs") or {}),
         tags=tuple(payload.get("tags") or ()),
+        needs=tuple(payload.get("needs") or ()),
     )
