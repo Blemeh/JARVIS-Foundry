@@ -47,6 +47,9 @@ _SKIP_DIRS = frozenset({
     ".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache",
     ".mypy_cache", ".ruff_cache", "dist", "build",
 })
+_SOURCE_DIR_PRIORITY = frozenset({
+    "src", "source", "lib", "packages", "backend", "frontend", "services",
+})
 _DEPENDENCY_FILES = frozenset({
     "Cargo.lock", "Cargo.toml", "Gemfile", "Gemfile.lock", "go.mod", "go.sum",
     "package-lock.json", "package.json", "pnpm-lock.yaml", "poetry.lock",
@@ -934,7 +937,13 @@ def read_project_source(
         directory, depth = queue.popleft()
         dirs_seen += 1
         try:
-            entries = sorted(os.scandir(directory), key=lambda item: item.name.lower())
+            entries = sorted(
+                os.scandir(directory),
+                key=lambda item: (
+                    0 if item.name.lower() in _SOURCE_DIR_PRIORITY else 1,
+                    item.name.lower(),
+                ),
+            )
         except OSError:
             continue
         for entry in entries:

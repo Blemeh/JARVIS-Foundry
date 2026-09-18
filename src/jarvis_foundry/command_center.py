@@ -1209,6 +1209,7 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
                 "deferred": payload.get("deferred") or [],
                 "selected_score": _json_value(payload.get("selected_score")),
                 "wait": _json_value(payload.get("wait")),
+                "decision_truth": _json_value(payload.get("decision_truth")),
                 "calibration_version": payload.get("calibration_version"),
                 "event_id": event.event_id,
                 "occurred_at": event.occurred_at,
@@ -1232,6 +1233,38 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
         key = str(latest.get("decision_id") or "")
         latest["prediction"] = predictions.get(key)
         latest["calibration"] = calibration_by_decision.get(key)
+        truth = latest.get("decision_truth") if isinstance(latest.get("decision_truth"), dict) else {}
+        wait = latest.get("wait") if isinstance(latest.get("wait"), dict) else {}
+        learned = {}
+        cal = latest.get("calibration")
+        if isinstance(cal, dict):
+            learned = {
+                "outcome": cal.get("outcome"),
+                "mission_id": cal.get("mission_id"),
+                "actual": cal.get("actual"),
+            }
+        latest["why_chosen"] = truth.get("why_chosen") or latest.get("reason")
+        latest["alternatives_rejected"] = (
+            truth.get("alternatives_rejected") or latest.get("rejected") or []
+        )
+        latest["learned"] = truth.get("learned") or learned
+        latest["next_action"] = truth.get("next_action") or (
+            f"WAIT until {wait.get('reconsider_condition')}" if wait else
+            ("execute selected candidate" if latest.get("decision") == "SELECT" else "WAIT")
+        )
+        latest["wait_reason"] = truth.get("wait_reason") or wait.get("reason")
+        latest["wait_diagnosis"] = (
+            truth.get("wait_diagnosis")
+            or latest.get("wait_diagnosis")
+            or ({"classification": "JUSTIFIED_WAIT", "reason": latest.get("wait_reason")}
+                if latest.get("decision") == "WAIT" else
+                {"classification": "ACTION", "reason": latest.get("reason")}
+                if latest.get("decision") == "SELECT" else None)
+        )
+        latest["owner_attention_required"] = bool(
+            truth.get("owner_attention_required")
+            or (str(wait.get("wait_kind") or "").endswith("OWNER"))
+        )
     return {
         "activation_epoch": activation_epoch,
         "admission_authority": admission_authority,

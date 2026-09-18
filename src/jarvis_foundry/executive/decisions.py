@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
-from ..events import Event
+from ..events import Event, EventConflict
 from .calibration import CalibrationState, rebuild_calibration
 from .eligibility import (
     WAIT_COMPARATIVE,
@@ -67,6 +67,76 @@ class ExecutiveDecision:
     eligibility: dict[str, Any] = field(default_factory=dict)
     calibration_version: str = ""
     owner_controls: dict[str, Any] = field(default_factory=dict)
+
+
+def diagnose_wait_or_stall(
+    decision: ExecutiveDecision,
+    *,
+    rejected: tuple[dict[str, Any], ...] | list[dict[str, Any]] = (),
+) -> dict[str, Any]:
+    """Distinguish justified WAIT from a stall where useful work exists."""
+    items = list(rejected or decision.rejected)
+    if decision.kind == "SELECT":
+        return {
+            "classification": "ACTION",
+            "reason": decision.reason,
+        }
+    strong_rejected = [
+        item for item in items
+        if isinstance(item, dict)
+        and str(item.get("reason_code") or "") not in {
+            "LOW_VALUE", "LOW_OWNER_RELEVANCE", "DUPLICATE", "ALREADY_DONE",
+            "PREVIOUSLY_REJECTED", "SUPERSEDED", "STALE", "INSUFFICIENT_EVIDENCE",
+        }
+        and float(item.get("composite") or 0.0) >= 0.45
+    ]
+    if decision.kind == "WAIT" and strong_rejected:
+        return {
+            "classification": "STALL",
+            "reason": "useful executable work existed but selection returned WAIT",
+            "evidence": list(strong_rejected)[:5],
+        }
+    wait = decision.wait
+    return {
+        "classification": "JUSTIFIED_WAIT",
+        "reason": (wait.reason if wait is not None else decision.reason),
+        "reconsider_condition": (wait.reconsider_condition if wait is not None else ""),
+    }
+
+
+def decision_truth_payload(decision: ExecutiveDecision) -> dict[str, Any]:
+    """Durable Command Center facts for one Executive decision."""
+    wait = decision.wait
+    rejected = [
+        dict(item) if isinstance(item, dict) else {"reason": str(item)}
+        for item in decision.rejected
+    ]
+    next_action = "WAIT"
+    wait_reason = ""
+    owner_attention = False
+    if decision.kind == "SELECT":
+        next_action = f"admit and execute candidate {decision.candidate_id}"
+    elif wait is not None:
+        next_action = f"WAIT until {wait.reconsider_condition}"
+        wait_reason = wait.reason
+        owner_attention = (
+            "owner" in wait.reason.lower()
+            or "veto" in wait.reason.lower()
+            or "STOP" in wait.reason
+        )
+    diagnosis = diagnose_wait_or_stall(decision, rejected=tuple(rejected))
+    return {
+        "why_chosen": str(decision.reason or ""),
+        "alternatives_rejected": rejected,
+        "learned": {},
+        "next_action": next_action,
+        "wait_reason": wait_reason,
+        "wait_diagnosis": diagnosis,
+        "owner_attention_required": owner_attention,
+        "decision": decision.kind,
+        "candidate_id": decision.candidate_id,
+        "active_goals": list(decision.active_goals),
+    }
 
 
 class ExecutiveDecisionService:
@@ -696,6 +766,9 @@ class ExecutiveDecisionService:
                 "best_score": decision.wait.best_score,
                 "comparative_rationale": decision.wait.comparative_rationale,
             }
+        payload["decision_truth"] = decision_truth_payload(decision)
+        diagnosis = dict(payload["decision_truth"].get("wait_diagnosis") or {})
+        payload["wait_diagnosis"] = diagnosis
         self.database.append(Event.create(
             "executive.decision_recorded",
             payload,
@@ -703,6 +776,16 @@ class ExecutiveDecisionService:
             source_id=self.source_id,
             idempotency_key=f"executive.decision_recorded:{decision.decision_id}",
         ))
+        try:
+            self.database.append(Event.create(
+                "executive.wait_diagnosis_recorded",
+                {"decision_id": decision.decision_id, **diagnosis},
+                source_type="supervisor",
+                source_id=self.source_id,
+                idempotency_key=f"executive.wait_diagnosis_recorded:{decision.decision_id}",
+            ))
+        except EventConflict:
+            pass
         return decision
 
 
@@ -821,6 +904,13 @@ def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
     ):
         return "REJECTED", "LOW_OWNER_RELEVANCE", "no evidence-backed owner goal or active-project relevance"
     confidence = _score_factor(score, "confidence")
+    research = meta.get("research") or {}
+    if research.get("contradicting") and not research.get("supporting"):
+        return (
+            "REJECTED",
+            "INSUFFICIENT_EVIDENCE",
+            "research findings contradict the candidate premise",
+        )
     if confidence is None:
         return "REJECTED", "INSUFFICIENT_EVIDENCE", "candidate confidence is unknown"
     if confidence < 0.20:

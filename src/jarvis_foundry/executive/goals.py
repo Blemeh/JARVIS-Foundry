@@ -114,14 +114,36 @@ def active_goals(database: FoundryDatabase) -> list[StructuredGoal]:
     return goals
 
 
-def goal_alignment_score(goal: StructuredGoal, objective: str) -> float:
-    """Deterministic lexical alignment between a goal and candidate objective."""
+def goal_alignment_score(
+    goal: StructuredGoal,
+    objective: str,
+    *,
+    candidate_type: str = "",
+    target_project: str = "",
+) -> float:
+    """Alignment between a standing goal and a candidate objective.
+
+    Discovery mandates ("keep improving my projects") align with real
+    project-improvement work even when the texts do not share tokens.
+    Executable recipes keep lexical overlap.
+    """
+    from .standing_intent import standing_goal_alignment
+
     goal_tokens = set(goal.canonical_objective.split())
     obj_tokens = set(canonicalize_statement(objective).split())
-    if not goal_tokens or not obj_tokens:
-        return 0.0
-    overlap = len(goal_tokens & obj_tokens)
-    return min(1.0, overlap / max(3.0, len(goal_tokens) * 0.5))
+    lexical = 0.0
+    if goal_tokens and obj_tokens:
+        overlap = len(goal_tokens & obj_tokens)
+        lexical = min(1.0, overlap / max(3.0, len(goal_tokens) * 0.5))
+    mandate = standing_goal_alignment(
+        goal.objective,
+        objective,
+        candidate_type=candidate_type,
+        target_project=target_project,
+    )
+    if mandate is None:
+        return lexical
+    return max(lexical, mandate)
 
 
 def _priority_value(text: str) -> float:

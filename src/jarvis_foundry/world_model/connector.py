@@ -227,21 +227,42 @@ def reconcile_outcome_learning(
             "memory": None,
         }
 
-    from jarvis_foundry.executive.calibration import record_calibration
+    from jarvis_foundry.executive.calibration import (
+        merge_predicted_vs_actual,
+        record_calibration,
+        record_outcome_measurement,
+    )
 
     outcome_id = str(final.get("outcome_id") or "")
+    decision_id = str(final.get("decision_id") or f"post-{mission_id}")
+    candidate_id = str(final.get("candidate_id") or "")
+    actual = merge_predicted_vs_actual(
+        db,
+        dict(final.get("actual_observed") or {}),
+        decision_id=str(final.get("decision_id") or ""),
+        candidate_id=candidate_id,
+    )
     calibration = record_calibration(
         db,
-        decision_id=str(final.get("decision_id") or f"post-{mission_id}"),
-        candidate_id=str(final.get("candidate_id") or ""),
+        decision_id=decision_id,
+        candidate_id=candidate_id,
         mission_id=mission_id,
         source=str((final.get("provenance") or {}).get("source") or "mission"),
         objective=str(final.get("attempted") or mission_id),
         outcome=str(final.get("status") or "UNKNOWN"),
         repair_count=len(final.get("repair_attempts") or []),
-        actual=dict(final.get("actual_observed") or {}),
+        actual=actual,
         source_id=source_id,
         terminal_event_id=outcome_id,
+    )
+    record_outcome_measurement(
+        db,
+        decision_id=decision_id,
+        candidate_id=candidate_id,
+        mission_id=mission_id,
+        actual=actual,
+        outcome=str(final.get("status") or "UNKNOWN"),
+        source_id=source_id,
     )
     world = writeback_mission_outcome(
         db,

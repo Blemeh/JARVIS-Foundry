@@ -916,10 +916,23 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
         oid = f"owner-goal:{record.directive_id}"
         if oid in state.objectives:
             continue
+        from .standing_intent import is_discovery_mandate, standing_intent_payload
+        goal_text = str(record.exact_text or "owner goal")
+        if is_discovery_mandate(goal_text):
+            _append(
+                database,
+                "executive.standing_intent_recorded",
+                standing_intent_payload(
+                    goal_text, directive_id=str(record.directive_id),
+                ),
+                key=f"executive.standing_intent_recorded:{record.directive_id}",
+                source_id="v8-owner-goal-admission",
+            )
+            continue
         metadata = _parse_goal_metadata(record)
         created.append(create_objective(
             database,
-            str(record.exact_text or "owner goal"),
+            goal_text,
             objective_id=oid,
             controller=controller,
             priority=metadata["priority"], urgency=metadata["urgency"], deadline=metadata["deadline"],

@@ -10,7 +10,14 @@ from .decisions import (
     ExecutiveDecisionService,
     ExecutiveWait,
 )
-from .goals import StructuredGoal, active_goals
+from .intelligence import (
+    IntelligenceCycle,
+    assemble_project_inventory,
+    observation_sources_from_registered_projects,
+    run_executive_intelligence_cycle,
+    schedule_next_action_after_outcome,
+)
+from .standing_intent import is_discovery_mandate
 from .continuous import (  # V9 Continuous Executive
     WakeCondition,
     create_wake,
@@ -101,6 +108,12 @@ __all__ = [
     "ExecutiveWait",
     "StructuredGoal",
     "active_goals",
+    "is_discovery_mandate",
+    "IntelligenceCycle",
+    "assemble_project_inventory",
+    "observation_sources_from_registered_projects",
+    "run_executive_intelligence_cycle",
+    "schedule_next_action_after_outcome",
     "AutonomyCycle",
     "ContinuationDecision",
     "CoordinationDecision",

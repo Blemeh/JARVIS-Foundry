@@ -1329,9 +1329,12 @@ def run_cycle(
                 config=dict(item.get("config") or {}),
             ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
             if not sources:
+                from ..executive.intelligence import observation_sources_from_registered_projects
+                sources = observation_sources_from_registered_projects(database)
+            if not sources:
                 return _waiting_report(
                     database, loop_id=loop_id, instance_id=instance_id,
-                    reason="V11 A2 has no configured observation sources",
+                    reason="V11 A2 has no registered project sources",
                 )
             bounds_raw = dict(raw.get("bounds") or {})
             allowed_bounds = {
@@ -1373,6 +1376,12 @@ def run_cycle(
                 pending_initiative_decision,
             )
             raw = dict(config.initiative_a3 or {})
+            from ..executive.intelligence import (
+                judge_new_project_opportunity,
+                prepare_executive_observation,
+                record_product_wait_diagnosis,
+            )
+            prepare_executive_observation(database, cycle_id=loop_id)
             sources = tuple(SourceSpec(
                 source_id=str(item["source_id"]),
                 source_kind=str(item["source_kind"]),
@@ -1382,9 +1391,23 @@ def run_cycle(
                 enabled=bool(item.get("enabled", True)),
             ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
             if not sources:
+                from ..executive.intelligence import observation_sources_from_registered_projects
+                sources = observation_sources_from_registered_projects(
+                    database,
+                    required_capabilities=tuple(
+                        A3AdmissionPolicy().required_fabric_capabilities
+                    ),
+                )
+            if not sources:
+                record_product_wait_diagnosis(
+                    database,
+                    cycle_id=loop_id,
+                    reason="V11 A3 has no registered project sources",
+                )
+                judge_new_project_opportunity(database, None)
                 return _waiting_report(
                     database, loop_id=loop_id, instance_id=instance_id,
-                    reason="V11 A3 has no configured observation sources",
+                    reason="V11 A3 has no registered project sources",
                 )
             bounds_raw = dict(raw.get("bounds") or {})
             allowed_bounds = {
@@ -1399,10 +1422,14 @@ def run_cycle(
                 name: value for name, value in policy_raw.items()
                 if name in A3AdmissionPolicy.__dataclass_fields__
             }
+            project_roots = dict(raw.get("project_roots") or {})
+            if not project_roots:
+                from ..executive.intelligence import project_roots_from_sources
+                project_roots = project_roots_from_sources(sources)
             authority = InitiativeAdmissionAuthority(
                 database,
                 worktree_parent=str(raw.get("worktree_parent") or ""),
-                project_roots=dict(raw.get("project_roots") or {}),
+                project_roots=project_roots,
                 policy=A3AdmissionPolicy(**allowed_policy),
                 stop_path=_default_stop_path(paths, config),
             )
@@ -1411,6 +1438,8 @@ def run_cycle(
             # or admission pass. This is the normal MissionLoop continuation,
             # not a new scheduler.
             initiative_mission_id = _select_contract(database)
+            decision = None
+            admission = None
             if initiative_mission_id is None:
                 active_objective = active_initiative_objective(database)
                 if active_objective is not None:
@@ -1433,9 +1462,22 @@ def run_cycle(
                         )
                         decision = report.get("decision")
                         if getattr(decision, "kind", None) != "SELECT":
+                            wait_reason = (
+                                f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}"
+                            )
+                            record_product_wait_diagnosis(
+                                database,
+                                cycle_id=loop_id,
+                                decision=decision if hasattr(decision, "kind") else None,
+                                reason=wait_reason,
+                            )
+                            judge_new_project_opportunity(
+                                database,
+                                decision if hasattr(decision, "kind") else None,
+                            )
                             return _waiting_report(
                                 database, loop_id=loop_id, instance_id=instance_id,
-                                reason=f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}",
+                                reason=wait_reason,
                             )
                         invoke_fault_hook(fault_hook, "post initiative.selection")
                     admission = authority.admit(decision)
@@ -1450,9 +1492,21 @@ def run_cycle(
                     invoke_fault_hook(fault_hook, "post initiative.mission_created")
                 initiative_mission_id = admission.mission_id
                 if initiative_mission_id is None:
+                    wait_reason = f"V11 A3 {admission.status}: {admission.reason}"
+                    record_product_wait_diagnosis(
+                        database,
+                        cycle_id=loop_id,
+                        decision=decision if hasattr(decision, "kind") else None,
+                        admission=admission,
+                        reason=wait_reason,
+                    )
+                    judge_new_project_opportunity(
+                        database,
+                        decision if hasattr(decision, "kind") else None,
+                    )
                     return _waiting_report(
                         database, loop_id=loop_id, instance_id=instance_id,
-                        reason=f"V11 A3 {admission.status}: {admission.reason}",
+                        reason=wait_reason,
                     )
         # V3 WP3 single choke point: when discovery.cycle_enabled the
         # unified experimental cycle replaces the split selection path.
@@ -1749,6 +1803,25 @@ def run_cycle(
                         source_type="supervisor",
                         source_id=instance_id,
                         idempotency_key=f"worker_loop.initiative_outcome_blocked:{loop_id}",
+                    ))
+                try:
+                    from ..executive.intelligence import schedule_next_action_after_outcome
+                    schedule_next_action_after_outcome(
+                        database,
+                        mission_id=mission_id,
+                        outcome=str(terminal or getattr(outcome, "outcome", "UNKNOWN")),
+                    )
+                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
+                    database.append(Event.create(
+                        "worker_loop.next_action_schedule_blocked",
+                        {
+                            "loop_id": loop_id,
+                            "mission_id": mission_id,
+                            "reason": f"{type(error).__name__}: {error}"[:500],
+                        },
+                        source_type="supervisor",
+                        source_id=instance_id,
+                        idempotency_key=f"worker_loop.next_action_schedule_blocked:{loop_id}",
                     ))
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the

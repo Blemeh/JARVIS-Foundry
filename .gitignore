@@ -32,6 +32,8 @@ var/lane2-demo/~$*
 !var/lane5-demo/
 !var/lane5-demo/**
 var/lane5-demo/generated/
+!var/purpose-recovery-ii-20260917/
+!var/purpose-recovery-ii-20260917/**
 state/
 logs/
 scripts/.cc_live_e2e/
