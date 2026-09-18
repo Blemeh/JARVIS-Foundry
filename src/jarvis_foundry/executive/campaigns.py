@@ -961,6 +961,153 @@ def create_campaign(
     return rebuild_campaign_state(database).campaigns[cid]
 
 
+CAMPAIGN_WARRANT_PREDICATE_VERSION = "campaign-warrant-1"
+CAMPAIGN_WARRANT_MIN_STEPS = 2
+_CAMPAIGN_WARRANT_METADATA_VALUES = frozenset({"CAMPAIGN", "MULTI_MISSION", "LONG_HORIZON"})
+
+
+def campaign_warrant(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    min_steps: int = CAMPAIGN_WARRANT_MIN_STEPS,
+) -> dict[str, Any]:
+    """Decide, deterministically and auditably, whether an objective warrants one.
+
+    Two signals, both derived from durable Executive state and neither invented
+    by a caller: the objective's own ACTIVE plan decomposes into at least
+    ``min_steps`` executable steps, or the objective's metadata declares a
+    long-horizon decomposition.  The predicate never creates anything; it is
+    the receipt that justifies a later ``campaign.created``.
+    """
+
+    from .autonomy import active_plan, rebuild_executive_state
+
+    oid = str(objective_id or "")
+    objective = rebuild_executive_state(database).objectives.get(oid)
+    if objective is None:
+        return {"warranted": False, "objective_id": oid, "reason": "objective_missing"}
+    if objective.status in {"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"}:
+        return {"warranted": False, "objective_id": oid, "reason": "terminal_objective",
+                "objective_status": objective.status}
+    plan = active_plan(database, oid)
+    step_ids = [
+        str(step.step_id) for step in tuple(getattr(plan, "steps", ()) or ())
+        if str(getattr(step, "step_id", ""))
+    ]
+    signal = None
+    basis: dict[str, Any] = {"step_count": len(step_ids), "min_steps": int(min_steps)}
+    if len(step_ids) >= int(min_steps):
+        signal = "multi_step_plan"
+    else:
+        declared = str(
+            (objective.metadata or {}).get("decomposition") or ""
+        ).upper()
+        if declared in _CAMPAIGN_WARRANT_METADATA_VALUES:
+            signal = "objective_metadata_decomposition"
+            basis["declared_decomposition"] = declared
+    if signal is None:
+        return {"warranted": False, "objective_id": oid, "reason": "single_step_objective",
+                **basis, "objective_status": objective.status}
+    return {
+        "warranted": True,
+        "objective_id": oid,
+        "signal": signal,
+        "predicate_version": CAMPAIGN_WARRANT_PREDICATE_VERSION,
+        "plan_id": str(getattr(plan, "plan_id", "") or ""),
+        "objective_status": objective.status,
+        "objective": objective.objective[:240],
+        **basis,
+    }
+
+
+def campaign_for_objective(database: FoundryDatabase, objective_id: str) -> CampaignRecord | None:
+    """Return the durable campaign that already owns this objective, if any."""
+
+    for campaign in rebuild_campaign_state(database).campaigns.values():
+        if campaign.objective_id == str(objective_id):
+            return campaign
+    return None
+
+
+def ensure_warranted_campaign(
+    database: FoundryDatabase,
+    *,
+    objective_id: str | None = None,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+    min_steps: int = CAMPAIGN_WARRANT_MIN_STEPS,
+    deadline: str | None = None,
+    max_replans: int = 1,
+    max_parallel_children: int = 2,
+) -> list[dict[str, Any]]:
+    """Create the campaign an objective's own plan warrants - the missing half.
+
+    ``create_campaign`` was production-dead because nothing decided that a
+    campaign was warranted.  This is that decision plus the call, in the same
+    module and under the same Supervisor authority: it re-reads the Executive's
+    durable plan, records an ``executive.campaign_warranted`` receipt naming the
+    predicate and its inputs, and then creates the campaign through the
+    UNCHANGED ``create_campaign`` (which owns the STOP gate, the deterministic
+    identity and the first checkpoint).  Replays are no-ops because the
+    campaign-for-objective lookup is durable.
+    """
+
+    _gate(database, controller, stop_path=stop_path)
+    from .autonomy import rebuild_executive_state
+
+    state = rebuild_executive_state(database)
+    targets = [str(objective_id)] if objective_id else sorted(state.objectives)
+    created: list[dict[str, Any]] = []
+    for oid in targets:
+        warrant = campaign_warrant(database, oid, min_steps=min_steps)
+        if not warrant.get("warranted"):
+            continue
+        existing = campaign_for_objective(database, oid)
+        if existing is not None:
+            continue
+        summary = {
+            **warrant,
+            "recorded_at": isoformat(),
+            "campaign_id": None,
+            "created": False,
+        }
+        try:
+            record = create_campaign(
+                database,
+                oid,
+                deadline=deadline,
+                max_replans=max_replans,
+                max_parallel_children=max_parallel_children,
+                metadata={
+                    "warrant": warrant["signal"],
+                    "warrant_predicate_version": warrant["predicate_version"],
+                    "plan_id": warrant["plan_id"],
+                },
+                controller=controller,
+                stop_path=stop_path,
+            )
+        except CampaignError as error:
+            summary["reason"] = f"{type(error).__name__}: {error}"[:300]
+        else:
+            summary["campaign_id"] = record.campaign_id
+            summary["created"] = True
+        try:
+            _append(
+                database,
+                "executive.campaign_warranted",
+                summary,
+                key=(
+                    f"executive.campaign_warranted:{oid}:"
+                    f"{warrant['predicate_version']}"
+                ),
+            )
+        except Exception:  # noqa: BLE001 - receipt failure never rewrites the pass
+            pass
+        created.append(summary)
+    return created
+
+
 def _campaign_status_event(
     database: FoundryDatabase,
     campaign: CampaignRecord,

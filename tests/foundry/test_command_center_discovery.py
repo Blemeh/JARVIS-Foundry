@@ -501,7 +501,10 @@ def test_existing_non_discovery_consumers_unchanged(db):
                 "portfolio",
                 "capability_fabric",
                 "vault",
-            }
+                # Additive identity projection: which runtime wrote this
+                # ledger, reported beside the installed release pointer.
+                "runtime_identity",
+                }
     assert set(legacy_keys) == expected
     assert set(pinned["candidates"][0]) >= {"candidate_id"}
     assert pinned["vault"] == {"files": [], "count": 0}

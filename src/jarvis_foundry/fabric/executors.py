@@ -104,6 +104,18 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sha256_path(path: str | Path) -> str:
+    """One-argument, argument-mappable form of the canonical SHA256 effect.
+
+    ``script_hash_file`` is the Fabric executor for ``hash.file.sha256`` and
+    takes (context, payload); the capability-expansion adapter seam binds a
+    capability to a plain mapped callable, so the same single implementation is
+    exposed here instead of a second code path being written for it.
+    """
+
+    return _sha256_file(Path(path))
+
+
 def filesystem_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
     target = str(payload["target"])
     content = str(payload["content"])
@@ -2442,7 +2454,7 @@ def script_hash_file(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
     path = Path(payload["path"])
     if not path.is_absolute():
         path = ctx.owned_root / path
-    digest = _sha256_file(path)
+    digest = sha256_path(path)
     return {
         "claimed": "COMPLETED",
         "path": str(path),

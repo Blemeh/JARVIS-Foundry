@@ -419,6 +419,311 @@ def record_next_action_continuation(
     return receipts
 
 
+RESEARCH_WAKE_PREFIX = "wake:research:"
+RESEARCH_COMPLETION_EVENT = "research.candidate_completed"
+
+
+def _research_objective_id(candidate_id: str) -> str:
+    """The deterministic Executive objective an admitted candidate owns.
+
+    Mirrors the single admission authority (``initiative_a3`` creates
+    ``initiative-objective:{candidate_id}``); this resolver never creates it.
+    """
+
+    return f"initiative-objective:{candidate_id}"
+
+
+def _existing_objective_ids(db) -> set[str]:
+    try:
+        from ..executive.autonomy import rebuild_executive_state
+        return {str(key) for key in rebuild_executive_state(db).objectives}
+    except Exception:
+        return set()
+
+
+def _research_completion_receipt(db, research_id: str):
+    """Return ``{"event_id", "sequence"}`` for the durable completion, if any.
+
+    The lookup is an exact payload query rather than a bounded newest-first
+    scan: a long-lived ledger can hold more completions than any scan window,
+    and a missed receipt would silently defer a wake that is genuinely due.
+    """
+
+    if not research_id:
+        return None
+    try:
+        with db.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT sequence, event_id FROM events "
+                "WHERE event_type = ? "
+                "AND json_extract(payload_json, '$.research_id') = ? "
+                "ORDER BY sequence DESC LIMIT 1",
+                (RESEARCH_COMPLETION_EVENT, research_id),
+            ).fetchone()
+    except Exception:
+        return None
+    if row is None:
+        return None
+    return {"event_id": str(row["event_id"]), "sequence": int(row["sequence"])}
+
+
+def bridge_research_completions(
+    db,
+    *,
+    controller="supervisor",
+    limit=100,
+):
+    """Admit durable candidate-research completions as Executive wakes.
+
+    Research is evidence gathering: it never selects work.  A completed
+    candidate dossier is already durable in the canonical research projection
+    by the time this reader sees it, so the bridge creates exactly one
+    ``WAIT_FOR_SIGNAL`` wake per research id (``wake:research:{research_id}``,
+    which is the audit's unique-per-research-item identity) and binds it to the
+    Executive objective that owns the candidate.
+
+    A candidate whose objective has not been admitted yet gets an honest
+    ``objective_bound: false`` receipt and NO wake: inventing a wake for an
+    objective that does not exist would advertise continuation the Executive
+    could never consume.  The next cycle binds it once admission lands.
+
+    This is the same narrow Supervisor-owned bridge shape as
+    ``bridge_world_signals``: it creates no objective, mission, candidate or
+    selector, and it re-derives everything from the canonical projection.
+    """
+
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("research bridging is Supervisor-owned")
+    try:
+        from ..control.broker import emergency_stop_reason as _esr
+        from pathlib import Path as _P
+        if _esr(db, _P(db.path).parent / "EMERGENCY_STOP"):
+            return []
+    except Exception:
+        return []
+    try:
+        from ..research_queue import candidate_research_state
+        rows = list(candidate_research_state(db))
+    except Exception:
+        return []
+
+    objective_ids = _existing_objective_ids(db)
+    wakes = rebuild_wake_state(db)
+    bridged: list[dict[str, Any]] = []
+    for row in rows[: max(1, min(int(limit), 500))]:
+        if str(row.get("status") or "").upper() != "COMPLETED":
+            continue
+        research_id = str(row.get("research_id") or "")
+        candidate_id = str(row.get("candidate_id") or "")
+        if not research_id or not candidate_id:
+            continue
+        wake_id = f"{RESEARCH_WAKE_PREFIX}{research_id}"
+        objective_id = _research_objective_id(candidate_id)
+        objective_bound = objective_id in objective_ids
+        evidence = row.get("evidence") if isinstance(row.get("evidence"), Mapping) else {}
+        stance = str(evidence.get("stance") or evidence.get("verdict") or "").upper() or None
+        confidence = evidence.get("confidence")
+        reason = (
+            f"research {research_id} completed for candidate {candidate_id} "
+            f"(stance={stance or 'UNKNOWN'}, confidence={confidence}); "
+            "reconsider the decision with the findings loaded"
+        )
+        wake_created = False
+        if objective_bound and wake_id not in wakes:
+            wake = WakeCondition(
+                wake_id=wake_id,
+                objective_id=objective_id,
+                kind="WAIT_FOR_SIGNAL",
+                reason=reason[:480],
+                created_at=isoformat(),
+                not_before=isoformat(),
+                signal=f"{RESEARCH_COMPLETION_EVENT}:{research_id}",
+            )
+            try:
+                create_wake(db, wake, controller=controller)
+            except Exception:
+                continue
+            wakes[wake_id] = wake.to_payload()
+            wake_created = True
+        completion = _research_completion_receipt(db, research_id)
+        payload = {
+            "wake_id": wake_id,
+            "research_id": research_id,
+            "candidate_id": candidate_id,
+            "objective_id": objective_id,
+            "objective_bound": objective_bound,
+            "wake_created": wake_created,
+            "status": str(row.get("status") or ""),
+            "source_ref": row.get("source_ref"),
+            "content_hash": row.get("content_hash"),
+            "stance": stance,
+            "confidence": confidence,
+            "completion_event_id": (completion or {}).get("event_id"),
+            "completion_sequence": (completion or {}).get("sequence"),
+            "bridged_at": isoformat(),
+        }
+        receipt_replayed = False
+        try:
+            _append(
+                db,
+                "executive.research_bridged",
+                payload,
+                key=f"executive.research_bridged:{wake_id}:{objective_bound}",
+                correlation_id=objective_id,
+            )
+        except EventConflict:
+            # A replay of the same (wake, binding) pair is not a failure: the
+            # receipt is already durable, and the caller still needs the wake id.
+            receipt_replayed = True
+        except Exception:
+            continue
+        payload["receipt_replayed"] = receipt_replayed
+        bridged.append(payload)
+    return bridged
+
+
+def consume_research_wakes(
+    db,
+    *,
+    cycle_id: str,
+    consumer_id: str = "",
+    controller="supervisor",
+    now=None,
+):
+    """Release bridged research wakes to the cycle that can use them.
+
+    The wake's documented condition is the durable completion of the research
+    item it cites (``wake:research:{research_id}`` -> ``research.candidate_completed``
+    for that research id).  Because the bridge only creates the wake after the
+    completion is already durable, the generic ``is_wake_due`` signal ordering
+    (signal strictly after wake creation) can never be satisfied; the exact
+    ordering facts are recorded on the receipt instead of being assumed.  A
+    wake that is still undecided, or bound to an objective that no longer
+    exists, is left ACTIVE and reported as deferred rather than dropped.
+    """
+
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("research-wake consumption is Supervisor-owned")
+    objective_ids = _existing_objective_ids(db)
+    receipts = []
+    for wake in rebuild_wake_state(db).values():
+        wake_id = str(wake.get("wake_id") or "")
+        if not wake_id.startswith(RESEARCH_WAKE_PREFIX):
+            continue
+        if wake.get("status") != "ACTIVE":
+            continue
+        objective_id = str(wake.get("objective_id") or "")
+        research_id = wake_id[len(RESEARCH_WAKE_PREFIX):]
+        objective_bound = objective_id in objective_ids
+        completion = _research_completion_receipt(db, research_id)
+        completion_durable = completion is not None
+        signal_due = False
+        try:
+            signal_due = bool(is_wake_due(db, wake, now=now))
+        except Exception:
+            signal_due = False
+        due = bool(objective_bound and completion_durable)
+        payload = {
+            "wake_id": wake_id,
+            "research_id": research_id,
+            "objective_id": objective_id,
+            "objective_bound": objective_bound,
+            "kind": wake.get("kind"),
+            "signal": wake.get("signal"),
+            "due": due,
+            "due_basis": (
+                "research_completion_durable"
+                if due and not signal_due
+                else "wake_condition_satisfied"
+                if due
+                else "objective_not_bound"
+                if not objective_bound
+                else "completion_not_durable"
+            ),
+            "signal_due_via_generic_predicate": signal_due,
+            "completion_event_id": (completion or {}).get("event_id"),
+            "completion_sequence": (completion or {}).get("sequence"),
+            "consumer": consumer_id,
+            "cycle_id": cycle_id,
+            "consumed_at": isoformat(),
+        }
+        if due:
+            try:
+                trigger_wake(
+                    db,
+                    wake_id,
+                    controller=controller,
+                    reason=f"research {research_id} consumed by {consumer_id or 'supervisor'}",
+                )
+            except Exception:
+                pass
+        try:
+            _append(
+                db,
+                "executive.research_wake_consumed",
+                payload,
+                key=f"executive.research_wake_consumed:{wake_id}:{consumer_id}",
+                correlation_id=objective_id,
+            )
+        except Exception:
+            continue
+        receipts.append(payload)
+    return receipts
+
+
+def record_research_wake_continuation(
+    db,
+    *,
+    cycle_id: str,
+    consumed,
+    decision_before: int = 0,
+    context_before: int = 0,
+    controller="supervisor",
+):
+    """Bind each consumed research wake to the fresh decision it produced.
+
+    Identical non-vacuity discipline to ``record_next_action_continuation``: an
+    absent fresh context or decision is recorded explicitly as ``false`` rather
+    than passing because nothing was checked.
+    """
+
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("research-wake continuation is Supervisor-owned")
+    consumed = list(consumed or ())
+    if not consumed:
+        return []
+    decisions = list(db.events(event_types=("executive.decision_recorded",)))
+    contests = list(db.events(event_types=("executive.context_assembled",)))
+    fresh = decisions[decision_before:]
+    decision_id = fresh[-1].payload.get("decision_id") if fresh else None
+    decision_kind = fresh[-1].payload.get("decision") if fresh else None
+    receipts = []
+    for item in consumed:
+        payload = {
+            "wake_id": item.get("wake_id"),
+            "research_id": item.get("research_id"),
+            "objective_id": item.get("objective_id"),
+            "cycle_id": cycle_id,
+            "decision_id": decision_id,
+            "decision_kind": decision_kind,
+            "fresh_decision": decision_id is not None,
+            "fresh_context": len(contests) > int(context_before),
+            "continued_at": isoformat(),
+        }
+        try:
+            _append(
+                db,
+                "executive.research_wake_continued",
+                payload,
+                key=f"executive.research_wake_continued:{item.get('wake_id')}:{cycle_id}",
+                correlation_id=str(item.get("objective_id") or ""),
+            )
+        except Exception:
+            continue
+        receipts.append(payload)
+    return receipts
+
+
 def bridge_world_signals(
     db,
     *,
@@ -588,6 +893,7 @@ def run_continuous_cycle(
     discovery: Mapping[str, Any] | None = None,
     stop_path: str | Path | None = None,
     consumer_id: str = "",
+    self_expansion: bool = False,
 ):
     # One idempotent durable tick: due wakes -> trigger -> autonomy cycle -> materialize
     # Idempotent on cycle_id via autonomy cycle key; wake triggers are idempotent via wake_triggered keys
@@ -623,6 +929,17 @@ def run_continuous_cycle(
     # objective-targeted signals as durable wake conditions; it never creates
     # work itself.
     world_triggered = bridge_world_signals(db, controller=controller)
+    # A completed candidate dossier is evidence, not a selection: the bridge
+    # binds it to the objective that owns the candidate, and this cycle
+    # consumes it before the generic tick could release it anonymously.
+    research_bridged = bridge_research_completions(db, controller=controller)
+    consumed_research = consume_research_wakes(
+        db,
+        cycle_id=cycle_id,
+        consumer_id=str(consumer_id or ""),
+        controller=controller,
+        now=now,
+    )
     # The Executive's own PASS-generated next-action wake is consumed by THIS
     # cycle, before the generic due-wake tick could trigger it anonymously.
     consumed_next_action = consume_next_action_wakes(
@@ -634,7 +951,11 @@ def run_continuous_cycle(
     )
     # Wake phase
     triggered = tick_wakes(db, controller=controller, now=now)
-    triggered = list(dict.fromkeys([*world_triggered, *triggered]))
+    triggered = list(dict.fromkeys([
+        *world_triggered,
+        *(str(item.get("wake_id")) for item in research_bridged),
+        *triggered,
+    ]))
     # Strategy guard: if top runnable objective is in retry loop, surface escalation instead of re-attempting same strategy
     try:
         from ..executive.autonomy import rank_objectives as _rank2, rebuild_executive_state as _reb2
@@ -654,7 +975,7 @@ def run_continuous_cycle(
                     _esc(db, objective_id=top.objective_id, decision=f"retry loop on {loop_strategy}", why=f"strategy {loop_strategy!r} attempted 3 times consecutively", evidence_refs=[], options=next_strategy_options(db, top.objective_id)[:4], recommendation="switch strategy or escalate to owner", delay_consequence="repeated failure without strategy change", controller=controller)
                 except Exception:
                     pass
-                return {"cycle_id": cycle_id, "status": "ESCALATE", "reason": f"retry loop detected for {top.objective_id} on {loop_strategy!r} — escalation recorded", "triggered_wakes": triggered, "parked_objectives": parked}
+                return {"cycle_id": cycle_id, "status": "ESCALATE", "reason": f"retry loop detected for {top.objective_id} on {loop_strategy!r} — escalation recorded", "triggered_wakes": triggered, "parked_objectives": parked, "research_bridged": research_bridged, "research_wake_consumed": consumed_research}
     except Exception:
         pass
     # Next-work discovery: the Continuous Executive is the only next-work
@@ -690,6 +1011,7 @@ def run_continuous_cycle(
             cycle_id=cycle_id,
             controller=controller,
             excluded_objective_ids=tuple(sorted(excluded)),
+            self_expansion=bool(self_expansion),
         )
         cycle_payload = cycle.to_payload() if hasattr(cycle, "to_payload") else dict(cycle) if isinstance(cycle, dict) else str(cycle)
         mission_id = None
@@ -706,7 +1028,15 @@ def run_continuous_cycle(
             context_before=context_before,
             controller=controller,
         )
-        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation}
+        research_continuation = record_research_wake_continuation(
+            db,
+            cycle_id=cycle_id,
+            consumed=consumed_research,
+            decision_before=decision_before,
+            context_before=context_before,
+            controller=controller,
+        )
+        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation, "research_bridged": research_bridged, "research_wake_consumed": consumed_research, "research_wake_continuation": research_continuation}
     except Exception as e:
         continuation = []
         try:
@@ -720,7 +1050,19 @@ def run_continuous_cycle(
             )
         except Exception:
             pass
-        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation}
+        research_continuation = []
+        try:
+            research_continuation = record_research_wake_continuation(
+                db,
+                cycle_id=cycle_id,
+                consumed=consumed_research,
+                decision_before=decision_before,
+                context_before=context_before,
+                controller=controller,
+            )
+        except Exception:
+            pass
+        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation, "research_bridged": research_bridged, "research_wake_consumed": consumed_research, "research_wake_continuation": research_continuation}
 
 def schedule_wait_until(db, objective_id: str, *, not_before: str, reason="", controller="supervisor"):
     wid = f"wake:{objective_id}:until:{_hash(not_before)}"
@@ -2203,4 +2545,4 @@ def escalate_stale_wakes(db, *, stale_after_seconds=3600.0, controller="supervis
             pass
     return escalated
 
-__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "consume_next_action_wakes", "record_next_action_continuation", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "canonical_provider_wait_start_events", "canonical_provider_resume_events", "resume_mission_provider_waits", "provider_resume_run_id", "provider_resume_epoch", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
+__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "consume_next_action_wakes", "record_next_action_continuation", "bridge_world_signals", "bridge_research_completions", "consume_research_wakes", "record_research_wake_continuation", "RESEARCH_WAKE_PREFIX", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "canonical_provider_wait_start_events", "canonical_provider_resume_events", "resume_mission_provider_waits", "provider_resume_run_id", "provider_resume_epoch", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]

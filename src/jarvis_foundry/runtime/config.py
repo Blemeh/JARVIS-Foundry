@@ -88,6 +88,21 @@ class WorkerRuntimeConfig:
     # configurations retain their exact execution path by default.
     campaign_runtime_enabled: bool = False
     campaign_runtime: dict[str, Any] = field(default_factory=dict)
+    # Capability expansion (SelfExpansionEngine production caller).  Opt-in so a
+    # committed configuration never starts an isolated trial on its own; the
+    # gap bridge's WAIT/wake/replan ownership is unchanged either way.
+    self_expansion_enabled: bool = False
+    self_expansion: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def self_expansion_active(self) -> bool:
+        """Canonical opt-in bit, accepting the nested YAML form as well."""
+
+        return bool(self.self_expansion_enabled or self.expansion_section.get("enabled", False))
+
+    @property
+    def expansion_section(self) -> dict[str, Any]:
+        return self.self_expansion if isinstance(self.self_expansion, dict) else {}
 
     @property
     def campaign_enabled(self) -> bool:
@@ -201,6 +216,12 @@ class WorkerRuntimeConfig:
                     campaign_section.get("enabled", False),
                 )),
             campaign_runtime=campaign_section,
+            self_expansion_enabled=bool(
+                raw.get(
+                    "self_expansion_enabled",
+                    (raw.get("self_expansion") or {}).get("enabled", False),
+                )),
+            self_expansion=dict(raw.get("self_expansion") or {}),
         )
         cfg.validate()
         return cfg

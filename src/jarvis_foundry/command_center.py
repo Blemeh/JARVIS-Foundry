@@ -1166,6 +1166,7 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     decisions: list[dict[str, Any]] = []
     predictions: dict[str, dict[str, Any]] = {}
     calibrations: list[dict[str, Any]] = []
+    wait_diagnoses: list[dict[str, Any]] = []
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
     for event in database.events(readonly=True, event_type_prefixes=("executive.",)):
@@ -1193,6 +1194,15 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
                 "actual": _json_value(payload.get("actual")),
                 "calibration_version": payload.get("calibration_version"),
                 "event_id": event.event_id,
+            })
+        elif etype == "executive.wait_diagnosis_recorded":
+            wait_diagnoses.append({
+                "classification": payload.get("classification"),
+                "reason": payload.get("reason"),
+                "decision_id": payload.get("decision_id"),
+                "cycle_id": payload.get("cycle_id"),
+                "event_id": event.event_id,
+                "occurred_at": event.occurred_at,
             })
         elif etype == "executive.decision_recorded":
             decisions.append({
@@ -1242,6 +1252,23 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
                 "outcome": cal.get("outcome"),
                 "mission_id": cal.get("mission_id"),
                 "actual": cal.get("actual"),
+                "decision_linked": True,
+            }
+        if not learned and calibrations:
+            # The calibration writer keys post-mission calibration on
+            # ``post-mission-<mission_id>`` rather than on a decision id, so a
+            # decision-linked lookup is often empty even though the ledger holds
+            # a real measured outcome.  Fall back to the newest calibration
+            # record and say explicitly that it is not decision-linked instead
+            # of reporting nothing was learned.
+            newest = calibrations[-1]
+            learned = {
+                "outcome": newest.get("outcome"),
+                "mission_id": newest.get("mission_id"),
+                "actual": newest.get("actual"),
+                "decision_linked": False,
+                "calibration_decision_id": newest.get("decision_id"),
+                "calibration_event_id": newest.get("event_id"),
             }
         latest["why_chosen"] = truth.get("why_chosen") or latest.get("reason")
         latest["alternatives_rejected"] = (
@@ -1271,6 +1298,10 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
         "latest_decision": latest,
         "recent_decisions": ordered,
         "calibrations": calibrations[-limit:],
+        # The decision-time diagnosis stays on ``latest_decision``; the
+        # authoritative CURRENT wait is the newest durable diagnosis, which is
+        # written by the runtime after the decision and can supersede it.
+        "latest_wait_diagnosis": wait_diagnoses[-1] if wait_diagnoses else None,
     }
 
 
@@ -1781,6 +1812,70 @@ def _discovery_projection(
     }
 
 
+def _runtime_identity_projection(
+    database: FoundryDatabase,
+    *,
+    release_identity: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Expose which runtime wrote this ledger, beside which release is installed.
+
+    ``release_identity`` is a machine-wide filesystem pointer to the INSTALLED
+    release; it is not the runtime that produced these events.  The runtime
+    that produced them is named on ``worker_loop.cycle_started`` payloads (which
+    the timeline deliberately excludes).  This read-only projection surfaces
+    both, with the source of each, so an owner can tell a candidate runtime
+    from the installed release instead of reading one as the other.
+    """
+
+    installed = release_identity if isinstance(release_identity, Mapping) else {}
+    authority: Mapping[str, Any] = {}
+    try:
+        from .deployment.release import release_authority_report
+        authority = release_authority_report()
+    except Exception:  # noqa: BLE001 - identity is reported, never invented
+        authority = {}
+    execution = None
+    try:
+        events = list(database.events(
+            readonly=True,
+            newest_first=True,
+            limit=1,
+            event_types=("worker_loop.cycle_started",),
+        ))
+    except Exception:  # noqa: BLE001 - a projection error must not fail the snapshot
+        events = []
+    if events:
+        payload = events[0].payload if isinstance(events[0].payload, dict) else {}
+        execution = {
+            "instance_id": payload.get("instance_id"),
+            "loop_id": payload.get("loop_id"),
+            "pid": payload.get("pid"),
+            "resource_id": payload.get("resource_id"),
+            "capability": payload.get("capability"),
+            "creation_identity": _json_value(payload.get("creation_identity")),
+            "occurred_at": events[0].occurred_at,
+            "event_id": events[0].event_id,
+        }
+    return {
+        "contract": "jarvis.runtime-identity.v1",
+        "latest_worker_loop_execution": execution,
+        "latest_worker_loop_identity_source": "worker_loop.cycle_started",
+        "installed_release": {
+            "current": installed.get("current"),
+            "previous": installed.get("previous"),
+            "source": installed.get("source") or "immutable_release_pointers",
+        },
+        "release_authority": {
+            "status": authority.get("status"),
+            "consistent": authority.get("consistent"),
+        },
+        "note": (
+            "installed_release is a machine-wide filesystem pointer; the "
+            "execution identity is the runtime that wrote this ledger."
+        ),
+    }
+
+
 def build_snapshot(
     database: FoundryDatabase,
     *,
@@ -2259,6 +2354,9 @@ def _build_snapshot(
         "portfolio": portfolio_projection,
         "discovery": discovery_surface,
         "capability_fabric": capability_fabric,
+        "runtime_identity": _runtime_identity_projection(
+            database, release_identity=release_identity,
+        ),
     }
     # Keep the pre-V9 top-level snapshot shape byte-compatible for databases
     # with no World Intelligence records.  Once the advisory world layer has

@@ -2241,6 +2241,99 @@ class AutonomyCycle:
         )
 
 
+def _dispatch_capability_expansion(
+    database: FoundryDatabase,
+    *,
+    cycle_id: str,
+    excluded: set[str],
+    stop_path: str | Path | None = None,
+) -> list[dict[str, Any]]:
+    """Dispatch every non-terminal bridge gap through the canonical engine.
+
+    One bounded pass per objective, using the existing ``ExpansionWorkPort``
+    seam and ``run_isolated_expansion_then_resume`` product glue.  Nothing here
+    decides readiness: the engine's own validation, the isolated trial, its
+    independent verifier and the Fabric Catalog do, and the gap bridge keeps
+    the WAIT/wake/replan ownership.  A failure is recorded and absorbed so it
+    cannot abort the cycle or the other objectives.
+    """
+
+    from ..fabric.gap_bridge import rebuild_gap_state
+    from ..fabric.expansion_resolver import production_port
+    from ..self_expansion import run_isolated_expansion_then_resume
+
+    try:
+        gaps = rebuild_gap_state(database)
+    except Exception as error:  # noqa: BLE001 - a corrupt gap ledger is not a cycle abort
+        return [{
+            "status": "UNDISPATCHED",
+            "reason": f"{type(error).__name__}: {error}"[:300],
+        }]
+    by_objective: dict[str, list[str]] = {}
+    for gap in gaps.values():
+        if gap.terminal or gap.origin_objective_id in excluded:
+            continue
+        by_objective.setdefault(str(gap.origin_objective_id), []).append(gap.gap_id)
+    if not by_objective:
+        return []
+    try:
+        port = production_port(database)
+    except Exception as error:  # noqa: BLE001 - report, never invent an expansion
+        return [{
+            "status": "PORT_UNAVAILABLE",
+            "reason": f"{type(error).__name__}: {error}"[:300],
+            "objectives": sorted(by_objective),
+        }]
+    receipts: list[dict[str, Any]] = []
+    try:
+        for objective_id in sorted(by_objective):
+            entry: dict[str, Any] = {
+                "objective_id": objective_id,
+                "gap_ids": list(by_objective[objective_id]),
+                "cycle_id": cycle_id,
+            }
+            try:
+                result = run_isolated_expansion_then_resume(
+                    database,
+                    objective_id=objective_id,
+                    port=port,
+                    strategy_id="reuse-first-isolated-trial",
+                )
+                entry.update({
+                    "status": "DISPATCHED",
+                    "resumed_gap_ids": list(result.resumed_gap_ids),
+                    "waiting_gap_ids": list(result.waiting_gap_ids),
+                    "gap_status": {
+                        gap.gap_id: gap.status.value for gap in result.gaps
+                    },
+                })
+            except Exception as error:  # noqa: BLE001 - per-objective isolation
+                entry.update({
+                    "status": "FAILED",
+                    "reason": f"{type(error).__name__}: {error}"[:300],
+                })
+            try:
+                database.append(Event.create(
+                    "executive.self_expansion_dispatch_recorded",
+                    dict(entry),
+                    source_type="supervisor",
+                    source_id="v9-continuous",
+                    idempotency_key=(
+                        f"executive.self_expansion_dispatch:{cycle_id}:{objective_id}"
+                    ),
+                    correlation_id=objective_id,
+                ))
+            except Exception:  # noqa: BLE001 - receipt failure never rewrites the pass
+                pass
+            receipts.append(entry)
+    finally:
+        try:
+            port.close()
+        except Exception:  # noqa: BLE001 - best-effort backend cleanup
+            pass
+    return receipts
+
+
 def run_autonomy_cycle(
     database: FoundryDatabase,
     *,
@@ -2251,6 +2344,7 @@ def run_autonomy_cycle(
     max_new_missions: int = 1,
     stop_path: str | Path | None = None,
     excluded_objective_ids: Sequence[str] = (),
+    self_expansion: bool = False,
 ) -> AutonomyCycle:
     """Run one bounded executive pass through existing portfolio and mission authorities."""
     _gate(database, controller, stop_path=stop_path)
@@ -2330,6 +2424,20 @@ def run_autonomy_cycle(
         ):
             continue
         bridge_missing_plan_capabilities(database, objective.objective_id)
+    # The single production caller for the capability-expansion engine.  A
+    # durable bridge gap whose capability the Catalog still cannot prove is
+    # dispatched through the existing bounded port; the bridge keeps
+    # WAIT/wake/replan ownership, so a failed or still-waiting attempt simply
+    # leaves the objective parked for the next cycle.  One failing expansion
+    # never aborts the cycle or the other objectives.
+    expansion_dispatch: list[dict[str, Any]] = []
+    if self_expansion:
+        expansion_dispatch = _dispatch_capability_expansion(
+            database,
+            cycle_id=cycle_id,
+            excluded=excluded,
+            stop_path=stop_path,
+        )
     ranking = tuple(
         row for row in rank_objectives(database, controller=controller)
         if row.objective_id not in excluded

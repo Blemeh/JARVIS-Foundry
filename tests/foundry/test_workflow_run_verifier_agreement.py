@@ -232,7 +232,11 @@ def test_a_file_owned_root_never_raises(tmp_path: Path, shape: str) -> None:
     result = try_fabric_dispatch(
         database, _manifest(root, SHAPES[shape]), lambda: None,
         owned_root=root, structured_only=True)
-    assert result is None or str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}
+    # Anti-raise is not enough: a silent downgrade to ``None`` would satisfy a
+    # bare "no exception" check, so the concrete answer is pinned too.
+    assert result is not None
+    assert str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}
+    assert list(result.evidence or ()), "an uncreatable root must still carry evidence"
 
 
 HOSTILE_ROOT_NAMES = ("embedded_nul", "existing_file", "nested_under_file")
@@ -264,4 +268,8 @@ def test_a_hostile_owned_root_never_raises(tmp_path: Path, root_name: str) -> No
     result = try_fabric_dispatch(
         database, _manifest(root, SHAPES["nested_verified"]), lambda: None,
         owned_root=root, structured_only=True)
-    assert result is None or str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}
+    # The concrete MATCH-claim answer is pinned, not merely "did not raise": a
+    # path that returned None would otherwise certify this class vacuously.
+    assert result is not None
+    assert str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}
+    assert list(result.evidence or ()), "an uncreatable root must still carry evidence"

@@ -634,6 +634,7 @@ def _maybe_continuous_cycle(
             discovery=_discovery_settings(database, config, paths),
             stop_path=_default_stop_path(paths, config),
             consumer_id=f"worker-loop:{instance_id}",
+            self_expansion=bool(getattr(config, "self_expansion_active", False)),
         )
         # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
         ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
@@ -1305,6 +1306,26 @@ def run_cycle(
             or database.event_count(event_type="campaign.created") > 0
         )
         if campaign_runtime_active:
+            # The warrant half: an objective whose own durable plan decomposes
+            # into multiple executable steps gets exactly one campaign.  The
+            # decision and the creation are Supervisor-owned and live in
+            # executive/campaigns.py; recovery below still owns everything after
+            # creation.  A failure here is recorded and never silently retried
+            # into a second campaign.
+            from ..executive.campaigns import ensure_warranted_campaign
+
+            campaign_warrants: list[dict[str, Any]] = []
+            try:
+                campaign_warrants = ensure_warranted_campaign(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                )
+            except Exception as error:  # noqa: BLE001 - fail closed, record
+                campaign_warrants = [{
+                    "status": "FAILED",
+                    "reason": f"{type(error).__name__}: {error}"[:300],
+                }]
             # Campaign recovery is a Supervisor-owned startup seam.  It only
             # reconciles durable mission/effect/provider truth and re-derives
             # wakes; dispatch still enters through the existing selector and
@@ -1338,6 +1359,7 @@ def run_cycle(
                     {
                         "loop_id": loop_id,
                         "instance_id": instance_id,
+                        "campaign_warrants": campaign_warrants,
                         **campaign_resume_payload,
                     },
                     source_type="supervisor", source_id=instance_id,
