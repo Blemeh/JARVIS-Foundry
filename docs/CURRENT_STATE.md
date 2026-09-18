@@ -107,24 +107,57 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `7d8672f603d9c2407b43eaa4e6f10bf7c0ff40bd`
+DOCUMENTATION STATE BASE SHA: `bd472791445a9b2d1e9c35378f3143b392e5b040`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
-Recovery II canonical-convergence product head in the isolated candidate
-worktree `C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on
-branch `candidate/purpose-recovery-ii-canonical-convergence-20260918`, not a
-live install. That session repaired the PASS-to-wake continuation gap (a
-verified PASS scheduled no canonical wake because the only writer call site was
-gated behind the A3 flag), the `workflow.run` verifier seam (the verifier role
-certified on artifact presence while the canonical Fabric predicate required
-every nested receipt `VERIFIED`), and a verified read-only mission that was
-falsely BLOCKED for having nothing to commit. Its verdict was
-`CONVERGENCE_PARTIAL_BLOCKED`: the E-S unified spine, the heartbeat acceptance
-receipts HB-1..HB-4, learning causality and the Level-5 installed-candidate
-continuation proof passed, while the research bridge, self-expansion, campaign
-creation, in-flight STOP, exactly-once attempt-2 and Command Center owner-truth
-remain open. Handoff and evidence live under
+Recovery II execution-session product head in the isolated candidate worktree
+`C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on branch
+`candidate/purpose-recovery-ii-canonical-convergence-20260918`, product tree
+`ad5a24d4e30c752ebf241b21275e91947a6f052d`, not a live install.
+
+That session executed the owner's 0→100 master goal of 2026-09-18 on top of the
+reviewed product head `7d8672f`, and built the four production callers the goal
+named as missing:
+
+* **research → wake** (`executive/continuous.py`): `bridge_research_completions`
+  creates exactly one `WAIT_FOR_SIGNAL` wake per completed research id, bound to
+  the objective that owns the candidate and never to an objective that does not
+  exist; `consume_research_wakes` is the identity-bearing consumer; and
+  `record_research_wake_continuation` binds the consumed wake to the cycle's
+  fresh context and decision. Measured on the real candidate ledger: the wake is
+  created, consumed with a consumer identity and the exact completion event
+  (sequence 131), and the product scorer ranks the frozen candidate set
+  **+0.0196 composite higher with the findings than without them**.
+* **capability expansion production caller** (`fabric/expansion_resolver.py`,
+  `executive/autonomy.py`, `runtime/config.py`, `runtime/worker_loop.py`): a
+  durable bridge gap is now dispatched automatically. Measured end-to-end on the
+  product path: gap → engine discovery → adapter built → isolated trial in its
+  own venv → independent verification PASS → `fabric.capability.registered` →
+  same-objective wake → gap `RESUMED` → mission materialized, plus a canonical
+  dispatch of the acquired capability.
+* **campaign creation caller** (`executive/campaigns.py`,
+  `runtime/worker_loop.py`): `campaign_warrant` + `ensure_warranted_campaign`
+  decide and create the campaign the objective's own plan warrants, through the
+  unchanged `create_campaign`. Measured: one campaign created by the worker loop
+  and continued across a real subprocess restart, with no second campaign.
+* **Command Center owner truth** (`command_center.py`): `learned` is no longer
+  empty (it reports the newest calibration and whether it is decision-linked),
+  `latest_wait_diagnosis` exposes the authoritative current wait, and
+  `runtime_identity` reports the runtime that wrote the ledger beside the
+  installed release pointer. Measured read-only against a byte-identical copy of
+  the candidate DB: all twelve owner questions answerable, DB hash unchanged.
+
+The NUL-value fix at `7d8672f` was independently reviewed during this session and
+PASSED (`REVIEW_G_7d8672f.json`): zero escapes for the whole hostile-root
+battery, zero unsafe PASSes, no evidence widening or suppression; seven residual
+findings recorded, four of them pre-existing unguarded sibling sites.
+
+Verdict for this session: `CONVERGENCE_PARTIAL_BLOCKED`. Still open — the
+Supervisor-spawned (Level 5) boundary for the research leg, the resumed mission's
+own execution leg (it reached BLOCKED in the isolated proof home), in-flight STOP
+and exactly-once attempt-2 receipts, and the final broad-suite plus final
+adversarial-review rounds. Handoff and evidence live under
 `var/purpose-recovery-ii-convergence-20260918/` in that worktree. Product repair
 remains `0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, carried forward from the
 previous pin; this session did not touch the live install, its database, its
