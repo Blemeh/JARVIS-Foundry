@@ -1,0 +1,101 @@
+{
+  "after_repair_enabled": {
+    "acquired": "REGISTERED",
+    "agent_runs": [
+      {
+        "model": "local",
+        "provider": "fabric",
+        "role": "builder",
+        "run_id": "run-3fb67656c244",
+        "status": "COMPLETED"
+      },
+      {
+        "model": "muse-spark-1.2-contributor",
+        "provider": "opencode_go",
+        "role": "verifier",
+        "run_id": "run-3fb67656c244-verify",
+        "status": "COMPLETED"
+      }
+    ],
+    "canonical_observations": 1,
+    "expected_digest": "4cb441eee1621043ebbfcceaa4188485cd1cba3518b8eeaf6465474f57a1b54f",
+    "label": "repair_enabled",
+    "mission_completed": true,
+    "mission_id": "mission-edae53a7be60",
+    "outcome": "PASSED",
+    "reason": "",
+    "repair_disabled": false,
+    "verdicts": [
+      {
+        "answered_by": "fabric",
+        "findings": [],
+        "predicate": "verification:canonical-fabric-predicate",
+        "status": "PASS",
+        "verdict": "PASS"
+      }
+    ]
+  },
+  "before_repair_disabled": {
+    "acquired": "REGISTERED",
+    "agent_runs": [
+      {
+        "model": "local",
+        "provider": "fabric",
+        "role": "builder",
+        "run_id": "run-08f31096cac6",
+        "status": "COMPLETED"
+      },
+      {
+        "model": "muse-spark-1.2-contributor",
+        "provider": "opencode_go",
+        "role": "verifier",
+        "run_id": "run-08f31096cac6-verify",
+        "status": "COMPLETED"
+      },
+      {
+        "model": "local",
+        "provider": "fabric",
+        "role": "repair",
+        "run_id": "run-68be7da61215",
+        "status": "COMPLETED"
+      },
+      {
+        "model": "muse-spark-1.2-contributor",
+        "provider": "opencode_go",
+        "role": "verifier",
+        "run_id": "run-68be7da61215-verify",
+        "status": "COMPLETED"
+      }
+    ],
+    "canonical_observations": 0,
+    "expected_digest": "a097d6ef7f34d63a20c714ab6be5a91ee0acbc19bca2e2143ba70e634d95e2de",
+    "label": "repair_disabled",
+    "mission_completed": false,
+    "mission_id": "mission-f9397786d44a",
+    "outcome": "BLOCKED",
+    "reason": "repair budget exhausted (2 failed verdicts > 1)",
+    "repair_disabled": true,
+    "verdicts": [
+      {
+        "answered_by": null,
+        "findings": [
+          "model PASS is not backed by a JARVIS-owned artifact predicate"
+        ],
+        "predicate": null,
+        "status": "FAIL",
+        "verdict": "FAIL"
+      },
+      {
+        "answered_by": null,
+        "findings": [
+          "model PASS is not backed by a JARVIS-owned artifact predicate"
+        ],
+        "predicate": null,
+        "status": "FAIL",
+        "verdict": "FAIL"
+      }
+    ]
+  },
+  "discriminates": true,
+  "schema": "jarvis.lane-b.verifier-routing-ab-probe.v1"
+}

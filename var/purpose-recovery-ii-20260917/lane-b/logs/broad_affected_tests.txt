@@ -1,0 +1,48 @@
+LANE B — broad affected test record
+
+Certified source commit: 1e3e518dc9468532d178ecccd42247555401450a
+
+1) Most sensitive executive/portfolio/capability suites (the surfaces this lane
+   changed directly), run at the lane head:
+
+   python -m pytest tests/foundry/test_v8_executive_autonomy.py \
+     tests/foundry/test_owner_goal_execution_spine.py \
+     tests/foundry/test_v7_cross_lane_wiring.py \
+     tests/foundry/test_post4_integration.py \
+     tests/foundry/test_registration.py \
+     tests/foundry/test_capability_states.py -q
+   -> 54 passed, 0 failed
+
+2) Focused lane + adjacent regression set:
+   python -m pytest tests/foundry/test_purpose_recovery_ii_b_intent_binding.py \
+     tests/foundry/test_v14_v16_convergence.py \
+     tests/foundry/test_v14_workflow_composition.py \
+     tests/foundry/test_v12_campaign_runtime.py tests/foundry/test_effects.py -q
+   -> 89 passed, 0 failed
+
+3) Command Center surfaces:
+   python -m pytest tests/foundry/test_command_center_health.py \
+     tests/foundry/test_command_center_ui_bridge.py tests/foundry/test_v7_command_center_truth.py \
+     tests/foundry/test_v11_command_center_autonomy.py tests/foundry/test_v13_command_center_work.py -q
+   -> 34 passed, 0 failed
+
+4) Provider / STOP:
+   python -m pytest tests/foundry/test_v12_provider_resilience.py \
+     tests/foundry/test_f6_provider_outage.py tests/foundry/test_stop_controls.py -q
+   -> 26 passed, 0 failed
+
+5) Broad affected suite (every Foundry test file that imports a module this lane
+   touched — 43 files, including the long endurance/durability suites):
+
+   python -m pytest <43 affected files> -q
+   -> COMPLETED, exit code 0, 563 tests collected and 563 progress marks with no
+      F/E markers in any line (72x7 + 59 = 563).  The piped summary line is
+      swallowed on this host (known repo behaviour); the all-dots progress
+      output plus exit 0 is the recorded result.  Coverage: executive autonomy,
+   campaign runtime, endurance convergence, gap-resume bridge, general work,
+   mission loop, owner-goal execution spine, registration, capability states,
+   role dispatch, resilience, V7-V9 convergence, worker/mission bridge.
+
+6) Static checks:
+   python -m compileall -q src/jarvis_foundry  -> exit 0
+   git diff --check                            -> clean

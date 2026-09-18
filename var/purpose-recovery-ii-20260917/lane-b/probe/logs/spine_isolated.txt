@@ -1,0 +1,6 @@
+.                                                                        [100%]
+============================= slowest 3 durations =============================
+16.07s call     tests/foundry/test_owner_goal_execution_spine.py::test_supervisor_owns_command_center_and_continues_goal_without_prompts
+2.65s setup    tests/foundry/test_owner_goal_execution_spine.py::test_supervisor_owns_command_center_and_continues_goal_without_prompts
+1.31s teardown tests/foundry/test_owner_goal_execution_spine.py::test_supervisor_owns_command_center_and_continues_goal_without_prompts
+EXIT=0

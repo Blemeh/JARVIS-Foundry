@@ -1,0 +1,22 @@
+{
+  "cycle": {
+    "loop_id": "lane-a-product-stall",
+    "outcome": "WAITING",
+    "reason": "V11 A3 DEFERRED: candidate action class project_staleness is not a small owner-repo build"
+  },
+  "classifications": [
+    "ACTION",
+    "STALL"
+  ],
+  "reasons": [
+    "selected cand-a2-33f77cdcb5d0 (composite=0.614) over 0 alternatives; goals=['owner-eb6302d953e6b0be47621d2f']",
+    "useful executable work was selected but continuation did not produce a mission: candidate action class project_staleness is not a small owner-repo build"
+  ],
+  "candidates": [
+    {
+      "type": "project_staleness",
+      "status": "DEFERRED",
+      "objective": "Review inactive project resource-operatoros-dirty"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "entrypoint": "jarvis_foundry.runtime.worker_loop.run_cycle",
+  "owner_intent": "Keep improving my active projects while I'm away. Find what is worth improving among my registered projects and take the best next step.",
+  "registered_projects": [
+    "C:\\Windows\\Temp\\pytest-of-b\\pytest-15\\test_worker_loop_discovers_fro0\\projects\\jarvis",
+    "C:\\Windows\\Temp\\pytest-of-b\\pytest-15\\test_worker_loop_discovers_fro0\\projects\\operatoros"
+  ],
+  "first_cycle": {
+    "loop_id": "lane-a-product-1",
+    "outcome": "WAITING",
+    "reason": "V11 A3 DEFERRED: candidate action class project_staleness is not a small owner-repo build"
+  },
+  "second_cycle": null,
+  "standing_intents": 1,
+  "context_assembled": true,
+  "candidate_count": 1,
+  "candidate_objectives": [
+    "Review inactive project resource-operatoros"
+  ],
+  "selected_objective": "Review inactive project resource-operatoros",
+  "rejected_count": 0,
+  "decision_truth": {
+    "why_chosen": "selected cand-a2-b860462a9b05 (composite=0.614) over 0 alternatives; goals=['owner-18f177560f4fe9f5a46bcf26']",
+    "next_action": "admit and execute candidate cand-a2-b860462a9b05",
+    "wait_reason": "",
+    "owner_attention_required": false,
+    "alternatives_rejected_count": 0
+  },
+  "wait_diagnoses": [
+    "ACTION",
+    "STALL"
+  ],
+  "new_project_judgment": {
+    "decision_id": "exec-continuous-observation-085a2333f928d7a01c47",
+    "judgment": "NONE"
+  },
+  "next_action_events": [
+    "executive.wake_created",
+    "executive.wake_created"
+  ],
+  "outcome_measured": false,
+  "calibration_recorded": false,
+  "owner_goal_objectives": [],
+  "did_harness_supply_task": false
+}

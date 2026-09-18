@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "checks": {
+    "runtime_detected_gap_without_materializing": true,
+    "gap_carries_the_required_action": true,
+    "runtime_acquired_capability": true,
+    "computed_digest_matches_independent_digest": true,
+    "same_objective_resumed": true,
+    "mission_bound_the_acquired_action": true,
+    "resumed_action_verified_against_external_digest": true,
+    "resumed_mission_verified_by_jarvis_predicate": true,
+    "no_false_success": true
+  },
+  "exception": null,
+  "gap": false,
+  "acquisition": "cap.hash.file.sha256",
+  "mission": "mission-40c070124518"
+}
+EXIT=0
