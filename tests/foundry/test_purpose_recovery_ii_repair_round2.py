@@ -214,6 +214,131 @@ def test_colliding_consumption_is_reported_not_swallowed(tmp_path, monkeypatch) 
     assert db.event_count(event_type="executive.research_wake_consumption_skipped") == 1
 
 
+def test_a_skipped_consumption_writes_no_continuation(tmp_path, monkeypatch) -> None:
+    """Repair round 3: a skip receipt must not become a 'continued' record.
+
+    The round-2 repair returned the skip receipt in the consumer's list, and
+    that list is what ``run_continuous_cycle`` hands to
+    ``record_research_wake_continuation``.  Writing "continued" for a wake the
+    runtime explicitly skipped is a false record (found by the review of
+    862b745).
+    """
+
+    import jarvis_foundry.executive.continuous as continuous
+    from jarvis_foundry.events import EventConflict
+    from jarvis_foundry.executive.continuous import record_research_wake_continuation
+
+    db = _database(tmp_path)
+    research_id = "research-repair-continuation"
+    _research_wake(db, research_id)
+    _raw_event(
+        db,
+        "research.candidate_completed",
+        {
+            "research_id": research_id,
+            "candidate_id": "candidate-repair",
+            "cycle_id": "repair",
+            "pass_number": 1,
+            "status": "COMPLETED",
+            "evidence": {},
+        },
+        key="repair-test:continuation",
+    )
+
+    real_append = continuous._append
+    state = {"raised": False}
+
+    def _flaky_append(db_, event_type, payload, **kwargs):
+        if event_type == "executive.research_wake_consumed" and not state["raised"]:
+            state["raised"] = True
+            raise EventConflict("idempotency conflict (injected)")
+        return real_append(db_, event_type, payload, **kwargs)
+
+    monkeypatch.setattr(continuous, "_append", _flaky_append)
+    receipts = consume_research_wakes(
+        db, cycle_id="continuation-1", consumer_id="worker", controller="supervisor"
+    )
+    monkeypatch.undo()
+
+    skipped = [item for item in receipts if item.get("consumed") is False]
+    assert skipped, "the collision must still produce its skip receipt"
+    written = record_research_wake_continuation(
+        db, cycle_id="continuation-1", consumed=receipts, controller="supervisor"
+    )
+    assert written == [], "a skipped consumption must not be recorded as continued"
+    assert db.event_count(event_type="executive.research_wake_continued") == 0
+
+
+def test_a_real_consumption_still_writes_a_continuation(tmp_path) -> None:
+    """Positive control for the guard above: a real consumption is continued."""
+
+    from jarvis_foundry.executive.continuous import record_research_wake_continuation
+
+    db = _database(tmp_path)
+    research_id = "research-repair-continuation-positive"
+    _research_wake(db, research_id)
+    _raw_event(
+        db,
+        "research.candidate_completed",
+        {
+            "research_id": research_id,
+            "candidate_id": "candidate-repair",
+            "cycle_id": "repair",
+            "pass_number": 1,
+            "status": "COMPLETED",
+            "evidence": {},
+        },
+        key="repair-test:continuation-positive",
+    )
+    receipts = consume_research_wakes(
+        db, cycle_id="continuation-2", consumer_id="worker", controller="supervisor"
+    )
+    assert receipts and receipts[0].get("consumed") is not False
+    written = record_research_wake_continuation(
+        db, cycle_id="continuation-2", consumed=receipts, controller="supervisor"
+    )
+    assert written and db.event_count(event_type="executive.research_wake_continued") == 1
+
+
+def test_status_less_completion_is_durable_like_the_projection(tmp_path) -> None:
+    """Repair round 3: the receipt mirrors the projection's own status default.
+
+    ``projections.py`` seals a completion that carries no status as COMPLETED,
+    so a status-less event must be a durable completion for the wake.  Ignoring
+    it created a wake the consumer could never release while the same cycle
+    advertised it (found by the review of 862b745).
+    """
+
+    db = _database(tmp_path)
+    _raw_event(
+        db,
+        "research.candidate_completed",
+        {
+            "research_id": "research-no-status",
+            "candidate_id": "candidate-repair",
+            "cycle_id": "repair",
+            "pass_number": 1,
+            "evidence": {},
+        },
+        key="repair-test:no-status",
+    )
+    _raw_event(
+        db,
+        "research.candidate_completed",
+        {
+            "research_id": "research-still-failed",
+            "candidate_id": "candidate-repair",
+            "cycle_id": "repair",
+            "pass_number": 1,
+            "status": "FAILED",
+            "evidence": {},
+        },
+        key="repair-test:still-failed",
+    )
+    assert _research_completion_receipt(db, "research-no-status") is not None
+    assert _research_completion_receipt(db, "research-still-failed") is None
+
+
 def test_declared_source_present_checks_the_checkout() -> None:
     assert _declared_source_present("src/jarvis_foundry/fabric/executors.py") is True
     assert _declared_source_present("src/jarvis_foundry/fabric/not_a_file.py") is False

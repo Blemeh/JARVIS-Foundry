@@ -466,11 +466,14 @@ def _research_completion_receipt(db, research_id: str):
     scan: a long-lived ledger can hold more completions than any scan window,
     and a missed receipt would silently defer a wake that is genuinely due.
 
-    The status is part of the query: the canonical writer emits one
-    ``research.candidate_completed`` event per terminal attempt, including
-    attempts that finished FAILED or CANCELLED, and only a COMPLETED attempt is
-    a durable completion.  Matching any status would let a failed pass release
-    a wake under the ``research_completion_durable`` basis.
+    The status is part of the query, and the default mirrors the projection
+    exactly: ``projections.py`` seals a completion that carries no status as
+    ``COMPLETED``, so this lookup treats a missing status the same way and only
+    excludes the attempts the projection itself records as FAILED, BLOCKED,
+    DEFERRED, REJECTED or UNKNOWN.  That coherence matters in both directions -
+    matching any status would let a failed pass release a wake as
+    ``research_completion_durable``, and ignoring the projection's own default
+    would make the bridge create a wake the consumer can never release.
     """
 
     if not research_id:
@@ -481,8 +484,8 @@ def _research_completion_receipt(db, research_id: str):
                 "SELECT sequence, event_id FROM events "
                 "WHERE event_type = ? "
                 "AND json_extract(payload_json, '$.research_id') = ? "
-                "AND UPPER(COALESCE(json_extract(payload_json, '$.status'), '')) "
-                "    = 'COMPLETED' "
+                "AND UPPER(COALESCE(json_extract(payload_json, '$.status'), "
+                "    'COMPLETED')) = 'COMPLETED' "
                 "ORDER BY sequence DESC LIMIT 1",
                 (RESEARCH_COMPLETION_EVENT, research_id),
             ).fetchone()
@@ -742,6 +745,11 @@ def record_research_wake_continuation(
     if controller != SUPERVISOR_CONTROLLER:
         raise PermissionError("research-wake continuation is Supervisor-owned")
     consumed = list(consumed or ())
+    # A skip receipt records that a wake was NOT consumed (a colliding
+    # consumption by the same consumer), so it must never produce a continuation:
+    # writing "continued" for it would be a false record of a wake the runtime
+    # explicitly skipped.  The guard lives here so every caller is covered.
+    consumed = [item for item in consumed if item.get("consumed") is not False]
     if not consumed:
         return []
     decisions = list(db.events(event_types=("executive.decision_recorded",)))
