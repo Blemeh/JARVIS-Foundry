@@ -107,14 +107,30 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `e9a8e34f60330399d7220fe8230491dc326b880a`
+DOCUMENTATION STATE BASE SHA: `7d8672f603d9c2407b43eaa4e6f10bf7c0ff40bd`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
-commit, as required by `scripts/doc_staleness_check.py`. It names the isolated
-acceptance receipts commit, not a live install. Product repair remains
-`0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`. The next owner-authorized action
-for this candidate is `docs/agent/workflows/promotion.md`; this pin does not
-perform that promotion.
+commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
+Recovery II canonical-convergence product head in the isolated candidate
+worktree `C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on
+branch `candidate/purpose-recovery-ii-canonical-convergence-20260918`, not a
+live install. That session repaired the PASS-to-wake continuation gap (a
+verified PASS scheduled no canonical wake because the only writer call site was
+gated behind the A3 flag), the `workflow.run` verifier seam (the verifier role
+certified on artifact presence while the canonical Fabric predicate required
+every nested receipt `VERIFIED`), and a verified read-only mission that was
+falsely BLOCKED for having nothing to commit. Its verdict was
+`CONVERGENCE_PARTIAL_BLOCKED`: the E-S unified spine, the heartbeat acceptance
+receipts HB-1..HB-4, learning causality and the Level-5 installed-candidate
+continuation proof passed, while the research bridge, self-expansion, campaign
+creation, in-flight STOP, exactly-once attempt-2 and Command Center owner-truth
+remain open. Handoff and evidence live under
+`var/purpose-recovery-ii-convergence-20260918/` in that worktree. Product repair
+remains `0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, carried forward from the
+previous pin; this session did not touch the live install, its database, its
+worker routing or its scheduler. The next owner-authorized action for this
+candidate is `docs/agent/workflows/promotion.md`; this pin does not perform that
+promotion.
 
 ## Repair-path scope fix (2026-09-15)
 
