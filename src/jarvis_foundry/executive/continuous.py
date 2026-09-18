@@ -462,6 +462,8 @@ def run_continuous_cycle(
     now=None,
     max_new_missions=1,
     excluded_objective_ids=(),
+    discovery: Mapping[str, Any] | None = None,
+    stop_path: str | Path | None = None,
 ):
     # One idempotent durable tick: due wakes -> trigger -> autonomy cycle -> materialize
     # Idempotent on cycle_id via autonomy cycle key; wake triggers are idempotent via wake_triggered keys
@@ -469,7 +471,11 @@ def run_continuous_cycle(
     # Check owner authority first
     from ..control.broker import emergency_stop_reason as _esr
     from pathlib import Path as _P
-    if _esr(db, _P(db.path).parent / "EMERGENCY_STOP"):
+    # The worker loop passes its resolved sentinel; falling back to the DB
+    # parent keeps older callers working, and run_cycle refuses to start a
+    # cycle where those two paths differ.
+    _stop_sentinel = _P(stop_path) if stop_path else _P(db.path).parent / "EMERGENCY_STOP"
+    if _esr(db, _stop_sentinel):
         return {"cycle_id": cycle_id, "status": "OWNER_BLOCKED", "reason": "STOP active — no mutation"}
     veto = __import__("jarvis_foundry.control.broker", fromlist=["matching_veto_reason"]).matching_veto_reason(db, {"GLOBAL", "executive", "objectives"})
     if veto:
@@ -513,6 +519,31 @@ def run_continuous_cycle(
                 return {"cycle_id": cycle_id, "status": "ESCALATE", "reason": f"retry loop detected for {top.objective_id} on {loop_strategy!r} — escalation recorded", "triggered_wakes": triggered, "parked_objectives": parked}
     except Exception:
         pass
+    # Next-work discovery: the Continuous Executive is the only next-work
+    # authority, so when the caller has no dispatchable contract it observes
+    # registered projects and admits the Executive's selected work here.  The
+    # admission authority and the binder's declared need table are shared with
+    # every other entry, so this is one seam - not a third selector.
+    discovery_report: dict[str, Any] | None = None
+    discovery_settings = dict(discovery or {})
+    if discovery_settings:
+        try:
+            from .intelligence import discover_and_admit_next_work as _discover
+            admitted_work = _discover(db, cycle_id=cycle_id, **discovery_settings)
+            discovery_report = {
+                "status": admitted_work.status,
+                "reason": admitted_work.reason,
+                "decision_id": admitted_work.decision_id,
+                "admission_status": admitted_work.admission_status,
+                "mission_id": admitted_work.mission_id,
+                "observed": admitted_work.observed,
+            }
+        except Exception as error:  # noqa: BLE001 - discovery must not abort the cycle
+            discovery_report = {
+                "status": "BLOCKED",
+                "reason": f"{type(error).__name__}: {error}"[:500],
+                "mission_id": None,
+            }
     # Autonomy phase: delegate to existing authoritative cycle
     from ..executive.autonomy import run_autonomy_cycle as _run_auto
     try:
@@ -522,9 +553,16 @@ def run_continuous_cycle(
             controller=controller,
             excluded_objective_ids=tuple(sorted(excluded)),
         )
-        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle.to_payload() if hasattr(cycle, "to_payload") else dict(cycle) if isinstance(cycle, dict) else str(cycle)}
+        cycle_payload = cycle.to_payload() if hasattr(cycle, "to_payload") else dict(cycle) if isinstance(cycle, dict) else str(cycle)
+        mission_id = None
+        if isinstance(cycle_payload, dict):
+            materialization = cycle_payload.get("materialization") or {}
+            if isinstance(materialization, dict):
+                mission_id = materialization.get("mission_id")
+        mission_id = mission_id or (discovery_report or {}).get("mission_id")
+        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report}
     except Exception as e:
-        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked}
+        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked, "discovery": discovery_report}
 
 def schedule_wait_until(db, objective_id: str, *, not_before: str, reason="", controller="supervisor"):
     wid = f"wake:{objective_id}:until:{_hash(not_before)}"

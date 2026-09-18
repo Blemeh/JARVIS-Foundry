@@ -48,7 +48,7 @@ parameter binds to via ``bind``, defaulting to the parameter name):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 
 from ..clock import isoformat
 from ..database import FoundryDatabase
@@ -120,6 +120,114 @@ _NEED_ACTIONS: dict[str, dict[str, Any]] = {
 }
 
 _ACTIONS_MISSING = object()
+
+# Declarative semantic needs per **observed candidate class**.  The Executive
+# answers "what is worth doing"; this table answers "which normalized needs
+# that work implies".  It is keyed by the candidate class the observation
+# produced and lives in the vocabulary's own module, so there is no second
+# registry, no owner-text keyword compiler, and no registry identifier at the
+# Executive boundary.  A class absent from this table has no deterministic
+# binding and admission must refuse it honestly.
+CANDIDATE_NEEDS: dict[str, tuple[str, ...]] = {
+    # Registered-project review / investigation: read the repository state.
+    "project_staleness": (NEED_REPOSITORY_INSPECT,),
+    "project_drift": (NEED_REPOSITORY_INSPECT,),
+    # Bounded local diagnosis needs no supplied role facts.
+    "world_signal": (NEED_SYSTEM_DIAGNOSE,),
+}
+
+# Classes whose useful work is a bounded repository change.  They are admitted
+# (a hand-written allowlist must not auto-refuse discovered owner-repo work)
+# but they carry no normalized intent yet: the change author is the model
+# worker on the admitted-objective build path, so admitting them as a
+# read-only review would silently downgrade what the observation means.  The
+# intent binding for authored change is the software-engineering seam and is
+# recorded as an open product gap, not faked here.
+CANDIDATE_BUILD_CLASSES: frozenset[str] = frozenset({
+    "tracked_work",
+    "build",
+    "local_code_change",
+    "repair",
+    "repository_improvement",
+    "github_issue",
+    "github_workflow_failure",
+})
+
+# Structured observation keys that name a file the observation is about.
+_OBSERVATION_FILE_KEYS = ("file_target", "target_file", "marker_path", "source_file")
+
+
+def needs_for_candidate_class(candidate_type: str) -> tuple[str, ...]:
+    """Declared normalized needs for one observed candidate class."""
+    return CANDIDATE_NEEDS.get(str(candidate_type or "").strip().lower(), ())
+
+
+def observation_file_target(evidence_rows: Iterable[Mapping[str, Any]]) -> str:
+    """The file an observation names, when it names one as structured data.
+
+    Only an explicit relative path counts: a sentence that happens to mention a
+    filename is not a binding input.
+    """
+    for row in evidence_rows:
+        if not isinstance(row, Mapping):
+            continue
+        for key in _OBSERVATION_FILE_KEYS:
+            raw = str(row.get(key) or "").strip().replace("\\", "/")
+            if not raw or raw.startswith("/") or ":" in raw.split("/")[0]:
+                continue
+            parts = [part for part in raw.split("/") if part not in ("", ".")]
+            if parts and ".." not in parts:
+                return "/".join(parts)
+    return ""
+
+
+def intent_from_observation(
+    *,
+    candidate_id: str,
+    candidate_type: str,
+    objective: str,
+    resource_id: str,
+    objective_id: str = "",
+    evidence_rows: Iterable[Mapping[str, Any]] = (),
+    supplied_inputs: Mapping[str, Any] | None = None,
+    success_criteria: Sequence[str] = (),
+    constraints: Sequence[str] = (),
+) -> MissionIntent:
+    """Derive the normalized intent for one observed candidate.
+
+    Needs come from the candidate class and from the observation's structured
+    evidence; the caller supplies only runtime-owned facts as input roles.
+    Neither a recipe id nor a registry-shaped parameter block enters here.
+
+    Raises ``MissionIntentError`` when the observed class has no deterministic
+    binding: that is an honest refusal, never a silent downgrade.
+    """
+    needs = list(needs_for_candidate_class(candidate_type))
+    if not needs:
+        raise MissionIntentError(
+            f"candidate class {candidate_type or 'UNKNOWN'} has no deterministic "
+            "need binding"
+        )
+    inputs = {str(key): value for key, value in dict(supplied_inputs or {}).items()}
+    file_target = observation_file_target(evidence_rows)
+    if NEED_REPOSITORY_INSPECT in needs and file_target:
+        # The observation named the file it is about, so the review reads it.
+        for need in (NEED_FILE_READ,):
+            if need not in needs:
+                needs.append(need)
+        inputs.setdefault("file_target", file_target)
+    return MissionIntent(
+        intent_id=f"intent:{candidate_id}",
+        objective=objective,
+        resource_id=resource_id,
+        needs=tuple(needs),
+        inputs=inputs,
+        success_criteria=tuple(success_criteria),
+        constraints=tuple(constraints),
+        evidence_refs=(f"candidate:{candidate_id}",),
+        objective_id=objective_id,
+        source="executive-observation",
+    )
 
 
 class MissionIntentError(ValueError):

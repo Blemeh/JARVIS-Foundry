@@ -14,12 +14,13 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict, canonical_json
+from ..v3_fault import invoke_fault_hook
 from .calibration import (
     merge_predicted_vs_actual,
     outcome_from_mission,
@@ -483,7 +484,7 @@ def schedule_next_action_after_outcome(
     reason: str = "",
 ) -> dict[str, Any]:
     """Create an existing-authority wake so PASS is not silence."""
-    from .continuous import WakeCondition, create_wake
+    from .continuous import WakeCondition, _objective_for_mission, create_wake
 
     now = _utc()
     wake_id = f"next-action:{mission_id}"
@@ -491,9 +492,14 @@ def schedule_next_action_after_outcome(
     wait_reason = reason or (
         f"mission {mission_id} {outcome}; select next valuable action"
     )
+    # Bind the wake to the mission's real Executive objective when one owns it.
+    # A synthesized ``post-outcome:{mission_id}`` objective advertised
+    # continuation that the Executive could never actually select, so the
+    # wake looked scheduled while no next cycle could consume it.
+    wake_objective_id = _objective_for_mission(database, mission_id)
     wake = WakeCondition(
         wake_id=wake_id,
-        objective_id=f"post-outcome:{mission_id}",
+        objective_id=wake_objective_id,
         kind=kind,
         reason=wait_reason,
         created_at=isoformat(now),
@@ -507,11 +513,18 @@ def schedule_next_action_after_outcome(
             "mission_id": mission_id,
             "outcome": outcome,
             "wake_id": wake_id,
+            "objective_id": wake_objective_id,
+            "objective_bound": not wake_objective_id.startswith("mission:"),
             "reason": wait_reason,
         },
         key=f"executive.next_action_scheduled:{mission_id}",
     )
-    return {"wake_id": wake_id, "reason": wait_reason, "kind": kind}
+    return {
+        "wake_id": wake_id,
+        "objective_id": wake_objective_id,
+        "reason": wait_reason,
+        "kind": kind,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -548,6 +561,151 @@ class IntelligenceCycle:
             "research": self.research,
             "new_project_judgment": self.new_project_judgment,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryAdmission:
+    """One canonical discovery -> SELECT -> admission pass.
+
+    This is the product seam between the Executive's observed candidates and
+    the runtime's executable work.  It is not a selector: it reuses the
+    existing A2 observation driver, the existing ExecutiveDecisionService, and
+    the existing admission authority, and it reports what actually happened so
+    the caller can render an honest ACTION / JUSTIFIED_WAIT / STALL.
+    """
+
+    status: str
+    reason: str
+    mission_id: str | None = None
+    decision_id: str | None = None
+    admission_status: str | None = None
+    observed: bool = False
+
+
+def discover_and_admit_next_work(
+    database: FoundryDatabase,
+    *,
+    cycle_id: str,
+    resource_id: str,
+    capability: str = "write_registered_worktree_files",
+    sources: Sequence[Any] = (),
+    required_capabilities: Sequence[str] = (),
+    stop_path: str | Path | None = None,
+    policy: Any | None = None,
+    project_roots: Mapping[str, Any] | None = None,
+    worktree_parent: str | Path | None = None,
+    bounds: Mapping[str, Any] | None = None,
+    fault_hook: Callable[[str], None] | None = None,
+) -> DiscoveryAdmission:
+    """Observe registered projects and admit the Executive's selected work.
+
+    Returns MISSION when an admitted objective produced a dispatchable mission,
+    CONTINUATION when an already-admitted objective continued, JUSTIFIED_WAIT
+    when no worthwhile work exists, and STALL when useful work was selected but
+    could not become a mission.
+    """
+    from ..initiative_a2 import InitiativeA2Bounds, run_continuous_observation_cycle
+    from ..initiative_a3 import (
+        A3AdmissionPolicy,
+        InitiativeAdmissionAuthority,
+        active_initiative_objective,
+        continue_initiative_objective,
+        pending_initiative_decision,
+    )
+
+    if policy is None:
+        policy = A3AdmissionPolicy()
+    bounds_raw = dict(bounds or {})
+    a2_bounds = InitiativeA2Bounds(**{
+        name: value for name, value in bounds_raw.items()
+        if name in InitiativeA2Bounds.__dataclass_fields__
+    })
+    prepare_executive_observation(database, cycle_id=cycle_id)
+    resolved_sources = tuple(sources) or observation_sources_from_registered_projects(
+        database,
+        required_capabilities=tuple(required_capabilities or policy.required_fabric_capabilities),
+    )
+    if not resolved_sources:
+        reason = "V11 A3 has no registered project sources"
+        record_product_wait_diagnosis(database, cycle_id=cycle_id, reason=reason)
+        judge_new_project_opportunity(database, None)
+        return DiscoveryAdmission("JUSTIFIED_WAIT", reason)
+
+    roots = dict(project_roots or {}) or project_roots_from_sources(resolved_sources)
+    authority = InitiativeAdmissionAuthority(
+        database,
+        worktree_parent=str(worktree_parent or ""),
+        project_roots=roots,
+        policy=policy,
+        stop_path=stop_path,
+    )
+    invoked = (lambda stage: invoke_fault_hook(fault_hook, stage)) if fault_hook else (lambda stage: None)
+    decision = None
+    admission = None
+    active_objective = active_initiative_objective(database)
+    if active_objective is not None:
+        admission = continue_initiative_objective(
+            database, active_objective, cycle_id=f"initiative-executive-{cycle_id}",
+        )
+    else:
+        decision = pending_initiative_decision(database)
+        if decision is None:
+            report = run_continuous_observation_cycle(
+                database,
+                sources=resolved_sources,
+                resource_id=resource_id,
+                capability=capability,
+                bounds=a2_bounds,
+                stop_path=stop_path,
+                fault_hook=fault_hook,
+            )
+            decision = report.get("decision")
+            if getattr(decision, "kind", None) != "SELECT":
+                reason = f"V11 A2 WAIT: {report.get('reason') or 'no eligible candidate'}"
+                record_product_wait_diagnosis(
+                    database, cycle_id=cycle_id,
+                    decision=decision if hasattr(decision, "kind") else None,
+                    reason=reason,
+                )
+                judge_new_project_opportunity(
+                    database, decision if hasattr(decision, "kind") else None,
+                )
+                return DiscoveryAdmission(
+                    "JUSTIFIED_WAIT", reason,
+                    decision_id=getattr(decision, "decision_id", None),
+                    observed=True,
+                )
+            invoked("post initiative.selection")
+        admission = authority.admit(decision)
+        if admission.admitted and admission.objective_id:
+            invoked("post initiative.objective_created")
+            admission = continue_initiative_objective(
+                database, admission.objective_id,
+                cycle_id=f"initiative-executive-{cycle_id}",
+            )
+    if admission is not None and admission.mission_id:
+        invoked("post initiative.mission_created")
+        return DiscoveryAdmission(
+            "MISSION", admission.reason,
+            mission_id=admission.mission_id,
+            decision_id=getattr(decision, "decision_id", None),
+            admission_status=admission.status,
+        )
+    status = admission.status if admission is not None else "WAIT"
+    reason = f"V11 A3 {status}: {admission.reason if admission else 'no admission result'}"
+    record_product_wait_diagnosis(
+        database, cycle_id=cycle_id,
+        decision=decision if hasattr(decision, "kind") else None,
+        admission=admission, reason=reason,
+    )
+    judge_new_project_opportunity(
+        database, decision if hasattr(decision, "kind") else None,
+    )
+    return DiscoveryAdmission(
+        "STALL", reason,
+        decision_id=getattr(decision, "decision_id", None),
+        admission_status=status,
+    )
 
 
 def run_executive_intelligence_cycle(

@@ -32,16 +32,24 @@ from .executive.autonomy import (
 )
 from .executive.decisions import ExecutiveDecision
 from .fabric.catalog import get_spec, observed_readiness
+from .mission.intent import (
+    CANDIDATE_BUILD_CLASSES,
+    CANDIDATE_NEEDS,
+    MissionIntentError,
+    intent_from_observation,
+    needs_for_candidate_class,
+)
 from .mission.verification import accepted_verifications
 
 
 _TERMINAL_OBJECTIVE = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"})
-_ALLOWED_ACTION_CLASSES = frozenset({
-    "tracked_work",
-    "github_issue",
-    "github_workflow_failure",
-    "world_signal",
-})
+# The admitted set is the binder's own declared class table: a class that has
+# no deterministic need binding cannot be admitted, and a class the binder can
+# bind is not refused merely because it is a different kind of useful work.
+# The previous hand-written four-class list refused discovered project-health
+# work (project_staleness) while Lane A discovery emitted it - the observed
+# stall this convergence repairs.
+_ALLOWED_ACTION_CLASSES = frozenset(CANDIDATE_NEEDS) | CANDIDATE_BUILD_CLASSES
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +245,55 @@ def _candidate_context(candidate: Mapping[str, Any]) -> tuple[list[dict[str, Any
         if str(value)
     ))
     return rows, project, capabilities
+
+
+def _candidate_intent(
+    *,
+    candidate_id: str,
+    candidate_type: str,
+    objective_text: str,
+    objective_id: str,
+    evidence: Sequence[Mapping[str, Any]],
+    prepared: Mapping[str, str],
+) -> tuple[Any, str, bool]:
+    """Derive the normalized intent for one admitted candidate.
+
+    The Executive side answers "what is worth doing"; the binder's declared
+    class table answers "which normalized needs that implies".  Only
+    runtime-owned facts are supplied as input roles, so no recipe id and no
+    registry-shaped parameter block crosses this boundary.
+
+    Returns ``(intent, error, bindable)``.  ``bindable`` is False for a class
+    the binder cannot yet express (a bounded repository change): those keep
+    the existing admitted-objective build path instead of being downgraded to
+    a read-only review.
+    """
+    if not needs_for_candidate_class(candidate_type):
+        return None, "", False
+    try:
+        intent = intent_from_observation(
+            candidate_id=candidate_id,
+            candidate_type=candidate_type,
+            objective=objective_text,
+            resource_id=str(prepared["resource_id"]),
+            objective_id=objective_id,
+            evidence_rows=evidence,
+            supplied_inputs={
+                "owned_repository_root": str(prepared["worktree"]),
+                "repository_branch": str(prepared["branch"]),
+            },
+            success_criteria=(
+                "the review reads the repository state the observation reported",
+                "the independent verifier accepts the recorded receipts",
+            ),
+            constraints=(
+                "reads only in the isolated worktree",
+                "no public writes, live runtime, production database or Scheduler mutation",
+            ),
+        )
+    except MissionIntentError as error:
+        return None, str(error), True
+    return intent, "", True
 
 
 def _factor_value(judgment: Mapping[str, Any], name: str) -> float | None:
@@ -504,7 +561,8 @@ class InitiativeAdmissionAuthority:
                 self.database,
                 candidate_id,
                 "ACTION_CLASS_NOT_ALLOWED",
-                f"candidate action class {action_class or 'UNKNOWN'} is not a small owner-repo build",
+                f"candidate action class {action_class or 'UNKNOWN'} is outside the admitted "
+                "owner-repository policy",
             )
         objective_text = str(candidate.get("objective") or "").strip()
         objective_id = f"initiative-objective:{candidate_id}"
@@ -560,6 +618,23 @@ class InitiativeAdmissionAuthority:
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             return _blocked(self.database, candidate_id, "WORKTREE_BLOCKED", str(error)[:500])
 
+        intent, intent_error, intent_bindable = _candidate_intent(
+            candidate_id=candidate_id,
+            candidate_type=action_class,
+            objective_text=objective_text,
+            objective_id=objective_id,
+            evidence=evidence,
+            prepared=prepared,
+        )
+        if intent_bindable and intent is None:
+            return _blocked(
+                self.database,
+                candidate_id,
+                "INTENT_UNBINDABLE",
+                f"observed work has no normalized intent: {intent_error}",
+            )
+        intent_payload = intent.as_dict() if intent is not None else None
+
         score = float(judgment.get("score") or 0.5)
         objective = create_objective(
             self.database,
@@ -607,6 +682,7 @@ class InitiativeAdmissionAuthority:
                 "worktree": prepared["worktree"],
                 "branch": prepared["branch"],
                 "base_sha": prepared["base_sha"],
+                **({"intent": intent_payload} if intent_payload else {}),
             },
             source_id="v11-a3-admission",
         )
@@ -652,6 +728,9 @@ class InitiativeAdmissionAuthority:
                 "action_class": action_class,
                 "reversibility": reversibility,
                 "confidence": confidence,
+                "intent_id": (intent_payload or {}).get("intent_id"),
+                "intent_needs": list((intent_payload or {}).get("needs") or ()),
+                "intent_source": (intent_payload or {}).get("source"),
             },
             source_type="supervisor",
             source_id="v11-a3-admission",

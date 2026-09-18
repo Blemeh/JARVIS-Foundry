@@ -64,6 +64,11 @@ class WorkerRuntimeConfig:
     # V9 Continuous Executive: durable wake/condition system above autonomy.
     # OFF by default; when ON the loop uses run_continuous_cycle as the single wake-aware path.
     continuous_enabled: bool = False
+    # Discovery inside the Continuous Executive: observing registered projects
+    # and admitting the Executive's selected work is part of the canonical
+    # next-work authority, not a separate selector branch.  DEFAULT ON so a
+    # candidate that enables the Continuous Executive actually observes.
+    continuous_discovery_enabled: bool = True
     # V11 A2 initiative observation/judgment is an inert admission-boundary
     # probe.  It may observe, research, and rank, but it is mutually exclusive
     # with every execution-capable selector and remains OFF in production.
@@ -176,6 +181,11 @@ class WorkerRuntimeConfig:
                 raw.get("discovery", {}).get("cycle_enabled", False)),
             continuous_enabled=bool(
                 raw.get("executive", {}).get("continuous_enabled", False) or raw.get("continuous", {}).get("enabled", False)),
+            continuous_discovery_enabled=bool(
+                raw.get("executive", {}).get(
+                    "continuous_discovery_enabled",
+                    raw.get("continuous", {}).get("discovery_enabled", True),
+                )),
             initiative_a2_enabled=bool(
                 raw.get("initiative_a2", {}).get("enabled", False)),
             initiative_a2=dict(raw.get("initiative_a2") or {}),
@@ -283,3 +293,24 @@ class WorkerRuntimeConfig:
             raise ValueError(
                 "campaign_runtime is execution-capable and cannot be combined "
                 "with zero-execution observation modes")
+        if self.continuous_enabled:
+            # The Continuous Executive is the single canonical next-work
+            # authority.  Any YAML that lets a second factory create a mission
+            # in the same cycle is rejected here, including the
+            # continuous+portfolio pair that used to validate successfully.
+            competing_factories = {
+                "discovery.cycle_enabled": self.discovery_cycle_enabled,
+                "executive.selection_enabled": self.executive_selection_enabled,
+                "executive.autonomy_enabled": self.executive_autonomy_enabled,
+                "executive.portfolio_selection_enabled": (
+                    self.portfolio_selection_enabled),
+                "initiative_a3.enabled": self.initiative_a3_enabled,
+            }
+            active = [
+                name for name, enabled in competing_factories.items() if enabled
+            ]
+            if active:
+                raise ValueError(
+                    "executive.continuous_enabled is the single next-work "
+                    "authority and cannot be combined with a competing mission "
+                    f"factory: {', '.join(active)}")

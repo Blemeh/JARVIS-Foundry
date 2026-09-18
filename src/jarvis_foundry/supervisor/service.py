@@ -532,9 +532,23 @@ class Supervisor:
                 if latest:
                     event = latest[0]
                     payload = event.payload if isinstance(event.payload, dict) else {}
+                    # Only a heartbeat with the SAME payload material may be
+                    # coalesced.  A reap heartbeat carries an extra
+                    # reaped_workers field, so reusing its key for a plain
+                    # heartbeat would pair one idempotency key with two
+                    # different payload hashes and raise EventConflict, which
+                    # the heartbeat loop counts as a failure.  Five in a row
+                    # stop the daemon cleanly and exclude the whole UTC day from
+                    # a proving window (live 2026-09-14: events #241076,
+                    # #241079, #241081, #241086).  A key may only be reused when
+                    # it came from a heartbeat of the same material, so a reap
+                    # heartbeat never anchors a plain one; the caller then falls
+                    # through to a fresh bucket key.
+                    same_material = bool(payload.get("reaped_workers")) == bool(reaped)
                     if (
                         str(payload.get("instance_id") or "") == self.instance_id
                         and int(payload.get("generation") or -1) == self._start_generation
+                        and same_material
                     ):
                         elapsed = (
                             utc_now() - parse(event.recorded_at)

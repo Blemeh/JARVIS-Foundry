@@ -526,6 +526,80 @@ def _maybe_portfolio_select(
 
 
 
+def _absolute_worktree_parent(value: Any, paths: FoundryPaths) -> Path:
+    """Resolve the admission worktree parent to an explicit absolute path.
+
+    ``InitiativeAdmissionAuthority`` refuses a relative parent on purpose: an
+    isolated worktree must never be created relative to an unknown cwd.  A
+    candidate config may still express it relative to the candidate home, so
+    resolve that here (and default to ``<home>/worktrees``) rather than letting
+    admission raise and the discovery phase report a false BLOCKED.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return (paths.home / "worktrees").resolve()
+    candidate = Path(raw).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (paths.home / candidate).resolve()
+
+
+def _discovery_settings(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+    paths: FoundryPaths,
+) -> dict[str, Any] | None:
+    """Discovery/admission settings handed to the Continuous Executive cycle.
+
+    Observing registered projects and admitting the Executive's selected work
+    is part of the canonical next-work authority, so the CE cycle receives the
+    admission policy, the registered project roots and the isolated worktree
+    parent instead of a second selector branch running beside it.
+    """
+    if not getattr(config, "continuous_discovery_enabled", True):
+        return None
+    from ..discovery_sources import SourceSpec
+    from ..executive.intelligence import project_roots_from_sources
+    from ..initiative_a3 import A3AdmissionPolicy
+
+    raw = dict(getattr(config, "initiative_a3", None) or {})
+    sources = tuple(
+        SourceSpec(
+            source_id=str(item["source_id"]),
+            source_kind=str(item["source_kind"]),
+            source_identity=str(item["source_identity"]),
+            poll_interval_s=int(item.get("poll_interval_s", 300)),
+            config=dict(item.get("config") or {}),
+            enabled=bool(item.get("enabled", True)),
+        )
+        for item in (raw.get("sources") or ())
+        if isinstance(item, dict)
+    )
+    policy_raw = dict(raw.get("policy") or {})
+    if "allowed_action_classes" in policy_raw:
+        policy_raw["allowed_action_classes"] = frozenset(
+            str(value) for value in policy_raw["allowed_action_classes"])
+    allowed_policy = {
+        name: value for name, value in policy_raw.items()
+        if name in A3AdmissionPolicy.__dataclass_fields__
+    }
+    project_roots = dict(raw.get("project_roots") or {})
+    if not project_roots and sources:
+        project_roots = project_roots_from_sources(sources)
+    return {
+        "resource_id": config.resource_id,
+        "capability": config.capability,
+        "sources": sources,
+        "stop_path": _default_stop_path(paths, config),
+        "policy": A3AdmissionPolicy(**allowed_policy),
+        "project_roots": project_roots,
+        "worktree_parent": str(
+            _absolute_worktree_parent(raw.get("worktree_parent"), paths)
+        ),
+        "bounds": dict(raw.get("bounds") or {}),
+    }
+
+
 def _maybe_continuous_cycle(
     database,
     config,
@@ -557,6 +631,8 @@ def _maybe_continuous_cycle(
             cycle_id=f"continuous:{loop_id}",
             controller="supervisor",
             excluded_objective_ids=tuple(excluded_objective_ids),
+            discovery=_discovery_settings(database, config, paths),
+            stop_path=_default_stop_path(paths, config),
         )
         # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
         ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
@@ -1082,6 +1158,29 @@ def run_cycle(
     if not config.enabled:
         return {"loop_id": loop_id, "outcome": "DISABLED",
                 "reason": "worker runtime subsystem is not enabled"}
+    # ONE STOP authority.  The filesystem sentinel is
+    # ``{foundry_home}/EMERGENCY_STOP``, but the Executive, autonomy, campaign
+    # and MissionLoop defaults read ``{db.parent}/EMERGENCY_STOP``.  Those must
+    # be the same path or a STOP would freeze only half the spine, so a cycle
+    # whose DB does not live in the foundry home refuses to run at all instead
+    # of silently watching a different sentinel.
+    if Path(database.path).parent.resolve() != Path(paths.home).resolve():
+        mismatch = (
+            f"STOP authority split: database parent {Path(database.path).parent} "
+            f"is not the foundry home {paths.home}"
+        )
+        try:
+            database.append(Event.create(
+                "worker_loop.stop_authority_mismatch",
+                {"loop_id": loop_id, "instance_id": instance_id,
+                 "database_path": str(database.path), "foundry_home": str(paths.home),
+                 "reason": mismatch},
+                source_type="supervisor", source_id=f"worker-loop:{instance_id}",
+                idempotency_key=f"worker_loop.stop_authority_mismatch:{loop_id}",
+            ))
+        except Exception:
+            pass
+        return {"loop_id": loop_id, "outcome": "FROZEN", "reason": mismatch}
     estop = EmergencyStop(_default_stop_path(paths, config))
     if estop.active():
         stop = estop.read()
@@ -1157,6 +1256,39 @@ def run_cycle(
                 ),
             ))
         initiative_mission_id: str | None = None
+        # Stranded-mission recovery (P3-D2).  The Supervisor performs this in
+        # _reap_and_recover(), but it deliberately skips the call while a
+        # worker-loop is alive AND its singleton lease is live.  A one-shot
+        # loop refreshes that lease every cycle, so the Supervisor gate stays
+        # closed exactly while a loop is running - the only time a stranded
+        # mission could be picked up again.  A mission left in EXECUTING by a
+        # killed session is returned by neither canonical selector
+        # (dispatchable_contract_missions and select_dispatchable_mission both
+        # accept only ACTION_SELECTION/REPAIRING/READY/VERIFYING) and
+        # propose_next_action raises ProposalError for it, so it would stall
+        # forever (live 2026-09-14: mission-65b4968b76e6).
+        #
+        # This loop already holds the worker-loop singleton lease, so the
+        # in-process handoff race the Supervisor guard exists to protect
+        # against cannot apply here: recovery still refuses any mission whose
+        # RUNNING role run holds a live lease, is idempotent, and appends only
+        # the two canonical recovery transitions.
+        try:
+            from ..roles.reaper import (
+                reap_stale_role_runs,
+                recover_stale_mission_state,
+            )
+            reap_stale_role_runs(database)
+            recover_stale_mission_state(database)
+        except Exception as error:  # noqa: BLE001 - recovery must not wedge the cycle
+            database.append(Event.create(
+                "worker_loop.recovery_failed",
+                {"instance_id": instance_id, "loop_id": loop_id,
+                 "error_class": type(error).__name__,
+                 "error": str(error)[:300]},
+                source_type="supervisor", source_id=instance_id,
+                idempotency_key=f"worker_loop.recovery_failed:{loop_id}",
+            ))
         campaign_resume_payload: dict[str, Any] | None = None
         campaign_blocked_mission_ids: tuple[str, ...] = ()
         campaign_dispatchable_mission_ids: tuple[str, ...] = ()
@@ -1568,15 +1700,21 @@ def run_cycle(
                     instance_id=instance_id,
                     excluded_objective_ids=campaign_objective_ids,
                 )
-            if mission_id is None and config.executive_autonomy_enabled:
+                # The Continuous Executive is the canonical next-work authority.
+                # Once it has run, no later factory may create the mission in
+                # this loop_id: CE returning None is an honest WAIT/STALL, and a
+                # fall-through here is how two selectors used to win one cycle.
+            elif mission_id is None and config.executive_autonomy_enabled:
                 mission_id = _maybe_executive_autonomy(
                     database, config, paths=paths,
                     loop_id=loop_id, instance_id=instance_id,
                     excluded_objective_ids=campaign_objective_ids)
-            if mission_id is None and config.executive_selection_enabled:
+            if mission_id is None and not getattr(config, "continuous_enabled", False) \
+                    and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
-            if mission_id is None and config.portfolio_selection_enabled:
+            if mission_id is None and not getattr(config, "continuous_enabled", False) \
+                    and config.portfolio_selection_enabled:
                 mission_id = _maybe_portfolio_select(
                     database,
                     config,
