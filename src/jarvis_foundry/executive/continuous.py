@@ -433,6 +433,24 @@ def _research_objective_id(candidate_id: str) -> str:
     return f"initiative-objective:{candidate_id}"
 
 
+def _triggered_research_wakes(db, research_bridged) -> list[str]:
+    """Bridged wake ids that name a wake which actually exists.
+
+    ``research_bridged`` holds a receipt per completed research item, including
+    the unbound ones whose wake was deliberately never created (and any whose
+    creation lost an idempotency race).  Merging those ids into a cycle's
+    ``triggered_wakes`` would advertise wakes that do not exist, so the merge is
+    gated on the id being present in the canonical wake projection.
+    """
+
+    existing = rebuild_wake_state(db)
+    return [
+        wake_id
+        for wake_id in (str(item.get("wake_id") or "") for item in research_bridged)
+        if wake_id and wake_id in existing
+    ]
+
+
 def _existing_objective_ids(db) -> set[str]:
     try:
         from ..executive.autonomy import rebuild_executive_state
@@ -447,6 +465,12 @@ def _research_completion_receipt(db, research_id: str):
     The lookup is an exact payload query rather than a bounded newest-first
     scan: a long-lived ledger can hold more completions than any scan window,
     and a missed receipt would silently defer a wake that is genuinely due.
+
+    The status is part of the query: the canonical writer emits one
+    ``research.candidate_completed`` event per terminal attempt, including
+    attempts that finished FAILED or CANCELLED, and only a COMPLETED attempt is
+    a durable completion.  Matching any status would let a failed pass release
+    a wake under the ``research_completion_durable`` basis.
     """
 
     if not research_id:
@@ -457,6 +481,8 @@ def _research_completion_receipt(db, research_id: str):
                 "SELECT sequence, event_id FROM events "
                 "WHERE event_type = ? "
                 "AND json_extract(payload_json, '$.research_id') = ? "
+                "AND UPPER(COALESCE(json_extract(payload_json, '$.status'), '')) "
+                "    = 'COMPLETED' "
                 "ORDER BY sequence DESC LIMIT 1",
                 (RESEARCH_COMPLETION_EVENT, research_id),
             ).fetchone()
@@ -665,7 +691,33 @@ def consume_research_wakes(
                 key=f"executive.research_wake_consumed:{wake_id}:{consumer_id}",
                 correlation_id=objective_id,
             )
-        except Exception:
+        except EventConflict:
+            # The consumption receipt is one per (wake, consumer) pair, and a
+            # re-armed research wake reuses both ids, so a second consumption by
+            # the same consumer collides.  Record the skip explicitly instead of
+            # swallowing it: a silent conflict leaves the wake ACTIVE while the
+            # caller sees nothing at all.
+            skipped = {
+                **payload,
+                "consumed": False,
+                "reason": "already_recorded_for_this_consumer",
+            }
+            try:
+                _append(
+                    db,
+                    "executive.research_wake_consumption_skipped",
+                    skipped,
+                    key=(
+                        "executive.research_wake_consumption_skipped:"
+                        f"{wake_id}:{consumer_id}:{cycle_id}"
+                    ),
+                    correlation_id=objective_id,
+                )
+            except Exception:  # noqa: BLE001 - a skip receipt never aborts the cycle
+                pass
+            receipts.append(skipped)
+            continue
+        except Exception:  # noqa: BLE001 - one bad wake must not abort the rest
             continue
         receipts.append(payload)
     return receipts
@@ -953,7 +1005,7 @@ def run_continuous_cycle(
     triggered = tick_wakes(db, controller=controller, now=now)
     triggered = list(dict.fromkeys([
         *world_triggered,
-        *(str(item.get("wake_id")) for item in research_bridged),
+        *_triggered_research_wakes(db, research_bridged),
         *triggered,
     ]))
     # Strategy guard: if top runnable objective is in retry loop, surface escalation instead of re-attempting same strategy

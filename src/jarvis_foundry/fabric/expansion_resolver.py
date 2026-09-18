@@ -130,6 +130,26 @@ def _callable_present(module_name: str, attribute: str) -> bool:
     return callable(getattr(module, attribute, None))
 
 
+def _declared_source_present(source_path: str) -> bool:
+    """True only when the declared tracked file exists in this checkout.
+
+    ``source_path`` is repository-relative (for example
+    ``src/jarvis_foundry/fabric/executors.py``), so it is resolved against
+    :func:`default_repo_root`.  A declaration whose file is absent is not
+    adaptable - the table must never certify a component that is not there -
+    and in an installation with no source checkout the same decline
+    necessarily applies.
+    """
+
+    value = str(source_path or "").strip().replace("\\", "/")
+    if not value:
+        return False
+    try:
+        return (default_repo_root() / value).is_file()
+    except Exception:  # noqa: BLE001 - an unresolvable checkout is a decline
+        return False
+
+
 def _source_path_of(locator: str) -> str:
     if not locator.startswith(SOURCE_LOCATOR_PREFIX):
         return ""
@@ -164,6 +184,8 @@ def canonical_blueprint_resolver(
     if spec is None:
         return None
     if _source_path_of(str(candidate.locator or "")) != spec["source_path"]:
+        return None
+    if not _declared_source_present(str(spec["source_path"])):
         return None
     if not _callable_present(str(spec["module"]), str(spec["attribute"])):
         return None

@@ -2246,7 +2246,6 @@ def _dispatch_capability_expansion(
     *,
     cycle_id: str,
     excluded: set[str],
-    stop_path: str | Path | None = None,
 ) -> list[dict[str, Any]]:
     """Dispatch every non-terminal bridge gap through the canonical engine.
 
@@ -2256,6 +2255,11 @@ def _dispatch_capability_expansion(
     independent verifier and the Fabric Catalog do, and the gap bridge keeps
     the WAIT/wake/replan ownership.  A failure is recorded and absorbed so it
     cannot abort the cycle or the other objectives.
+
+    The STOP gate is the caller's (``_gate`` resolves the database-adjacent
+    sentinel before this runs) plus the engine's own sentinel check, so this
+    function deliberately takes no ``stop_path``: accepting one it never used
+    would advertise a gate it does not apply.
     """
 
     from ..fabric.gap_bridge import rebuild_gap_state
@@ -2436,7 +2440,6 @@ def run_autonomy_cycle(
             database,
             cycle_id=cycle_id,
             excluded=excluded,
-            stop_path=stop_path,
         )
     ranking = tuple(
         row for row in rank_objectives(database, controller=controller)
