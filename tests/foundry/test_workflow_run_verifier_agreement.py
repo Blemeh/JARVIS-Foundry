@@ -216,3 +216,20 @@ def test_no_raising_verifier_path(tmp_path: Path, shape: str) -> None:
         database, _manifest(root, SHAPES[shape]), lambda: None,
         owned_root=root, structured_only=True)
     assert result is None or str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}
+
+
+@pytest.mark.parametrize("shape", sorted(SHAPES))
+def test_a_file_owned_root_never_raises(tmp_path: Path, shape: str) -> None:
+    """A root that is an existing FILE must not turn a verdict into a raise.
+
+    ``ExecutorContext.__post_init__`` creates its ``owned_root``, so building
+    the executor context for a file root raises FileExistsError.  The verifier
+    branch must still answer with a verdict.
+    """
+    database = _fixture(tmp_path)
+    root = tmp_path / "not-a-directory"
+    root.write_text("i am a file\n", encoding="utf-8")
+    result = try_fabric_dispatch(
+        database, _manifest(root, SHAPES[shape]), lambda: None,
+        owned_root=root, structured_only=True)
+    assert result is None or str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}

@@ -599,6 +599,22 @@ def try_fabric_dispatch(
         # an undecided predicate declines as NOT_TESTED instead of guessing.
         declared = dict(payload)
         claimed = dict(payload)
+        try:
+            executor_context = ExecutorContext(
+                database=database,
+                owned_root=owned_root,
+                mcp_backend=mcp_backend,
+                mcp_mutation_verifier=mcp_mutation_verifier,
+                browser_execution_authorization=browser_execution_authorization,
+                operator_executable_allowlist=tuple(operator_executable_allowlist),
+            )
+        except OSError:
+            # ExecutorContext.__post_init__ creates owned_root, so a root that
+            # is an existing file (or is otherwise uncreatable) raises.  A
+            # verifier answer must never become an exception: the canonical
+            # workflow.run predicate does not read the executor context, so
+            # decline to pass one and let the claim decide.
+            executor_context = None
         verdict = canonical_predicate_verdict(
             database,
             action_kind=action,
@@ -606,14 +622,7 @@ def try_fabric_dispatch(
             declared=declared,
             claimed=claimed,
             owned_root=owned_root,
-            executor_context=ExecutorContext(
-                database=database,
-                owned_root=owned_root,
-                mcp_backend=mcp_backend,
-                mcp_mutation_verifier=mcp_mutation_verifier,
-                browser_execution_authorization=browser_execution_authorization,
-                operator_executable_allowlist=tuple(operator_executable_allowlist),
-            ),
+            executor_context=executor_context,
         )
         missing = [
             name
