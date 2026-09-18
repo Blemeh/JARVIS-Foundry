@@ -215,6 +215,25 @@ def close_mission_commit_claims(
         closed.append(candidate)
     return closed
 
+def _worktree_has_committable_change(worktree: Path) -> bool:
+    """True when the worktree holds anything to commit besides the result file.
+
+    ``commit_after_pass`` deliberately resets ``RESULT_FILENAME`` out of the
+    index, so a worktree whose only difference is the worker result file has
+    nothing to commit.
+    """
+    changed: set[str] = set()
+    for args in (
+        ("diff", "--cached", "--name-only"),
+        ("diff", "--name-only"),
+        ("ls-files", "--others", "--exclude-standard"),
+    ):
+        changed.update(
+            name for name in _git(worktree, *args).splitlines() if name.strip()
+        )
+    return bool(changed - {RESULT_FILENAME})
+
+
 def _recorded_commit(root: Path, message: str) -> str | None:
     """Find the exact deterministic commit receipt in durable Git truth."""
     raw = _git(root, "log", "--format=%H%x00%B%x00")
@@ -332,6 +351,27 @@ def commit_after_pass(
         )
     if state.get("status") == FAILED:
         raise CommitError("local commit effect previously failed")
+
+    # A verified step that changed nothing in the worktree has nothing to
+    # commit.  Dispatching `git commit` anyway fails on an empty index and the
+    # mission loop records BLOCKED, so a verified read-only mission would be
+    # reported as a failure.  Report the honest no-change result instead: the
+    # PASS stands, no effect is dispatched, and the mission continues.
+    if not _worktree_has_committable_change(worktree):
+        head = _git(worktree, "rev-parse", "HEAD")
+        return {
+            "performed": False,
+            "no_change": True,
+            "reason": (
+                "worktree unchanged after verified PASS; no commit was needed"
+            ),
+            "baseline_commit": head,
+            "commit_head": head,
+            "message": message,
+            "diff_stat": "",
+            "files_changed": [],
+            "action_key": action_key,
+        }
 
     def perform() -> dict[str, Any]:
         before = _git(worktree, "rev-parse", "HEAD")

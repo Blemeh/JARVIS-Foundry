@@ -296,6 +296,129 @@ def tick_wakes(db, *, controller="supervisor", now=None):
     return triggered
 
 
+NEXT_ACTION_WAKE_PREFIX = "next-action:"
+
+
+def consume_next_action_wakes(
+    db,
+    *,
+    cycle_id: str,
+    consumer_id: str = "",
+    controller="supervisor",
+    now=None,
+):
+    """Consume the Executive's own PASS-generated next-action wakes.
+
+    A verified terminal mission outcome schedules exactly one durable
+    ``next-action:{mission_id}`` wake and one ``executive.next_action_scheduled``
+    receipt.  This seam is its consumer: the wake must still be ACTIVE and must
+    be due, and the receipt records the exact wake, its bound objective, the
+    cycle that consumed it, and the runtime identity of that consumer.
+
+    This is not a second selector.  It releases only the Executive's own
+    already-scheduled continuation, and a wake that is not due is left ACTIVE
+    and reported as deferred rather than silently dropped.
+    """
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("next-action consumption is Supervisor-owned")
+    receipts = []
+    for wake in rebuild_wake_state(db).values():
+        wake_id = str(wake.get("wake_id") or "")
+        if not wake_id.startswith(NEXT_ACTION_WAKE_PREFIX):
+            continue
+        if wake.get("status") != "ACTIVE":
+            continue
+        objective_id = str(wake.get("objective_id") or "")
+        due = bool(is_wake_due(db, wake, now=now))
+        mission_id = wake_id[len(NEXT_ACTION_WAKE_PREFIX):]
+        payload = {
+            "wake_id": wake_id,
+            "mission_id": mission_id,
+            "objective_id": objective_id,
+            "objective_bound": not objective_id.startswith("mission:"),
+            "kind": wake.get("kind"),
+            "not_before": wake.get("not_before"),
+            "due": due,
+            "consumer": consumer_id,
+            "cycle_id": cycle_id,
+            "consumed_at": isoformat(),
+        }
+        if due:
+            try:
+                trigger_wake(
+                    db, wake_id, controller=controller,
+                    reason=f"next action consumed by {consumer_id or 'supervisor'}",
+                )
+            except Exception:
+                pass
+        try:
+            _append(
+                db,
+                "executive.next_action_consumed",
+                payload,
+                key=f"executive.next_action_consumed:{wake_id}:{consumer_id}",
+                correlation_id=objective_id,
+            )
+        except Exception:
+            continue
+        receipts.append(payload)
+    return receipts
+
+
+def record_next_action_continuation(
+    db,
+    *,
+    cycle_id: str,
+    consumed,
+    decision_before: int = 0,
+    context_before: int = 0,
+    controller="supervisor",
+):
+    """Bind each consumed next-action wake to the fresh decision it produced.
+
+    Without this the receipt would only prove that a wake was triggered.  The
+    continuation receipt records whether the same cycle then assembled fresh
+    Executive context and made a fresh decision, so an absent decision is
+    visible as an explicit ``fresh_decision: false`` rather than passing
+    vacuously.
+    """
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("next-action continuation is Supervisor-owned")
+    consumed = list(consumed or ())
+    if not consumed:
+        return []
+    decisions = list(db.events(event_types=("executive.decision_recorded",)))
+    contests = list(db.events(event_types=("executive.context_assembled",)))
+    fresh = decisions[decision_before:]
+    decision_id = fresh[-1].payload.get("decision_id") if fresh else None
+    decision_kind = fresh[-1].payload.get("decision") if fresh else None
+    receipts = []
+    for item in consumed:
+        payload = {
+            "wake_id": item["wake_id"],
+            "mission_id": item["mission_id"],
+            "objective_id": item["objective_id"],
+            "cycle_id": cycle_id,
+            "decision_id": decision_id,
+            "decision_kind": decision_kind,
+            "fresh_decision": decision_id is not None,
+            "fresh_context": len(contests) > int(context_before),
+            "continued_at": isoformat(),
+        }
+        try:
+            _append(
+                db,
+                "executive.next_action_continued",
+                payload,
+                key=f"executive.next_action_continued:{item['wake_id']}:{cycle_id}",
+                correlation_id=str(item.get("objective_id") or ""),
+            )
+        except Exception:
+            continue
+        receipts.append(payload)
+    return receipts
+
+
 def bridge_world_signals(
     db,
     *,
@@ -464,6 +587,7 @@ def run_continuous_cycle(
     excluded_objective_ids=(),
     discovery: Mapping[str, Any] | None = None,
     stop_path: str | Path | None = None,
+    consumer_id: str = "",
 ):
     # One idempotent durable tick: due wakes -> trigger -> autonomy cycle -> materialize
     # Idempotent on cycle_id via autonomy cycle key; wake triggers are idempotent via wake_triggered keys
@@ -480,6 +604,11 @@ def run_continuous_cycle(
     veto = __import__("jarvis_foundry.control.broker", fromlist=["matching_veto_reason"]).matching_veto_reason(db, {"GLOBAL", "executive", "objectives"})
     if veto:
         return {"cycle_id": cycle_id, "status": "OWNER_BLOCKED", "reason": f"veto: {veto}"}
+    # Baselines for the continuation receipt.  Everything this cycle assembles
+    # or decides *after* consuming its wakes must read as fresh, so the receipt
+    # can never be satisfied by a previous cycle's context or decision.
+    decision_before = int(db.event_count(event_type="executive.decision_recorded"))
+    context_before = int(db.event_count(event_type="executive.context_assembled"))
     # Park blocked objectives before evaluating wakes.  This keeps the
     # Supervisor-owned cycle self-contained across direct invocation and
     # restart; the Worker wrapper may call the helper too, but idempotent wake
@@ -494,6 +623,15 @@ def run_continuous_cycle(
     # objective-targeted signals as durable wake conditions; it never creates
     # work itself.
     world_triggered = bridge_world_signals(db, controller=controller)
+    # The Executive's own PASS-generated next-action wake is consumed by THIS
+    # cycle, before the generic due-wake tick could trigger it anonymously.
+    consumed_next_action = consume_next_action_wakes(
+        db,
+        cycle_id=cycle_id,
+        consumer_id=str(consumer_id or ""),
+        controller=controller,
+        now=now,
+    )
     # Wake phase
     triggered = tick_wakes(db, controller=controller, now=now)
     triggered = list(dict.fromkeys([*world_triggered, *triggered]))
@@ -560,9 +698,29 @@ def run_continuous_cycle(
             if isinstance(materialization, dict):
                 mission_id = materialization.get("mission_id")
         mission_id = mission_id or (discovery_report or {}).get("mission_id")
-        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report}
+        continuation = record_next_action_continuation(
+            db,
+            cycle_id=cycle_id,
+            consumed=consumed_next_action,
+            decision_before=decision_before,
+            context_before=context_before,
+            controller=controller,
+        )
+        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation}
     except Exception as e:
-        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked, "discovery": discovery_report}
+        continuation = []
+        try:
+            continuation = record_next_action_continuation(
+                db,
+                cycle_id=cycle_id,
+                consumed=consumed_next_action,
+                decision_before=decision_before,
+                context_before=context_before,
+                controller=controller,
+            )
+        except Exception:
+            pass
+        return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation}
 
 def schedule_wait_until(db, objective_id: str, *, not_before: str, reason="", controller="supervisor"):
     wid = f"wake:{objective_id}:until:{_hash(not_before)}"
@@ -2045,4 +2203,4 @@ def escalate_stale_wakes(db, *, stale_after_seconds=3600.0, controller="supervis
             pass
     return escalated
 
-__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "canonical_provider_wait_start_events", "canonical_provider_resume_events", "resume_mission_provider_waits", "provider_resume_run_id", "provider_resume_epoch", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]
+__all__ = ["WakeCondition", "create_wake", "clear_wake", "trigger_wake", "rebuild_wake_state", "is_wake_due", "due_wakes", "tick_wakes", "consume_next_action_wakes", "record_next_action_continuation", "bridge_world_signals", "continuous_snapshot", "blocker_for", "run_continuous_cycle", "record_strategy_attempt", "recent_strategies", "is_retry_loop", "next_strategy_options", "schedule_wait_until", "schedule_wait_for_dependency", "schedule_wait_for_capability", "schedule_wait_for_provider", "schedule_mission_provider_wait", "canonical_provider_wait_start_events", "canonical_provider_resume_events", "resume_mission_provider_waits", "provider_resume_run_id", "provider_resume_epoch", "on_provider_readiness_changed", "schedule_wait_for_owner", "schedule_wait_for_signal", "schedule_wait_for_resource", "clear_wakes_for_objective", "on_mission_outcome", "on_capability_changed", "on_owner_directive", "deadline_urgency", "stale_wakes", "auto_wake_for_blocked"]

@@ -585,12 +585,52 @@ def try_fabric_dispatch(
             )
         return None
     if manifest.role == "verifier" and action == "workflow.run":
+        # The canonical Fabric predicate for workflow.run certifies a run only
+        # when every nested receipt reached ``state == "VERIFIED"``.  Artifact
+        # presence is not that truth: a recipe can leave its expected files on
+        # disk while a nested step is still COMPLETED_UNVERIFIED, so accepting
+        # presence here let a verifier session sign off on a run the canonical
+        # predicate calls MISMATCH.  The verifier now requires the same nested
+        # evidence the Fabric loop requires, and fails closed (NOT_TESTED) when
+        # the envelope carries none.
         missing = [
             name
             for name in manifest.expected_artifacts
             if not (owned_root / name).is_file()
         ]
-        matches = not missing
+        nested = payload.get("nested_receipts")
+        nested_present = isinstance(nested, (list, tuple)) and bool(nested)
+        nested_verified = nested_present and all(
+            isinstance(item, Mapping) and item.get("state") == "VERIFIED"
+            for item in nested
+        )
+        claimed_status = str(payload.get("claimed") or payload.get("status") or "")
+        claimed_complete = (
+            claimed_status == "COMPLETED" and payload.get("nested_success") is True
+        )
+        if not nested_present:
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=COMPLETED,
+                provider="fabric",
+                model="local",
+                verdict=VERDICT_NOT_TESTED,
+                evidence=(
+                    f"fabric:{action}",
+                    "verification:canonical-nested-receipts",
+                    "verified:NOT_TESTED",
+                    "nested_receipts:absent",
+                ),
+                error_class="workflow_nested_receipts_absent",
+                error_detail=(
+                    "workflow.run certification requires the nested receipt "
+                    "set; artifact presence alone is not the canonical "
+                    "predicate"
+                ),
+                identity_transition_authorized=True,
+            )
+        matches = bool(claimed_complete and nested_verified and not missing)
         return RoleResult(
             run_id=manifest.run_id,
             role=manifest.role,
@@ -600,11 +640,17 @@ def try_fabric_dispatch(
             verdict=VERDICT_PASS if matches else VERDICT_FAIL,
             evidence=(
                 f"fabric:{action}",
-                "verification:independent-artifact-presence",
+                "verification:canonical-nested-receipts",
                 f"verified:{'MATCH' if matches else 'MISMATCH'}",
+                f"artifacts:{'present' if not missing else 'missing'}",
+                f"nested_receipts:{'verified' if nested_verified else 'unverified'}",
             ),
-            error_class=None if matches else "workflow_artifact_missing",
-            error_detail=None if matches else f"missing artifacts: {missing}",
+            error_class=None if matches else "workflow_verification_mismatch",
+            error_detail=None if matches else (
+                f"nested_verified={nested_verified} "
+                f"claimed_status={claimed_status or 'absent'} "
+                f"missing artifacts: {missing}"
+            ),
             identity_transition_authorized=True,
         )
     if manifest.role == "verifier" and action in ARTIFACT_ACTIONS:

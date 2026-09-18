@@ -633,6 +633,7 @@ def _maybe_continuous_cycle(
             excluded_objective_ids=tuple(excluded_objective_ids),
             discovery=_discovery_settings(database, config, paths),
             stop_path=_default_stop_path(paths, config),
+            consumer_id=f"worker-loop:{instance_id}",
         )
         # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
         ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
@@ -1942,6 +1943,17 @@ def run_cycle(
                         source_id=instance_id,
                         idempotency_key=f"worker_loop.initiative_outcome_blocked:{loop_id}",
                     ))
+            # PASS must not be silence.  A finalized terminal outcome schedules
+            # the Executive's next action as a durable, objective-bound wake,
+            # whichever single mission factory produced the mission.
+            #
+            # This used to live inside the A3-only block above, so a
+            # continuous-executive runtime completed a verified mission and
+            # never created the canonical continuation wake at all: the next
+            # cycle could only ever come from the periodic observation tick,
+            # and PASS produced no attributable continuation.  The call is
+            # idempotent per mission and Supervisor-owned.
+            if learning.get("finalized"):
                 try:
                     from ..executive.intelligence import schedule_next_action_after_outcome
                     schedule_next_action_after_outcome(
