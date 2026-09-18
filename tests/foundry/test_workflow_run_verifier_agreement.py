@@ -233,3 +233,35 @@ def test_a_file_owned_root_never_raises(tmp_path: Path, shape: str) -> None:
         database, _manifest(root, SHAPES[shape]), lambda: None,
         owned_root=root, structured_only=True)
     assert result is None or str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}
+
+
+HOSTILE_ROOT_NAMES = ("embedded_nul", "existing_file", "nested_under_file")
+
+
+def _hostile_root(tmp_path: Path, name: str) -> Path:
+    blocking_file = tmp_path / "blocker"
+    if not blocking_file.exists():
+        blocking_file.write_text("blocking\n", encoding="utf-8")
+    return {
+        "existing_file": blocking_file,
+        # A path whose parent is a file cannot be created.
+        "nested_under_file": blocking_file / "child",
+        # An embedded NUL raises ValueError from mkdir, NOT OSError, so a
+        # guard that catches only OSError lets it escape.
+        "embedded_nul": Path(str(tmp_path / "nul") + "\x00tail"),
+    }[name]
+
+
+@pytest.mark.parametrize("root_name", HOSTILE_ROOT_NAMES)
+def test_a_hostile_owned_root_never_raises(tmp_path: Path, root_name: str) -> None:
+    """No uncreatable root may turn a verifier answer into an exception.
+
+    The first repair caught only OSError and a NUL-bearing path still escaped as
+    ValueError; this pins the whole uncreatable-root class.
+    """
+    database = _fixture(tmp_path)
+    root = _hostile_root(tmp_path, root_name)
+    result = try_fabric_dispatch(
+        database, _manifest(root, SHAPES["nested_verified"]), lambda: None,
+        owned_root=root, structured_only=True)
+    assert result is None or str(result.verdict) in {"PASS", "FAIL", "NOT_TESTED"}

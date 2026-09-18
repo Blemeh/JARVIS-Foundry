@@ -599,22 +599,39 @@ def try_fabric_dispatch(
         # an undecided predicate declines as NOT_TESTED instead of guessing.
         declared = dict(payload)
         claimed = dict(payload)
+        # Prepare the owned root as its own step.  A root that cannot be
+        # created must not turn a verifier answer into an exception - and it
+        # must be separated from every OTHER construction failure, because
+        # ExecutorContext also resolves the operator allowlist with
+        # ``strict=True`` and that error is not a root problem.  ``ValueError``
+        # is caught alongside ``OSError``: an embedded NUL (or another
+        # malformed path) raises ValueError from ``mkdir``, not OSError, and
+        # that shape escaped this branch when only OSError was handled.
         try:
-            executor_context = ExecutorContext(
-                database=database,
-                owned_root=owned_root,
-                mcp_backend=mcp_backend,
-                mcp_mutation_verifier=mcp_mutation_verifier,
-                browser_execution_authorization=browser_execution_authorization,
-                operator_executable_allowlist=tuple(operator_executable_allowlist),
-            )
-        except OSError:
-            # ExecutorContext.__post_init__ creates owned_root, so a root that
-            # is an existing file (or is otherwise uncreatable) raises.  A
-            # verifier answer must never become an exception: the canonical
-            # workflow.run predicate does not read the executor context, so
-            # decline to pass one and let the claim decide.
-            executor_context = None
+            Path(owned_root).expanduser().resolve().mkdir(parents=True, exist_ok=True)
+            root_prepared = True
+        except (OSError, ValueError):
+            root_prepared = False
+        executor_context = None
+        if root_prepared:
+            try:
+                executor_context = ExecutorContext(
+                    database=database,
+                    owned_root=owned_root,
+                    mcp_backend=mcp_backend,
+                    mcp_mutation_verifier=mcp_mutation_verifier,
+                    browser_execution_authorization=browser_execution_authorization,
+                    operator_executable_allowlist=tuple(operator_executable_allowlist),
+                )
+            except OSError:
+                # The root is already prepared, so this is a non-root
+                # construction failure (most likely allowlist resolution).  The
+                # workflow.run predicate is claim-only and does not read the
+                # context, so declining to pass one keeps the verdict identical
+                # while honouring the rule that a verifier answer is never an
+                # exception.  Recorded as a residual: the specific construction
+                # error is not surfaced here.
+                executor_context = None
         verdict = canonical_predicate_verdict(
             database,
             action_kind=action,
