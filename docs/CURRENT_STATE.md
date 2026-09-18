@@ -107,16 +107,17 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `862b7453d3c6be9dd86aae11085b45787a6790fc`
+DOCUMENTATION STATE BASE SHA: `2edd0a0d8959affcff4488fa211eacad94451944`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
 Recovery II execution-session product head in the isolated candidate worktree
 `C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on branch
 `candidate/purpose-recovery-ii-canonical-convergence-20260918`, product tree
-`071204b91a8613d7e120e70557e068797318cc97`, not a live install. It is the
-repair-round-2 head: the previous session head `bd47279` (tree `ad5a24d4`) was
-independently reviewed, failed, and repaired (see below).
+`9c499f2f21172bcb12cb5d0096af7c72ccbabc1f`, not a live install. It is the
+repair-round-3 head: `bd47279` was reviewed and failed, `862b745` repaired that
+FAIL and was itself reviewed, and this head repairs the two defects that review
+found in the repairs (see below).
 
 That session executed the owner's 0→100 master goal of 2026-09-18 on top of the
 reviewed product head `7d8672f`, and built the four production callers the goal
@@ -192,13 +193,40 @@ four reproducing there. Seven pins live in
 were re-run at the repaired head so each artifact's `source_identity` names it
 (`logs/proofs_at_repaired_head.txt`).
 
+### Repair round 3 — the review of `862b745` passed every claim and failed the two defects the repairs introduced
+
+That review (`ADVERSARIAL_REVIEW_REPAIRED_862b745.json`) returned **PASS** for
+all seven claims — the wake-existence gate, the declared-source check, the
+status-filtered receipt, the removed parameter, the reported colliding
+consumption, the six rewritten checks, and "no unintended widening or narrowing"
+— and **FAIL** overall for two defects the repairs themselves created:
+
+* the skip receipt added by R12 was appended to the list the cycle hands to
+  `record_research_wake_continuation`, which wrote `executive.research_wake_continued`
+  for a wake whose consumption was *skipped* — one false record per cycle. The
+  recorder now drops receipts with `consumed is False` before writing anything;
+* `projections.py` seals a completion that carries no status as `COMPLETED`,
+  while the round-2 receipt query demanded an explicit `COMPLETED`, so such a
+  completion produced a wake the consumer could never release. The query default
+  now mirrors the projection (`COALESCE(status, 'COMPLETED')`).
+
+Both repairs carry discriminating pins (they fail on an extracted `862b745`
+tree, `C:/temp/ROUND3_PREFIX_862b745`) and the round-3 focused ladder records
+`HEAD=`/`TREE=`/`DIRTY=` markers (`logs/focused_round3.txt`), which closes the
+labelling observation the same review raised about the round-2 log. Recorded and
+not repaired: the wake-existence gate still advertises an
+existing-but-never-triggered research wake, and six residual defeat paths in the
+rewritten checks remain as the review listed them.
+
 Verdict for this session: `CONVERGENCE_PARTIAL_BLOCKED`. Still open — **no
-independent review of the repaired head `862b745`** (an older verdict never
-certifies a newer head), no broad `tests/foundry` receipt (the one attempt was
-aborted at ~40% and mixed the pre- and post-repair sources, so it is tombstoned
-and certifies nothing), the Supervisor-spawned (Level 5) boundary for the
-research leg, the resumed mission's own execution leg (it reached BLOCKED in the
-isolated proof home), and the in-flight STOP and exactly-once attempt-2 receipts.
+independent review of the round-3 head `2edd0a0`** (an older verdict never
+certifies a newer head: both `bd47279` and `862b745` were reviewed and both
+verdicts were spent on repairs), no broad `tests/foundry` receipt (the one
+attempt was aborted at ~40% and mixed the pre- and post-repair sources, so it is
+tombstoned and certifies nothing), the Supervisor-spawned (Level 5) boundary for
+the research leg, the resumed mission's own execution leg (it reached BLOCKED in
+the isolated proof home), and the in-flight STOP and exactly-once attempt-2
+receipts.
 Handoff and evidence live under
 `var/purpose-recovery-ii-convergence-20260918/` in that worktree. Product repair
 remains `0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, carried forward from the
