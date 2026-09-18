@@ -107,14 +107,16 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `bd472791445a9b2d1e9c35378f3143b392e5b040`
+DOCUMENTATION STATE BASE SHA: `862b7453d3c6be9dd86aae11085b45787a6790fc`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
 Recovery II execution-session product head in the isolated candidate worktree
 `C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on branch
 `candidate/purpose-recovery-ii-canonical-convergence-20260918`, product tree
-`ad5a24d4e30c752ebf241b21275e91947a6f052d`, not a live install.
+`071204b91a8613d7e120e70557e068797318cc97`, not a live install. It is the
+repair-round-2 head: the previous session head `bd47279` (tree `ad5a24d4`) was
+independently reviewed, failed, and repaired (see below).
 
 That session executed the owner's 0→100 master goal of 2026-09-18 on top of the
 reviewed product head `7d8672f`, and built the four production callers the goal
@@ -153,11 +155,51 @@ PASSED (`REVIEW_G_7d8672f.json`): zero escapes for the whole hostile-root
 battery, zero unsafe PASSes, no evidence widening or suppression; seven residual
 findings recorded, four of them pre-existing unguarded sibling sites.
 
-Verdict for this session: `CONVERGENCE_PARTIAL_BLOCKED`. Still open — the
-Supervisor-spawned (Level 5) boundary for the research leg, the resumed mission's
-own execution leg (it reached BLOCKED in the isolated proof home), in-flight STOP
-and exactly-once attempt-2 receipts, and the final broad-suite plus final
-adversarial-review rounds. Handoff and evidence live under
+### Repair round 2 — the final review of `bd47279` failed, and the defects are repaired
+
+The required final adversarial review of this session's product head `bd47279`
+ran in an independent session and returned **FAIL**
+(`ADVERSARIAL_REVIEW_FINAL.json`). It confirmed the research bridge's wake
+cardinality, binding, deferral and replay behaviour, the resolver's tier/id/
+locator/callable declines, the expansion caller's fail-closed STOP handling, the
+opt-in config gate, all five campaign claims, the Command Center projections, the
+executor refactor and the two touched test files — and then named four defects
+and six checks in the session's own receipts that a mutation could defeat:
+
+* a cycle named wake ids that do not exist (every `research_bridged` row's
+  `wake_id` was merged into `triggered_wakes`); the merge is now
+  `_triggered_research_wakes()`, gated on the wake projection;
+* the resolver certified a declaration whose tracked file is absent from the
+  checkout; `_declared_source_present()` now resolves the declaration;
+* a FAILED research attempt counted as a durable completion; the receipt lookup
+  now requires `status = 'COMPLETED'`;
+* a colliding consumption receipt was swallowed; it is now recorded as
+  `executive.research_wake_consumption_skipped` and returned to the caller;
+* `_dispatch_capability_expansion` took a `stop_path` it never used (removed);
+* and the six vacuous checks in the proofs were rewritten as measurements
+  (Executive-state lookup for the bound objective, pinned wake-less unbound
+  completions, a scorer check that says what it measures, a dispatch receipt
+  that must carry a resumed/waiting gap, a post-restart continuation event after
+  a recorded sequence boundary, a re-evaluated warrant predicate, and Command
+  Center provenance checks that resolve their identifiers in the ledger).
+
+Evidence: `REPAIR_ROUND2_PROBE.json` re-runs every counterexample the review
+reported — none reproduces on the repaired tree, each arm keeping a positive
+control — while `PREFIX_PROBE_RESULT.json` (extracted `bd47279` tree) shows all
+four reproducing there. Seven pins live in
+`tests/foundry/test_purpose_recovery_ii_repair_round2.py`; the focused ladder is
+`PYTEST_EXIT=0` (`logs/focused_repair_round2.txt`), and the four proof drivers
+were re-run at the repaired head so each artifact's `source_identity` names it
+(`logs/proofs_at_repaired_head.txt`).
+
+Verdict for this session: `CONVERGENCE_PARTIAL_BLOCKED`. Still open — **no
+independent review of the repaired head `862b745`** (an older verdict never
+certifies a newer head), no broad `tests/foundry` receipt (the one attempt was
+aborted at ~40% and mixed the pre- and post-repair sources, so it is tombstoned
+and certifies nothing), the Supervisor-spawned (Level 5) boundary for the
+research leg, the resumed mission's own execution leg (it reached BLOCKED in the
+isolated proof home), and the in-flight STOP and exactly-once attempt-2 receipts.
+Handoff and evidence live under
 `var/purpose-recovery-ii-convergence-20260918/` in that worktree. Product repair
 remains `0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, carried forward from the
 previous pin; this session did not touch the live install, its database, its
