@@ -161,22 +161,54 @@ def test_declared_requirement_must_use_the_canonical_namespace() -> None:
         _contract(required_capabilities=(LEGACY,))
 
 
-def test_a_pre_change_row_without_the_column_still_loads(tmp_path: Path) -> None:
-    """A row recorded before migration 41 (column NULL) still hash-verifies."""
+def test_a_pre_change_row_still_loads_and_reconciles_without_a_rebuild(
+    tmp_path: Path,
+) -> None:
+    """The migrated-but-not-rebuilt state must already reconcile.
+
+    The projection rebuilds this column deterministically as ``canonical_json(())``
+    == ``'[]'`` for a contract that declares nothing, so a migrated row left at
+    NULL would make ``reconcile()`` report an inconsistency on every existing
+    database until something rebuilt its projections - and nothing in the
+    product rebuilds the live database.  The constant default is what closes
+    that gap, and this pin is what keeps it closed.
+    """
+    from jarvis_foundry.reconcile import reconcile
+
     database, _ = mission_database(tmp_path)
-    contract = _contract(required_capabilities=(PROVEN,))
+    # A contract that declares nothing is the real pre-change shape: the
+    # projection rebuilds it as canonical_json(()) == '[]', which is exactly the
+    # value the migration's constant default backfills.
+    contract = _contract()
     record_step_contract(database, contract)
+    # Simulate the as-migrated value a pre-change row carries.  SQLite backfills
+    # the default EXPRESSION's value (the string `[]`), while pragma_table_info
+    # reports the expression TEXT ('[]' with its SQL quotes), so the quotes are
+    # stripped here rather than written into the row.
     with database.transaction() as connection:
+        default_expression = connection.execute(
+            "SELECT dflt_value FROM pragma_table_info('mission_step_contracts') "
+            "WHERE name = 'required_capabilities_json'").fetchone()[0]
         connection.execute(
-            "UPDATE mission_step_contracts SET required_capabilities_json = NULL "
-            "WHERE contract_id = ?", (contract.contract_id,))
+            "UPDATE mission_step_contracts SET required_capabilities_json = ? "
+            "WHERE contract_id = ?",
+            (str(default_expression).strip().strip("'"), contract.contract_id))
+
+    # NO rebuild_projections() here - that is the whole point.
+    report = reconcile(database)
+    assert report.consistent is True, (
+        "a migrated-but-not-rebuilt database must already reconcile; "
+        f"mismatches={getattr(report, 'mismatches', None)}")
+
     loaded = latest_contract(database, "mission-1")
     assert loaded is not None
     assert loaded.required_capabilities == ()
     assert loaded.content_hash() == contract.content_hash()
 
 
-def test_migration_41_is_versioned_and_adds_a_nullable_column(tmp_path: Path) -> None:
+def test_migration_41_is_versioned_and_backfills_a_constant_default(
+    tmp_path: Path,
+) -> None:
     database, _ = _database(tmp_path)
     assert SCHEMA_VERSION == 41
     with database.connect(readonly=True) as connection:
@@ -185,10 +217,11 @@ def test_migration_41_is_versioned_and_adds_a_nullable_column(tmp_path: Path) ->
         versions = [int(row[0]) for row in connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version")]
     assert "required_capabilities_json" in columns
-    # Nullable (notnull flag 0) and no default: an ALTER ADD COLUMN that cannot
-    # rewrite existing rows.
-    assert int(columns["required_capabilities_json"][3]) == 0
-    assert columns["required_capabilities_json"][4] is None
+    # NOT NULL with a CONSTANT default: existing rows are backfilled to the same
+    # value the projection rebuilds for them, so a migrated database reconciles
+    # without anyone rebuilding its projections.
+    assert int(columns["required_capabilities_json"][3]) == 1
+    assert str(columns["required_capabilities_json"][4]) == "'[]'"
     assert max(versions) == 41
 
 

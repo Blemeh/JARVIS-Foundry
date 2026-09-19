@@ -1579,11 +1579,20 @@ MIGRATIONS: dict[int, str] = {
     -- Wave 1A self-expansion delivery: a mission step contract records the
     -- Fabric capabilities (cap.*) the plan step it executes DECLARED as
     -- required.  The value is resolved from the selected work item's metadata
-    -- (generate_missions_for_objective), i.e. before the mission exists.
-    -- Additive nullable column deliberately EXCLUDED from the contract's
-    -- canonical payload, so every stored contract_hash stays valid and
-    -- pre-change rows load unchanged.
-    ALTER TABLE mission_step_contracts ADD COLUMN required_capabilities_json TEXT;
+    -- and the plan step it declares, i.e. before the mission exists.
+    --
+    -- The column is EXCLUDED from the contract's canonical payload, so every
+    -- stored contract_hash stays valid and pre-change rows load unchanged.
+    --
+    -- It carries a CONSTANT default rather than being left nullable: the
+    -- projection rebuilds this column deterministically as canonical_json(())
+    -- == '[]' for every contract that declares nothing, so a migrated row left
+    -- at NULL would make reconcile() report an inconsistency on any existing
+    -- database until something rebuilt its projections - and nothing in the
+    -- product rebuilds the live database.  Same convention as the additive
+    -- column at migration 40.
+    ALTER TABLE mission_step_contracts
+        ADD COLUMN required_capabilities_json TEXT NOT NULL DEFAULT '[]';
     """,
 }
 
