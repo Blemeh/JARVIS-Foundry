@@ -247,6 +247,7 @@ class ExecutiveDecisionService:
         resource_contention: float | None = None,
         a2_mode: bool = False,
         governor: A2GovernorBounds | None = None,
+        reconsider_dispositions: bool = False,
     ) -> ExecutiveDecision:
         """Evaluate eligible candidates and return exactly one decision."""
         decision_id = self._decision_id_for_loop(loop_id)
@@ -277,7 +278,11 @@ class ExecutiveDecisionService:
         # compared without manufacturing the trusted admission event that the
         # execution path requires. The normal Executive path is unchanged.
         rows = (
-            _a2_observation_candidates(self.database, limit=candidate_limit)
+            _a2_observation_candidates(
+                self.database,
+                limit=candidate_limit,
+                reconsider_dispositions=reconsider_dispositions,
+            )
             if a2_mode else eligible_candidates(
                 self.database,
                 activation_epoch=self.activation_epoch,
@@ -320,7 +325,10 @@ class ExecutiveDecisionService:
         if a2_mode:
             viable: list[CandidateScore] = []
             for score in ranked:
-                disposition = a2_precondition(score)
+                disposition = a2_precondition(
+                    score,
+                    allow_occupied_wip=reconsider_dispositions,
+                )
                 if disposition is None:
                     viable.append(score)
                     continue
@@ -542,6 +550,7 @@ class ExecutiveDecisionService:
         governor: A2GovernorBounds | None = None,
         candidate_limit: int | None = None,
         resource_contention: float | None = None,
+        reconsider_dispositions: bool = False,
     ) -> ExecutiveDecision:
         """Run rejection-first judgment and stop before objective/mission creation."""
 
@@ -554,6 +563,7 @@ class ExecutiveDecisionService:
             resource_contention=resource_contention,
             a2_mode=True,
             governor=bounds,
+            reconsider_dispositions=reconsider_dispositions,
         )
         self._record_a2_judgments(decision, cycle_id=loop_id)
         return decision
@@ -824,8 +834,19 @@ def _a2_disposition_record(
     }
 
 
-def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
-    """Return terminal/deferred disposition before comparative ranking."""
+def a2_precondition(
+    score: CandidateScore,
+    *,
+    allow_occupied_wip: bool = False,
+) -> tuple[str, str, str] | None:
+    """Return terminal/deferred disposition before comparative ranking.
+
+    A research-triggered reevaluation may compare a better action while the
+    current objective still occupies the WIP slot.  This only removes global
+    WIP as a *decision* confound; the A3 admission authority remains unchanged
+    and still refuses a second active objective.  Equivalent-active work is
+    always deferred above, so the current objective cannot duplicate itself.
+    """
     meta = score.a2_metadata
     if meta.get("duplicate_of"):
         return "REJECTED", "DUPLICATE", f"duplicate of {meta['duplicate_of']}"
@@ -887,7 +908,10 @@ def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
         return "DEFERRED", "UNSATISFIED_DEPENDENCY", f"unsatisfied dependencies: {', '.join(blocked)}"
     if meta.get("autonomous_wip") is None:
         return "DEFERRED", "INSUFFICIENT_EVIDENCE", "autonomous WIP state is unavailable"
-    if int(meta["autonomous_wip"]) >= int(meta.get("autonomous_wip_cap") or 1):
+    if (
+        not allow_occupied_wip
+        and int(meta["autonomous_wip"]) >= int(meta.get("autonomous_wip_cap") or 1)
+    ):
         return "DEFERRED", "WIP_LIMIT", "autonomous WIP cap 1 is already occupied"
     requested = meta.get("research_budget_requested")
     if requested is not None:
@@ -939,14 +963,19 @@ def _a2_observation_candidates(
     database: FoundryDatabase,
     *,
     limit: int,
+    reconsider_dispositions: bool = False,
 ) -> list[dict[str, Any]]:
     """Return bounded discovery candidates before Executive admission."""
 
     with database.connect(readonly=True) as connection:
+        statuses = (
+            "('NEW', 'SCORED', 'ELIGIBLE', 'APPROVED', 'REJECTED', 'DEFERRED')"
+            if reconsider_dispositions else "('NEW', 'SCORED', 'ELIGIBLE')"
+        )
         rows = connection.execute(
             "SELECT * FROM candidates "
             "WHERE source = 'initiative_observation' "
-            "AND status IN ('NEW', 'SCORED', 'ELIGIBLE') "
+            f"AND status IN {statuses} "
             "ORDER BY rowid DESC LIMIT ?",
             (max(1, int(limit)),),
         ).fetchall()

@@ -129,11 +129,20 @@ def _append_stage(
     ))
 
 
-def _candidate_rows(database: FoundryDatabase, limit: int) -> list[dict[str, Any]]:
+def _candidate_rows(
+    database: FoundryDatabase,
+    limit: int,
+    *,
+    reconsider_dispositions: bool = False,
+) -> list[dict[str, Any]]:
+    statuses = (
+        "('NEW', 'SCORED', 'ELIGIBLE', 'APPROVED', 'REJECTED', 'DEFERRED')"
+        if reconsider_dispositions else "('NEW', 'SCORED', 'ELIGIBLE')"
+    )
     with database.connect(readonly=True) as connection:
         rows = connection.execute(
             "SELECT * FROM candidates WHERE source = 'initiative_observation' "
-            "AND status IN ('NEW', 'SCORED', 'ELIGIBLE') "
+            f"AND status IN {statuses} "
             "ORDER BY rowid DESC LIMIT ?",
             (max(1, min(int(limit), 100)),),
         ).fetchall()
@@ -820,7 +829,11 @@ def run_initiative_a2_cycle(
         _append_stage(database, cycle_id, "CANDIDATES_READY")
         if fault_hook:
             fault_hook("after_candidate_generation")
-        rows = _candidate_rows(database, policy.candidate_limit)
+        rows = _candidate_rows(
+            database,
+            policy.candidate_limit,
+            reconsider_dispositions=int(research_wake_consumed or 0) > 0,
+        )
         research = _run_research(
             database,
             cycle_id=cycle_id,
@@ -848,6 +861,7 @@ def run_initiative_a2_cycle(
             governor=policy.governor(),
             candidate_limit=policy.candidate_limit,
             resource_contention=0.0,
+            reconsider_dispositions=int(research_wake_consumed or 0) > 0,
         )
         _append_stage(database, cycle_id, "JUDGED")
     except Exception as error:
@@ -1060,6 +1074,7 @@ def run_continuous_observation_cycle(
     fault_hook: FaultHook | None = None,
     now: datetime | str | None = None,
     research_wake_consumed: int = 0,
+    research_trigger_id: str = "",
 ) -> dict[str, Any]:
     """Dispatch at most one due observation pass from one Executive wake.
 
@@ -1149,6 +1164,53 @@ def run_continuous_observation_cycle(
     due = due_monitors(database, now=current, limit=policy.source_limit)
     earliest = next_monitor_due_at(database)
     wake = _ensure_observation_wake(database, not_before=earliest)
+    if not due and int(research_wake_consumed or 0) > 0:
+        # A consumed research wake is an independent reevaluation trigger.  It
+        # must not be subordinated to the observation polling cadence: the
+        # sources can be unchanged and not due while their candidate dossier
+        # has materially changed.  Re-read the configured sources through the
+        # normal A2 path and let run_initiative_a2_cycle reuse the completed
+        # research projection; no selector or admission bypass is introduced.
+        specs = tuple(sources) or _configured_source_specs(database)
+        if not specs:
+            return {
+                "outcome": "WAIT",
+                "reason": "research wake released but no observation source is configured",
+                "cycles_dispatched": 0,
+                "research_dispatches": 0,
+                "next_due_at": earliest,
+                "wake_id": wake.get("wake_id") if wake else None,
+            }
+        trigger_material = {
+            "research_trigger_id": str(research_trigger_id or ""),
+            "sources": [spec.source_id for spec in specs],
+        }
+        cycle_id = "research-reevaluation-" + _hash(trigger_material)[:20]
+        report = run_initiative_a2_cycle(
+            database,
+            cycle_id=cycle_id,
+            sources=specs,
+            resource_id=resource_id,
+            capability=capability,
+            bounds=policy,
+            stop_path=stop_path,
+            research_reader=research_reader,
+            source_readers=source_readers,
+            fault_hook=fault_hook,
+            now=current,
+            research_wake_consumed=int(research_wake_consumed or 0),
+        )
+        metrics = dict(report.get("metrics") or {})
+        return {
+            **report,
+            "cycle_id": cycle_id,
+            "cycles_dispatched": 1,
+            "research_dispatches": int(metrics.get("research_calls") or 0),
+            "next_due_at": next_monitor_due_at(database),
+            "wake_id": wake.get("wake_id") if wake else None,
+            "dispatched_at": current_text,
+            "research_triggered_reevaluation": True,
+        }
     if not due:
         return {
             "outcome": "WAIT",

@@ -663,6 +663,7 @@ def discover_and_admit_next_work(
             stop_path=stop_path,
             fault_hook=fault_hook,
             research_wake_consumed=int(research_wake_consumed or 0),
+            research_trigger_id=cycle_id,
         )
         decision = report.get("decision")
         invoked("post research-wake re-evaluation")

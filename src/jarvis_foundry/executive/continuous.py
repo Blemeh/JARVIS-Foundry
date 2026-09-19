@@ -779,6 +779,8 @@ def record_research_wake_continuation(
     consumed,
     decision_before: int = 0,
     context_before: int = 0,
+    expected_decision_id: str | None = None,
+    expected_context_cycle_id: str | None = None,
     controller="supervisor",
 ):
     """Bind each consumed research wake to the fresh decision it produced.
@@ -801,8 +803,20 @@ def record_research_wake_continuation(
     decisions = list(db.events(event_types=("executive.decision_recorded",)))
     contests = list(db.events(event_types=("executive.context_assembled",)))
     fresh = decisions[decision_before:]
-    decision_id = fresh[-1].payload.get("decision_id") if fresh else None
-    decision_kind = fresh[-1].payload.get("decision") if fresh else None
+    matching_decisions = [
+        event for event in fresh
+        if expected_decision_id is None
+        or str(event.payload.get("decision_id") or "") == str(expected_decision_id)
+    ]
+    decision_event = matching_decisions[-1] if matching_decisions else None
+    decision_id = decision_event.payload.get("decision_id") if decision_event else None
+    decision_kind = decision_event.payload.get("decision") if decision_event else None
+    fresh_contexts = contests[context_before:]
+    matching_contexts = [
+        event for event in fresh_contexts
+        if expected_context_cycle_id is None
+        or str(event.payload.get("cycle_id") or "") == str(expected_context_cycle_id)
+    ]
     receipts = []
     for item in consumed:
         payload = {
@@ -813,7 +827,11 @@ def record_research_wake_continuation(
             "decision_id": decision_id,
             "decision_kind": decision_kind,
             "fresh_decision": decision_id is not None,
-            "fresh_context": len(contests) > int(context_before),
+            "fresh_context": bool(matching_contexts),
+            "decision_owned_by_consuming_cycle": bool(
+                decision_id
+                and (expected_decision_id is None or decision_id == expected_decision_id)
+            ),
             "continued_at": isoformat(),
         }
         try:
@@ -1166,6 +1184,8 @@ def run_continuous_cycle(
             consumed=consumed_research,
             decision_before=decision_before,
             context_before=context_before,
+            expected_decision_id=str((discovery_report or {}).get("decision_id") or ""),
+            expected_context_cycle_id=cycle_id,
             controller=controller,
         )
         return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation, "research_bridged": research_bridged, "research_wake_consumed": consumed_research, "research_wake_continuation": research_continuation}
@@ -1190,6 +1210,8 @@ def run_continuous_cycle(
                 consumed=consumed_research,
                 decision_before=decision_before,
                 context_before=context_before,
+                expected_decision_id=str((discovery_report or {}).get("decision_id") or ""),
+                expected_context_cycle_id=cycle_id,
                 controller=controller,
             )
         except Exception:
