@@ -83,6 +83,13 @@ class MissionStepContract:
     verification_criteria: tuple[str, ...] = field(default_factory=tuple)
     expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
     forbidden_paths: tuple[str, ...] = field(default_factory=tuple)
+    #: Fabric capabilities (``cap.*``) the plan step this contract executes
+    #: REQUIRES.  Goal section 3: once a capability gap resolves, the acquired
+    #: capability must be SELECTED by the contract that executes the step, not
+    #: merely recorded on the plan and in the gap ledger.  The correspondence is
+    #: declared rather than inferred - ``PlanStep.mission_id`` names the mission
+    #: that executes the step - so no step-id mapping is guessed.
+    required_capabilities: tuple[str, ...] = field(default_factory=tuple)
     recorded_by: str = SUPERVISOR_CONTROLLER
     source: str = "supervisor"
     provenance: dict[str, Any] = field(default_factory=dict)
@@ -111,6 +118,7 @@ class MissionStepContract:
             "verification_criteria": list(self.verification_criteria),
             "expected_artifacts": list(self.expected_artifacts),
             "forbidden_paths": list(self.forbidden_paths),
+            "required_capabilities": list(self.required_capabilities),
             "recorded_by": self.recorded_by,
             "source": self.source,
             "provenance": self.provenance,
@@ -148,6 +156,12 @@ class MissionStepContract:
         _text_tuple(self.verification_criteria, "verification_criteria", required=True)
         _text_tuple(self.expected_artifacts, "expected_artifacts")
         _text_tuple(self.forbidden_paths, "forbidden_paths")
+        _text_tuple(self.required_capabilities, "required_capabilities")
+        for capability_id in self.required_capabilities:
+            if not capability_id.startswith("cap."):
+                raise MissionStepContractError(
+                    "required_capabilities must use the canonical cap.* namespace: "
+                    f"{capability_id!r}")
         _text(self.recorded_by, "recorded_by")
         _text(self.source, "source")
         _mapping(self.provenance, "provenance")
@@ -180,6 +194,8 @@ class MissionStepContract:
                 payload.get("verification_criteria"), "verification_criteria", required=True),
             expected_artifacts=_text_tuple(payload.get("expected_artifacts", []), "expected_artifacts"),
             forbidden_paths=_text_tuple(payload.get("forbidden_paths", []), "forbidden_paths"),
+            required_capabilities=_text_tuple(
+                payload.get("required_capabilities", []), "required_capabilities"),
             recorded_by=_text(payload.get("recorded_by", SUPERVISOR_CONTROLLER), "recorded_by"),
             source=_text(payload.get("source", "supervisor"), "source"),
             provenance=_mapping(payload.get("provenance", {}), "provenance"),

@@ -490,8 +490,13 @@ def _research_completion_receipt(db, research_id: str):
     ``0.0``, the empty string, and the empty array/object - by switching on
     ``json_type`` rather than on the extracted value, so a JSON *string*
     ``"[]"`` (truthy in Python, and refused by the projection) is still refused
-    here.  Values the projection records as non-completed attempts are refused;
-    a completion the projection sealed as COMPLETED is always releaseable.
+    here.  The comparison is EXACT text, not case-folded: the projection REFUSES
+    ``"completed"``/``"Completed"`` (they are not in its accepted set, so it
+    raises instead of sealing), and the receipt must refuse them too — otherwise
+    it could cite an event the projection never sealed as the durable completion
+    (found by the review of `47fda68`).  Values the projection records as
+    non-completed attempts are refused; a completion the projection sealed as
+    COMPLETED is always releaseable.
     A divergence in either direction is a defect: matching a FAILED attempt
     would release a wake as ``research_completion_durable``, and refusing a
     completion the projection sealed as COMPLETED would make the bridge create
@@ -525,8 +530,8 @@ def _research_completion_receipt(db, research_id: str):
                 "       WHEN json_type(payload_json, '$.status') = 'object' "
                 "         AND json_extract(payload_json, '$.status') = '{}' "
                 "         THEN 'COMPLETED' "
-                "       ELSE UPPER(CAST(json_extract(payload_json, '$.status') "
-                "            AS TEXT)) END) = 'COMPLETED' "
+                "       ELSE CAST(json_extract(payload_json, '$.status') "
+                "            AS TEXT) END) = 'COMPLETED' "
                 "ORDER BY sequence DESC LIMIT 1",
                 (RESEARCH_COMPLETION_EVENT, research_id),
             ).fetchone()

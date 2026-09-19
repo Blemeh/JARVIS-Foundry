@@ -559,3 +559,108 @@ def test_only_released_research_wakes_suppress_the_short_circuit() -> None:
     ) == 1
     # Absent key: older receipts predate the flag and were real releases.
     assert _released_research_wakes([{"due": True}]) == 1
+
+
+def test_the_bound_step_capability_reaches_the_mission_contract(tmp_path) -> None:
+    """Goal section 3: the contract that executes a step carries its capability.
+
+    The expansion chain already proved that an acquired capability is built,
+    verified, registered and canonically dispatched.  What the B artifact's own
+    residual named as missing is that the mission step contract that EXECUTES
+    the step still required only the resource capability, so the acquired
+    ``cap.*`` lived on the plan and in the gap ledger and nowhere the executing
+    contract could select it.
+
+    The correspondence is declared, not inferred: ``PlanStep.mission_id`` names
+    the mission that executes the step.  This pin binds a mission to a plan step
+    that requires a cap.*, and requires the contract for that mission to carry
+    it - through construction and through a payload round-trip.
+    """
+
+    from jarvis_foundry.executive.autonomy import (
+        PlanStep,
+        bind_mission_to_step,
+        build_plan,
+        create_objective,
+    )
+    from jarvis_foundry.executive.portfolio_bridge import _bound_step_capabilities
+    from jarvis_foundry.mission.contracts import MissionStepContract
+
+    db = _database(tmp_path)
+    objective_id = "owner-goal:section-3"
+    create_objective(
+        db,
+        "Over several missions bring the registered resource to a verified state.",
+        objective_id=objective_id,
+        resource_id="resource-section-3",
+        required_capabilities=("write_registered_worktree_files",),
+        success_criteria=("the outcome file records the verified change",),
+        budget={"max_missions": 2, "max_retries": 1},
+        controller="supervisor",
+    )
+    build_plan(
+        db,
+        objective_id,
+        steps=[PlanStep(
+            step_id="execute",
+            objective_id=objective_id,
+            description="Execute the bounded work and record the outcome.",
+            required_capabilities=("cap.hash.file.sha256",),
+            resource_id="resource-section-3",
+        )],
+        controller="supervisor",
+    )
+    bind_mission_to_step(
+        db, objective_id, "execute", "mission-section-3", controller="supervisor",
+    )
+
+    carried = _bound_step_capabilities(
+        db, objective_id=objective_id, mission_id="mission-section-3",
+    )
+    assert carried == ("cap.hash.file.sha256",), (
+        "the bound plan step's fabric capability must reach the mission"
+    )
+
+    # An unbound mission carries nothing: the answer is honest at admission time.
+    assert _bound_step_capabilities(
+        db, objective_id=objective_id, mission_id="mission-not-bound",
+    ) == ()
+
+    contract = MissionStepContract(
+        mission_id="mission-section-3",
+        step_id="02-execute",
+        version=1,
+        resource_id="resource-section-3",
+        capability="write_registered_worktree_files",
+        required_capabilities=carried,
+        target_relative_path=".jarvis/owner-goals/section-3/outcome.md",
+        instructions="Do the real bounded work and record what was verified.",
+        expected_effects=("the outcome file exists",),
+        rollback={"method": "delete_file", "reversible": True},
+        verification_criteria=("the outcome file exists",),
+        recorded_by="supervisor",
+        source="section-3-pin",
+    )
+    assert "cap.hash.file.sha256" in contract.required_capabilities
+    restored = MissionStepContract.from_payload(contract.to_payload())
+    assert restored.required_capabilities == ("cap.hash.file.sha256",), (
+        "the requirement must survive the canonical payload round-trip"
+    )
+
+    # The field is additive: a contract without the requirement is unchanged.
+    plain = MissionStepContract(
+        mission_id="mission-plain",
+        step_id="02-execute",
+        version=1,
+        resource_id="resource-section-3",
+        capability="write_registered_worktree_files",
+        target_relative_path=".jarvis/owner-goals/plain/outcome.md",
+        instructions="Do the real bounded work.",
+        expected_effects=("the outcome file exists",),
+        rollback={"method": "delete_file", "reversible": True},
+        verification_criteria=("the outcome file exists",),
+        recorded_by="supervisor",
+        source="section-3-pin",
+    )
+    assert plain.required_capabilities == ()
+    assert MissionStepContract.from_payload(plain.to_payload()).required_capabilities == ()
