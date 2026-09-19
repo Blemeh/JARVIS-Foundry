@@ -323,6 +323,11 @@ def test_status_less_completion_is_durable_like_the_projection(tmp_path) -> None
         "research-empty-status": {"status": ""},
         "research-false-status": {"status": False},
         "research-zero-status": {"status": 0},
+        # Repair round 6 (review of 203918e): an empty list/object is falsy too,
+        # and projections.py seals it COMPLETED.  These two FAILED the coherence
+        # probe on the pre-fix tree (refused while the projection sealed them).
+        "research-empty-list-status": {"status": []},
+        "research-empty-object-status": {"status": {}},
     }
     for research_id, extra in falsy_ids.items():
         _raw_event(
@@ -526,3 +531,31 @@ def test_receipt_payload_is_json_serialisable(tmp_path) -> None:
         key="repair-test:json",
     )
     json.dumps(_research_completion_receipt(db, "research-json"))
+
+
+def test_only_released_research_wakes_suppress_the_short_circuit() -> None:
+    """Repair round 6: a colliding consumption is not a released wake.
+
+    The review of 203918e found run_continuous_cycle counted any receipt whose
+    due was true, including the collision receipt (consumed: false) that
+    leaves the wake ACTIVE.  Counting it suppresses the zero-change short
+    circuit for a wake that never released.
+    """
+
+    from jarvis_foundry.executive.continuous import _released_research_wakes
+
+    assert _released_research_wakes([]) == 0
+    assert _released_research_wakes(
+        [{"due": True, "consumed": True}]
+    ) == 1
+    assert _released_research_wakes(
+        [{"due": True, "consumed": False, "reason": "already_recorded_for_this_consumer"}]
+    ) == 0, "a colliding consumption must not count as a released wake"
+    assert _released_research_wakes(
+        [{"due": False, "consumed": False}]
+    ) == 0
+    assert _released_research_wakes(
+        [{"due": True, "consumed": True}, {"due": True, "consumed": False}]
+    ) == 1
+    # Absent key: older receipts predate the flag and were real releases.
+    assert _released_research_wakes([{"due": True}]) == 1

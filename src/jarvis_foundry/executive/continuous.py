@@ -485,10 +485,17 @@ def _research_completion_receipt(db, research_id: str):
     projection sealed as COMPLETED would make the bridge create a wake the
     consumer can never release.
 
-    The docstring deliberately claims coherence only for the values the
-    canonical writer (``research_queue.complete_candidate_research``) can emit
-    plus the falsy forms above; a non-string status such as a list is not a
-    supported input and is treated as not-completed rather than coerced.
+    The lookup mirrors that expression for EVERY falsy JSON form the Python
+    ``x or 'COMPLETED'`` accepts - a missing path, ``null``, ``false``, ``0``,
+    ``0.0``, the empty string, and the empty array/object - by switching on
+    ``json_type`` rather than on the extracted value, so a JSON *string*
+    ``"[]"`` (truthy in Python, and refused by the projection) is still refused
+    here.  Values the projection records as non-completed attempts are refused;
+    a completion the projection sealed as COMPLETED is always releaseable.
+    A divergence in either direction is a defect: matching a FAILED attempt
+    would release a wake as ``research_completion_durable``, and refusing a
+    completion the projection sealed as COMPLETED would make the bridge create
+    a wake the consumer can never release.
     """
 
     if not research_id:
@@ -499,12 +506,27 @@ def _research_completion_receipt(db, research_id: str):
                 "SELECT sequence, event_id FROM events "
                 "WHERE event_type = ? "
                 "AND json_extract(payload_json, '$.research_id') = ? "
-                "AND (CASE WHEN json_extract(payload_json, '$.status') IS NULL "
-                "           OR json_extract(payload_json, '$.status') = '' "
-                "           OR json_extract(payload_json, '$.status') = 0 "
-                "          THEN 'COMPLETED' "
-                "          ELSE UPPER(CAST(json_extract(payload_json, '$.status') "
-                "               AS TEXT)) END) = 'COMPLETED' "
+                "AND (CASE "
+                "       WHEN json_type(payload_json, '$.status') IS NULL "
+                "         THEN 'COMPLETED' "
+                "       WHEN json_type(payload_json, '$.status') = 'null' "
+                "         THEN 'COMPLETED' "
+                "       WHEN json_type(payload_json, '$.status') = 'false' "
+                "         THEN 'COMPLETED' "
+                "       WHEN json_type(payload_json, '$.status') IN ('integer', 'real') "
+                "         AND json_extract(payload_json, '$.status') = 0 "
+                "         THEN 'COMPLETED' "
+                "       WHEN json_type(payload_json, '$.status') = 'text' "
+                "         AND json_extract(payload_json, '$.status') = '' "
+                "         THEN 'COMPLETED' "
+                "       WHEN json_type(payload_json, '$.status') = 'array' "
+                "         AND json_extract(payload_json, '$.status') = '[]' "
+                "         THEN 'COMPLETED' "
+                "       WHEN json_type(payload_json, '$.status') = 'object' "
+                "         AND json_extract(payload_json, '$.status') = '{}' "
+                "         THEN 'COMPLETED' "
+                "       ELSE UPPER(CAST(json_extract(payload_json, '$.status') "
+                "            AS TEXT)) END) = 'COMPLETED' "
                 "ORDER BY sequence DESC LIMIT 1",
                 (RESEARCH_COMPLETION_EVENT, research_id),
             ).fetchone()
@@ -961,6 +983,23 @@ def blocker_for(db, objective_id: str):
     if state == "BLOCKED": return Blocker(objective_id, "BLOCKED", "dependency or resource blocked", True, "dependency resolves", False)
     return None
 
+def _released_research_wakes(consumed_research) -> int:
+    """Count the research wakes the consumer actually RELEASED this cycle.
+
+    A consumption receipt whose ``due`` is true but whose ``consumed`` is false
+    is a collision (this consumer already recorded the wake), and the wake stays
+    ACTIVE - counting it would suppress the zero-change short circuit for a wake
+    that never released, so the Executive would re-evaluate on every later cycle
+    while the wake is still pending.
+    """
+
+    return sum(
+        1
+        for item in consumed_research
+        if item.get("due") is True and item.get("consumed") is not False
+    )
+
+
 def run_continuous_cycle(
     db,
     *,
@@ -1069,11 +1108,8 @@ def run_continuous_cycle(
             from .intelligence import discover_and_admit_next_work as _discover
             # A research-completion wake released this cycle IS the meaningful
             # change for the Executive: it must reach a fresh evaluation even
-            # when no observed source moved.  Only wakes the consumer actually
-            # released (due) count.
-            released_research_wakes = sum(
-                1 for item in consumed_research if item.get("due") is True
-            )
+            # when no observed source moved.
+            released_research_wakes = _released_research_wakes(consumed_research)
             admitted_work = _discover(
                 db,
                 cycle_id=cycle_id,
