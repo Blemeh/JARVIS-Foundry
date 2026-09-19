@@ -83,6 +83,18 @@ class MissionStepContract:
     verification_criteria: tuple[str, ...] = field(default_factory=tuple)
     expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
     forbidden_paths: tuple[str, ...] = field(default_factory=tuple)
+    #: Fabric capabilities (``cap.*``) the plan step this contract executes
+    #: DECLARED as required, resolved from the selected work item's metadata -
+    #: the runtime's own carrier of ``PlanStep.required_capabilities``, written
+    #: by ``generate_missions_for_objective`` BEFORE the mission exists.
+    #:
+    #: Deliberately NOT part of ``canonical_payload()``: the payload is a
+    #: hash anchor, so adding a key there would invalidate the recorded
+    #: ``contract_hash`` of every already-stored row and make the load path
+    #: raise *projected contract hash mismatch*.  The field is carried in
+    #: ``to_payload()`` (so the projection can persist it in its own column)
+    #: and read back by ``from_payload()``/``latest_contract()``.
+    required_capabilities: tuple[str, ...] = field(default_factory=tuple)
     recorded_by: str = SUPERVISOR_CONTROLLER
     source: str = "supervisor"
     provenance: dict[str, Any] = field(default_factory=dict)
@@ -127,6 +139,10 @@ class MissionStepContract:
         payload.update({
             "contract_id": self.contract_id,
             "contract_hash": self.content_hash(),
+            # Not part of canonical_payload()/content_hash(): the projection
+            # persists it in its own column so a reloaded contract still knows
+            # which Fabric capabilities the executed plan step declared.
+            "required_capabilities": list(self.required_capabilities),
         })
         return payload
 
@@ -148,6 +164,12 @@ class MissionStepContract:
         _text_tuple(self.verification_criteria, "verification_criteria", required=True)
         _text_tuple(self.expected_artifacts, "expected_artifacts")
         _text_tuple(self.forbidden_paths, "forbidden_paths")
+        _text_tuple(self.required_capabilities, "required_capabilities")
+        for capability_id in self.required_capabilities:
+            if not capability_id.startswith("cap."):
+                raise MissionStepContractError(
+                    "required_capabilities must use the canonical cap.* namespace: "
+                    f"{capability_id!r}")
         _text(self.recorded_by, "recorded_by")
         _text(self.source, "source")
         _mapping(self.provenance, "provenance")
@@ -180,6 +202,8 @@ class MissionStepContract:
                 payload.get("verification_criteria"), "verification_criteria", required=True),
             expected_artifacts=_text_tuple(payload.get("expected_artifacts", []), "expected_artifacts"),
             forbidden_paths=_text_tuple(payload.get("forbidden_paths", []), "forbidden_paths"),
+            required_capabilities=_text_tuple(
+                payload.get("required_capabilities", []), "required_capabilities"),
             recorded_by=_text(payload.get("recorded_by", SUPERVISOR_CONTROLLER), "recorded_by"),
             source=_text(payload.get("source", "supervisor"), "source"),
             provenance=_mapping(payload.get("provenance", {}), "provenance"),
@@ -320,6 +344,8 @@ def latest_contract(
             verification_criteria=tuple(json.loads(str(row["verification_criteria_json"]))),
             expected_artifacts=tuple(json.loads(str(row["expected_artifacts_json"]))),
             forbidden_paths=tuple(json.loads(str(row["forbidden_paths_json"]))),
+            required_capabilities=tuple(json.loads(
+                str(row["required_capabilities_json"] or "[]"))),
             recorded_by=str(row["recorded_by"]),
             source=str(row["source"]),
             provenance=json.loads(str(row["provenance_json"])),

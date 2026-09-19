@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 40
+SCHEMA_VERSION = 41
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -1574,6 +1574,16 @@ MIGRATIONS: dict[int, str] = {
           AND pass_number IS NOT NULL;
     CREATE INDEX IF NOT EXISTS research_queue_candidate_input
         ON research_queue(candidate_id, input_hash, status);
+    """,
+    41: """
+    -- Wave 1A self-expansion delivery: a mission step contract records the
+    -- Fabric capabilities (cap.*) the plan step it executes DECLARED as
+    -- required.  The value is resolved from the selected work item's metadata
+    -- (generate_missions_for_objective), i.e. before the mission exists.
+    -- Additive nullable column deliberately EXCLUDED from the contract's
+    -- canonical payload, so every stored contract_hash stays valid and
+    -- pre-change rows load unchanged.
+    ALTER TABLE mission_step_contracts ADD COLUMN required_capabilities_json TEXT;
     """,
 }
 

@@ -74,7 +74,13 @@ JARVIS_SOURCE_ADAPTERS: dict[str, dict[str, Any]] = {
         "effect_class": EffectClass.READ_ONLY,
         "invocation_target": "jarvis_foundry.fabric.executors:sha256_path",
         "arguments": ("$input.path",),
-        "output": {"sha256": "$raw.value"},
+        # The observation must name the SUBJECT the action was invoked on, not
+        # only its result: the canonical verifier re-derives the verdict for a
+        # step whose contract declared that subject, and a declared subject the
+        # observation does not name is a divergence by design
+        # (fabric/adapter.py `_subject_diverges`).  Without this the verifier
+        # declines and a runtime-owned predicate is handed to a model.
+        "output": {"sha256": "$raw.value", "path": "$input.path"},
         "input_schema": {
             "type": "object",
             "required": ["path"],

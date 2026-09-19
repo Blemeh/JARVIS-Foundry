@@ -216,20 +216,81 @@ def _owner_goal_intent(
     return intent, ""
 
 
+def _declared_fabric_capabilities(
+    database: FoundryDatabase,
+    metadata: Mapping[str, Any],
+) -> tuple[str, ...]:
+    """Fabric capabilities the selected work item DECLARED as required.
+
+    Goal section 3.  Two declared sources, both available at materialization
+    time and both written by the runtime itself:
+
+    * the work item metadata (``generate_missions_for_objective`` copies the
+      plan step's ``required_capabilities`` onto the item before the mission
+      exists), and
+    * the ACTIVE plan step the item declares - ``executive_objective_id`` and
+      ``executive_step_id`` name it explicitly, so this is a declared
+      correspondence, never a guessed mapping between the plan namespace and
+      the contract namespace.
+
+    The second source matters because the runtime only discovers some
+    requirements while materializing: ``_record_unrealizable_intent`` attaches
+    the missing ``cap.*`` to the plan step, and the work item metadata written
+    before that attempt is then stale.  Reading the plan step as well is what
+    keeps the requirement the gap/resume machinery actually acquired identical
+    to the requirement the mission records.
+
+    Only canonical ``cap.*`` ids the Fabric Catalog can prove are returned: a
+    legacy resource capability keeps its existing compatibility path, and an
+    unknown ``cap.*`` stays the honest gap owned by the capability bridge.
+    """
+
+    declared: list[Any] = []
+    raw = metadata.get("required_capabilities") or ()
+    if isinstance(raw, (list, tuple)):
+        declared.extend(raw)
+    objective_id = str(metadata.get("executive_objective_id") or "")
+    step_id = str(metadata.get("executive_step_id") or "")
+    if objective_id and step_id:
+        try:
+            from .autonomy import active_plan
+
+            plan = active_plan(database, objective_id)
+        except Exception:  # noqa: BLE001 - an unreadable plan is not a refusal
+            plan = None
+        if plan is not None:
+            for step in plan.steps:
+                if step.step_id == step_id:
+                    declared.extend(step.required_capabilities)
+    ordered: list[str] = []
+    for item in declared:
+        capability_id = str(item or "").strip()
+        if not capability_id.startswith("cap."):
+            continue
+        if get_spec(database, capability_id) is None:
+            continue
+        if capability_id not in ordered:
+            ordered.append(capability_id)
+    return tuple(ordered)
+
+
 def _bind_resolution_capabilities(
     database: FoundryDatabase,
     resource_id: str,
     capability_ids: Iterable[str],
     *,
     source_id: str,
-    resolution: MissionResolution,
+    resolution: MissionResolution | None = None,
+    objective_id: str = "",
 ) -> None:
     """Bind Catalog-proven runtime capabilities onto the mission resource.
 
     The mission step gate requires the capability to be declared for the
-    resource.  The resolver already proved the Catalog registration; recording
-    the canonical ``capability.state_changed`` binding here is what removes
-    the developer-supplied driver step from the normal path.
+    resource.  Recording the canonical ``capability.state_changed`` binding here
+    is what removes the developer-supplied driver step from the normal path: for
+    a resolved intent the resolver already proved the Catalog registration, and
+    for a DECLARED plan-step requirement (goal section 3) the gap/resume
+    machinery already proved it by acquiring the capability.
     """
     for capability_id in capability_ids:
         spec = get_spec(database, capability_id)
@@ -242,20 +303,27 @@ def _bind_resolution_capabilities(
         readiness = observed_readiness(database, capability_id)
         trust = str(getattr(readiness, "trust_state", "") or "")
         state = "DISCOVERED" if trust == "DISABLED" else "READY"
+        evidence: dict[str, Any] = {
+            "source": (
+                "mission-intent-resolution" if resolution is not None
+                else "declared-plan-step-requirement"
+            ),
+            "catalog_state": str(getattr(readiness, "state", "") or ""),
+            "catalog_trust": trust,
+            "catalog_version": spec.version,
+        }
+        if resolution is not None:
+            evidence["intent_id"] = resolution.intent_id
+            evidence["resolution_kind"] = resolution.kind
+        else:
+            evidence["objective_id"] = str(objective_id or "")
         set_capability_state(
             database,
             resource_id,
             capability_id,
             state,
             source_id=source_id,
-            evidence={
-                "source": "mission-intent-resolution",
-                "intent_id": resolution.intent_id,
-                "resolution_kind": resolution.kind,
-                "catalog_state": str(getattr(readiness, "state", "") or ""),
-                "catalog_trust": trust,
-                "catalog_version": spec.version,
-            },
+            evidence=evidence,
         )
 
 
@@ -282,6 +350,7 @@ def _materialize_intent_action_plan(
     resolution: MissionResolution,
     provenance: Mapping[str, Any],
     source_id: str,
+    required_capabilities: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Materialize a resolved action plan as ordered immutable contracts."""
     contracts: list[MissionStepContract] = []
@@ -314,6 +383,7 @@ def _materialize_intent_action_plan(
             ),
             expected_artifacts=(),
             forbidden_paths=(),
+            required_capabilities=required_capabilities,
             recorded_by="supervisor",
             source="owner-goal-intent-resolution",
             provenance={
@@ -428,6 +498,13 @@ def materialize_portfolio_selection(
     item_id = str(item.get("item_id") or "")
     decision_id = str(decision.get("decision_id") or "")
     objective = str(item.get("objective") or decision.get("reason") or kind)
+    # Goal section 3: the Fabric capabilities the selected work item DECLARED
+    # as required.  ``generate_missions_for_objective`` wrote them from the plan
+    # step BEFORE this mission existed, so they are the earliest authoritative
+    # source on the normal path.  Only Catalog-proven ``cap.*`` ids qualify.
+    item_metadata = dict(item.get("metadata") or {})
+    declared_capabilities = _declared_fabric_capabilities(database, item_metadata)
+    declared_objective_id = str(item_metadata.get("executive_objective_id") or "")
 
     blocked = _stop_or_veto(database)
     if blocked:
@@ -734,7 +811,7 @@ def materialize_portfolio_selection(
     # Both steps stay under the canonical MissionLoop and ordered immutable
     # contracts; no parallel mission engine or manual continuation is added.
     if kind == "OWNER_GOAL":
-        metadata = dict(item.get("metadata") or {})
+        metadata = item_metadata
         recipe_id = str(metadata.get("recipe_id") or "").strip()
         provenance = {
             "decision_id": decision_id,
@@ -847,6 +924,7 @@ def materialize_portfolio_selection(
                     resolution=resolution,
                     provenance=provenance,
                     source_id=source_id,
+                    required_capabilities=declared_capabilities,
                 )
             recipe_id = str(resolution.recipe_id or "")
             metadata = {**metadata, "recipe_params": dict(resolution.params)}
@@ -897,6 +975,7 @@ def materialize_portfolio_selection(
                 ),
                 expected_artifacts=(artifact,),
                 forbidden_paths=(),
+                required_capabilities=declared_capabilities,
                 recorded_by="supervisor",
                 source="owner-goal-admission",
                 provenance={**provenance, "recipe_id": recipe_id},
@@ -952,6 +1031,7 @@ def materialize_portfolio_selection(
             ),
             expected_artifacts=(plan_name,),
             forbidden_paths=(),
+            required_capabilities=declared_capabilities,
             recorded_by="supervisor",
             source="owner-goal-admission",
             provenance=provenance,
@@ -985,9 +1065,18 @@ def materialize_portfolio_selection(
             ),
             expected_artifacts=(outcome_name,),
             forbidden_paths=(),
+            required_capabilities=declared_capabilities,
             recorded_by="supervisor",
             source="owner-goal-admission",
             provenance=provenance,
+        )
+        # The declared plan-step requirements are bound onto the mission's
+        # resource through the existing capability-state seam, so the
+        # requirement the gap/resume machinery owns is selectable by the
+        # mission that executes this step - not merely recorded beside it.
+        _bind_resolution_capabilities(
+            database, resource_id, declared_capabilities,
+            source_id=source_id, objective_id=declared_objective_id,
         )
         record_step_contract(database, plan)
         record_step_contract(database, execute)
@@ -1038,14 +1127,19 @@ def materialize_portfolio_selection(
         ),
         expected_artifacts=(artifact_name,),
         forbidden_paths=(),
+        required_capabilities=declared_capabilities,
         recorded_by="supervisor",
         source="portfolio",
         provenance={
             "decision_id": decision_id,
             "portfolio_item_id": item_id,
             "portfolio_class": kind,
-            "incident_id": item.get("metadata", {}).get("incident_id"),
+            "incident_id": item_metadata.get("incident_id"),
         },
+    )
+    _bind_resolution_capabilities(
+        database, resource_id, declared_capabilities,
+        source_id=source_id, objective_id=declared_objective_id,
     )
     record_step_contract(database, contract)
     database.append(Event.create(
