@@ -1,6 +1,8 @@
 """Wave 1C discriminating pins for research-driven Executive reevaluation."""
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_sources import SourceSpec
 from jarvis_foundry.events import Event
@@ -173,3 +175,63 @@ def test_research_reevaluation_is_not_structurally_wip_confounded() -> None:
         "DEFERRED", "WIP_LIMIT", "autonomous WIP cap 1 is already occupied",
     )
     assert a2_precondition(score, allow_occupied_wip=True) is None
+
+
+def test_active_objective_research_wake_can_select_better_action(
+    tmp_path, monkeypatch,
+) -> None:
+    """Removing the active-objective reevaluation/SELECT branch fails this pin."""
+
+    from jarvis_foundry.discovery_sources import SourceSpec
+    from jarvis_foundry.executive.intelligence import discover_and_admit_next_work
+    import jarvis_foundry.initiative_a2 as a2
+    import jarvis_foundry.initiative_a3 as a3
+
+    database = _database(tmp_path)
+    selected = SimpleNamespace(
+        kind="SELECT",
+        decision_id="exec-wave1c-better",
+        candidate_id="candidate-better",
+    )
+    monkeypatch.setattr(a3, "active_initiative_objective", lambda db: "objective-current")
+    monkeypatch.setattr(
+        a2,
+        "run_continuous_observation_cycle",
+        lambda *args, **kwargs: {"decision": selected, "reason": "research changed rank"},
+    )
+    monkeypatch.setattr(
+        a3.InitiativeAdmissionAuthority,
+        "admit",
+        lambda self, decision: SimpleNamespace(
+            admitted=True,
+            objective_id="objective-better",
+            mission_id="mission-better",
+            status="ADMITTED",
+            reason="selected by fresh research decision",
+        ),
+    )
+    continued = {"called": False}
+
+    def _continue(*args, **kwargs):
+        continued["called"] = True
+        return SimpleNamespace(mission_id="mission-current", status="CONTINUED", reason="blind")
+
+    monkeypatch.setattr(a3, "continue_initiative_objective", _continue)
+    result = discover_and_admit_next_work(
+        database,
+        cycle_id="wave1c-consumer",
+        resource_id="resource-alpha",
+        sources=(SourceSpec(
+            source_id="wave1c-source",
+            source_kind="project",
+            source_identity=str(tmp_path),
+        ),),
+        project_roots={"resource-alpha": tmp_path},
+        worktree_parent=tmp_path / "worktrees",
+        research_wake_consumed=1,
+    )
+
+    assert result.status == "MISSION"
+    assert result.mission_id == "mission-better"
+    assert result.decision_id == "exec-wave1c-better"
+    assert continued["called"] is False
