@@ -107,17 +107,35 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `2edd0a0d8959affcff4488fa211eacad94451944`
+DOCUMENTATION STATE BASE SHA: `28e1608a23b4e4a05ccdd102e82b5d59be6f9cab`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
 Recovery II execution-session product head in the isolated candidate worktree
 `C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on branch
 `candidate/purpose-recovery-ii-canonical-convergence-20260918`, product tree
-`9c499f2f21172bcb12cb5d0096af7c72ccbabc1f`, not a live install. It is the
-repair-round-3 head: `bd47279` was reviewed and failed, `862b745` repaired that
-FAIL and was itself reviewed, and this head repairs the two defects that review
-found in the repairs (see below).
+`2cc97c923deae83dc4480df772301232e1e0d538`, not a live install.
+
+That head is a REVERT, and the reason is worth stating plainly: it removes the
+section-3 contract change (`MissionStepContract.required_capabilities` and
+`_bound_step_capabilities`) because the independent review of `6502c12` found
+that change was wrong twice over — it added a field to the hash-anchored
+canonical payload without carrying it through the `mission_step_contracts`
+projection, so `latest_contract()` raised *projected contract hash mismatch* for
+every stored row including pre-existing ones and the worker loop turned that into
+a blocked mission; and in the real sequence the mission is bound to the plan step
+only AFTER materialization (`autonomy.py:2477` vs `:2489`), so the recorded
+contracts carried `required_capabilities=[]` anyway. The pin proved the helper,
+not the delivery. Section 3 is therefore OPEN with its blocker recorded, not
+approximated.
+
+The head also carries the repairs to the two proof-level and one source finding
+from the review of `47fda68`: `fresh_context_followed_the_wake` is bound to the
+consuming cycle's `cycle_id` and requires a NEW decision in that cycle (the
+reviewer's `mut_noreeval` defeat no longer works), the completion receipt's
+status comparison is EXACT text so it refuses the case-variants the projection
+refuses, and the STOP checks assert `started`, require the canonical STOP text,
+and count connector invocations rather than file existence.
 
 That session executed the owner's 0→100 master goal of 2026-09-18 on top of the
 reviewed product head `7d8672f`, and built the four production callers the goal
