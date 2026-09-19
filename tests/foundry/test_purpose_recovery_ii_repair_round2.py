@@ -664,3 +664,126 @@ def test_the_bound_step_capability_reaches_the_mission_contract(tmp_path) -> Non
     )
     assert plain.required_capabilities == ()
     assert MissionStepContract.from_payload(plain.to_payload()).required_capabilities == ()
+
+def test_a_real_collision_writes_no_false_continuation(tmp_path) -> None:
+    """Repair round 8 (goal §9): a REAL collision, not an injected one.
+
+    The review of 2edd0a0 defeated the earlier skip pin by noting it injects
+    EventConflict through a monkeypatched ``_append``: a mutation special-casing
+    only that injection point would pass the pin.  The durable fixture is built
+    through the CANONICAL writers (ingest -> enqueue -> start -> append) so the
+    projection seals the completion and the real consume/rearm/consume sequence
+    produces the collision itself.
+    """
+
+    from jarvis_foundry.discovery_sources import ingest_observed_candidate
+    from jarvis_foundry.events import Event
+    from jarvis_foundry.executive.autonomy import create_objective
+    from jarvis_foundry.executive.continuous import (
+        RESEARCH_WAKE_PREFIX,
+        WakeCondition,
+        consume_research_wakes,
+        create_wake,
+        rearm_wake,
+        rebuild_wake_state,
+        record_research_wake_continuation,
+    )
+    from jarvis_foundry.research_queue import (
+        enqueue_candidate_research,
+        start_candidate_research,
+    )
+
+    db = _database(tmp_path)
+    created = ingest_observed_candidate(
+        db,
+        "collision-cycle",
+        observation_id="observation-real-collision",
+        source_kind="PROJECT",
+        source_identity="repo://owner/collision",
+        content_hash="sha256:" + ("c0ffee12" * 8)[:64],
+        objective="Real collision pin",
+        target_project="JARVIS Foundry",
+        evidence=[{"source_ref": "repo://owner/collision/1", "dependencies": []}],
+        candidate_type="test_opportunity",
+        trusted_requirements={
+            "required_capability_ids": ["cap.file.read"],
+            "source": "real-collision-pin",
+        },
+        expected_outcome="bounded repository improvement",
+        confidence=0.8,
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    candidate_id = str(created["candidate_id"])
+    queued = enqueue_candidate_research(
+        db, candidate_id=candidate_id, cycle_id="collision-cycle",
+    )
+    research_id = str(queued["research_id"])
+    start_candidate_research(db, research_id=research_id)
+    db.append(Event.create(
+        "research.candidate_completed",
+        {
+            "research_id": research_id,
+            "candidate_id": candidate_id,
+            "cycle_id": "collision-cycle",
+            "pass_number": 1,
+            "status": "COMPLETED",
+            "evidence": {},
+        },
+        source_type="research",
+        source_id=research_id,
+        idempotency_key=f"real-collision:{research_id}",
+    ))
+
+    objective_id = f"initiative-objective:{candidate_id}"
+    create_objective(
+        db,
+        "Execute the bounded work the research supports.",
+        objective_id=objective_id,
+        resource_id="resource-real-collision",
+        required_capabilities=("write_registered_worktree_files",),
+        success_criteria=("the outcome is recorded",),
+        budget={"max_missions": 2, "max_retries": 1},
+        controller="supervisor",
+    )
+    wake_id = f"{RESEARCH_WAKE_PREFIX}{research_id}"
+    create_wake(
+        db,
+        WakeCondition(
+            wake_id=wake_id,
+            objective_id=objective_id,
+            kind="WAIT_FOR_SIGNAL",
+            reason="real collision pin",
+            created_at="2026-09-19T00:00:00+00:00",
+            not_before="2026-09-19T00:00:00+00:00",
+            signal=f"research.candidate_completed:{research_id}",
+        ),
+        controller="supervisor",
+    )
+
+    first = consume_research_wakes(
+        db, cycle_id="collision-1", consumer_id="collision-consumer",
+    )
+    assert any(item.get("due") is True for item in first), (
+        "the canonical consumption must release the wake"
+    )
+    record_research_wake_continuation(db, cycle_id="collision-1", consumed=first)
+    after_first = len(list(db.events(
+        event_types=("executive.research_wake_continued",), readonly=True,
+    )))
+
+    rearm_wake(db, wake_id)
+    assert rebuild_wake_state(db)[wake_id]["status"] == "ACTIVE"
+
+    second = consume_research_wakes(
+        db, cycle_id="collision-2", consumer_id="collision-consumer",
+    )
+    assert any(item.get("consumed") is False for item in second), (
+        "re-consuming with the same consumer must report a real collision"
+    )
+    record_research_wake_continuation(db, cycle_id="collision-2", consumed=second)
+    after_second = len(list(db.events(
+        event_types=("executive.research_wake_continued",), readonly=True,
+    )))
+    assert after_second == after_first, (
+        "a colliding consumption must not write a continuation record"
+    )
