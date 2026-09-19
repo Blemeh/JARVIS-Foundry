@@ -474,14 +474,21 @@ def _research_completion_receipt(db, research_id: str):
     scan: a long-lived ledger can hold more completions than any scan window,
     and a missed receipt would silently defer a wake that is genuinely due.
 
-    The status is part of the query, and the default mirrors the projection
-    exactly: ``projections.py`` seals a completion that carries no status as
-    ``COMPLETED``, so this lookup treats a missing status the same way and only
-    excludes the attempts the projection itself records as FAILED, BLOCKED,
-    DEFERRED, REJECTED or UNKNOWN.  That coherence matters in both directions -
-    matching any status would let a failed pass release a wake as
-    ``research_completion_durable``, and ignoring the projection's own default
-    would make the bridge create a wake the consumer can never release.
+    The status is part of the query and mirrors ``projections.py`` exactly.
+    The projection seals a completion with ``str(payload.get("status") or
+    "COMPLETED")``, so any FALSY status - missing, null, empty string, ``False``
+    or ``0`` - becomes ``COMPLETED`` there.  This lookup therefore normalises a
+    falsy status to ``COMPLETED`` before comparing, and only refuses the values
+    the projection itself would record as non-completed attempts.  A divergence
+    in either direction is a defect: matching a FAILED attempt would release a
+    wake as ``research_completion_durable``, and refusing a completion the
+    projection sealed as COMPLETED would make the bridge create a wake the
+    consumer can never release.
+
+    The docstring deliberately claims coherence only for the values the
+    canonical writer (``research_queue.complete_candidate_research``) can emit
+    plus the falsy forms above; a non-string status such as a list is not a
+    supported input and is treated as not-completed rather than coerced.
     """
 
     if not research_id:
@@ -492,8 +499,12 @@ def _research_completion_receipt(db, research_id: str):
                 "SELECT sequence, event_id FROM events "
                 "WHERE event_type = ? "
                 "AND json_extract(payload_json, '$.research_id') = ? "
-                "AND UPPER(COALESCE(json_extract(payload_json, '$.status'), "
-                "    'COMPLETED')) = 'COMPLETED' "
+                "AND (CASE WHEN json_extract(payload_json, '$.status') IS NULL "
+                "           OR json_extract(payload_json, '$.status') = '' "
+                "           OR json_extract(payload_json, '$.status') = 0 "
+                "          THEN 'COMPLETED' "
+                "          ELSE UPPER(CAST(json_extract(payload_json, '$.status') "
+                "               AS TEXT)) END) = 'COMPLETED' "
                 "ORDER BY sequence DESC LIMIT 1",
                 (RESEARCH_COMPLETION_EVENT, research_id),
             ).fetchone()

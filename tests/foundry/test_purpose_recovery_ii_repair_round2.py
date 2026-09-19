@@ -307,27 +307,37 @@ def test_a_real_consumption_still_writes_a_continuation(tmp_path) -> None:
 
 
 def test_status_less_completion_is_durable_like_the_projection(tmp_path) -> None:
-    """Repair round 3: the receipt mirrors the projection's own status default.
+    """Repair round 3 + 4: the receipt mirrors the projection's own status default.
 
-    ``projections.py`` seals a completion that carries no status as COMPLETED,
-    so a status-less event must be a durable completion for the wake.  Ignoring
-    it created a wake the consumer could never release while the same cycle
-    advertised it (found by the review of 862b745).
+    ``projections.py`` seals a completion with a falsy status as COMPLETED
+    (``str(payload.get("status") or "COMPLETED")``), so every falsy form must be
+    durable for the wake, and every non-completed value must not be.  The first
+    version of this pin only covered the missing key; the review of 2edd0a0
+    showed ``""``, ``False`` and ``0`` still diverged.
     """
 
     db = _database(tmp_path)
-    _raw_event(
-        db,
-        "research.candidate_completed",
-        {
-            "research_id": "research-no-status",
-            "candidate_id": "candidate-repair",
-            "cycle_id": "repair",
-            "pass_number": 1,
-            "evidence": {},
-        },
-        key="repair-test:no-status",
-    )
+    falsy_ids = {
+        "research-no-status": {},
+        "research-null-status": {"status": None},
+        "research-empty-status": {"status": ""},
+        "research-false-status": {"status": False},
+        "research-zero-status": {"status": 0},
+    }
+    for research_id, extra in falsy_ids.items():
+        _raw_event(
+            db,
+            "research.candidate_completed",
+            {
+                "research_id": research_id,
+                "candidate_id": "candidate-repair",
+                "cycle_id": "repair",
+                "pass_number": 1,
+                "evidence": {},
+                **extra,
+            },
+            key=f"repair-test:{research_id}",
+        )
     _raw_event(
         db,
         "research.candidate_completed",
@@ -341,7 +351,8 @@ def test_status_less_completion_is_durable_like_the_projection(tmp_path) -> None
         },
         key="repair-test:still-failed",
     )
-    assert _research_completion_receipt(db, "research-no-status") is not None
+    for research_id in falsy_ids:
+        assert _research_completion_receipt(db, research_id) is not None, research_id
     assert _research_completion_receipt(db, "research-still-failed") is None
 
 
