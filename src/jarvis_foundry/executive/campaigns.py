@@ -113,6 +113,29 @@ class CampaignError(ValueError):
     """A deterministic campaign contract or lifecycle refusal."""
 
 
+#: Refusal classes that are durable campaign truth, in the order they are
+#: matched against the error text.  ``ensure_warranted_campaign`` records the
+#: class in the ``executive.campaign_warranted`` receipt and in its idempotency
+#: key, so a second refusal of the same class is a no-op while a differently
+#: caused one is a NEW durable record rather than a deduped-away attempt.
+_CAMPAIGN_REFUSAL_CODES: tuple[tuple[str, str], ...] = (
+    ("terminal objective", "TERMINAL_OBJECTIVE"),
+    ("already", "ALREADY_EXISTS"),
+    ("deadline", "DEADLINE_INVALID"),
+    ("plan", "PLAN_UNSUITABLE"),
+)
+
+
+def _campaign_refusal_code(error: CampaignError) -> str:
+    """A stable, bounded class for a campaign refusal."""
+
+    text = str(error).lower()
+    for needle, code in _CAMPAIGN_REFUSAL_CODES:
+        if needle in text:
+            return code
+    return "UNCLASSIFIED"
+
+
 def _tuple(value: Any) -> tuple[str, ...]:
     if value is None:
         return ()
@@ -1089,6 +1112,7 @@ def ensure_warranted_campaign(
             )
         except CampaignError as error:
             summary["reason"] = f"{type(error).__name__}: {error}"[:300]
+            summary["refusal_code"] = _campaign_refusal_code(error)
         else:
             summary["campaign_id"] = record.campaign_id
             summary["created"] = True
@@ -1100,6 +1124,11 @@ def ensure_warranted_campaign(
                 key=(
                     f"executive.campaign_warranted:{oid}:"
                     f"{warrant['predicate_version']}"
+                    # A refusal is durable campaign truth: without the outcome in
+                    # the key a second, differently-caused refusal would be
+                    # deduped away and the attempt history lost.  A successful
+                    # creation keeps the stable key so replays stay no-ops.
+                    + ("" if summary["created"] else f":refused:{summary.get('refusal_code') or 'UNKNOWN'}")
                 ),
             )
         except Exception:  # noqa: BLE001 - receipt failure never rewrites the pass

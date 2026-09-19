@@ -356,6 +356,90 @@ def test_status_less_completion_is_durable_like_the_projection(tmp_path) -> None
     assert _research_completion_receipt(db, "research-still-failed") is None
 
 
+def test_a_campaign_refusal_is_durably_classed(tmp_path) -> None:
+    """Repair round 5 (goal §6): a refusal carries its class in the durable record.
+
+    The second review's accepted R13 observation was that a repeated refusal is
+    summarised but not persisted.  Probing showed the refusal itself IS durable
+    (created=False plus the reason) and an identical replay is correctly a no-op,
+    so the real gap was narrower: the durable record did not say WHICH kind of
+    refusal it was, so two differently-caused refusals for one objective were
+    indistinguishable.  The receipt now carries the class.
+
+    This pin FAILS on the pre-fix tree, where refusal_code is absent.
+    """
+
+    from jarvis_foundry.executive.autonomy import create_objective
+    from jarvis_foundry.executive.campaigns import ensure_warranted_campaign
+
+    db = _database(tmp_path)
+    objective_id = "owner-goal:refusal-class"
+    create_objective(
+        db,
+        "Over several missions bring the project to a verified releasable state.",
+        objective_id=objective_id,
+        resource_id="resource-refusal-class",
+        required_capabilities=("write_registered_worktree_files",),
+        success_criteria=("each child mission is independently verified",),
+        metadata={"decomposition": "MULTI_MISSION", "horizon": "LONG"},
+        budget={"max_missions": 4, "max_retries": 1},
+        controller="supervisor",
+    )
+
+    reported = ensure_warranted_campaign(
+        db, objective_id=objective_id, controller="supervisor",
+        deadline="not-a-real-deadline",
+    )
+    refused = [row for row in reported if row.get("created") is False]
+    assert refused, "the invalid deadline must be refused, not silently accepted"
+
+    receipts = [
+        event.payload
+        for event in db.events(
+            event_types=("executive.campaign_warranted",), readonly=True
+        )
+    ]
+    durable = [row for row in receipts if row.get("created") is False]
+    assert durable, "a refusal the runtime reported must be durable"
+    assert durable[0].get("reason"), "the refusal reason must be durable"
+    assert durable[0].get("refusal_code") == "DEADLINE_INVALID", (
+        "the durable record must name the refusal class"
+    )
+
+
+def test_an_identical_refusal_replay_is_a_no_op(tmp_path) -> None:
+    """Positive control: replaying the same refusal adds no duplicate record."""
+
+    from jarvis_foundry.executive.autonomy import create_objective
+    from jarvis_foundry.executive.campaigns import ensure_warranted_campaign
+
+    db = _database(tmp_path)
+    objective_id = "owner-goal:refusal-replay"
+    create_objective(
+        db,
+        "Over several missions bring the project to a verified releasable state.",
+        objective_id=objective_id,
+        resource_id="resource-refusal-replay",
+        required_capabilities=("write_registered_worktree_files",),
+        success_criteria=("each child mission is independently verified",),
+        metadata={"decomposition": "MULTI_MISSION", "horizon": "LONG"},
+        budget={"max_missions": 4, "max_retries": 1},
+        controller="supervisor",
+    )
+    for _ in range(3):
+        ensure_warranted_campaign(
+            db, objective_id=objective_id, controller="supervisor",
+            deadline="not-a-real-deadline",
+        )
+    receipts = [
+        event.payload
+        for event in db.events(
+            event_types=("executive.campaign_warranted",), readonly=True
+        )
+    ]
+    assert len(receipts) == 1, "an identical refusal replay must stay idempotent"
+
+
 def test_declared_source_present_checks_the_checkout() -> None:
     assert _declared_source_present("src/jarvis_foundry/fabric/executors.py") is True
     assert _declared_source_present("src/jarvis_foundry/fabric/not_a_file.py") is False
