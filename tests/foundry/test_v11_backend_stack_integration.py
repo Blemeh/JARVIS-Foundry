@@ -109,7 +109,7 @@ def test_a2_research_fabric_project_and_verification_seams_stay_inert(
     root = tmp_path / "owner-project"
     _repo(root)
     database = FoundryDatabase(tmp_path / "foundry.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     _seed(database)
     source = SourceSpec(
         "project-seam",

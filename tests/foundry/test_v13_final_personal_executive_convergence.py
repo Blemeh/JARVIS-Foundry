@@ -85,7 +85,7 @@ def test_shared_spine_proves_owner_paths_worker_stop_and_restart(
 ) -> None:
     result = proof._run_spine_proof(tmp_path / "proof", _receipts())
 
-    assert result["schema"] == 40
+    assert result["schema"] == 41
     assert result["ledger"]["quick_check"] == "ok"
     assert result["ledger"]["events"] == result["ledger"][
         "integrity_verified_events"
@@ -145,7 +145,7 @@ def test_receipt_validation_rejects_wrong_source() -> None:
                 **receipts["world_intelligence"],
                 "contract": "jarvis.v13.world-intelligence-proof.v1",
                 "source_sha": "1" * 40,
-                "schema": 40,
+                "schema": 41,
                 "boundaries": {"live_mutated": False},
             },
             "world_verifier": {

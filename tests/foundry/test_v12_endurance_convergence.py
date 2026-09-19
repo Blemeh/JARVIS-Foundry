@@ -778,7 +778,7 @@ def test_real_disposable_endurance_campaign_script(tmp_path: Path) -> None:
     proof = json.loads(result.stdout)
     assert json.loads(receipt_path.read_text(encoding="utf-8")) == proof
     assert proof["verdict"] == "PASS"
-    assert proof["source"]["schema_version"] == 40
+    assert proof["source"]["schema_version"] == 41
     assert proof["source"]["activation_authorized"] is False
     assert proof["campaign"]["status"] == "COMPLETED"
     assert proof["campaign"]["accepted_child_count"] == 3

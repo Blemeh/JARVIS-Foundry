@@ -22,6 +22,7 @@ if str(SOURCE_ROOT) not in __import__("sys").path:
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.workforce import WorkPackage, rebuild_workforce_state
+from jarvis_foundry.migrations import SCHEMA_VERSION
 
 
 BASE_SHA = "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
@@ -529,7 +530,7 @@ def _source_e2e_report_truth(
             "provider_receipts": provider_receipts,
             "gmail_events": gmail_events,
             "pass": (
-                schema == 40
+                schema == SCHEMA_VERSION
                 and database.quick_check() == "ok"
                 and database.verify_event_integrity()
                 == database.event_count()
@@ -763,7 +764,7 @@ def _package_report_truth(
             and Path(str(sdist["path"])).name in build_text
         ),
         "isolated_import_truth": (
-            install_truth.get("schema") == 40
+            install_truth.get("schema") == SCHEMA_VERSION
             and install_truth.get("imports") == "PASS"
         ),
         "wheel_matches_source": wheel_ok,
@@ -1559,7 +1560,9 @@ def _database_truth(
     ]
     proof_f = dict(sections.get("F") or {})
     checks = {
-        "schema_v40": schema == 40,
+        # Key name is historical and is recorded in committed evidence
+        # receipts; the comparison tracks the current schema.
+        "schema_v40": schema == SCHEMA_VERSION,
         "quick_check_ok": database.quick_check() == "ok",
         "ledger_integrity_complete": (
             database.verify_event_integrity() == database.event_count()

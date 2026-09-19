@@ -86,7 +86,7 @@ def test_cycle_researches_judges_waits_and_replays_without_execution(tmp_path: P
     root = tmp_path / "repo"
     _project(root)
     database = FoundryDatabase(tmp_path / "a2.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     _seed(database)
     result = run_initiative_a2_cycle(
         database,

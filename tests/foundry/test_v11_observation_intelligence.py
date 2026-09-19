@@ -28,7 +28,7 @@ from jarvis_foundry.world_model.signals import WorldSignalStore
 
 def _db(tmp_path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "observation-intelligence.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     return database
 
 
