@@ -347,39 +347,6 @@ def _materialize_intent_action_plan(
     return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
 
 
-def _bound_step_capabilities(
-    database: FoundryDatabase,
-    *,
-    objective_id: str | None,
-    mission_id: str,
-) -> tuple[str, ...]:
-    """Fabric capabilities the plan step bound to ``mission_id`` requires.
-
-    Goal section 3. The correspondence is DECLARED, not inferred:
-    ``PlanStep.mission_id`` names the mission that executes the step, so a
-    mission step contract can carry the step's ``cap.*`` requirements without
-    guessing a step-id mapping between the plan namespace and the contract
-    namespace.  Returns an empty tuple when no plan step is bound yet, which is
-    the honest answer at admission time.
-    """
-
-    from .autonomy import active_plan
-
-    if not objective_id or not mission_id:
-        return ()
-    plan = active_plan(database, str(objective_id))
-    if plan is None:
-        return ()
-    for step in plan.steps:
-        if getattr(step, "mission_id", None) == mission_id:
-            return tuple(
-                str(capability)
-                for capability in step.required_capabilities
-                if str(capability).startswith("cap.")
-            )
-    return ()
-
-
 def _record_unrealizable_intent(
     database: FoundryDatabase,
     *,
@@ -961,21 +928,12 @@ def materialize_portfolio_selection(
             if str(value).strip())
         objective_criteria = success or (
             f"the registered resource satisfies the owner objective: {objective}",)
-        # Goal section 3: carry the fabric capabilities the plan step bound to
-        # this mission requires, so the contract that EXECUTES the step selects
-        # them once a gap resolves instead of merely recording them elsewhere.
-        bound_capabilities = _bound_step_capabilities(
-            database,
-            objective_id=str(metadata.get("executive_objective_id") or ""),
-            mission_id=mission_id,
-        )
         plan = MissionStepContract(
             mission_id=mission_id,
             step_id="01-plan",
             version=1,
             resource_id=resource_id,
             capability=capability,
-            required_capabilities=bound_capabilities,
             target_relative_path=plan_name,
             instructions=(
                 f"Orient to the registered resource and the authenticated owner goal below.\n"
@@ -1004,7 +962,6 @@ def materialize_portfolio_selection(
             version=1,
             resource_id=resource_id,
             capability=capability,
-            required_capabilities=bound_capabilities,
             target_relative_path=outcome_name,
             instructions=(
                 f"Read {plan_name}, then perform the authenticated owner goal in the "
