@@ -596,6 +596,7 @@ def discover_and_admit_next_work(
     worktree_parent: str | Path | None = None,
     bounds: Mapping[str, Any] | None = None,
     fault_hook: Callable[[str], None] | None = None,
+    research_wake_consumed: int = 0,
 ) -> DiscoveryAdmission:
     """Observe registered projects and admit the Executive's selected work.
 
@@ -603,6 +604,11 @@ def discover_and_admit_next_work(
     CONTINUATION when an already-admitted objective continued, JUSTIFIED_WAIT
     when no worthwhile work exists, and STALL when useful work was selected but
     could not become a mission.
+
+    ``research_wake_consumed`` is forwarded to the A2 observation cycle: a
+    research-completion wake this Executive cycle consumed is itself the
+    meaningful change, so the cycle must reach a fresh evaluation rather than
+    short-circuiting on an unchanged source digest.
     """
     from ..initiative_a2 import InitiativeA2Bounds, run_continuous_observation_cycle
     from ..initiative_a3 import (
@@ -643,7 +649,36 @@ def discover_and_admit_next_work(
     decision = None
     admission = None
     active_objective = active_initiative_objective(database)
-    if active_objective is not None:
+    # A research-completion wake released this cycle is new durable evidence
+    # about an ALREADY admitted objective's candidate.  Continuing that objective
+    # blindly would ignore the findings, so the A2 evaluation runs first and the
+    # continuation only happens when the fresh evaluation still selects it.
+    if active_objective is not None and int(research_wake_consumed or 0) > 0:
+        report = run_continuous_observation_cycle(
+            database,
+            sources=resolved_sources,
+            resource_id=resource_id,
+            capability=capability,
+            bounds=a2_bounds,
+            stop_path=stop_path,
+            fault_hook=fault_hook,
+            research_wake_consumed=int(research_wake_consumed or 0),
+        )
+        decision = report.get("decision")
+        invoked("post research-wake re-evaluation")
+        if getattr(decision, "kind", None) == "SELECT":
+            admission = authority.admit(decision)
+        else:
+            reason = f"V11 A2 WAIT after research: {report.get('reason') or 'no eligible candidate'}"
+            record_product_wait_diagnosis(
+                database, cycle_id=cycle_id,
+                decision=decision if hasattr(decision, "kind") else None,
+                reason=reason,
+            )
+            admission = continue_initiative_objective(
+                database, active_objective, cycle_id=f"initiative-executive-{cycle_id}",
+            )
+    elif active_objective is not None:
         admission = continue_initiative_objective(
             database, active_objective, cycle_id=f"initiative-executive-{cycle_id}",
         )
@@ -658,6 +693,7 @@ def discover_and_admit_next_work(
                 bounds=a2_bounds,
                 stop_path=stop_path,
                 fault_hook=fault_hook,
+                research_wake_consumed=int(research_wake_consumed or 0),
             )
             decision = report.get("decision")
             if getattr(decision, "kind", None) != "SELECT":

@@ -114,7 +114,9 @@ def _research_wake(db: FoundryDatabase, research_id: str) -> str:
 
 
 def test_only_existing_research_wakes_are_reported(tmp_path) -> None:
-    """A bridged id whose wake does not exist must not be reported as triggered."""
+    """Only a wake with durable trigger evidence may be reported as triggered."""
+
+    from jarvis_foundry.executive.continuous import trigger_wake
 
     db = _database(tmp_path)
     unbound = [
@@ -127,6 +129,10 @@ def test_only_existing_research_wakes_are_reported(tmp_path) -> None:
     assert _triggered_research_wakes(db, unbound) == []
 
     real = _research_wake(db, "research-really-created")
+    # Existence alone is not a trigger: the wake is ACTIVE until the canonical
+    # path triggers it, so it must not be advertised yet.
+    assert _triggered_research_wakes(db, unbound + [{"wake_id": real}]) == []
+    trigger_wake(db, real, controller="supervisor", reason="test: real trigger")
     assert _triggered_research_wakes(db, unbound + [{"wake_id": real}]) == [real]
     assert _triggered_research_wakes(db, unbound) == []
 
@@ -403,11 +409,14 @@ def test_resolver_declines_a_declaration_whose_file_is_absent(monkeypatch) -> No
 
 
 def test_wake_state_projection_is_unchanged_for_a_real_wake(tmp_path) -> None:
-    """Positive control: the gate does not hide a wake that exists."""
+    """Positive control: the trigger gate does not hide a wake that was triggered."""
+
+    from jarvis_foundry.executive.continuous import trigger_wake
 
     db = _database(tmp_path)
     wake_id = _research_wake(db, "research-positive-control")
     assert wake_id in set(rebuild_wake_state(db))
+    trigger_wake(db, wake_id, controller="supervisor", reason="positive control")
     assert _triggered_research_wakes(db, [{"wake_id": wake_id}]) == [wake_id]
 
 

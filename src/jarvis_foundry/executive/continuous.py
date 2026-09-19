@@ -434,20 +434,28 @@ def _research_objective_id(candidate_id: str) -> str:
 
 
 def _triggered_research_wakes(db, research_bridged) -> list[str]:
-    """Bridged wake ids that name a wake which actually exists.
+    """Bridged wake ids whose canonical wake path durably triggered them.
 
     ``research_bridged`` holds a receipt per completed research item, including
     the unbound ones whose wake was deliberately never created (and any whose
     creation lost an idempotency race).  Merging those ids into a cycle's
-    ``triggered_wakes`` would advertise wakes that do not exist, so the merge is
-    gated on the id being present in the canonical wake projection.
+    ``triggered_wakes`` would advertise wakes that do not exist.
+
+    Existence alone is not evidence of a trigger either: a re-armed wake, or a
+    wake whose completion is not yet durable, is ACTIVE in the projection while
+    its id is still in ``research_bridged``.  A wake may be reported as
+    triggered only when the canonical projection records a durable
+    ``executive.wake_triggered`` for it, so the reported set is derived from
+    the trigger evidence rather than from the wake's existence.
     """
 
     existing = rebuild_wake_state(db)
     return [
         wake_id
         for wake_id in (str(item.get("wake_id") or "") for item in research_bridged)
-        if wake_id and wake_id in existing
+        if wake_id
+        and (existing.get(wake_id) or {}).get("status") == "TRIGGERED"
+        and (existing.get(wake_id) or {}).get("triggered_event_id")
     ]
 
 
@@ -1048,7 +1056,19 @@ def run_continuous_cycle(
     if discovery_settings:
         try:
             from .intelligence import discover_and_admit_next_work as _discover
-            admitted_work = _discover(db, cycle_id=cycle_id, **discovery_settings)
+            # A research-completion wake released this cycle IS the meaningful
+            # change for the Executive: it must reach a fresh evaluation even
+            # when no observed source moved.  Only wakes the consumer actually
+            # released (due) count.
+            released_research_wakes = sum(
+                1 for item in consumed_research if item.get("due") is True
+            )
+            admitted_work = _discover(
+                db,
+                cycle_id=cycle_id,
+                research_wake_consumed=released_research_wakes,
+                **discovery_settings,
+            )
             discovery_report = {
                 "status": admitted_work.status,
                 "reason": admitted_work.reason,

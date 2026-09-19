@@ -671,8 +671,16 @@ def run_initiative_a2_cycle(
     fault_hook: FaultHook | None = None,
     now: datetime | str | None = None,
     source_readers: Mapping[str, SourceReader] | None = None,
+    research_wake_consumed: int = 0,
 ) -> dict[str, Any]:
-    """Run one replay-safe A2 pass and return WAIT/IDLE, never work."""
+    """Run one replay-safe A2 pass and return WAIT/IDLE, never work.
+
+    ``research_wake_consumed`` counts the research-completion wakes the calling
+    Executive cycle released.  Durable research findings are a meaningful change
+    for the Executive even when no observed source moved, so a non-zero count
+    suppresses the zero-change short circuit and this pass reaches research
+    reuse and a fresh A2 evaluation instead of returning WAIT immediately.
+    """
     if not cycle_id.strip():
         raise ValueError("cycle_id is required")
     policy = bounds or InitiativeA2Bounds()
@@ -743,7 +751,8 @@ def run_initiative_a2_cycle(
         if (not expired_due
                 and int(observed.get("candidates_created") or 0) == 0
                 and int(observed.get("candidates_refreshed") or 0) == 0
-                and int(observed.get("meaningful_changes") or 0) == 0):
+                and int(observed.get("meaningful_changes") or 0) == 0
+                and int(research_wake_consumed or 0) == 0):
             source_rows = list(observed.get("sources") or ())
             status = (
                 "IDLE" if source_rows
@@ -1050,12 +1059,19 @@ def run_continuous_observation_cycle(
     source_readers: Mapping[str, SourceReader] | None = None,
     fault_hook: FaultHook | None = None,
     now: datetime | str | None = None,
+    research_wake_consumed: int = 0,
 ) -> dict[str, Any]:
     """Dispatch at most one due observation pass from one Executive wake.
 
     Runtime configuration is projected into the existing monitor table once.
     Later invocations read schedule/readiness/backoff from SQLite, so restart
     does not reset cadence. Calls before the durable due time append nothing.
+
+    ``research_wake_consumed`` is the count of research-completion wakes the
+    current Continuous Executive cycle consumed.  Newly durable research
+    findings are a meaningful change for the Executive even when no observed
+    source moved, so that count suppresses the zero-change short circuit below
+    and the cycle proceeds to research reuse and a fresh A2 evaluation.
     """
     policy = bounds or InitiativeA2Bounds()
     current = _current_time(now)
@@ -1112,6 +1128,7 @@ def run_continuous_observation_cycle(
             source_readers=source_readers,
             fault_hook=fault_hook,
             now=current,
+            research_wake_consumed=int(research_wake_consumed or 0),
         )
         next_due = next_monitor_due_at(database)
         next_wake = None
@@ -1187,6 +1204,7 @@ def run_continuous_observation_cycle(
         source_readers=source_readers,
         fault_hook=fault_hook,
         now=current,
+        research_wake_consumed=int(research_wake_consumed or 0),
     )
     next_due = next_monitor_due_at(database)
     next_wake = None
