@@ -1816,6 +1816,7 @@ def _runtime_identity_projection(
     database: FoundryDatabase,
     *,
     release_identity: Mapping[str, Any] | None = None,
+    runtime_home: str | Path | None = None,
 ) -> dict[str, Any]:
     """Expose which runtime wrote this ledger, beside which release is installed.
 
@@ -1828,10 +1829,21 @@ def _runtime_identity_projection(
     """
 
     installed = release_identity if isinstance(release_identity, Mapping) else {}
+    # The authoritative home for THIS ledger: the caller's runtime home when it
+    # has one, otherwise the directory the ledger itself lives in - the same
+    # resolution every other Command Center surface already uses.  Calling
+    # release_authority_report() with no home at all returned the constant
+    # FOUNDRY_HOME_MISSING body, which is not a fact about this runtime.
+    if runtime_home is not None:
+        identity_home = Path(runtime_home).expanduser().resolve()
+        identity_home_source = "runtime_home_argument"
+    else:
+        identity_home = Path(database.path).expanduser().resolve().parent
+        identity_home_source = "database_parent"
     authority: Mapping[str, Any] = {}
     try:
         from .deployment.release import release_authority_report
-        authority = release_authority_report()
+        authority = release_authority_report(foundry_home=identity_home)
     except Exception:  # noqa: BLE001 - identity is reported, never invented
         authority = {}
     execution = None
@@ -1865,6 +1877,8 @@ def _runtime_identity_projection(
             "previous": installed.get("previous"),
             "source": installed.get("source") or "immutable_release_pointers",
         },
+        "foundry_home": str(identity_home),
+        "foundry_home_source": identity_home_source,
         "release_authority": {
             "status": authority.get("status"),
             "consistent": authority.get("consistent"),
@@ -1883,6 +1897,7 @@ def build_snapshot(
     now: str | None = None,
     timeline_limit: int = 200,
     discovery_cycle_enabled: bool | None = None,
+    runtime_home: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build one complete snapshot inside a shared read-only context."""
     with database.read_snapshot():
@@ -1892,6 +1907,7 @@ def build_snapshot(
             now=now,
             timeline_limit=timeline_limit,
             discovery_cycle_enabled=discovery_cycle_enabled,
+            runtime_home=runtime_home,
         )
 
 
@@ -1902,6 +1918,7 @@ def _build_snapshot(
     now: str | None = None,
     timeline_limit: int = 200,
     discovery_cycle_enabled: bool | None = None,
+    runtime_home: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build the complete JSON-safe Command Center projection.
 
@@ -2355,7 +2372,7 @@ def _build_snapshot(
         "discovery": discovery_surface,
         "capability_fabric": capability_fabric,
         "runtime_identity": _runtime_identity_projection(
-            database, release_identity=release_identity,
+            database, release_identity=release_identity, runtime_home=runtime_home,
         ),
     }
     # Keep the pre-V9 top-level snapshot shape byte-compatible for databases
@@ -2678,6 +2695,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 stop_path=self.stop_path,
                 timeline_limit=self.timeline_limit,
                 discovery_cycle_enabled=self.discovery_cycle_enabled,
+                runtime_home=self.runtime_home,
             )
             handler_cls._snapshot_cache_payload = payload
             handler_cls._snapshot_cache_at = now

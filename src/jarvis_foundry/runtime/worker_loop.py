@@ -1326,6 +1326,26 @@ def run_cycle(
                     "status": "FAILED",
                     "reason": f"{type(error).__name__}: {error}"[:300],
                 }]
+            # The missing half of the warrant: the campaign exists, but until a
+            # production caller turns the objective's ACTIVE plan into children,
+            # a warranted campaign can hold zero children and never dispatch
+            # anything.  The declaration itself is Supervisor-owned and lives in
+            # executive/campaigns.py; this seam only invokes it, in the same
+            # cycle as the warrant, before recovery reconciles the new children.
+            from ..executive.campaigns import materialize_campaign_children
+
+            campaign_materialization: list[dict[str, Any]] = []
+            try:
+                campaign_materialization = materialize_campaign_children(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                )
+            except Exception as error:  # noqa: BLE001 - fail closed, record
+                campaign_materialization = [{
+                    "status": "FAILED",
+                    "reason": f"{type(error).__name__}: {error}"[:300],
+                }]
             # Campaign recovery is a Supervisor-owned startup seam.  It only
             # reconciles durable mission/effect/provider truth and re-derives
             # wakes; dispatch still enters through the existing selector and
