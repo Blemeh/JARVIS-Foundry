@@ -748,6 +748,15 @@ def a2_barrier(args: argparse.Namespace) -> dict[str, Any]:
     before_worktrees = _git("worktree", "list", "--porcelain")
     database = FoundryDatabase(output / "a2-barrier.db")
     schema = database.initialize()
+    # Read the schema back from the DATABASE, not only from initialize()'s
+    # return value.  initialize() returns migrate()'s destination, which is
+    # SCHEMA_VERSION whenever no target is pinned, so comparing THAT value with
+    # the product constant is X == X and can never fail (round-3 finding
+    # V3-I-1).  A barrier observes persisted state, so it reads the durable
+    # ledger's own migration record.
+    with database.connect(readonly=True) as connection:
+        durable_schema = int(connection.execute(
+            "SELECT MAX(version) FROM schema_migrations").fetchone()[0])
     source = SourceSpec(
         "a2-harness-real-project",
         "project",
@@ -777,6 +786,7 @@ def a2_barrier(args: argparse.Namespace) -> dict[str, Any]:
     after_worktrees = _git("worktree", "list", "--porcelain")
     passed = (
         schema == A2_BARRIER_SCHEMA
+        and durable_schema == A2_BARRIER_SCHEMA
         and metrics["objectives"] == metrics["missions"] == metrics["effects"] == 0
         and result.get("outcome") in {"WAIT", "IDLE"}
         and before_worktrees == after_worktrees
@@ -789,6 +799,7 @@ def a2_barrier(args: argparse.Namespace) -> dict[str, Any]:
         "git": identity,
         "product_base_sha": A2_SHA,
         "database_schema": schema,
+        "durable_schema": durable_schema,
         "cycle_outcome": result.get("outcome"),
         "metrics": metrics,
         "worktree_creations": 0 if before_worktrees == after_worktrees else "CHANGED",

@@ -21,15 +21,34 @@ WHY THESE ARE NOT IN THE DISCRIMINATING PIN FILE
 ``tests/foundry/test_wave1a_self_expansion_delivery.py`` holds the Wave 1A
 seam pins, every one of which must FAIL on the pre-change tree (that is what
 ``proofs/pin_discrimination.py`` asserts, and exactly one declared guard pin is
-allowed to pass there).  Both pins here PASS on the pre-change tree as well,
-because both defects are *introduced by this change* — there is nothing to fail
-against on the older base.  A pin that passes on both trees placed in that file
-would read as an unexplained pre-change pass and break the discrimination gate.
+allowed to pass there).
 
-**Do not delete these as vacuous.**  They are the guard pins the review asked
-for: each one fails on the tree that shipped the defect (``d2e9a19`` for R1-F1
-and the frozen head ``bd070f4`` for R3-I-2) and passes on the repaired head.
-Their job is to keep the repair in place, not to discriminate the feature.
+**Measured behaviour of these pins on the pre-change base ``a0b1248``**
+(round-3 review, reproduced with an extracted tree and a resolved-package
+assertion):
+
+* ``test_a_contract_recorded_before_the_change_re_delivers_across_the_upgrade``
+  **FAILS** there, with ``AttributeError: 'MissionStepContract' object has no
+  attribute 'required_capabilities'`` — the field it reads is introduced by this
+  change, so the pin cannot even express its defect at the base.  It is NOT a
+  both-tree guard.
+* ``test_the_a2_acceptance_barrier_derives_its_schema_from_the_product``
+  **PASSES** there; it only reads product source.  This one IS a genuine
+  both-tree guard.
+* ``test_a_same_head_re_delivery_is_still_idempotent`` (the control) passes
+  everywhere.
+
+An earlier revision of this docstring claimed *both* pins pass on the
+pre-change tree.  That was FALSE, and it is corrected here rather than left as
+a comfortable story: the honest reason neither pin belongs in the
+discriminating file is that a failure which exists only because the base lacks
+the field is not a discriminating signal for a defect that cannot exist there.
+
+**Do not delete these as vacuous.**  Each FAILS on the tree that shipped its
+defect — ``d2e9a19`` for R1-F1 and the frozen head ``bd070f4`` for R3-I-2,
+where they report the exact ``EventConflict`` and ``assert 40 == 41``
+respectively — and both pass at the repaired head.  Their job is to keep the
+repair in place, not to discriminate the feature.
 """
 from __future__ import annotations
 

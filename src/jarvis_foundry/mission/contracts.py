@@ -272,6 +272,26 @@ def _recorded_contract_sequence(
     release therefore holds this contract's event with the SAME idempotency key
     and DIFFERENT payload bytes.  Re-delivery must resolve to the recorded event
     by identity, not by rebuilding bytes that no longer match what is stored.
+
+    DECLARED CONSEQUENCES - measured on this head and stated here rather than
+    left implicit (round-3 findings R3V1-F2 / V3-H-2 / V3V1-F3):
+
+    * ``required_capabilities`` is the only field in ``to_payload()`` that is
+      neither hash-anchored nor derived, so it is the entire surface on which a
+      caller's value can differ under an unchanged identity.  A re-delivery
+      declaring a DIFFERENT requirement set for the same
+      ``(mission, step, version, content_hash)`` therefore resolves to the
+      recorded event and the caller's new value is DISCARDED.  That is
+      deliberate: the requirement is not versioned under a stable canonical
+      payload, because versioning it would mean re-hashing every stored row.
+      A caller that needs a changed requirement recorded must supersede the
+      contract with a new version, which mints a new identity and appends.
+    * Resolution runs against the PROJECTION (``latest_contract``), so a
+      contract whose event exists while its projection row is missing keeps the
+      previous behaviour - the ledger's ``EventConflict`` - and is healed only
+      by ``rebuild_projections()``.  The product writes event and projection
+      atomically, so reaching that state requires an already-inconsistent
+      database.
     """
     with database.connect(readonly=True) as connection:
         row = connection.execute(
