@@ -31,11 +31,15 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 A2_SHA = "00ee2e148c12151699a796649a1cb87ed892a69b"
-# The historical A2 preparation lane used schema v39.  The overnight
-# convergence target deliberately keeps the v40 schema, so the observation
-# barrier records the schema of the current candidate while retaining the A2
-# ancestry check above it.
-A2_BARRIER_SCHEMA = 40
+
+from jarvis_foundry.migrations import SCHEMA_VERSION  # noqa: E402 - SRC is on sys.path above
+
+# The barrier records the schema of the CURRENT candidate and keeps the A2
+# ancestry check above it.  Deriving it from the product's own constant makes a
+# future bump carry here automatically: a duplicated literal silently pins this
+# file to an obsolete number and turns the barrier's own verdict into a false
+# FAIL, which is exactly how the 40 -> 41 bump broke this barrier.
+A2_BARRIER_SCHEMA = SCHEMA_VERSION
 HARNESS_SCHEMA = "jarvis.v11.a3a4.proving.v1"
 DRIVER_SCHEMA = "jarvis.v11.a3a4.driver.v1"
 FINAL_DURATION_HOURS = 48.0

@@ -251,13 +251,50 @@ class MissionStepContract:
         }
 
 
+def _contract_idempotency_key(contract: MissionStepContract) -> str:
+    """The ledger identity of one contract version.
+
+    Built from ``content_hash()`` - the canonical-payload hash - which is
+    deliberately stable across releases and is what makes a re-delivery the
+    SAME event rather than a new one.
+    """
+    return f"{CONTRACT_EVENT}:{contract.contract_id}:{contract.content_hash()}"
+
+
+def _recorded_contract_sequence(
+    database: FoundryDatabase, contract: MissionStepContract
+) -> tuple[int, bool] | None:
+    """Return the ledger sequence of this exact contract if it is recorded.
+
+    ``content_hash()`` is the contract's identity; ``to_payload()`` is only its
+    serialization, and a serialization legitimately gains keys over time (this
+    release added ``required_capabilities``).  A database written by an earlier
+    release therefore holds this contract's event with the SAME idempotency key
+    and DIFFERENT payload bytes.  Re-delivery must resolve to the recorded event
+    by identity, not by rebuilding bytes that no longer match what is stored.
+    """
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT sequence FROM events WHERE idempotency_key = ?",
+            (_contract_idempotency_key(contract),),
+        ).fetchone()
+    if row is None:
+        return None
+    return (int(row[0]), False)
+
+
 def record_step_contract(
     database: FoundryDatabase,
     contract: MissionStepContract,
     *,
     controller: str = SUPERVISOR_CONTROLLER,
 ) -> tuple[int, bool]:
-    """Record one immutable contract through the canonical event ledger."""
+    """Record one immutable contract through the canonical event ledger.
+
+    Re-delivery of an already-recorded version is idempotent and
+    version-stable: it resolves to the recorded event by the contract's
+    identity (``content_hash()``) instead of appending a rebuilt payload.
+    """
     if controller != SUPERVISOR_CONTROLLER:
         raise MissionStepContractError("only the exact Supervisor controller may record contracts")
     if contract.recorded_by != SUPERVISOR_CONTROLLER:
@@ -268,12 +305,20 @@ def record_step_contract(
     if latest is not None:
         if contract.version <= latest.version:
             if contract.version == latest.version and contract.content_hash() == latest.content_hash():
+                # Idempotent re-delivery.  The ledger refuses the SAME key with
+                # a DIFFERENT payload_hash (an EventConflict, by design), so a
+                # rebuilt payload must never be appended for a contract whose
+                # event already exists - the contract, its event and its
+                # projection row are all already durable.
+                recorded = _recorded_contract_sequence(database, contract)
+                if recorded is not None:
+                    return recorded
                 return database.append(Event.create(
                     CONTRACT_EVENT,
                     contract.to_payload(),
                     source_type="supervisor",
                     source_id=SUPERVISOR_CONTROLLER,
-                    idempotency_key=f"{CONTRACT_EVENT}:{contract.contract_id}:{contract.content_hash()}",
+                    idempotency_key=_contract_idempotency_key(contract),
                 ))
             raise MissionStepContractError("contract version is immutable")
         if contract.supersedes_hash != latest.content_hash():
@@ -283,7 +328,7 @@ def record_step_contract(
         contract.to_payload(),
         source_type="supervisor",
         source_id=SUPERVISOR_CONTROLLER,
-        idempotency_key=f"{CONTRACT_EVENT}:{contract.contract_id}:{contract.content_hash()}",
+        idempotency_key=_contract_idempotency_key(contract),
     )
     return database.append(event)
 

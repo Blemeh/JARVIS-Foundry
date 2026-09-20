@@ -1591,6 +1591,16 @@ MIGRATIONS: dict[int, str] = {
     -- database until something rebuilt its projections - and nothing in the
     -- product rebuilds the live database.  Same convention as the additive
     -- column at migration 40.
+    --
+    -- HAZARD, recorded deliberately rather than left implicit: this body was
+    -- CORRECTED IN PLACE on this branch (an earlier revision of the same commit
+    -- shipped the nullable, default-less ALTER).  A database that already
+    -- recorded version 41 from that revision will never run this body again, so
+    -- its column stays NULL and reconcile() stays inconsistent until something
+    -- rebuilds its projections.  No released deployment can hold that state -
+    -- this branch is unmerged and unpushed - but any future repair must be a NEW
+    -- migration that heals an existing NULL column, never another edit of this
+    -- body.
     ALTER TABLE mission_step_contracts
         ADD COLUMN required_capabilities_json TEXT NOT NULL DEFAULT '[]';
     """,
