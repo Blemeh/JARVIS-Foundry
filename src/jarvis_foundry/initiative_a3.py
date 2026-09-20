@@ -504,6 +504,7 @@ class InitiativeAdmissionAuthority:
         decision: ExecutiveDecision,
         *,
         now: datetime | str | None = None,
+        replacing_objective_id: str | None = None,
     ) -> A3Admission:
         candidate_id = str(decision.candidate_id or "")
         if decision.kind != "SELECT" or not candidate_id:
@@ -573,13 +574,41 @@ class InitiativeAdmissionAuthority:
         if len(active) >= self.policy.autonomous_wip_cap:
             return _blocked(self.database, candidate_id, "WIP_LIMIT", "autonomous WIP cap 1 is occupied", details={"active": active})
         consumed_budget = _consumed_build_budget(self.database)
-        if consumed_budget + 1.0 > self.policy.build_budget_units:
+        replacement_credit = 0.0
+        if replacing_objective_id:
+            replacement = rebuild_executive_state(self.database).objectives.get(
+                str(replacing_objective_id)
+            )
+            linked = any(
+                str(event.payload.get("objective_id") or "")
+                == str(replacing_objective_id)
+                for event in self.database.events(
+                    event_types=("initiative.execution_linked",), readonly=True
+                )
+            )
+            if (
+                replacement is not None
+                and replacement.status == "SUSPENDED"
+                and replacement.metadata.get("initiative") == "V11_A3"
+                and not linked
+            ):
+                # The old objective held the one build-unit reservation but
+                # never produced a mission. A research-driven replacement
+                # transfers that unused reservation; it does not enlarge the
+                # budget or bypass the unchanged WIP cap.
+                replacement_credit = 1.0
+        effective_consumed = max(0.0, consumed_budget - replacement_credit)
+        if effective_consumed + 1.0 > self.policy.build_budget_units:
             return _blocked(
                 self.database,
                 candidate_id,
                 "BUDGET_EXCEEDED",
                 "the one-objective A3 build budget is already consumed",
-                details={"consumed_units": consumed_budget},
+                details={
+                    "consumed_units": consumed_budget,
+                    "replacement_credit": replacement_credit,
+                    "effective_consumed_units": effective_consumed,
+                },
             )
 
         source_root = _resolve_project_root(self.database, candidate_id, project, self.project_roots)
@@ -725,6 +754,8 @@ class InitiativeAdmissionAuthority:
                 "wip_cap": self.policy.autonomous_wip_cap,
                 "build_budget_units": self.policy.build_budget_units,
                 "build_cost_units": 1.0,
+                "replacing_objective_id": replacing_objective_id,
+                "replacement_credit_units": replacement_credit,
                 "action_class": action_class,
                 "reversibility": reversibility,
                 "confidence": confidence,

@@ -186,6 +186,7 @@ def test_active_objective_research_wake_can_select_better_action(
     from jarvis_foundry.executive.intelligence import discover_and_admit_next_work
     import jarvis_foundry.initiative_a2 as a2
     import jarvis_foundry.initiative_a3 as a3
+    import jarvis_foundry.executive.autonomy as autonomy
 
     database = _database(tmp_path)
     selected = SimpleNamespace(
@@ -202,21 +203,35 @@ def test_active_objective_research_wake_can_select_better_action(
     monkeypatch.setattr(
         a3.InitiativeAdmissionAuthority,
         "admit",
-        lambda self, decision: SimpleNamespace(
-            admitted=True,
-            objective_id="objective-better",
-            mission_id="mission-better",
-            status="ADMITTED",
-            reason="selected by fresh research decision",
+        lambda self, decision, **kwargs: (
+            admitted_kwargs.update(kwargs)
+            or SimpleNamespace(
+                admitted=True,
+                objective_id="objective-better",
+                mission_id="mission-better",
+                status="ADMITTED",
+                reason="selected by fresh research decision",
+            )
         ),
     )
     continued = {"called": False}
+    admitted_kwargs: dict = {}
+    status_changes: list[tuple] = []
 
-    def _continue(*args, **kwargs):
-        continued["called"] = True
-        return SimpleNamespace(mission_id="mission-current", status="CONTINUED", reason="blind")
+    def _continue(_database, objective_id, **kwargs):
+        if objective_id == "objective-current":
+            continued["called"] = True
+            return SimpleNamespace(mission_id="mission-current", status="CONTINUED", reason="blind")
+        return SimpleNamespace(
+            mission_id="mission-better", status="ADMITTED", reason="fresh selection"
+        )
 
     monkeypatch.setattr(a3, "continue_initiative_objective", _continue)
+    monkeypatch.setattr(
+        autonomy,
+        "set_objective_status",
+        lambda *args, **kwargs: status_changes.append((args, kwargs)),
+    )
     result = discover_and_admit_next_work(
         database,
         cycle_id="wave1c-consumer",
@@ -235,3 +250,65 @@ def test_active_objective_research_wake_can_select_better_action(
     assert result.mission_id == "mission-better"
     assert result.decision_id == "exec-wave1c-better"
     assert continued["called"] is False
+    assert admitted_kwargs["replacing_objective_id"] == "objective-current"
+    assert status_changes[0][0][1:3] == ("objective-current", "SUSPENDED")
+
+
+def test_active_objective_research_wait_suspends_without_continuing(
+    tmp_path, monkeypatch,
+) -> None:
+    """A fresh WAIT must not turn the stale active objective into a mission."""
+
+    from jarvis_foundry.discovery_sources import SourceSpec
+    from jarvis_foundry.executive.intelligence import discover_and_admit_next_work
+    import jarvis_foundry.initiative_a2 as a2
+    import jarvis_foundry.initiative_a3 as a3
+    import jarvis_foundry.executive.autonomy as autonomy
+
+    database = _database(tmp_path)
+    decision = SimpleNamespace(
+        kind="WAIT",
+        decision_id="exec-wave1c-wait",
+        candidate_id=None,
+        reason="premises contradicted",
+        rejected=(),
+        wait=None,
+    )
+    monkeypatch.setattr(a3, "active_initiative_objective", lambda db: "objective-current")
+    monkeypatch.setattr(
+        a2,
+        "run_continuous_observation_cycle",
+        lambda *args, **kwargs: {"decision": decision, "reason": "premises contradicted"},
+    )
+    monkeypatch.setattr(
+        a3,
+        "continue_initiative_objective",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("WAIT continued the stale objective")
+        ),
+    )
+    status_changes: list[tuple] = []
+    monkeypatch.setattr(
+        autonomy,
+        "set_objective_status",
+        lambda *args, **kwargs: status_changes.append((args, kwargs)),
+    )
+
+    result = discover_and_admit_next_work(
+        database,
+        cycle_id="wave1c-wait-consumer",
+        resource_id="resource-alpha",
+        sources=(SourceSpec(
+            source_id="wave1c-source",
+            source_kind="project",
+            source_identity=str(tmp_path),
+        ),),
+        project_roots={"resource-alpha": tmp_path},
+        worktree_parent=tmp_path / "worktrees",
+        research_wake_consumed=1,
+    )
+
+    assert result.status == "JUSTIFIED_WAIT"
+    assert result.mission_id is None
+    assert result.decision_id == "exec-wave1c-wait"
+    assert status_changes[0][0][1:3] == ("objective-current", "SUSPENDED")

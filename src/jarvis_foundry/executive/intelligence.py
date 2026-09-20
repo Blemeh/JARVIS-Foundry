@@ -668,16 +668,65 @@ def discover_and_admit_next_work(
         decision = report.get("decision")
         invoked("post research-wake re-evaluation")
         if getattr(decision, "kind", None) == "SELECT":
-            admission = authority.admit(decision)
+            from .autonomy import rebuild_executive_state, set_objective_status
+
+            state = rebuild_executive_state(database)
+            current = state.objectives.get(active_objective)
+            current_candidate_id = str(
+                (current.provenance if current is not None else {}).get("candidate_id")
+                or ""
+            )
+            selected_candidate_id = str(getattr(decision, "candidate_id", "") or "")
+            if selected_candidate_id == current_candidate_id:
+                admission = continue_initiative_objective(
+                    database,
+                    active_objective,
+                    cycle_id=f"initiative-executive-{cycle_id}",
+                )
+            else:
+                set_objective_status(
+                    database,
+                    active_objective,
+                    "SUSPENDED",
+                    reason=(
+                        "fresh research decision selected a different candidate "
+                        f"({selected_candidate_id})"
+                    ),
+                    evidence_refs=(str(getattr(decision, "decision_id", "") or ""),),
+                )
+                admission = authority.admit(
+                    decision,
+                    replacing_objective_id=active_objective,
+                )
+                if admission.admitted and admission.objective_id:
+                    admission = continue_initiative_objective(
+                        database,
+                        admission.objective_id,
+                        cycle_id=f"initiative-executive-{cycle_id}",
+                    )
         else:
             reason = f"V11 A2 WAIT after research: {report.get('reason') or 'no eligible candidate'}"
+            from .autonomy import set_objective_status
+
+            set_objective_status(
+                database,
+                active_objective,
+                "SUSPENDED",
+                reason=reason,
+                evidence_refs=(str(getattr(decision, "decision_id", "") or ""),),
+            )
             record_product_wait_diagnosis(
                 database, cycle_id=cycle_id,
                 decision=decision if hasattr(decision, "kind") else None,
                 reason=reason,
             )
-            admission = continue_initiative_objective(
-                database, active_objective, cycle_id=f"initiative-executive-{cycle_id}",
+            judge_new_project_opportunity(
+                database, decision if hasattr(decision, "kind") else None,
+            )
+            return DiscoveryAdmission(
+                "JUSTIFIED_WAIT", reason,
+                decision_id=getattr(decision, "decision_id", None),
+                observed=True,
             )
     elif active_objective is not None:
         admission = continue_initiative_objective(
