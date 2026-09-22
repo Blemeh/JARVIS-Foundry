@@ -29,6 +29,17 @@ ISOLATED CANDIDATE PRODUCT:    5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb
 ISOLATED CANDIDATE HANDOFF:    var/convergence-20260916/HANDOFF.json
 LIVE UNCHANGED:                YES
 
+WAVE2 CANONICAL CONVERGENCE CANDIDATE (source only, isolated worktree):
+WAVE2 CANDIDATE BRANCH:        candidate/wave2-canonical-convergence-20260920
+WAVE2 PRODUCT HEAD:            953605e9f33573d0a040b904b0254a8210b174ee
+WAVE2 PRODUCT TREE:            79e6db3b37e18617abc4a79a179be503e21a4ce0
+WAVE2 IMMUTABLE RELEASE:       rel-953605e9f335-31a08b07
+WAVE2 EVIDENCE ROOT:           var/jarvis-wave2-canonical-convergence-20260920/
+WAVE2 HANDOFF:                 var/jarvis-wave2-canonical-convergence-20260920/HANDOFF.json
+WAVE2 VERDICT:                 see FINAL_CERTIFICATION_SUMMARY.json (authoritative;
+                               historical failed or superseded receipts are retained
+                               as history and do not drive the verdict)
+
 Last previously reconciled: Sunday, September 13, 2026 for the bounded A4 proving-driver
 repair that followed the Prompt 3 provider recovery (see the next paragraph),
 and for the validation-only
@@ -107,7 +118,7 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `28e1608a23b4e4a05ccdd102e82b5d59be6f9cab`
+DOCUMENTATION STATE BASE SHA: `953605e9f33573d0a040b904b0254a8210b174ee`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
@@ -317,7 +328,7 @@ FRESH PROVIDER PROBE:          PASS (opencode_go / deepseek-v4.1-flash)
 FRESH A3:                      PASS (one bounded, independently verified candidate)
 FRESH A4:                      PARTIAL (6/6 fault points; two end-state findings open)
 48H TRUST WINDOW:              NOT_STARTED
-CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
+CURRENT/CANDIDATE SCHEMA:     v41 (canonical source candidate only)
 LIVE SCHEMA:                  v38
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
