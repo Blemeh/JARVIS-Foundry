@@ -6,40 +6,63 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Wednesday, September 16, 2026 for isolated integrated
-product acceptance on
-`candidate/jarvis-integrated-acceptance-20260916` (product
-`0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, receipts
-`e9a8e34f60330399d7220fe8230491dc326b880a`). This candidate is source-only:
-it does not merge `main`, push, promote, install, retarget live CURRENT/PREVIOUS,
-mutate the live database, or change Scheduler/Supervisor/provider/trust.
-It is built from Goal 01 convergence HEAD
-`15a25536348d87be53ff115033c5012192d988be`. Live V10 and the frozen execution
-pointer remain unchanged. Historical live A4/Prompt 3 notes below are retained
-as live-surface history, not as a promotion claim for this candidate.
+Last reconciled: Wednesday, September 23, 2026 for the final candidate-only
+Wave 2 closure and independent raw-state review. The current product source is
+`44385abbf22ff41b3fa16a5cc9984e218a657ec0` on
+`candidate/wave2-canonical-convergence-20260920`; its tree is
+`54785de2b8070e72f1765b4c9836f4a31cc732c4`. The immutable candidate release is
+`rel-44385abbf22f-eb82b9f0` (manifest
+`3192b54f70e75913c44173fbd1db482ba1826705deb6bcdbe7b23f4e8e43784e`).
 
-ISOLATED ACCEPTANCE CANDIDATE: ACCEPTED_FOR_LIVE_PROMOTION / SOURCE ONLY
-ISOLATED ACCEPTANCE BRANCH:    candidate/jarvis-integrated-acceptance-20260916
-ISOLATED ACCEPTANCE PRODUCT:   0bfdfa851f6c3f4d0203d1e75216967587ecc4d6
-ISOLATED ACCEPTANCE RECEIPTS:  e9a8e34f60330399d7220fe8230491dc326b880a
-ISOLATED ACCEPTANCE HANDOFF:   var/integrated-acceptance-20260916/HANDOFF.json
-ISOLATED CONVERGENCE CANDIDATE: V14+V15+V16 COMPLETE / SOURCE ONLY
-ISOLATED CANDIDATE BRANCH:     candidate/v14-v16-max-semantic-convergence-20260916
-ISOLATED CANDIDATE PRODUCT:    5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb
-ISOLATED CANDIDATE HANDOFF:    var/convergence-20260916/HANDOFF.json
-LIVE UNCHANGED:                YES
+This is an isolated source candidate. It did not merge, push, promote, or touch
+the live release pointer or database. Candidate `CURRENT` remains pinned to
+`44385abbf22ff41b3fa16a5cc9984e218a657ec0`; live `CURRENT`, `main`, and
+`origin/main` remain `ddec34efc96b9a0154eb9821d6cc496ef76906a3`.
 
 WAVE2 CANONICAL CONVERGENCE CANDIDATE (source only, isolated worktree):
 WAVE2 CANDIDATE BRANCH:        candidate/wave2-canonical-convergence-20260920
-WAVE2 PRODUCT HEAD:            953605e9f33573d0a040b904b0254a8210b174ee
-WAVE2 PRODUCT TREE:            79e6db3b37e18617abc4a79a179be503e21a4ce0
-WAVE2 IMMUTABLE RELEASE:       rel-953605e9f335-31a08b07
+WAVE2 PRODUCT HEAD:            44385abbf22ff41b3fa16a5cc9984e218a657ec0
+WAVE2 PRODUCT TREE:            54785de2b8070e72f1765b4c9836f4a31cc732c4
+WAVE2 IMMUTABLE RELEASE:       rel-44385abbf22f-eb82b9f0
+WAVE2 RELEASE MANIFEST SHA:    3192b54f70e75913c44173fbd1db482ba1826705deb6bcdbe7b23f4e8e43784e
 WAVE2 EVIDENCE ROOT:           var/jarvis-wave2-canonical-convergence-20260920/
 WAVE2 HANDOFF:                 var/jarvis-wave2-canonical-convergence-20260920/HANDOFF.json
-WAVE2 VERDICT:                 see FINAL_CERTIFICATION_SUMMARY.json (authoritative;
-                               historical failed or superseded receipts are retained
-                               as history and do not drive the verdict)
+WAVE2 VERDICT:                 WAVE2_PARTIAL — final A did not COMPLETE; open P1
 
+PREEXISTING CLOSED GATES: B, C, D, E, F, G, H, and runtime identity remain
+closed on the frozen candidate. The prior focused suite recorded 286 passed;
+the Supervisor regression recorded 1 passed and its file recorded 15 passed.
+The broad run collected 3,678 tests: 3,675 passed, 2 skipped, and 1 packaging
+test failed its clean-checkout precondition while the intentional fix was
+uncommitted. That exact test passed 1/1 after commit; the broad suite was not
+rerun. Product behavior failures: 0. The Supervisor lease repair is included
+in `44385abbf22ff41b3fa16a5cc9984e218a657ec0` and held the live worker-loop
+lease through the final run's >900-second interval.
+
+FINAL A: Level 4, FAIL. Provider preflight and real builder/verifier dispatches
+passed for `opencode_go/deepseek-v4.1-flash`. Mission
+`mission-06c2b284e275` reached `BLOCKED`, not `COMPLETE/PASSED`. The independent
+verifier emitted `verification.passed` for step `01-plan` at raw sequence 231.
+The following local commit effect failed while collecting post-commit diff
+metadata: `git diff --stat <base>..<head>` returned Windows `Filename too long`.
+The commit nevertheless exists in the registered goal worktree at
+`c47c61671289b72319aadb5b34036aaad8f707d7`; the effect journal marked it failed.
+No `verification.accepted` or `mission.completed` event exists, and the outcome
+is `BLOCKED`. The next-action wake was scheduled and consumed by a Supervisor
+worker, followed by a fresh SELECT continuation and decision; those checks do
+not close the mission gate.
+
+The raw snapshot and process census remain preserved under
+`var/jarvis-wave2-canonical-convergence-20260920/final_cert/archived/final_a_closure_20260923T133240Z/`.
+The independent review is `FAIL`, `A_GATE_STATUS=NOT_PROVEN`, `OPEN P0=0`,
+`OPEN P1=1`. The cause, Git reproduction, invalidated capability diagnosis,
+and correction hashes are recorded in
+`var/jarvis-wave2-canonical-convergence-20260920/A_FINAL_MISSION_BLOCKER_ANALYSIS.json`
+and `A_FINAL_ANALYSIS_CORRECTION.json`. The attached closure stop condition
+applies: do not run A again or make another product change in this closure.
+
+Historical isolated acceptance and convergence entries below describe earlier
+candidate heads; they are not the current Wave 2 verdict or a promotion claim.
 Last previously reconciled: Sunday, September 13, 2026 for the bounded A4 proving-driver
 repair that followed the Prompt 3 provider recovery (see the next paragraph),
 and for the validation-only
@@ -118,16 +141,19 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `953605e9f33573d0a040b904b0254a8210b174ee`
+DOCUMENTATION STATE BASE SHA: `44385abbf22ff41b3fa16a5cc9984e218a657ec0`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
-commit, as required by `scripts/doc_staleness_check.py`. It names the Purpose
-Recovery II execution-session product head in the isolated candidate worktree
-`C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918` on branch
-`candidate/purpose-recovery-ii-canonical-convergence-20260918`, product tree
-`2cc97c923deae83dc4480df772301232e1e0d538`, not a live install.
+commit, as required by `scripts/doc_staleness_check.py`. It names the Wave 2
+product head described above, not a live install. The following paragraphs retain the separate historical Purpose Recovery II
+review for branch
+`candidate/purpose-recovery-ii-canonical-convergence-20260918` in
+`C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918`
+(product tree `2cc97c923deae83dc4480df772301232e1e0d538`). Its old status note
+is retained as history, not as the current Wave 2 pin.
 
-That head is a REVERT, and the reason is worth stating plainly: it removes the
+The Purpose Recovery II head documented in that earlier reconciliation was
+a REVERT, and the reason is worth stating plainly: it removes the
 section-3 contract change (`MissionStepContract.required_capabilities` and
 `_bound_step_capabilities`) because the independent review of `6502c12` found
 that change was wrong twice over — it added a field to the hash-anchored
@@ -140,7 +166,8 @@ contracts carried `required_capabilities=[]` anyway. The pin proved the helper,
 not the delivery. Section 3 is therefore OPEN with its blocker recorded, not
 approximated.
 
-The head also carries the repairs to the two proof-level and one source finding
+That historical head also carried the repairs to the two proof-level and one
+source finding
 from the review of `47fda68`: `fresh_context_followed_the_wake` is bound to the
 consuming cycle's `cycle_id` and requires a NEW decision in that cycle (the
 reviewer's `mut_noreeval` defeat no longer works), the completion receipt's
