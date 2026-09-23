@@ -6,60 +6,82 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Wednesday, September 23, 2026 for the final candidate-only
-Wave 2 closure and independent raw-state review. The current product source is
-`44385abbf22ff41b3fa16a5cc9984e218a657ec0` on
+Last reconciled: Wednesday, September 23, 2026 after the candidate-only
+commit-effect repair, one final A attempt, and independent raw-state review.
+The current product source is
+`8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b` on
 `candidate/wave2-canonical-convergence-20260920`; its tree is
-`54785de2b8070e72f1765b4c9836f4a31cc732c4`. The immutable candidate release is
-`rel-44385abbf22f-eb82b9f0` (manifest
-`3192b54f70e75913c44173fbd1db482ba1826705deb6bcdbe7b23f4e8e43784e`).
+`1a770d7dcf7f5ace6049b628c8a7002d045c4703`. The immutable candidate release is
+`rel-8f6abd7f31b8-a5b2d4cd` (manifest
+`0460797a37646cbf8f9f2fde6fcb9dedb40a6347f8e4870b8fee0b04f695283d`), built
+with schema 41.
 
 This is an isolated source candidate. It did not merge, push, promote, or touch
-the live release pointer or database. Candidate `CURRENT` remains pinned to
-`44385abbf22ff41b3fa16a5cc9984e218a657ec0`; live `CURRENT`, `main`, and
+the live release pointer or database. Candidate `CURRENT` is pinned to
+`8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b`; live `CURRENT`, `main`, and
 `origin/main` remain `ddec34efc96b9a0154eb9821d6cc496ef76906a3`.
 
 WAVE2 CANONICAL CONVERGENCE CANDIDATE (source only, isolated worktree):
 WAVE2 CANDIDATE BRANCH:        candidate/wave2-canonical-convergence-20260920
-WAVE2 PRODUCT HEAD:            44385abbf22ff41b3fa16a5cc9984e218a657ec0
-WAVE2 PRODUCT TREE:            54785de2b8070e72f1765b4c9836f4a31cc732c4
-WAVE2 IMMUTABLE RELEASE:       rel-44385abbf22f-eb82b9f0
-WAVE2 RELEASE MANIFEST SHA:    3192b54f70e75913c44173fbd1db482ba1826705deb6bcdbe7b23f4e8e43784e
+WAVE2 PRODUCT HEAD:            8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b
+WAVE2 PRODUCT TREE:            1a770d7dcf7f5ace6049b628c8a7002d045c4703
+WAVE2 IMMUTABLE RELEASE:       rel-8f6abd7f31b8-a5b2d4cd
+WAVE2 RELEASE MANIFEST SHA:    0460797a37646cbf8f9f2fde6fcb9dedb40a6347f8e4870b8fee0b04f695283d
 WAVE2 EVIDENCE ROOT:           var/jarvis-wave2-canonical-convergence-20260920/
 WAVE2 HANDOFF:                 var/jarvis-wave2-canonical-convergence-20260920/HANDOFF.json
-WAVE2 VERDICT:                 WAVE2_PARTIAL — final A did not COMPLETE; open P1
+WAVE2 VERDICT:                 WAVE2_PARTIAL — final A BLOCKED before COMPLETE/PASSED; open P1
 
-PREEXISTING CLOSED GATES: B, C, D, E, F, G, H, and runtime identity remain
-closed on the frozen candidate. The prior focused suite recorded 286 passed;
-the Supervisor regression recorded 1 passed and its file recorded 15 passed.
-The broad run collected 3,678 tests: 3,675 passed, 2 skipped, and 1 packaging
-test failed its clean-checkout precondition while the intentional fix was
-uncommitted. That exact test passed 1/1 after commit; the broad suite was not
-rerun. Product behavior failures: 0. The Supervisor lease repair is included
-in `44385abbf22ff41b3fa16a5cc9984e218a657ec0` and held the live worker-loop
-lease through the final run's >900-second interval.
+PREEXISTING CLOSED GATES: B, C, D, E, F, G, H, and runtime identity retain
+their recorded closure; the commit-effect change did not alter those proof
+surfaces. The final broad backend run collected 3,681 tests: 3,677 passed,
+2 skipped, and 2 documentation-staleness checks failed because the product
+commit preceded this final docs-only pin. Product-code failures: 0. The
+Supervisor lease repair remains in the candidate lineage and held the live
+worker-loop lease through the final run's >900-second interval.
 
-FINAL A: Level 4, FAIL. Provider preflight and real builder/verifier dispatches
-passed for `opencode_go/deepseek-v4.1-flash`. Mission
-`mission-06c2b284e275` reached `BLOCKED`, not `COMPLETE/PASSED`. The independent
-verifier emitted `verification.passed` for step `01-plan` at raw sequence 231.
-The following local commit effect failed while collecting post-commit diff
-metadata: `git diff --stat <base>..<head>` returned Windows `Filename too long`.
-The commit nevertheless exists in the registered goal worktree at
-`c47c61671289b72319aadb5b34036aaad8f707d7`; the effect journal marked it failed.
-No `verification.accepted` or `mission.completed` event exists, and the outcome
-is `BLOCKED`. The next-action wake was scheduled and consumed by a Supervisor
-worker, followed by a fresh SELECT continuation and decision; those checks do
-not close the mission gate.
+COMMIT EFFECT: P0-C was reproduced through the normal commit-effect API in a
+provider-free fixture. The old combined `<base>..<head>` argument was parsed as
+a path by Git on Windows at the observed long worktree path; separate revision
+arguments plus `--` succeeded. The mutation had already created a commit before
+metadata failure caused a false FAILED journal terminal, and retry created no
+duplicate commit. The repair is in `src/jarvis_foundry/mission/commit.py` and
+`tests/foundry/test_verification_loop.py`.
 
-The raw snapshot and process census remain preserved under
-`var/jarvis-wave2-canonical-convergence-20260920/final_cert/archived/final_a_closure_20260923T133240Z/`.
-The independent review is `FAIL`, `A_GATE_STATUS=NOT_PROVEN`, `OPEN P0=0`,
-`OPEN P1=1`. The cause, Git reproduction, invalidated capability diagnosis,
-and correction hashes are recorded in
-`var/jarvis-wave2-canonical-convergence-20260920/A_FINAL_MISSION_BLOCKER_ANALYSIS.json`
-and `A_FINAL_ANALYSIS_CORRECTION.json`. The attached closure stop condition
-applies: do not run A again or make another product change in this closure.
+FINAL A: One Level 5 certification attempt ran on the exact new release after
+provider preflight passed for `opencode_go/deepseek-v4.1-flash`. Mission
+`mission-d6a352b731fe` reached `BLOCKED`, not `COMPLETE/PASSED`. Step `01-plan`
+received `verification.passed` at sequence 226, one `verification.accepted` at
+230, and one completed local commit effect at 229. That effect created commit
+`a04329ee033e2e5d7e3ab499b07393c4a562ed3e` from base
+`baa7c0c02b73727c4e7685d7e019d470590022f8`; diff metadata was COMPLETE. The
+later `02-execute` builder and verifier dispatches succeeded, but the verifier
+returned no structured verdict, so the mission ended BLOCKED at sequence 309.
+No mission completion or PASSED outcome exists. The resulting next-action wake
+was consumed at 332; a fresh SELECT decision and continuation followed at 354
+and 373. This continuation evidence does not close the mission gate.
+
+The final A home remains intact. Its receipt, consumption-time process census,
+Supervisor and worker logs, SQLite snapshot, mission-worktree Git probes, and
+hash manifest are preserved in
+`var/jarvis-wave2-canonical-convergence-20260920/final_cert/archived/final_a_closure_20260923T190318Z/`.
+The snapshot passed integrity with 880 events. Of 26 archived-file hash checks,
+25 match; the only mismatch is the 32 KiB `database/foundry.db-shm` sidecar.
+The snapshot hash and process-census hash match their recorded values, so the
+archive is preserved but is not reported as fully hash-verified.
+
+The independent raw-state review is recorded in
+`var/jarvis-wave2-canonical-convergence-20260920/final_cert/A_FINAL_INDEPENDENT_REVIEW.json`:
+`FAIL`, `A_GATE_STATUS=NOT_PROVEN`, `OPEN P0=0`, `OPEN P1=1`. It re-derived the
+single completed commit effect, provider dispatches, one consumed wake, and
+fresh continuation, and confirmed the missing COMPLETE/PASSED mission outcome.
+Its disposition records two receipt/probe mismatches: the driver calls a
+truthful BLOCKED/BLOCKED outcome a false success, and a duplicate-decision check
+expects a `cycle_id` on the raw decision event even though the continuation
+event binds that decision to the consuming cycle. Raw duplicate counts are
+zero, and the raw-state false-success list is empty. Details are in
+`var/jarvis-wave2-canonical-convergence-20260920/final_cert/A_FINAL_REVIEW_DISPOSITION.json`.
+The attached closure stop condition applies: do not run A again or make another
+product change in this closure.
 
 Historical isolated acceptance and convergence entries below describe earlier
 candidate heads; they are not the current Wave 2 verdict or a promotion claim.
@@ -141,7 +163,7 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `44385abbf22ff41b3fa16a5cc9984e218a657ec0`
+DOCUMENTATION STATE BASE SHA: `8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Wave 2
