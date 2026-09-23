@@ -16,6 +16,7 @@ from typing import Any, Callable
 from ..control.action_envelope import evaluate_and_record
 from ..control.broker import emergency_stop_reason
 from ..control.policy import ActionPolicy
+from ..control.redaction import redact_text
 from ..database import FoundryDatabase
 from ..domain import ActionDecision, ActionEnvelope
 from ..effects import (
@@ -254,10 +255,44 @@ def _commit_result(root: Path, commit_id: str, message: str) -> dict[str, Any]:
         "baseline_commit": baseline,
         "commit_head": commit_id,
         "message": message,
-        "diff_stat": _git(root, "diff", "--stat", f"{baseline}..{commit_id}"),
-        "files_changed": _git(
-            root, "diff", "--name-only", f"{baseline}..{commit_id}"
-        ).splitlines(),
+        **_commit_diff_metadata(root, baseline, commit_id),
+    }
+
+
+def _commit_diff_metadata(
+    root: Path, baseline: str, commit_id: str,
+) -> dict[str, Any]:
+    """Collect optional diff details without changing commit-effect truth.
+
+    Git for Windows can parse ``<base>..<head>`` as a path when the working
+    tree is long enough. Pass each revision as its own argument and terminate
+    revision parsing with ``--``. If auxiliary metadata still fails after the
+    commit is durable, keep the commit result truthful and mark only its
+    metadata as degraded.
+    """
+    try:
+        diff_stat = _git(
+            root, "diff", "--stat", baseline, commit_id, "--",
+        )
+        files_changed = _git(
+            root, "diff", "--name-only", baseline, commit_id, "--",
+        ).splitlines()
+    except (CommitError, subprocess.TimeoutExpired, OSError) as error:
+        return {
+            "diff_stat": None,
+            "files_changed": [],
+            "diff_metadata_state": "DEGRADED",
+            "diff_metadata_error_code": "commit_diff_metadata_failed",
+            "diff_metadata_error_type": type(error).__name__,
+            "diff_metadata_error_detail": redact_text(str(error))[:300],
+        }
+    return {
+        "diff_stat": diff_stat,
+        "files_changed": files_changed,
+        "diff_metadata_state": "COMPLETE",
+        "diff_metadata_error_code": None,
+        "diff_metadata_error_type": None,
+        "diff_metadata_error_detail": None,
     }
 
 
@@ -352,27 +387,6 @@ def commit_after_pass(
     if state.get("status") == FAILED:
         raise CommitError("local commit effect previously failed")
 
-    # A verified step that changed nothing in the worktree has nothing to
-    # commit.  Dispatching `git commit` anyway fails on an empty index and the
-    # mission loop records BLOCKED, so a verified read-only mission would be
-    # reported as a failure.  Report the honest no-change result instead: the
-    # PASS stands, no effect is dispatched, and the mission continues.
-    if not _worktree_has_committable_change(worktree):
-        head = _git(worktree, "rev-parse", "HEAD")
-        return {
-            "performed": False,
-            "no_change": True,
-            "reason": (
-                "worktree unchanged after verified PASS; no commit was needed"
-            ),
-            "baseline_commit": head,
-            "commit_head": head,
-            "message": message,
-            "diff_stat": "",
-            "files_changed": [],
-            "action_key": action_key,
-        }
-
     def perform() -> dict[str, Any]:
         before = _git(worktree, "rev-parse", "HEAD")
         _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
@@ -387,38 +401,67 @@ def commit_after_pass(
             "baseline_commit": before,
             "commit_head": after,
             "message": message,
-            "diff_stat": _git(
-                worktree, "diff", "--stat", f"{before}..{after}"
+            **_commit_diff_metadata(worktree, before, after),
+        }
+
+    def dispatch_effect() -> dict[str, Any]:
+        result = execute_fabric_effect(
+            database,
+            action_key=action_key,
+            system_id=str(envelope.resource_id or "git-local"),
+            target_ref=str(worktree),
+            payload_hash=action_key.removeprefix("effect:"),
+            kind=str(envelope.action_kind or "git_commit"),
+            connector_id="git-local-commit",
+            expected_effects=("create one verified local commit",),
+            action_id=envelope.action_id,
+            request_identity={
+                "mission_id": mission_id,
+                "step_id": step_id,
+                "run_id": run_id,
+            },
+            perform=perform,
+            stop_check=lambda: emergency_stop_reason(
+                database, policy.stop_path
+            ) is not None,
+        )
+        if result.get("journal_state") != COMPLETED:
+            raise CommitError(
+                "local commit effect did not complete: "
+                f"{result.get('error_code') or result.get('journal_state') or 'UNKNOWN'}"
+            )
+        return result
+
+    # A completed logical effect is immutable: replay its recorded commit
+    # result even if the worktree is now clean or has later changes. This also
+    # preserves whether its auxiliary diff metadata was complete or degraded.
+    if state.get("status") == COMPLETED:
+        return dispatch_effect()
+
+    # A verified step that changed nothing in the worktree has nothing to
+    # commit. Dispatching `git commit` anyway fails on an empty index and the
+    # mission loop records BLOCKED, so a verified read-only mission would be
+    # reported as a failure. Report the honest no-change result instead: the
+    # PASS stands, no effect is dispatched, and the mission continues.
+    if not _worktree_has_committable_change(worktree):
+        head = _git(worktree, "rev-parse", "HEAD")
+        return {
+            "performed": False,
+            "no_change": True,
+            "reason": (
+                "worktree unchanged after verified PASS; no commit was needed"
             ),
-            "files_changed": _git(
-                worktree, "diff", "--name-only", f"{before}..{after}"
-            ).splitlines(),
+            "baseline_commit": head,
+            "commit_head": head,
+            "message": message,
+            "diff_stat": "",
+            "files_changed": [],
+            "diff_metadata_state": "NOT_REQUIRED",
+            "diff_metadata_error_code": None,
+            "diff_metadata_error_type": None,
+            "diff_metadata_error_detail": None,
+            "action_key": action_key,
         }
 
     invoke_fault_hook(fault_hook, "pre effect dispatch")
-    result = execute_fabric_effect(
-        database,
-        action_key=action_key,
-        system_id=str(envelope.resource_id or "git-local"),
-        target_ref=str(worktree),
-        payload_hash=action_key.removeprefix("effect:"),
-        kind=str(envelope.action_kind or "git_commit"),
-        connector_id="git-local-commit",
-        expected_effects=("create one verified local commit",),
-        action_id=envelope.action_id,
-        request_identity={
-            "mission_id": mission_id,
-            "step_id": step_id,
-            "run_id": run_id,
-        },
-        perform=perform,
-        stop_check=lambda: emergency_stop_reason(
-            database, policy.stop_path
-        ) is not None,
-    )
-    if result.get("journal_state") != COMPLETED:
-        raise CommitError(
-            "local commit effect did not complete: "
-            f"{result.get('error_code') or result.get('journal_state') or 'UNKNOWN'}"
-        )
-    return result
+    return dispatch_effect()
