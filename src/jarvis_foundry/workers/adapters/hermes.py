@@ -264,12 +264,22 @@ class HermesWorkerAdapter:
                 retryable=failure_class in {"OUTAGE", "DEGRADED"},
             )
         verdict = self._structured_verdict(stdout)
+        verdict_output = stdout
+        # A completed Hermes session may leave the final response on stderr
+        # when its launcher or host wrapper redirects the one-shot stream.
+        # Keep stdout authoritative when it contains a structured verdict;
+        # otherwise accept only the same exact verdict grammar from stderr.
+        if verdict is None:
+            stderr_verdict = self._structured_verdict(stderr)
+            if stderr_verdict is not None:
+                verdict = stderr_verdict
+                verdict_output = stderr
         note = ""
         if verdict is None:
             verdict = VERDICT_NOT_TESTED
             note = ("[adapter] no structured verdict found in the session "
                     "output — recorded NOT_TESTED, never PASS")
-        evidence = stdout.strip()[-2000:]
+        evidence = verdict_output.strip()[-2000:]
         if note:
             evidence = f"{evidence}\n{note}" if evidence else note
         result_files, valid_claim = ingest_result_claim(contract.working_root)

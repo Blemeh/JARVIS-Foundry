@@ -338,6 +338,29 @@ def test_hermes_adapter_consumes_machine_result_file(tmp_path, monkeypatch):
     assert envelope.files_changed == ("feature.py",)
 
 
+def test_hermes_adapter_reads_structured_verdict_from_stderr_fallback(tmp_path):
+    """A strict final verdict on stderr survives a wrapper stream redirect."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "", "VERDICT: PASS\n")
+    (tmp_path / "home").mkdir()
+    _hermes_result_file(tmp_path)
+    adapter = HermesWorkerAdapter(
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "COMPLETED"
+    assert envelope.verdict == "PASS"
+    assert "VERDICT: PASS" in envelope.summary
+
+
 def test_hermes_adapter_missing_result_file_is_not_testable(
         tmp_path, monkeypatch):
     """A provider session that omits the result contract must never PASS:
