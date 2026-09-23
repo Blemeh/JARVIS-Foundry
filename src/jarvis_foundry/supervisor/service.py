@@ -400,6 +400,12 @@ class Supervisor:
                     f"supervisor.degraded:{self.instance_id}:lease_lost:{self._start_generation}"),
             ))
             raise
+        # A worker-loop child is a one-shot process, but a slow provider call
+        # can keep it alive well beyond the controller's initial lease. Renew
+        # the owned process lease while the exact child is still live so the
+        # reaper remains a bound on abandoned workers rather than a runtime cap.
+        if self.workers.status(WORKER_LOOP_RUN_ID).alive:
+            self.workers.heartbeat(WORKER_LOOP_RUN_ID)
         reaped = self.workers.reap()
         request = latest_request(self.database)
         if request is not None and request.action in {"STOP", "RESTART"}:
