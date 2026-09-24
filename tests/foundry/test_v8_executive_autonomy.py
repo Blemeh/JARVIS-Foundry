@@ -173,6 +173,251 @@ def test_revoked_owner_goal_suspends_objective_and_cancels_unfinished_mission(tm
     assert mission["state"] == "CANCELLED"
 
 
+def test_owner_goal_revocation_cleanup_retries_after_receipt(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    text = "Create the durable receipt. success: outcome receipt exists"
+    _goal(database, text)
+    cycle = run_autonomy_cycle(database, cycle_id="revoke-retry-cycle", resource_id="resource-v8")
+    objective = rebuild_executive_state(database).objectives[cycle.objective_id]
+    directive_id = objective.provenance["directive_id"]
+    mission_id = cycle.materialization["mission_id"]
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    revoke_text = "revoke the owner goal before descendant cleanup"
+    nonce = "revoke-before-cleanup"
+    service.apply(
+        "REVOKE", target=directive_id, exact_text=revoke_text, nonce=nonce,
+        signature=sign_command(secret, "REVOKE", directive_id, revoke_text, nonce),
+    )
+
+    from jarvis_foundry.executive.autonomy import (
+        sync_owner_goals,
+        withdraw_objective_authority,
+    )
+
+    withdraw_objective_authority(
+        database,
+        objective.objective_id,
+        directive_id=directive_id,
+        reason=(
+            "owner GOAL directive was revoked; autonomous authority "
+            "is withdrawn"
+        ),
+        cancel_descendants=False,
+    )
+    assert database.row("missions", "mission_id", mission_id)["state"] != "CANCELLED"
+    assert len(database.events(event_types=("executive.objective_authority_revoked",))) == 1
+
+    sync_owner_goals(database)
+
+    assert database.row("missions", "mission_id", mission_id)["state"] == "CANCELLED"
+    assert len(database.events(event_types=("executive.objective_authority_revoked",))) == 1
+
+
+def test_revoked_owner_goal_cannot_generate_work_before_sync(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    from jarvis_foundry.executive.autonomy import (
+        generate_missions_for_objective,
+        sync_owner_goals,
+    )
+
+    objective = sync_owner_goals(database)[0]
+    build_plan(database, objective.objective_id, [
+        {"step_id": "execute", "description": "Create the durable receipt"},
+    ])
+    before_revoke = generate_missions_for_objective(database, objective.objective_id)
+    assert len(before_revoke) == 1
+    request_count_before_revoke = len(
+        database.events(event_types=("executive.mission_requested",))
+    )
+    assert request_count_before_revoke == 1
+    directive_id = objective.provenance["directive_id"]
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    revoke_text = "revoke before mission generation"
+    nonce = "revoke-before-generation"
+    service.apply(
+        "REVOKE", target=directive_id, exact_text=revoke_text, nonce=nonce,
+        signature=sign_command(secret, "REVOKE", directive_id, revoke_text, nonce),
+    )
+
+    assert generate_missions_for_objective(database, objective.objective_id) == []
+    assert len(database.events(event_types=("executive.mission_requested",))) == request_count_before_revoke
+
+
+def test_failed_revoked_owner_goal_is_not_ranked_or_retried(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    from jarvis_foundry.executive.autonomy import (
+        decide_continuation,
+        set_objective_status,
+        sync_owner_goals,
+    )
+
+    objective = sync_owner_goals(database)[0]
+    plan = build_plan(database, objective.objective_id, [
+        {
+            "step_id": "execute",
+            "description": "Create the durable receipt",
+            "status": "FAILED",
+            "max_retries": 2,
+        },
+    ])
+    set_objective_status(
+        database, objective.objective_id, "FAILED", reason="simulated failed attempt",
+    )
+    directive_id = objective.provenance["directive_id"]
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    revoke_text = "revoke the failed owner goal"
+    nonce = "revoke-failed-goal"
+    service.apply(
+        "REVOKE", target=directive_id, exact_text=revoke_text, nonce=nonce,
+        signature=sign_command(secret, "REVOKE", directive_id, revoke_text, nonce),
+    )
+
+    sync_owner_goals(database)
+    sync_owner_goals(database)
+    state = rebuild_executive_state(database)
+    assert state.objectives[objective.objective_id].status == "FAILED"
+    assert state.plans[plan.plan_id].steps[0].status == "FAILED"
+    revocations = database.events(
+        event_types=("executive.objective_authority_revoked",),
+    )
+    assert [event.payload["objective_id"] for event in revocations] == [
+        objective.objective_id,
+    ]
+
+    ranked = next(
+        row for row in rank_objectives(database)
+        if row.objective_id == objective.objective_id
+    )
+    assert ranked.eligible is False
+    assert "owner_authority_revoked" in ranked.blockers
+    briefing = executive_autonomy_snapshot(database)["briefing"]
+    assert not any(
+        row["objective_id"] == objective.objective_id
+        for row in briefing["next_actions"]
+    )
+
+    decision = decide_continuation(database, objective.objective_id)
+    assert decision.action == "WAIT"
+    assert "no continuation is authorized" in decision.reason
+    state = rebuild_executive_state(database)
+    assert state.objectives[objective.objective_id].status == "FAILED"
+    assert state.plans[plan.plan_id].steps[0].status == "FAILED"
+    assert not database.events(event_types=("executive.mission_requested",))
+
+
+def test_revoked_suspended_goal_waits_without_progress_or_status_writes(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    from jarvis_foundry.executive.autonomy import (
+        decide_continuation,
+        sync_owner_goals,
+    )
+
+    objective = sync_owner_goals(database)[0]
+    build_plan(database, objective.objective_id, [
+        {"step_id": "execute", "description": "Create the durable receipt"},
+    ])
+    directive_id = objective.provenance["directive_id"]
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    revoke_text = "revoke the suspended owner goal"
+    nonce = "revoke-suspended-goal"
+    service.apply(
+        "REVOKE", target=directive_id, exact_text=revoke_text, nonce=nonce,
+        signature=sign_command(secret, "REVOKE", directive_id, revoke_text, nonce),
+    )
+    sync_owner_goals(database)
+    assert rebuild_executive_state(database).objectives[objective.objective_id].status == "SUSPENDED"
+    progress_count = len(database.events(event_types=("executive.objective_progress_recorded",)))
+    status_count = len(database.events(event_types=("executive.objective_status_changed",)))
+
+    decision = decide_continuation(database, objective.objective_id)
+
+    assert decision.action == "WAIT"
+    assert "no continuation is authorized" in decision.reason
+    assert len(database.events(event_types=("executive.objective_progress_recorded",))) == progress_count
+    assert len(database.events(event_types=("executive.objective_status_changed",))) == status_count
+    assert rebuild_executive_state(database).objectives[objective.objective_id].status == "SUSPENDED"
+
+
+def test_revoked_goal_progress_reconciliation_cannot_reactivate_it(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    from jarvis_foundry.executive.autonomy import (
+        evaluate_objective_progress,
+        set_objective_status,
+        sync_owner_goals,
+        update_objective,
+    )
+
+    objective = sync_owner_goals(database)[0]
+    build_plan(database, objective.objective_id, [
+        {"step_id": "execute", "description": "Create the durable receipt"},
+    ])
+    directive_id = objective.provenance["directive_id"]
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    revoke_text = "revoke the progress-reconciled owner goal"
+    nonce = "revoke-progress-reconciled-goal"
+    service.apply(
+        "REVOKE", target=directive_id, exact_text=revoke_text, nonce=nonce,
+        signature=sign_command(secret, "REVOKE", directive_id, revoke_text, nonce),
+    )
+    sync_owner_goals(database)
+    status_count = len(database.events(event_types=("executive.objective_status_changed",)))
+
+    evaluation = evaluate_objective_progress(database, objective.objective_id)
+
+    assert evaluation.status == "SUSPENDED"
+    assert rebuild_executive_state(database).objectives[objective.objective_id].status == "SUSPENDED"
+    assert len(database.events(event_types=("executive.objective_status_changed",))) == status_count
+    with pytest.raises(PermissionError, match="cannot reactivate"):
+        set_objective_status(database, objective.objective_id, "ACTIVE")
+    with pytest.raises(PermissionError, match="cannot reactivate"):
+        update_objective(database, objective.objective_id, {"status": "ACTIVE"})
+
+
+def test_revoked_goal_still_reconciles_terminal_mission_evidence(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    from jarvis_foundry.executive.autonomy import (
+        evaluate_objective_progress,
+        sync_owner_goals,
+    )
+
+    objective = sync_owner_goals(database)[0]
+    build_plan(database, objective.objective_id, [
+        {
+            "step_id": "execute",
+            "description": "Create the durable receipt",
+            "status": "COMPLETED",
+            "evidence_refs": ["verified-mission-outcome:revoke-race"],
+        },
+    ])
+    directive_id = objective.provenance["directive_id"]
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    revoke_text = "revoke after the mission outcome is durable"
+    nonce = "revoke-terminal-outcome"
+    service.apply(
+        "REVOKE", target=directive_id, exact_text=revoke_text, nonce=nonce,
+        signature=sign_command(secret, "REVOKE", directive_id, revoke_text, nonce),
+    )
+    sync_owner_goals(database)
+    assert rebuild_executive_state(database).objectives[objective.objective_id].status == "SUSPENDED"
+
+    evaluation = evaluate_objective_progress(database, objective.objective_id)
+
+    assert evaluation.status == "COMPLETED"
+    assert "verified-mission-outcome:revoke-race" in evaluation.evidence_refs
+    assert rebuild_executive_state(database).objectives[objective.objective_id].status == "COMPLETED"
+
+
 def test_command_center_exposes_additive_executive_projection(tmp_path: Path) -> None:
     database, _ = _db(tmp_path)
     create_objective(database, "API objective", objective_id="api-objective")

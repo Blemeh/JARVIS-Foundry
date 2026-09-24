@@ -841,21 +841,21 @@ def withdraw_objective_authority(
             objective = rebuild_executive_state(database).objectives[
                 objective.objective_id
             ]
-        _append(
-            database,
-            "executive.objective_authority_revoked",
-            {
-                "objective_id": objective.objective_id,
-                "directive_id": directive_id,
-                "reason": reason,
-                "transition_id": transition,
-            },
-            key=(
-                "executive.objective_authority_revoked:"
-                f"{objective.objective_id}:{_hash(transition)}"
-            ),
-            correlation_id=objective.objective_id,
-        )
+    _append(
+        database,
+        "executive.objective_authority_revoked",
+        {
+            "objective_id": objective.objective_id,
+            "directive_id": directive_id,
+            "reason": reason,
+            "transition_id": transition,
+        },
+        key=(
+            "executive.objective_authority_revoked:"
+            f"{objective.objective_id}:{_hash(transition)}"
+        ),
+        correlation_id=objective.objective_id,
+    )
     if cancel_descendants:
         for mission_id in objective.mission_ids:
             mission = database.row("missions", "mission_id", mission_id)
@@ -947,8 +947,7 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
         ))
     revoked = [objective for objective in state.objectives.values()
                if objective.objective_id.startswith("owner-goal:")
-               and str(objective.provenance.get("directive_id") or "") not in active_directive_ids
-               and objective.status not in _TERMINAL_OBJECTIVE]
+               and str(objective.provenance.get("directive_id") or "") not in active_directive_ids]
     for objective in revoked:
         withdraw_objective_authority(
             database,
@@ -985,6 +984,18 @@ def update_objective(
     merged["updated_at"] = isoformat()
     merged["version"] = prior.version + 1
     candidate = ObjectiveRecord.from_payload(merged)
+    if (
+        "status" in clean
+        and candidate.status in _MISSION_GENERATION_OBJECTIVE
+        and not _owner_goal_authority_active(
+            prior,
+            active_directive_ids=_active_owner_goal_directive_ids(database),
+            revoked_objective_ids=_revoked_owner_objective_ids(database),
+        )
+    ):
+        raise PermissionError(
+            "inactive or revoked owner GOAL authority cannot reactivate an objective"
+        )
     graph = {key: value.dependencies for key, value in rebuild_executive_state(database).objectives.items()}
     graph[objective_id] = candidate.dependencies
     _assert_acyclic(graph)
@@ -998,11 +1009,19 @@ def set_objective_status(database: FoundryDatabase, objective_id: str, status: s
     prior = rebuild_executive_state(database).objectives.get(objective_id)
     if prior is None:
         raise ValueError(f"unknown objective: {objective_id}")
+    _gate(database, controller)
+    if status in _MISSION_GENERATION_OBJECTIVE and not _owner_goal_authority_active(
+        prior,
+        active_directive_ids=_active_owner_goal_directive_ids(database),
+        revoked_objective_ids=_revoked_owner_objective_ids(database),
+    ):
+        raise PermissionError(
+            "inactive or revoked owner GOAL authority cannot reactivate an objective"
+        )
     if prior.status == status:
         return prior
     if status == "COMPLETED" and not tuple(evidence_refs) and not prior.success_criteria:
         raise ValueError("completion requires evidence or success criteria")
-    _gate(database, controller)
     now = isoformat()
     _append(database, "executive.objective_status_changed", {"objective_id": objective_id, "status": status, "reason": reason, "evidence_refs": list(evidence_refs), "updated_at": now, "version": prior.version + 1}, key=f"executive.objective_status_changed:{objective_id}:{prior.version + 1}:{status}")
     return ObjectiveRecord.from_payload({**prior.to_payload(), "status": status, "updated_at": now, "version": prior.version + 1})
@@ -1326,6 +1345,23 @@ def generate_missions_for_objective(
     objective = state.objectives.get(objective_id)
     if objective is None:
         raise ValueError(f"unknown objective: {objective_id}")
+    if not _owner_goal_authority_active(
+        objective,
+        active_directive_ids=_active_owner_goal_directive_ids(database),
+        revoked_objective_ids=_revoked_owner_objective_ids(database),
+    ):
+        _append(
+            database,
+            "executive.mission_generation_blocked",
+            {
+                "objective_id": objective_id,
+                "reason": "owner GOAL directive is inactive or revoked",
+            },
+            key=f"executive.mission_generation_blocked:owner-authority:{objective_id}",
+            source_id=source_id,
+            correlation_id=objective_id,
+        )
+        return []
     if objective.status not in _MISSION_GENERATION_OBJECTIVE:
         return []
     plan = active_plan(database, objective_id)
@@ -1637,6 +1673,26 @@ def evaluate_objective_progress(
         database, objective_id, state=state,
         stale_after_seconds=stale_after_seconds,
     )
+    if (
+        objective is not None
+        and not _owner_goal_authority_active(
+            objective,
+            active_directive_ids=_active_owner_goal_directive_ids(database),
+            revoked_objective_ids=_revoked_owner_objective_ids(database),
+        )
+        and evaluation.status not in {"COMPLETED", "FAILED"}
+    ):
+        # Keep evidence-backed progress current while retaining the withdrawn
+        # authority state. In particular, a READY plan must not reactivate a
+        # revoked owner goal through a progress reconciliation.
+        evaluation = replace(
+            evaluation,
+            status=objective.status,
+            explanation=(
+                "owner GOAL authority is inactive or revoked; objective remains "
+                f"{objective.status.lower()} while evidence is reconciled"
+            ),
+        )
     record_objective_progress(database, evaluation, controller=controller)
     if (
         objective is not None
@@ -1777,6 +1833,42 @@ def _objective_has_failed_step(
     return bool(plan and any(step.status == "FAILED" for step in plan.steps))
 
 
+def _active_owner_goal_directive_ids(database: FoundryDatabase) -> set[str]:
+    return {
+        str(record.directive_id)
+        for record in active_directives_for(
+            database, command_types=frozenset({"GOAL"}),
+        )
+        if str(record.directive_id or "")
+    }
+
+
+def _revoked_owner_objective_ids(database: FoundryDatabase) -> set[str]:
+    return {
+        str(event.payload.get("objective_id") or "")
+        for event in database.events(
+            event_types=("executive.objective_authority_revoked",),
+        )
+        if str(event.payload.get("objective_id") or "")
+    }
+
+
+def _owner_goal_authority_active(
+    objective: ObjectiveRecord,
+    *,
+    active_directive_ids: set[str],
+    revoked_objective_ids: set[str],
+) -> bool:
+    if not objective.objective_id.startswith("owner-goal:"):
+        return True
+    directive_id = str(objective.provenance.get("directive_id") or "")
+    return bool(
+        directive_id
+        and directive_id in active_directive_ids
+        and objective.objective_id not in revoked_objective_ids
+    )
+
+
 def _objective_failure_history(
     database: FoundryDatabase,
     objective_id: str,
@@ -1819,6 +1911,8 @@ def rank_objectives(
     state = _state or rebuild_executive_state(
         database, _events=executive_events
     )
+    active_owner_goal_directives = _active_owner_goal_directive_ids(database)
+    revoked_owner_objectives = _revoked_owner_objective_ids(database)
     plans_by_objective: dict[str, PlanRecord] = {}
     for plan in state.plans.values():
         if plan.status != "ACTIVE":
@@ -1877,6 +1971,12 @@ def rank_objectives(
             database, objective, state=state,
             plan=plans_by_objective.get(objective.objective_id),
         )
+        if not _owner_goal_authority_active(
+            objective,
+            active_directive_ids=active_owner_goal_directives,
+            revoked_objective_ids=revoked_owner_objectives,
+        ):
+            blockers = (*blockers, "owner_authority_revoked")
         age = 0.0
         updated = _dt(objective.updated_at)
         if updated is not None:
@@ -1979,58 +2079,66 @@ def decide_continuation(
     objective = state.objectives.get(objective_id)
     if objective is None:
         raise ValueError(f"unknown objective: {objective_id}")
-    progress = evaluate_objective_progress(database, objective_id, controller=controller)
-    plan = active_plan(database, objective_id)
     action = "WAIT"
-    reason = progress.explanation
+    reason = "owner GOAL directive is inactive or revoked; no continuation is authorized"
     next_step_id: str | None = None
     retry_number = 0
     escalation_id: str | None = None
-    if progress.status == "COMPLETED":
-        action = "CLOSE"
-        reason = "objective has complete evidence and must not generate more work"
-    elif progress.status == "REGRESSED":
-        action = "REASSESS"
-        reason = "new evidence reduced measured progress; reassess the plan before more execution"
-    elif plan is None:
-        action = "PLAN"
-        reason = "objective has no active dependency-aware plan"
-    else:
-        failed_step = next((step for step in plan.steps if step.status == "FAILED"), None)
-        blocked_step = next((step for step in plan.steps if step.status == "BLOCKED"), None)
-        if failed_step is not None:
-            next_step_id = failed_step.step_id
-            retry_number = _failure_count(database, objective_id, failed_step.step_id)
-            if retry_number < failed_step.max_retries:
-                action = "RETRY"
-                reason = f"step {failed_step.step_id} failed; retry {retry_number + 1}/{failed_step.max_retries} remains within budget"
-                replacement = replace(failed_step, status="READY", mission_id=None, retries=failed_step.retries + 1)
-                updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=tuple(replacement if row.step_id == failed_step.step_id else row for row in plan.steps), critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
-                _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=objective_id)
-                if objective.status == "FAILED":
-                    set_objective_status(database, objective_id, "ACTIVE", controller=controller, reason="bounded retry reopened the objective", evidence_refs=failed_step.evidence_refs)
-            else:
-                action = "ESCALATE"
-                reason = f"step {failed_step.step_id} exhausted bounded retry budget"
-                escalation = record_escalation(database, objective_id=objective_id, decision="retry budget exhausted", why=reason, evidence_refs=failed_step.evidence_refs, options=("owner changes strategy", "owner grants a new capability or budget", "suspend objective"), recommendation="suspend until owner direction or a materially different capability is available", delay_consequence="objective remains incomplete and downstream work stays blocked", controller=controller)
-                escalation_id = escalation.escalation_id
-        elif blocked_step is not None:
-            action = "WAIT"
-            next_step_id = blocked_step.step_id
-            reason = f"step {blocked_step.step_id} is blocked by an authoritative capability or dependency; wake on state change"
+    evidence_refs: tuple[str, ...] = ()
+    if _owner_goal_authority_active(
+        objective,
+        active_directive_ids=_active_owner_goal_directive_ids(database),
+        revoked_objective_ids=_revoked_owner_objective_ids(database),
+    ):
+        progress = evaluate_objective_progress(database, objective_id, controller=controller)
+        evidence_refs = progress.evidence_refs
+        plan = active_plan(database, objective_id)
+        reason = progress.explanation
+        if progress.status == "COMPLETED":
+            action = "CLOSE"
+            reason = "objective has complete evidence and must not generate more work"
+        elif progress.status == "REGRESSED":
+            action = "REASSESS"
+            reason = "new evidence reduced measured progress; reassess the plan before more execution"
+        elif plan is None:
+            action = "PLAN"
+            reason = "objective has no active dependency-aware plan"
         else:
-            ready = plan_ready_steps(database, objective_id)
-            if ready:
-                action = "CONTINUE"
-                next_step_id = ready[0].step_id
-                reason = f"continue with dependency-ready step {next_step_id}"
-            elif progress.stale:
-                action = "REPRIORITIZE"
-                reason = "objective is stale without evidence; recompute priority before creating more work"
-            else:
+            failed_step = next((step for step in plan.steps if step.status == "FAILED"), None)
+            blocked_step = next((step for step in plan.steps if step.status == "BLOCKED"), None)
+            if failed_step is not None:
+                next_step_id = failed_step.step_id
+                retry_number = _failure_count(database, objective_id, failed_step.step_id)
+                if retry_number < failed_step.max_retries:
+                    action = "RETRY"
+                    reason = f"step {failed_step.step_id} failed; retry {retry_number + 1}/{failed_step.max_retries} remains within budget"
+                    replacement = replace(failed_step, status="READY", mission_id=None, retries=failed_step.retries + 1)
+                    updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=tuple(replacement if row.step_id == failed_step.step_id else row for row in plan.steps), critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
+                    _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=objective_id)
+                    if objective.status == "FAILED":
+                        set_objective_status(database, objective_id, "ACTIVE", controller=controller, reason="bounded retry reopened the objective", evidence_refs=failed_step.evidence_refs)
+                else:
+                    action = "ESCALATE"
+                    reason = f"step {failed_step.step_id} exhausted bounded retry budget"
+                    escalation = record_escalation(database, objective_id=objective_id, decision="retry budget exhausted", why=reason, evidence_refs=failed_step.evidence_refs, options=("owner changes strategy", "owner grants a new capability or budget", "suspend objective"), recommendation="suspend until owner direction or a materially different capability is available", delay_consequence="objective remains incomplete and downstream work stays blocked", controller=controller)
+                    escalation_id = escalation.escalation_id
+            elif blocked_step is not None:
                 action = "WAIT"
-                reason = "no ready step is available; wait for mission evidence or capability recovery"
-    decision = ContinuationDecision(objective_id, action, reason, progress.evidence_refs, next_step_id, retry_number, escalation_id, _tuple(wake_on))
+                next_step_id = blocked_step.step_id
+                reason = f"step {blocked_step.step_id} is blocked by an authoritative capability or dependency; wake on state change"
+            else:
+                ready = plan_ready_steps(database, objective_id)
+                if ready:
+                    action = "CONTINUE"
+                    next_step_id = ready[0].step_id
+                    reason = f"continue with dependency-ready step {next_step_id}"
+                elif progress.stale:
+                    action = "REPRIORITIZE"
+                    reason = "objective is stale without evidence; recompute priority before creating more work"
+                else:
+                    action = "WAIT"
+                    reason = "no ready step is available; wait for mission evidence or capability recovery"
+    decision = ContinuationDecision(objective_id, action, reason, evidence_refs, next_step_id, retry_number, escalation_id, _tuple(wake_on))
     prior = rebuild_executive_state(database).continuations.get(objective_id)
     if prior is not None and prior.to_payload() == decision.to_payload():
         return prior
