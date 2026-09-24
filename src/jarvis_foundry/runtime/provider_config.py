@@ -29,7 +29,7 @@ from ..deployment.layout import install_root
 from .provider_registry import UnsupportedProviderError, opencode_hermes_env_names, require_service
 
 DEFAULT_PROVIDER = "opencode_go"
-DEFAULT_MODEL = "muse-spark-1.2-contributor"
+DEFAULT_MODEL = "muse-spark-1.3-contributor"
 DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1"
 
 _RUNTIME_CREDENTIAL_ENV = {

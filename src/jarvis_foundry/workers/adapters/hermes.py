@@ -25,6 +25,8 @@ import re
 import subprocess
 import tempfile
 import uuid
+import yaml
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 
@@ -44,6 +46,14 @@ from ...runtime.provider_config import (
     ProviderSettings,
     apply_hermes_provider_env,
 )
+from ...runtime.provider_spend import (
+    AUTHORIZED_API_MODE,
+    AUTHORIZED_MODEL,
+    AUTHORIZED_PROVIDER,
+    OpenCodeSpendGateway,
+    ProviderSpendBlocked,
+)
+from ...database import FoundryDatabase
 from ...roles.adapter import ProviderFailure, classify_provider_failure
 from .base import (
     AdapterConfigurationError,
@@ -52,6 +62,7 @@ from .base import (
     redact_secrets,
     run_subprocess_with_heartbeat,
 )
+
 from ..result_contract import MISSING_RESULT_NOTE, ingest_result_claim, result_env
 
 
@@ -98,6 +109,7 @@ class HermesWorkerAdapter:
         workers: Any = None,
         provider_settings: ProviderSettings | None = None,
         provider_settings_by_id: dict[str, ProviderSettings] | None = None,
+        database: FoundryDatabase | None = None,
     ) -> None:
         from ...runtime.provider_config import default_provider_settings
 
@@ -108,6 +120,7 @@ class HermesWorkerAdapter:
         self.python_exe = python_exe
         self.framework = "hermes"
         self.provider_settings = provider_settings or default_provider_settings()
+        self.database = database
         self.strict_provider_identity = provider_settings_by_id is not None
         self.provider_settings_by_id = dict(provider_settings_by_id or {})
         self.provider_settings_by_id.setdefault(
@@ -157,11 +170,58 @@ class HermesWorkerAdapter:
                 f"{contract.provider}/{contract.model}",
                 failure_class="INCOMPATIBLE",
             )
+        if (
+            settings.provider != AUTHORIZED_PROVIDER
+            or settings.model != AUTHORIZED_MODEL
+            or contract.provider != AUTHORIZED_PROVIDER
+            or contract.model != AUTHORIZED_MODEL
+        ):
+            raise ProviderFailure(
+                "worker dispatch is outside the exact owner-authorized OpenCode Go model",
+                failure_class="INCOMPATIBLE",
+            )
+        if not settings.api_key:
+            raise ProviderUnavailable(
+                "OpenCode API key is not configured; model dispatch blocked",
+                retryable=False,
+            )
+        if self.database is None:
+            raise ProviderUnavailable(
+                "canonical provider-spend ledger is unavailable; model dispatch blocked",
+                retryable=False,
+            )
+        gateway: OpenCodeSpendGateway | None = None
         try:
+            gateway = OpenCodeSpendGateway(
+                self.database,
+                settings,
+                stop_path=self.stop_path,
+                mission_id=contract.mission_id,
+                timeout_seconds=self.timeout_seconds,
+            )
+            gateway_url = gateway.start()
+            child_settings = replace(
+                settings,
+                api_key=gateway.local_api_key,
+                base_url=gateway_url,
+            )
             provider_env = apply_hermes_provider_env(
-                settings, os.environ)
+                child_settings, os.environ)
+            _pin_hermes_gateway_profile(
+                self.hermes_home,
+                gateway_url=gateway_url,
+                provider_settings=settings,
+                headers=_provider_headers_from_home(self.hermes_home),
+            )
         except ProviderCredentialError as error:
             raise ProviderUnavailable(str(error), retryable=False) from error
+        except (ProviderSpendBlocked, OSError, ValueError) as error:
+            if gateway is not None:
+                gateway.close()
+            raise ProviderUnavailable(
+                f"bounded OpenCode Go spend route is unavailable: {error}",
+                retryable=False,
+            ) from error
         started = isoformat(utc_now())
         usage_path: Path | None = None
         if self.timeout_seconds > 0:
@@ -211,7 +271,7 @@ class HermesWorkerAdapter:
             )
         except subprocess.TimeoutExpired:
             heartbeat()
-            self._scrub_disposable_home()
+            self._scrub_disposable_home(extra_secrets=(gateway.local_api_key,))
             files, valid = ingest_result_claim(contract.working_root)
             summary = f"session exceeded {self.timeout_seconds}s bound"
             if not valid:
@@ -232,13 +292,18 @@ class HermesWorkerAdapter:
             raise ProviderUnavailable(f"could not launch Hermes: {error}") from error
         finally:
             heartbeat()
+            gateway.close()
         cost = self._read_usage_cost(usage_path)
         usage_availability = "available" if cost not in (0.0, None) else NOT_AVAILABLE
         stdout = redact_secrets(
             process.stdout or "", configured_key=configured_api_key(settings))
+        stdout = redact_secrets(
+            stdout, configured_key=gateway.local_api_key)
         stderr = redact_secrets(
             process.stderr or "", configured_key=configured_api_key(settings))
-        self._scrub_disposable_home()
+        stderr = redact_secrets(
+            stderr, configured_key=gateway.local_api_key)
+        self._scrub_disposable_home(extra_secrets=(gateway.local_api_key,))
         if process.returncode != 0:
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
@@ -340,7 +405,12 @@ class HermesWorkerAdapter:
             except OSError:
                 pass
 
-    def _scrub_disposable_home(self, limit: int = 5000) -> None:
+    def _scrub_disposable_home(
+        self,
+        limit: int = 5000,
+        *,
+        extra_secrets: tuple[str, ...] = (),
+    ) -> None:
         """Redact credential-shaped tokens from the disposable HERMES_HOME
         (state.db, auth.json, sessions) so no retained run-state file ever
         holds the secret value."""
@@ -349,7 +419,7 @@ class HermesWorkerAdapter:
                 configured_api_key(settings)
                 for settings in self.provider_settings_by_id.values()
             ) if key
-        )
+        ) + tuple(value for value in extra_secrets if value)
         if not self.hermes_home.exists():
             return
         scanned = 0
@@ -393,3 +463,117 @@ def make_hermes_worker_adapter(
         hermes_root=hermes_root, hermes_home=Path(home),
         enabled=enabled, **kwargs,
     )
+
+
+def _provider_headers_from_home(home: Path) -> dict[str, str]:
+    path = home / "config.yaml"
+    if not path.is_file():
+        return {}
+    parsed = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(parsed, dict):
+        raise ValueError("isolated Hermes config.yaml must be a mapping")
+    providers = parsed.get("providers") or {}
+    if not isinstance(providers, dict):
+        raise ValueError("isolated Hermes providers must be a mapping")
+    selected = providers.get("opencode-go") or {}
+    if not isinstance(selected, dict):
+        raise ValueError("isolated Hermes OpenCode GO provider config is invalid")
+    headers = selected.get("extra_headers") or {}
+    if not isinstance(headers, dict):
+        raise ValueError("isolated Hermes OpenCode GO headers are invalid")
+    return {str(key): str(value) for key, value in headers.items() if value is not None}
+
+
+def _pin_hermes_gateway_profile(
+    home: Path,
+    *,
+    gateway_url: str,
+    provider_settings: ProviderSettings,
+    headers: dict[str, str],
+) -> None:
+    """Force main and auxiliary Hermes requests through the exact loopback route."""
+    path = home / "config.yaml"
+    document = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if not isinstance(document, dict):
+        raise ValueError("isolated Hermes config.yaml must be a mapping")
+    if provider_settings.provider != AUTHORIZED_PROVIDER or provider_settings.model != AUTHORIZED_MODEL:
+        raise ValueError("Hermes profile provider identity is outside the exact authorized route")
+    headers = dict(headers)
+    if not any(
+        key.casefold() == "x-opencode-session" and value
+        for key, value in headers.items()
+    ):
+        headers["x-opencode-session"] = str(uuid.uuid4())
+    document["model"] = {
+        "provider": "opencode-go",
+        "model": AUTHORIZED_MODEL,
+    }
+    document["providers"] = {
+        "opencode-go": {
+            "api": gateway_url,
+            "extra_headers": dict(headers),
+        },
+    }
+    document["fallback_providers"] = []
+    document["fallback_model"] = []
+    document["credential_pool_strategies"] = {}
+    auxiliary = document.get("auxiliary")
+    if not isinstance(auxiliary, dict):
+        auxiliary = {}
+    auxiliary["transient_retries"] = 0
+    web_extract = auxiliary.get("web_extract")
+    if not isinstance(web_extract, dict):
+        auxiliary["web_extract"] = {}
+    for key, value in auxiliary.items():
+        if not isinstance(value, dict):
+            continue
+        value["provider"] = "opencode-go"
+        value["model"] = AUTHORIZED_MODEL
+        value["base_url"] = gateway_url
+        value["api_key"] = ""
+        value["api_mode"] = AUTHORIZED_API_MODE
+        value["fallback_chain"] = []
+    document["auxiliary"] = auxiliary
+    delegation = document.get("delegation")
+    if not isinstance(delegation, dict):
+        delegation = {}
+    delegation["provider"] = "opencode-go"
+    delegation["model"] = AUTHORIZED_MODEL
+    delegation["base_url"] = gateway_url
+    delegation["api_key"] = ""
+    delegation["api_mode"] = AUTHORIZED_API_MODE
+    delegation["fallback_providers"] = []
+    delegation["request_overrides"] = _delegation_request_overrides(
+        delegation.get("request_overrides"), headers)
+    document["delegation"] = delegation
+    agent = document.get("agent")
+    if not isinstance(agent, dict):
+        agent = {}
+    agent["api_max_retries"] = 1
+    document["agent"] = agent
+    temporary = path.with_suffix(".yaml.tmp")
+    temporary.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    temporary.replace(path)
+
+
+def _delegation_request_overrides(
+    value: Any,
+    headers: dict[str, str],
+) -> dict[str, Any]:
+    """Keep child requests in the same OpenCode session as the parent."""
+    session_id = next(
+        (str(v) for k, v in headers.items()
+         if k.casefold() == "x-opencode-session" and v),
+        None,
+    )
+    if not session_id:
+        raise ValueError("OpenCode session header is required for delegated requests")
+    overrides = dict(value) if isinstance(value, dict) else {}
+    extra_headers = overrides.get("extra_headers")
+    extra_headers = dict(extra_headers) if isinstance(extra_headers, dict) else {}
+    for key in list(extra_headers):
+        if str(key).casefold() == "x-opencode-session":
+            del extra_headers[key]
+    extra_headers["x-opencode-session"] = session_id
+    overrides["extra_headers"] = extra_headers
+    return overrides

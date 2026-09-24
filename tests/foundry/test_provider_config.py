@@ -188,8 +188,9 @@ def test_yaml_key_and_base_url_win_over_stale_legacy_env(config_path, monkeypatc
 def test_hermes_dispatch_overrides_stale_legacy_env(tmp_path, monkeypatch):
     settings = _settings(
         api_key="sk-hermes-authoritative-key-1234567890",
-        base_url="https://authoritative.example/v1",
     )
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
     monkeypatch.setenv("OPENCODE_GO_API_KEY", "sk-stale-legacy-key-1234567890")
     monkeypatch.setenv("OPENCODE_GO_BASE_URL", "https://stale.example/v1")
     home = tmp_path / "home"
@@ -200,6 +201,7 @@ def test_hermes_dispatch_overrides_stale_legacy_env(tmp_path, monkeypatch):
         enabled=True,
         python_exe="python",
         provider_settings=settings,
+        database=database,
     )
     captured: dict[str, str] = {}
 
@@ -221,8 +223,12 @@ def test_hermes_dispatch_overrides_stale_legacy_env(tmp_path, monkeypatch):
         ),
         heartbeat=lambda: None,
     )
-    assert captured["OPENCODE_GO_API_KEY"] == "sk-hermes-authoritative-key-1234567890"
-    assert captured["OPENCODE_GO_BASE_URL"] == "https://authoritative.example/v1"
+    assert captured["OPENCODE_GO_API_KEY"] not in {
+        settings.api_key,
+        "sk-stale-legacy-key-1234567890",
+    }
+    assert captured["OPENCODE_GO_API_KEY"]
+    assert captured["OPENCODE_GO_BASE_URL"].startswith("http://127.0.0.1:")
 
 
 def test_missing_api_key_fails_closed_hermes(tmp_path):

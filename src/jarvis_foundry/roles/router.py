@@ -10,7 +10,7 @@ DIR-2026-08-12 MANDATORY INTERNAL MODEL ROUTING: every REAL JARVIS internal
 dispatch (builder, verifier, researcher, repairer, reviewer, planner,
 replacement worker, mission specialist, retry/recovery worker, live canary)
 must resolve to the machine-local provider configuration (default
-``opencode_go`` + ``muse-spark-1.2-contributor``) with NO fallbacks. A
+``opencode_go`` + ``muse-spark-1.3-contributor``) with NO fallbacks. A
 non-compliant role must be recorded BLOCKED, never substituted with another
 model. ``builtin_roles()`` implements exactly this policy, and
 ``RoleRouter.enforce_directive_routing`` rejects any configuration that
@@ -38,7 +38,7 @@ from ..events import canonical_json
 
 #: Template defaults mirrored in provider.yaml.example.
 DIRECTIVE_PROVIDER = "opencode_go"
-DIRECTIVE_MODEL = "muse-spark-1.2-contributor"
+DIRECTIVE_MODEL = "muse-spark-1.3-contributor"
 
 
 def builtin_roles(

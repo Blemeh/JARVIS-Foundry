@@ -140,7 +140,7 @@ def test_contributor_acknowledgement_is_materialized_in_isolated_home(tmp_path):
     assert document["security"] == {
         "allow_data_training_tiers_noninteractive": True,
     }
-    entry = document["providers"][cfg.provider]
+    entry = document["providers"]["opencode-go"]
     assert entry["api"] == cfg.provider_settings.base_url
     headers = entry["extra_headers"]
     assert UUID(str(headers["x-opencode-session"]))
@@ -168,7 +168,7 @@ def test_provider_session_header_is_stable_within_one_run_home(tmp_path):
         database, FoundryPaths(tmp_path / "foundry"), cfg, run_id="stable")
     second_path = second.disposable_root / "hermes-home" / "config.yaml"
     assert second_path.read_text(encoding="utf-8") == first_text
-    session_id = yaml.safe_load(first_text)["providers"][cfg.provider][
+    session_id = yaml.safe_load(first_text)["providers"]["opencode-go"][
         "extra_headers"]["x-opencode-session"]
     assert session_id in second_path.read_text(encoding="utf-8")
 

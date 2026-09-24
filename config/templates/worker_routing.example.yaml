@@ -3,7 +3,7 @@ status: "INACTIVE_EXAMPLE"
 
 # Canonical hybrid worker routing policy.
 # Every REAL worker run must resolve to provider "opencode_go" + model
-# "muse-spark-1.2-contributor" with NO fallbacks. Provider/model/base_url/
+# "muse-spark-1.3-contributor" with NO fallbacks. Provider/model/base_url/
 # api_key are owned by %LOCALAPPDATA%\JARVIS\config\provider.yaml.
 
 policy:
@@ -28,11 +28,11 @@ policy:
 workers:
   hermes:
     provider: "opencode_go"
-    model: "muse-spark-1.2-contributor"
+    model: "muse-spark-1.3-contributor"
     role: "primary"
   openhands:
     provider: "opencode_go"
-    model: "muse-spark-1.2-contributor"
+    model: "muse-spark-1.3-contributor"
     role: "bounded_fast_path"
     readiness: "READY"
     containment_evidence:

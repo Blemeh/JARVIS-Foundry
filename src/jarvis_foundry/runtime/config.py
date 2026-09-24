@@ -27,7 +27,7 @@ class WorkerRuntimeConfig:
     resource_id: str = "resource-wfm-optimizer"
     capability: str = "write_registered_worktree_files"
     provider: str = "opencode_go"
-    model: str = "muse-spark-1.2-contributor"
+    model: str = "muse-spark-1.3-contributor"
     runtime_state_root: str = "var/worker-runtime"
     hermes: dict[str, Any] = field(default_factory=dict)
     openhands: dict[str, Any] = field(default_factory=dict)
@@ -248,6 +248,31 @@ class WorkerRuntimeConfig:
                 f"{self.provider_settings.provider!r} + "
                 f"{self.provider_settings.model!r} only, got "
                 f"{self.provider!r} + {self.model!r}")
+        if (
+            self.provider_settings.provider == "opencode_go"
+            and self.provider_settings.model == "muse-spark-1.3-contributor"
+        ):
+            identities = [
+                (item.provider, item.model)
+                for item in self.provider_settings_pool
+            ]
+            if identities != [("opencode_go", "muse-spark-1.3-contributor")]:
+                raise ValueError(
+                    "the authorized Muse Spark run requires a single-provider, "
+                    "single-model pool with no paid fallback")
+            if self.provider_resilience_enabled:
+                raise ValueError(
+                    "provider resilience must remain disabled for the exact "
+                    "owner-authorized compute route")
+            if bool(self.openhands.get("enabled", False)):
+                raise ValueError(
+                    "OpenHands is not attached to the authorized request-level "
+                    "spend gate and cannot be enabled for this route")
+            if self.enabled and self.hermes.get(
+                "allow_data_training_tiers_noninteractive") is not True:
+                raise ValueError(
+                    "unattended Muse Spark Contributor work requires the "
+                    "authenticated owner training-consent policy")
         if self.provider_resilience_enabled:
             identities = [(item.provider, item.model) for item in self.provider_settings_pool]
             if not identities or identities[0] != (

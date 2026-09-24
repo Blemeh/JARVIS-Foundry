@@ -14,7 +14,7 @@ from ..runtime.provider_registry import get_service
 from .model import ProviderRoute, UnattendedMode
 
 
-CONTRIBUTOR_MODELS = frozenset({"muse-spark-1.2-contributor"})
+CONTRIBUTOR_MODELS = frozenset({"muse-spark-1.3-contributor"})
 
 
 def unattended_mode_for(

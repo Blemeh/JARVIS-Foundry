@@ -76,8 +76,8 @@ _PROVIDER_SERVICES: dict[str, ProviderService] = {
         default_base_url="https://opencode.ai/zen/go/v1",
         hermes_api_key_env="OPENCODE_GO_API_KEY",
         hermes_base_url_env="OPENCODE_GO_BASE_URL",
-        default_model="muse-spark-1.2-contributor",
-        known_models=("muse-spark-1.2-contributor",),
+        default_model="muse-spark-1.3-contributor",
+        known_models=("muse-spark-1.3-contributor",),
         capabilities=(
             "structured_reasoning", "code", "tools", "tests", "research",
             "artifact_inspection", "adversarial_verification",

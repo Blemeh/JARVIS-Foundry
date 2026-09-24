@@ -4,7 +4,7 @@
 # Consumed by `jarvis -m jarvis_foundry.runtime.worker_loop --config
 # config/worker_routing.yaml`. Explicit and auditable by design: the driver
 # refuses to run cycles while `enabled` is false, and the owner model
-# mandate (opencode_go + muse-spark-1.2-contributor, no fallbacks) is enforced at
+# mandate (opencode_go + muse-spark-1.3-contributor, no fallbacks) is enforced at
 # load time. Provider/model/api_key/base_url are owned by the machine-local
 # file ``%LOCALAPPDATA%/JARVIS/config/provider.yaml`` (never committed).
 schema_version: 1
@@ -16,7 +16,7 @@ resource_id: "resource-wfm-optimizer"
 capability: "write_registered_worktree_files"
 
 provider: "opencode_go"
-model: "muse-spark-1.2-contributor"
+model: "muse-spark-1.3-contributor"
 
 # Machine-local executable coordinates (not code defaults). Missing files
 # fail closed in build_worker_stack; they are never guessed from a developer
@@ -28,8 +28,9 @@ hermes:
   python_exe: ""
   timeout_seconds: 900
   # Explicit owner authorization for unattended contributor/training-tier use
-  # in the bounded V11 A3/A4 exit proof. All other routing, budget, capability,
-  # allowlist, and STOP controls remain authoritative.
+  # only when the authenticated owner policy also records Contributor training
+  # consent. The request-level spend gate and all STOP/effect controls remain
+  # authoritative.
   allow_data_training_tiers_noninteractive: true
 
 openhands:
