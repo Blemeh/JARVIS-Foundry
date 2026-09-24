@@ -93,11 +93,18 @@ exit /b 2
 
 
 def _packaging_template(name: str) -> Path:
-    repo = Path(__file__).resolve().parents[3]
-    path = repo / "packaging" / name
-    if not path.is_file():
-        raise ReleaseError(f"missing packaging template: {path}")
-    return path
+    module_root = Path(__file__).resolve().parents[1]
+    packaged_path = module_root / "assets" / "packaging" / name
+    if packaged_path.is_file():
+        return packaged_path
+    # Source checkouts keep release templates in the repository-level
+    # packaging directory. _copy_source_snapshot also copies them into the
+    # package assets so installed immutable releases can build later releases.
+    source_path = Path(__file__).resolve().parents[3] / "packaging" / name
+    if source_path.is_file():
+        return source_path
+    raise ReleaseError(
+        f"missing packaging template: {packaged_path} (source: {source_path})")
 
 
 class ReleaseError(RuntimeError):
@@ -639,6 +646,13 @@ def _copy_source_snapshot(source_repo: Path, staging: Path) -> None:
             shutil.copytree(origin, destination, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         else:
             shutil.copy2(origin, destination)
+    package_assets = staging / "src" / "jarvis_foundry" / "assets" / "packaging"
+    package_assets.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        Path(source_repo) / "packaging",
+        package_assets,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
 
 
 def _build_command_center_bundle(
