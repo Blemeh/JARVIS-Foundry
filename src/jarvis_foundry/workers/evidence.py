@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -87,6 +88,28 @@ def _porcelain_path(line: str) -> str | None:
 
 _CACHE_SEGMENTS = ("__pycache__", ".pytest_cache", ".mypy_cache")
 _CONTROL_FILES = (RESULT_FILENAME,)
+_OWNER_GOAL_RECEIPT = re.compile(
+    r"\.jarvis/owner-goals/[0-9a-f]{10}/(?:plan|outcome)\.md"
+)
+
+
+def _expected_owner_goal_receipts(
+    contract: WorkerStepContract,
+) -> frozenset[str]:
+    """Return only explicitly expected JARVIS owner-goal control receipts."""
+    return frozenset(
+        normalized
+        for rel in contract.expected_artifacts
+        if _OWNER_GOAL_RECEIPT.fullmatch(
+            normalized := rel.replace("\\", "/"))
+    )
+
+
+def _is_expected_owner_goal_receipt(
+    rel: str,
+    expected_receipts: frozenset[str],
+) -> bool:
+    return rel.replace("\\", "/") in expected_receipts
 
 
 def _is_machine_cache(rel: str) -> bool:
@@ -172,8 +195,11 @@ class EvidenceReconciler:
     def capture_before(self, contract: WorkerStepContract) -> BeforeState:
         root = contract.working_root.resolve()
         changed = git_changed_files(root)
+        expected_receipts = _expected_owner_goal_receipts(contract)
         meaningful = tuple(
-            rel for rel in changed if not _is_control_file(rel))
+            rel for rel in changed
+            if not _is_control_file(rel)
+            and not _is_expected_owner_goal_receipt(rel, expected_receipts))
         hashes: dict[str, str] = {}
         for rel in meaningful:
             path = root / rel
@@ -205,6 +231,7 @@ class EvidenceReconciler:
         mismatches: list[str] = []
         containment: list[str] = []
         unrecorded: list[str] = []
+        expected_receipts = _expected_owner_goal_receipts(contract)
 
         try:
             observed_head = git_head(root)
@@ -216,12 +243,18 @@ class EvidenceReconciler:
         observed_changed = git_changed_files(root)
         meaningful_changed = tuple(
             rel for rel in observed_changed
-            if not _is_machine_cache(rel) and not _is_control_file(rel))
+            if not _is_machine_cache(rel)
+            and not _is_control_file(rel)
+            and not _is_expected_owner_goal_receipt(
+                rel, expected_receipts))
         observed_changed = tuple(
             rel for rel in observed_changed if not _is_control_file(rel))
         if delta_baseline is not None:
             delta_baseline = tuple(
-                rel for rel in delta_baseline if not _is_control_file(rel))
+                rel for rel in delta_baseline
+                if not _is_control_file(rel)
+                and not _is_expected_owner_goal_receipt(
+                    rel, expected_receipts))
 
         if envelope.worker_status != "COMPLETED":
             mismatches.append(
@@ -250,7 +283,10 @@ class EvidenceReconciler:
 
         # Claimed changes must match observed reality (B3 false-success rule:
         # claim "done" with no real change is a mismatch).
-        claimed = set(envelope.files_changed)
+        claimed = {
+            rel for rel in envelope.files_changed
+            if not _is_expected_owner_goal_receipt(rel, expected_receipts)
+        }
         observed_set = set(meaningful_changed)
         if delta_baseline is not None:
             # Delta mode: the worker is accountable for files it added or
@@ -297,7 +333,7 @@ class EvidenceReconciler:
                     "claimed files_changed disagree with observed worktree "
                     "diff "
                     f"(claimed={sorted(claimed)}, "
-                    f"observed={sorted(observed_changed)})")
+                    f"observed={sorted(observed_set)})")
 
         # Diff hash honesty: a claimed diff hash must match the observed one.
         if envelope.diff_hash and envelope.diff_hash != observed_diff_hash:
