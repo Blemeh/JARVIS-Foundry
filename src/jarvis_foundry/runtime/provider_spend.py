@@ -389,7 +389,14 @@ def _request_token_bound(body: bytes) -> tuple[dict[str, Any], bytes, int]:
             for child in value:
                 reject_unbounded_modalities(child)
 
-    reject_unbounded_modalities(document)
+    # Tool declarations contain JSON Schemas. A schema may legitimately name
+    # an argument ``image_url`` (for example, a vision tool) without sending
+    # image input to the provider. Keep rejecting modality fields at the
+    # request top level and inside actual model input, while leaving tool
+    # schemas to the existing whole-body byte reservation below.
+    if any(str(key).casefold() in forbidden_keys for key in document):
+        raise ProviderSpendBlocked("non-text provider input is outside the bounded spend policy")
+    reject_unbounded_modalities(document.get("input"))
     normalized = json.dumps(document, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
     if len(normalized) > MAX_REQUEST_BYTES:
         raise ProviderSpendBlocked("normalized request exceeds the bounded 2 MiB payload size")

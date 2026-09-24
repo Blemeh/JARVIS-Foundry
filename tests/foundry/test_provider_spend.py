@@ -141,6 +141,28 @@ def test_request_bounds_exact_route_text_and_output(monkeypatch):
     assert document["store"] is False
     assert json.loads(normalized)["max_output_tokens"] == spend.MAX_OUTPUT_TOKENS
 
+    # Tool parameter schemas can declare names such as image_url. They are
+    # counted in the serialized request reservation but are not model input.
+    schema_request = {
+        "model": spend.AUTHORIZED_MODEL,
+        "input": "Inspect the repository and propose a small fix.",
+        "tools": [
+            {
+                "type": "function",
+                "name": "vision_analyze",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"image_url": {"type": "string"}},
+                },
+            }
+        ],
+    }
+    schema_document, schema_normalized, _ = spend._request_token_bound(
+        json.dumps(schema_request).encode()
+    )
+    assert schema_document["tools"] == schema_request["tools"]
+    assert len(schema_normalized) >= len(json.dumps(schema_request).encode())
+
     with pytest.raises(spend.ProviderSpendBlocked, match="exact owner-authorized"):
         spend._request_token_bound(b'{"model":"muse-spark-1.2-contributor","input":"x"}')
     with pytest.raises(spend.ProviderSpendBlocked, match="stateful"):
@@ -159,6 +181,20 @@ def test_request_bounds_exact_route_text_and_output(monkeypatch):
                 {
                     "model": spend.AUTHORIZED_MODEL,
                     "input": {"image_url": "https://example.invalid/image"},
+                }
+            ).encode()
+        )
+    with pytest.raises(spend.ProviderSpendBlocked, match="non-text"):
+        spend._request_token_bound(
+            json.dumps(
+                {
+                    "model": spend.AUTHORIZED_MODEL,
+                    "input": [
+                        {
+                            "role": "user",
+                            "content": [{"type": "input_image", "image_url": "https://example.invalid/image"}],
+                        }
+                    ],
                 }
             ).encode()
         )
