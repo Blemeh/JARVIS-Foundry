@@ -6,82 +6,93 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Wednesday, September 23, 2026 after the candidate-only
-commit-effect repair, one final A attempt, and independent raw-state review.
-The current product source is
-`8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b` on
-`candidate/wave2-canonical-convergence-20260920`; its tree is
-`1a770d7dcf7f5ace6049b628c8a7002d045c4703`. The immutable candidate release is
-`rel-8f6abd7f31b8-a5b2d4cd` (manifest
-`0460797a37646cbf8f9f2fde6fcb9dedb40a6347f8e4870b8fee0b04f695283d`), built
-with schema 41.
+Last reconciled: Thursday, September 24, 2026 after the candidate-only Hermes
+verdict parsing repair, immutable release build, provider preflight, one
+Supervisor/runtime A lifecycle, and independent raw-state review.
 
-This is an isolated source candidate. It did not merge, push, promote, or touch
-the live release pointer or database. Candidate `CURRENT` is pinned to
-`8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b`; live `CURRENT`, `main`, and
-`origin/main` remain `ddec34efc96b9a0154eb9821d6cc496ef76906a3`.
+The Wave 2 product source is `fc4a7b99f707b20df1d97f610f5c0993d6819a6f` on
+`candidate/wave2-canonical-convergence-20260920`; its tree is
+`2499b00dd6fbea5753ff23a2e251fbe709358c69`. The immutable candidate release is
+`rel-fc4a7b99f707-95c4527d` (manifest SHA-256
+`2eb20661fcef88a9dfad5b67ce542c1341f6829483d56c6696d61c92d7d8d7a1`), built
+with schema 41. Candidate `CURRENT` points to this release. The candidate was
+not merged, pushed, or promoted. Live `CURRENT`, `main`, and `origin/main`
+remain `ddec34efc96b9a0154eb9821d6cc496ef76906a3`; the live database passed
+SQLite integrity checking and contained no candidate markers.
 
 WAVE2 CANONICAL CONVERGENCE CANDIDATE (source only, isolated worktree):
 WAVE2 CANDIDATE BRANCH:        candidate/wave2-canonical-convergence-20260920
-WAVE2 PRODUCT HEAD:            8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b
-WAVE2 PRODUCT TREE:            1a770d7dcf7f5ace6049b628c8a7002d045c4703
-WAVE2 IMMUTABLE RELEASE:       rel-8f6abd7f31b8-a5b2d4cd
-WAVE2 RELEASE MANIFEST SHA:    0460797a37646cbf8f9f2fde6fcb9dedb40a6347f8e4870b8fee0b04f695283d
+WAVE2 PRODUCT HEAD:            fc4a7b99f707b20df1d97f610f5c0993d6819a6f
+WAVE2 PRODUCT TREE:            2499b00dd6fbea5753ff23a2e251fbe709358c69
+WAVE2 IMMUTABLE RELEASE:       rel-fc4a7b99f707-95c4527d
+WAVE2 RELEASE MANIFEST SHA:    2eb20661fcef88a9dfad5b67ce542c1341f6829483d56c6696d61c92d7d8d7a1
+WAVE2 CANDIDATE SCHEMA:        v41
 WAVE2 EVIDENCE ROOT:           var/jarvis-wave2-canonical-convergence-20260920/
-WAVE2 HANDOFF:                 var/jarvis-wave2-canonical-convergence-20260920/HANDOFF.json
-WAVE2 VERDICT:                 WAVE2_PARTIAL — final A BLOCKED before COMPLETE/PASSED; open P1
+WAVE2 FINAL A ARCHIVE:         var/jarvis-wave2-canonical-convergence-20260920/final_cert/archived/final_a_closure_20260924T005345Z/
+WAVE2 A INDEPENDENT REVIEW:    A_FINAL_INDEPENDENT_REVIEW_fc4a7b99.json — PASS
+WAVE2 A END-TO-END PATH:       PROVEN — candidate-only; live promotion not performed
 
 PREEXISTING CLOSED GATES: B, C, D, E, F, G, H, and runtime identity retain
-their recorded closure; the commit-effect change did not alter those proof
-surfaces. The final broad backend run collected 3,681 tests: 3,677 passed,
-2 skipped, and 2 documentation-staleness checks failed because the product
-commit preceded this final docs-only pin. Product-code failures: 0. The
-Supervisor lease repair remains in the candidate lineage and held the live
-worker-loop lease through the final run's >900-second interval.
+their recorded closure. The product fix parses a strict Hermes verdict from
+stderr only when stdout has no verdict, preserving stdout authority and the
+missing-result safeguards. Focused adapter tests passed. The frozen broad run
+reported 3,578 passed, 2 failed, and 2 skipped; both failures were the
+documentation-state pin checks, which ran before this final docs-only pin.
+After this pin, the documentation staleness check and its focused tests pass.
 
 COMMIT EFFECT: P0-C was reproduced through the normal commit-effect API in a
 provider-free fixture. The old combined `<base>..<head>` argument was parsed as
 a path by Git on Windows at the observed long worktree path; separate revision
-arguments plus `--` succeeded. The mutation had already created a commit before
+arguments plus `--` succeeded. The mutation had created a commit before
 metadata failure caused a false FAILED journal terminal, and retry created no
 duplicate commit. The repair is in `src/jarvis_foundry/mission/commit.py` and
 `tests/foundry/test_verification_loop.py`.
 
-FINAL A: One Level 5 certification attempt ran on the exact new release after
-provider preflight passed for `opencode_go/deepseek-v4.1-flash`. Mission
-`mission-d6a352b731fe` reached `BLOCKED`, not `COMPLETE/PASSED`. Step `01-plan`
-received `verification.passed` at sequence 226, one `verification.accepted` at
-230, and one completed local commit effect at 229. That effect created commit
-`a04329ee033e2e5d7e3ab499b07393c4a562ed3e` from base
-`baa7c0c02b73727c4e7685d7e019d470590022f8`; diff metadata was COMPLETE. The
-later `02-execute` builder and verifier dispatches succeeded, but the verifier
-returned no structured verdict, so the mission ended BLOCKED at sequence 309.
-No mission completion or PASSED outcome exists. The resulting next-action wake
-was consumed at 332; a fresh SELECT decision and continuation followed at 354
-and 373. This continuation evidence does not close the mission gate.
+FINAL A: Provider preflight passed for `opencode_go/deepseek-v4.1-flash` using
+the immutable candidate release and release-bound worker configuration. The
+single clean Supervisor/runtime lifecycle created mission
+`mission-0329b25a4dab` from the active owner objective. Steps `01-plan` and
+`02-execute` each received a provider-backed verifier PASS, one `ACCEPT`, and
+one completed Git commit effect. The commits were `73d1dc57781deb174069deb1f29907a84ee2235c`
+from base `2887ab7824a3c2bb5e22006eaf8ca949176c2bc9`, then
+`8dcd6e18cd9bdc8899c7e6616de2328aacd07655` from the first commit. The mission
+reached `COMPLETE`; `mission.completed` recorded `PASSED`; finalization recorded
+`mission_completion=PASSED`, `outcome=SUCCEEDED`, and verifier status `PASS`.
 
-The final A home remains intact. Its receipt, consumption-time process census,
-Supervisor and worker logs, SQLite snapshot, mission-worktree Git probes, and
-hash manifest are preserved in
-`var/jarvis-wave2-canonical-convergence-20260920/final_cert/archived/final_a_closure_20260923T190318Z/`.
-The snapshot passed integrity with 880 events. Of 26 archived-file hash checks,
-25 match; the only mismatch is the 32 KiB `database/foundry.db-shm` sidecar.
-The snapshot hash and process-census hash match their recorded values, so the
-archive is preserved but is not reported as fully hash-verified.
+Exactly one objective-bound next-action wake,
+`next-action:mission-0329b25a4dab`, was scheduled and consumed as due by
+`continuous:0-c262d130`. The Supervisor-spawned worker cycle recorded a fresh
+SELECT decision and created successor mission `mission-33b031e78f3c`, which
+entered execution and verification. The successor was still in its own
+verification when the bounded candidate runtime was stopped for evidence
+capture; it is not counted as a completed mission or as part of the A PASS.
 
-The independent raw-state review is recorded in
-`var/jarvis-wave2-canonical-convergence-20260920/final_cert/A_FINAL_INDEPENDENT_REVIEW.json`:
-`FAIL`, `A_GATE_STATUS=NOT_PROVEN`, `OPEN P0=0`, `OPEN P1=1`. It re-derived the
-single completed commit effect, provider dispatches, one consumed wake, and
-fresh continuation, and confirmed the missing COMPLETE/PASSED mission outcome.
-Its disposition records two receipt/probe mismatches: the driver calls a
-truthful BLOCKED/BLOCKED outcome a false success, and a duplicate-decision check
-expects a `cycle_id` on the raw decision event even though the continuation
-event binds that decision to the consuming cycle. Raw duplicate counts are
-zero, and the raw-state false-success list is empty. Details are in
-`var/jarvis-wave2-canonical-convergence-20260920/final_cert/A_FINAL_REVIEW_DISPOSITION.json`.
-The attached closure stop condition applies: do not run A again or make another
-product change in this closure.
+The immutable original A receipt is preserved and reports `passed=false` with
+three harness check failures. Its checks assumed one verifier/commit for the
+whole mission and interpreted the finalized `SUCCEEDED` status as the
+`PASSED` mission outcome. The archived ledger shows two verified steps and the
+explicit `mission_completion=PASSED` field. Independent reviewer
+`a_final_independent_review_fc4a7b99.py` re-derived the full lifecycle from the
+read-only snapshot, process census, release manifest, and live-boundary probes;
+its result is `PASS`, `A_GATE_STATUS=PROVEN`, with zero failed checks.
+
+The archived snapshot contains 436 events, passes SQLite integrity checking,
+and all 21 files listed in its raw-evidence manifest match their hashes. The
+first archiver invocation refused the census because its path included a run
+suffix while the receipt referenced the unsuffixed census. The source snapshot
+was preserved and archived after the run. During manual packaging the arm-file
+path was reused, so the archive manifest's arm timestamp describes that
+post-run packaging invocation. The exact A driver source was reconstructed and
+matches the SHA recorded in the original receipt; its pre-Supervisor arm guard
+and successful Supervisor launch verify that the run's original archiver
+passed its readiness gate. This archival provenance detail does not change the
+raw lifecycle verdict.
+
+Final broad regression: 3,578 passed, 2 documentation-staleness failures, and
+2 skipped; no product-code failures. The final documentation pin is the only
+tracked change after the product release head. `scripts/doc_staleness_check.py`
+and `tests/foundry/test_doc_staleness_check.py` pass on the final docs-only
+commit.
 
 Historical isolated acceptance and convergence entries below describe earlier
 candidate heads; they are not the current Wave 2 verdict or a promotion claim.
@@ -163,7 +174,7 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `8f6abd7f31b8be72ffe2b3c83492727d88cf6d4b`
+DOCUMENTATION STATE BASE SHA: `fc4a7b99f707b20df1d97f610f5c0993d6819a6f`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Wave 2
