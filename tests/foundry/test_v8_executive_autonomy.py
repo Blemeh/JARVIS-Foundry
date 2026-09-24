@@ -103,6 +103,40 @@ def test_owner_goal_autonomously_materializes_through_existing_portfolio(tmp_pat
     assert executive_autonomy_snapshot(database, include_briefing=False)["latest_cycle"]["cycle_id"] == "v8-cycle-1"
 
 
+def test_owner_goal_binds_only_registered_resource_targets(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    goal_text = "Update the registered worktree. success: verified change"
+    _goal(database, goal_text)
+    secret = b"v8-owner-secret-32-bytes-minimum!!"
+    service = OwnerControlService(database, secret=secret, owner_id="owner")
+    nonce = "resource-target-v8"
+    service.apply(
+        "GOAL", target="resource-v8", exact_text=goal_text, nonce=nonce,
+        signature=sign_command(secret, "GOAL", "resource-v8", goal_text, nonce),
+    )
+    missing_nonce = "unregistered-resource-target-v8"
+    service.apply(
+        "GOAL", target="resource-not-registered", exact_text=goal_text,
+        nonce=missing_nonce,
+        signature=sign_command(
+            secret, "GOAL", "resource-not-registered", goal_text,
+            missing_nonce,
+        ),
+    )
+
+    from jarvis_foundry.executive.autonomy import sync_owner_goals
+
+    objectives = sync_owner_goals(database)
+    by_target = {objective.metadata["target"]: objective for objective in objectives}
+    assert set(by_target) == {"GLOBAL", "resource-v8"}
+    assert by_target["resource-v8"].resource_id == "resource-v8"
+    assert by_target["GLOBAL"].resource_id is None
+    plan = build_plan(database, by_target["resource-v8"].objective_id, [
+        {"step_id": "execute", "description": "Update the registered worktree"},
+    ])
+    assert plan.steps[0].resource_id == "resource-v8"
+
+
 def test_runtime_continues_owner_goal_without_prompt_and_closes_it(tmp_path: Path) -> None:
     database, _ = _db(tmp_path)
     _goal(database, "Create the durable receipt. success: outcome receipt exists")

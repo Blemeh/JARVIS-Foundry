@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import sys
 import traceback
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
@@ -313,6 +314,39 @@ def test_unauthorized_runtime_model_override_rejected(config_path, monkeypatch):
     monkeypatch.setenv("JARVIS_RUNTIME_MODEL", "kimi-k2.7-code")
     with pytest.raises(ProviderConfigError, match="unauthorized runtime override"):
         load_provider_settings(config_path=config_path)
+
+
+def test_muse_contributor_route_rejects_unmetered_fallback_paths():
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+        api_key="test-only",
+    )
+    config = WorkerRuntimeConfig(
+        enabled=True,
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        provider_settings=settings,
+        provider_settings_pool=(settings,),
+        hermes={"allow_data_training_tiers_noninteractive": True},
+    )
+    config.validate()
+
+    paid_fallback = ProviderSettings(
+        provider="unauthorized-paid-provider",
+        model="unauthorized-model",
+        base_url="https://example.invalid/v1",
+        api_key="test-only",
+    )
+    with pytest.raises(ValueError, match="single-provider, single-model pool"):
+        replace(config, provider_settings_pool=(settings, paid_fallback)).validate()
+    with pytest.raises(ValueError, match="provider resilience must remain disabled"):
+        replace(config, provider_resilience_enabled=True).validate()
+    with pytest.raises(ValueError, match="OpenHands is not attached"):
+        replace(config, openhands={"enabled": True}).validate()
+    with pytest.raises(ValueError, match="authenticated owner training-consent policy"):
+        replace(config, hermes={}).validate()
 
 
 def test_new_mission_uses_muse_from_provider_config(config_path):

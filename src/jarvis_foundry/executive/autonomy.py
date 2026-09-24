@@ -906,7 +906,7 @@ def withdraw_objective_authority(
 
 
 def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_CONTROLLER) -> list[ObjectiveRecord]:
-    """Admit each authenticated active GOAL exactly once with full provenance."""
+    """Admit each authenticated active, resolvable GOAL with full provenance."""
     _gate(database, controller)
     state = rebuild_executive_state(database)
     active_records = list(active_directives_for(database, command_types=frozenset({"GOAL"})))
@@ -930,6 +930,17 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
             )
             continue
         metadata = _parse_goal_metadata(record)
+        target_resource_id = str(record.target or "").strip()
+        resource = (
+            database.row("resources", "resource_id", target_resource_id)
+            if target_resource_id and target_resource_id != "GLOBAL"
+            else None
+        )
+        if target_resource_id != "GLOBAL" and resource is None:
+            # A scoped GOAL without a registered resource cannot be safely
+            # converted into an unscoped objective that a runtime default may
+            # later execute against.
+            continue
         created.append(create_objective(
             database,
             goal_text,
@@ -938,6 +949,7 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
             priority=metadata["priority"], urgency=metadata["urgency"], deadline=metadata["deadline"],
             constraints=metadata["constraints"], success_criteria=metadata["success_criteria"],
             failure_criteria=metadata["failure_criteria"], dependencies=metadata["dependencies"],
+            resource_id=target_resource_id if resource is not None else None,
             owner_authority=str(getattr(record, "source_id", "owner") or "owner"),
             provenance={"directive_id": record.directive_id, "event_id": record.event_id,
                         "correlation_id": record.correlation_id, "nonce": record.nonce,
