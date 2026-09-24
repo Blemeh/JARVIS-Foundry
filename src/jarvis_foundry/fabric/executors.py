@@ -44,6 +44,7 @@ from ..connectors.github_write import (
     github_write_intent,
     reconcile_github_write_effect,
 )
+from ..platform.windows_subprocess import headless_run_kwargs
 from ..connectors.web_research import BrowserExecutionAuthorization
 from ..database import FoundryDatabase
 from ..effects import (
@@ -358,6 +359,7 @@ def git_commit(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
     observed = subprocess.run(
         ["git", "-C", str(worktree), "rev-parse", "HEAD"],
         capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+        **headless_run_kwargs(),
     )
     return {
         "claimed": "COMPLETED",
@@ -2090,6 +2092,7 @@ def system_diagnose(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     git = subprocess.run(
         ["git", "--version"], capture_output=True, text=True, encoding="utf-8",
         timeout=15, check=False,
+        **headless_run_kwargs(),
     )
     gh = shutil.which("gh")
     disk = shutil.disk_usage(ctx.owned_root)
@@ -2119,6 +2122,7 @@ def tests_run(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any
         [sys.executable, "-m", "pytest", str(resolved), "-q"],
         capture_output=True, text=True, encoding="utf-8", timeout=120, check=False,
         cwd=str(ctx.owned_root),
+        **headless_run_kwargs(),
     )
     return {
         "claimed": "COMPLETED" if result.returncode == 0 else "FAILED",
@@ -2440,6 +2444,7 @@ def script_run(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
         [sys.executable, str(resolved), *list(payload.get("args") or ())],
         capture_output=True, text=True, encoding="utf-8", timeout=60, check=False,
         cwd=str(ctx.owned_root),
+        **headless_run_kwargs(),
     )
     return {
         "claimed": "COMPLETED" if result.returncode == 0 else "FAILED",

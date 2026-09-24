@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 from ..control.redaction import contains_secret_like, redact_text
+from ..platform.windows_subprocess import headless_run_kwargs
 from .contract import ConnectorAttempt, ConnectorSpec
 
 _GITHUB_API_HOST = "api.github.com"
@@ -104,7 +105,9 @@ def _gh_api_transport(endpoint: str) -> tuple[int, bytes]:
     never sees a token. Exit codes map onto deterministic error codes.
     """
     result = subprocess.run(
-        ["gh", "api", endpoint], capture_output=True, timeout=30, check=False)
+        ["gh", "api", endpoint], capture_output=True, timeout=30, check=False,
+        **headless_run_kwargs(),
+    )
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace")
         if "rate limit" in stderr.lower():

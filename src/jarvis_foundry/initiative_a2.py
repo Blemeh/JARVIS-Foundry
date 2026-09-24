@@ -39,6 +39,7 @@ from .discovery_monitors import (
 from .events import Event, canonical_json
 from .executive.decisions import ExecutiveDecisionService, a2_precondition
 from .executive.scoring import A2GovernorBounds
+from .platform.windows_subprocess import headless_run_kwargs
 from .research_dossier import (
     ResearchDossierPolicy,
     research_candidate_dossier,
@@ -341,10 +342,12 @@ def _project_source_evidence(
         head = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
             capture_output=True, check=False, timeout=15,
+            **headless_run_kwargs(),
         )
         diff = subprocess.run(
             ["git", "-C", str(root), "diff", "--stat", "--no-ext-diff"],
             capture_output=True, check=False, timeout=15,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return None

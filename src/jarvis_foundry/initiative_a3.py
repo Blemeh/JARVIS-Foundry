@@ -40,6 +40,7 @@ from .mission.intent import (
     needs_for_candidate_class,
 )
 from .mission.verification import accepted_verifications
+from .platform.windows_subprocess import headless_run_kwargs
 
 
 _TERMINAL_OBJECTIVE = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"})
@@ -146,6 +147,7 @@ def _run_git(root: Path, *args: str, timeout: int = 60) -> str:
         errors="replace",
         timeout=timeout,
         check=False,
+        **headless_run_kwargs(),
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"git {' '.join(args)} failed")
@@ -404,6 +406,7 @@ def _prepare_worktree(
             capture_output=True,
             timeout=30,
             check=False,
+            **headless_run_kwargs(),
         ).returncode == 0
         args = ("worktree", "add", str(worktree), branch) if branch_exists else (
             "worktree", "add", "-b", branch, str(worktree), base_sha

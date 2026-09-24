@@ -4,9 +4,12 @@ import json
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+import jarvis_foundry.initiative_a2 as initiative_a2
+import jarvis_foundry.executive.intelligence as executive_intelligence
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_sources import SourceSpec
 from jarvis_foundry.executive.owner_context import seed_owner_context
@@ -14,10 +17,74 @@ from jarvis_foundry.fabric.catalog import record_outcome
 from jarvis_foundry.fabric.loop import seed_builtins
 from jarvis_foundry.fabric.model import VerifyVerdict
 from jarvis_foundry.initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
+from jarvis_foundry.runtime.provider_config import ProviderSettings
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.research_dossier import DOSSIER_CONTRACT
 from jarvis_foundry.runtime.worker_loop import run_cycle
+
+
+def test_project_source_git_inspection_uses_headless_child_processes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    root = tmp_path / "owner-project"
+    root.mkdir()
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        stdout = b"a" * 40 if "rev-parse" in command else b"1 file changed"
+        return SimpleNamespace(returncode=0, stdout=stdout)
+
+    monkeypatch.setattr(
+        initiative_a2, "headless_run_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+    monkeypatch.setattr(initiative_a2.subprocess, "run", fake_run)
+
+    result = initiative_a2._project_source_evidence(
+        {
+            "payload": {"project_id": "owner/project", "kind": "project_drift"},
+            "source_ref": str(root),
+        },
+        {},
+    )
+
+    assert result is not None
+    assert len(calls) == 2
+    assert [call[0][3:] for call in calls] == [
+        ["rev-parse", "HEAD"],
+        ["diff", "--stat", "--no-ext-diff"],
+    ]
+    for _, kwargs in calls:
+        assert kwargs["creationflags"] & 0x08000000
+        assert kwargs["capture_output"] is True
+        assert kwargs["check"] is False
+        assert kwargs["timeout"] == 15
+
+
+def test_executive_project_git_probe_uses_headless_child_process(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="main\n")
+
+    monkeypatch.setattr(
+        executive_intelligence, "headless_run_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+    monkeypatch.setattr(executive_intelligence.subprocess, "run", fake_run)
+
+    assert executive_intelligence._git(tmp_path, "branch", "--show-current") == "main"
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command[3:] == ["branch", "--show-current"]
+    assert kwargs["creationflags"] & 0x08000000
+    assert kwargs["capture_output"] is True
+    assert kwargs["timeout"] == 15
 
 
 def _project(root: Path) -> None:
@@ -305,10 +372,17 @@ def test_interrupted_research_reader_is_not_retried_on_restart(tmp_path: Path) -
 
 
 def test_runtime_config_forbids_a2_with_execution_flags() -> None:
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
     with pytest.raises(ValueError, match="zero-execution"):
         WorkerRuntimeConfig(
             initiative_a2_enabled=True,
             executive_selection_enabled=True,
+            provider_settings=settings,
+            provider_settings_pool=(settings,),
         ).validate()
 
 
@@ -318,9 +392,17 @@ def test_existing_worker_choke_point_returns_wait_before_mission_paths(tmp_path:
     home = tmp_path / "home"
     database = FoundryDatabase(home / "foundry.db")
     database.initialize()
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
     config = WorkerRuntimeConfig(
         enabled=True,
+        hermes={"allow_data_training_tiers_noninteractive": True},
         initiative_a2_enabled=True,
+        provider_settings=settings,
+        provider_settings_pool=(settings,),
         initiative_a2={
             "enabled": True,
             "sources": [{

@@ -3,7 +3,11 @@ from __future__ import annotations
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
+
+import jarvis_foundry.initiative_a3 as initiative_a3
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_candidates import ingest_observed_candidate
 from jarvis_foundry.discovery_sources import SourceSpec
@@ -26,8 +30,33 @@ from jarvis_foundry.initiative_a3 import (
     pending_initiative_decision,
 )
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.runtime.provider_config import ProviderSettings
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
+
+
+def test_a3_git_subprocess_uses_headless_flags(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="candidate/test\n", stderr="")
+
+    monkeypatch.setattr(
+        initiative_a3, "headless_run_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+    monkeypatch.setattr(initiative_a3.subprocess, "run", fake_run)
+
+    assert initiative_a3._run_git(tmp_path, "branch", "--show-current") == "candidate/test"
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command[3:] == ["branch", "--show-current"]
+    assert kwargs["creationflags"] & 0x08000000
+    assert kwargs["capture_output"] is True
+    assert kwargs["timeout"] == 60
 
 
 def _repo(root: Path, note: str = "improve reliability and fix regression with a bounded reversible local test") -> None:
@@ -38,6 +67,14 @@ def _repo(root: Path, note: str = "improve reliability and fix regression with a
     (root / "work.py").write_text(f"# TODO: {note}\nVALUE = 1\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(root), "add", "work.py"], check=True)
     subprocess.run(["git", "-C", str(root), "commit", "-qm", "seed owner repo"], check=True)
+
+
+def _muse_provider() -> ProviderSettings:
+    return ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
 
 
 def _ready_database(tmp_path: Path) -> FoundryDatabase:
@@ -397,6 +434,9 @@ def test_runtime_full_path_accepts_once_then_waits_without_public_writes(tmp_pat
     config = WorkerRuntimeConfig(
         enabled=True,
         status="ACTIVE",
+        provider_settings=_muse_provider(),
+        provider_settings_pool=(_muse_provider(),),
+        hermes={"allow_data_training_tiers_noninteractive": True},
         lab_scripted_hermes=True,
         lab_false_success_step_id=None,
         runtime_state_root=str(tmp_path / "runtime"),
@@ -449,6 +489,9 @@ def test_failed_build_never_passes_and_replay_creates_no_second_effect(tmp_path:
     config = WorkerRuntimeConfig(
         enabled=True,
         status="ACTIVE",
+        provider_settings=_muse_provider(),
+        provider_settings_pool=(_muse_provider(),),
+        hermes={"allow_data_training_tiers_noninteractive": True},
         lab_scripted_hermes=True,
         lab_false_success_step_id="02-execute",
         max_repairs=0,

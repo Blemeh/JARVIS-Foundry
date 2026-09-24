@@ -20,6 +20,7 @@ from typing import Any, Callable
 from .database import FoundryDatabase
 from .effects import COMPLETED, FAILED, FROZEN, effect_identity, effect_state
 from .events import Event
+from .platform.windows_subprocess import headless_run_kwargs
 from .v3_fault import V3InjectedFault, invoke_fault_hook
 
 
@@ -41,7 +42,7 @@ def ls_remote_head(remote: str | Path, ref: str = "main") -> str | None:
     """PROVIDER-SIDE truth: the remote's current head for ``ref``."""
     out = subprocess.run(
         ["git", "ls-remote", str(remote), ref],
-        capture_output=True, text=True, timeout=60)
+        capture_output=True, text=True, timeout=60, **headless_run_kwargs())
     if out.returncode != 0:
         raise RuntimeError(
             f"git ls-remote failed against {remote}: {out.stderr.strip()}")
@@ -63,12 +64,12 @@ def preflight_identity(*, worktree: str | Path, remote: str | Path,
         raise ValueError(f"not a git worktree: {worktree}")
     head = subprocess.run(
         ["git", "-C", str(worktree), "rev-parse", "HEAD"],
-        capture_output=True, text=True, timeout=30)
+        capture_output=True, text=True, timeout=30, **headless_run_kwargs())
     if head.returncode != 0:
         raise ValueError(f"cannot resolve HEAD in {worktree}: {head.stderr.strip()}")
     status = subprocess.run(
         ["git", "-C", str(worktree), "status", "--porcelain"],
-        capture_output=True, text=True, timeout=30)
+        capture_output=True, text=True, timeout=30, **headless_run_kwargs())
     dirty = bool(status.stdout.strip())
     if reject_dirty and dirty:
         raise ValueError(
@@ -281,7 +282,7 @@ class GitEffectAdapter:
                          branch: str) -> subprocess.CompletedProcess[str]:
         out = subprocess.run(
             ["git", "-C", str(worktree), "push", str(remote), branch],
-            capture_output=True, text=True, timeout=90)
+            capture_output=True, text=True, timeout=90, **headless_run_kwargs())
         if out.returncode != 0:
             raise RuntimeError(out.stderr.strip() or "git push failed")
         return out

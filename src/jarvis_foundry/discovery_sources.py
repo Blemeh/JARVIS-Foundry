@@ -710,10 +710,13 @@ def read_web_source(
 
 
 def _git_output(root: Path, *args: str) -> str | None:
+    from .platform.windows_subprocess import headless_run_kwargs
+
     try:
         completed = subprocess.run(
             ["git", "-C", str(root), *args], capture_output=True,
             check=False, timeout=15, text=False,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return None

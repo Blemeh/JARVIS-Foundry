@@ -8,6 +8,7 @@ from typing import Any, Mapping
 from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
+from ..platform.windows_subprocess import headless_run_kwargs
 from .catalog import (
     capability_metadata,
     capability_trust,
@@ -107,6 +108,7 @@ def _developer_recovery_intent(
             encoding="utf-8",
             timeout=30,
             check=False,
+            **headless_run_kwargs(),
         )
         if observed.returncode != 0 or not observed.stdout.strip():
             raise FabricError("git.push recovery intent requires a readable local HEAD")
@@ -835,10 +837,12 @@ def _verify_action(
             observed_branch = subprocess.run(
                 ["git", "-C", str(worktree), "branch", "--show-current"],
                 capture_output=True, text=True, timeout=30, check=False,
+                **headless_run_kwargs(),
             )
             observed_head = subprocess.run(
                 ["git", "-C", str(worktree), "rev-parse", "HEAD"],
                 capture_output=True, text=True, timeout=30, check=False,
+                **headless_run_kwargs(),
             )
         except OSError:
             return VerifyVerdict.MISMATCH

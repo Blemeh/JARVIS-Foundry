@@ -20,6 +20,7 @@ from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict, canonical_json
+from ..platform.windows_subprocess import headless_run_kwargs
 from ..v3_fault import invoke_fault_hook
 from .calibration import (
     merge_predicted_vs_actual,
@@ -60,6 +61,7 @@ def _git(root: Path, *args: str) -> str:
         errors="replace",
         timeout=15,
         check=False,
+        **headless_run_kwargs(),
     )
     if result.returncode != 0:
         return ""
