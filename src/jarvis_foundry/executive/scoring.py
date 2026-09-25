@@ -224,7 +224,11 @@ def _autonomous_wip(database: FoundryDatabase) -> int | None:
         return None
     return sum(
         objective.status in {"ACTIVE", "RUNNING", "BLOCKED", "WAITING"}
-        and str(objective.owner_authority or "owner").lower() != "owner"
+        and not (
+            objective.objective_id.startswith("owner-goal:")
+            or str(objective.owner_authority or "owner").strip().lower()
+            in {"owner", "local-owner"}
+        )
         for objective in state.objectives.values()
     )
 

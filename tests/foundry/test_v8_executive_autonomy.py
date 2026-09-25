@@ -92,6 +92,30 @@ def test_priority_vector_exposes_capability_blocker(tmp_path: Path) -> None:
     }
 
 
+def test_autonomous_wip_excludes_owner_goals_with_owner_id_authorities(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    create_objective(
+        database, "Local owner goal", objective_id="owner-goal:local-owner",
+        owner_authority="local-owner", status="BLOCKED",
+    )
+    create_objective(
+        database, "Staged owner goal", objective_id="owner-goal:staged-owner",
+        owner_authority="owner-v7-stage", status="ACTIVE",
+    )
+    create_objective(
+        database, "Explicit owner objective", objective_id="explicit-owner",
+        owner_authority="owner", status="ACTIVE",
+    )
+    create_objective(
+        database, "Autonomous objective", objective_id="autonomous-work",
+        owner_authority="initiative-a2", status="ACTIVE",
+    )
+
+    from jarvis_foundry.executive.scoring import _autonomous_wip
+
+    assert _autonomous_wip(database) == 1
+
+
 def test_owner_goal_autonomously_materializes_through_existing_portfolio(tmp_path: Path) -> None:
     database, _ = _db(tmp_path)
     _goal(database, "Create the durable receipt. success: outcome receipt exists")
