@@ -1784,9 +1784,10 @@ class MissionLoop:
             "directly and confirm each "
             "criterion. The .jarvis-result.json marker is a control record "
             "only; do not treat its claims as independent proof. "
-            "End your response with a line: "
-            "VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
-            "(NOT_TESTED when you cannot determine a verdict)."
+            "At the end, choose exactly one verdict and emit one line in "
+            "this format: VERDICT: PASS. Replace PASS with exactly one of "
+            "FAIL, BLOCKED, or NOT_TESTED when appropriate; do not list "
+            "the alternatives."
             f"{verifier_test_context}")
         remaining_seconds = _remaining_workforce_seconds()
         if remaining_seconds is not None:
