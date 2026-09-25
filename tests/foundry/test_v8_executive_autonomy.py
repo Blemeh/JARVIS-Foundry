@@ -10,6 +10,8 @@ from jarvis_foundry.command_center import build_snapshot
 from jarvis_foundry.control.capabilities import set_capability_state
 from jarvis_foundry.control.registration import inspect_git_resource, registration_event
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.events import Event
+from jarvis_foundry.evolution.executive_portfolio import register_work_item, set_work_status
 from jarvis_foundry.executive.autonomy import (
     build_plan,
     create_objective,
@@ -18,6 +20,8 @@ from jarvis_foundry.executive.autonomy import (
     rank_objectives,
     rebuild_executive_state,
     run_autonomy_cycle,
+    sync_owner_goals,
+    update_objective,
 )
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.paths import FoundryPaths
@@ -101,6 +105,174 @@ def test_owner_goal_autonomously_materializes_through_existing_portfolio(tmp_pat
     restarted = rebuild_executive_state(FoundryDatabase(database.path))
     assert restarted.objectives[cycle.objective_id].mission_ids == objective.mission_ids
     assert executive_autonomy_snapshot(database, include_briefing=False)["latest_cycle"]["cycle_id"] == "v8-cycle-1"
+
+
+def test_terminal_legacy_owner_goal_item_does_not_shadow_executive_step(tmp_path: Path) -> None:
+    database, _ = _db(tmp_path)
+    goal_text = "Create the durable receipt. success: outcome receipt exists"
+    _goal(database, goal_text)
+    directive = next(
+        event.payload
+        for event in database.events(event_types=("owner_directive.recorded",))
+        if event.payload.get("command_type") == "GOAL"
+    )
+    directive_id = str(directive["directive_id"])
+    legacy_mission_id = "mission-legacy-owner-goal"
+    database.append(Event.create(
+        "mission.created",
+        {
+            "mission_id": legacy_mission_id,
+            "objective": goal_text,
+            "resource_id": "resource-v8",
+            "state": "PLANNED",
+            "acceptance_criteria": ["legacy work completed"],
+            "next_action": "legacy owner-goal item",
+        },
+        source_type="test", source_id="test-suite",
+        idempotency_key=f"mission.created:{legacy_mission_id}",
+    ))
+    database.append(Event.create(
+        "mission.state_changed",
+        {
+            "mission_id": legacy_mission_id,
+            "state": "CANCELLED",
+            "next_action": "no eligible worker",
+        },
+        source_type="test", source_id="test-suite",
+        idempotency_key=f"mission.state_changed:{legacy_mission_id}:CANCELLED",
+    ))
+    legacy_item_id = f"owner-goal:{directive_id}"
+    register_work_item(
+        database,
+        item_id=legacy_item_id,
+        kind="OWNER_GOAL",
+        objective=goal_text,
+        goal_ids=(directive_id,),
+        resource_id="resource-v8",
+        mission_id=legacy_mission_id,
+    )
+    set_work_status(
+        database, legacy_item_id, "BLOCKED",
+        reason="legacy mission had no eligible worker",
+    )
+
+    cycle = run_autonomy_cycle(
+        database, cycle_id="legacy-terminal-owner-goal-cycle",
+        resource_id="resource-v8",
+    )
+
+    assert database.row("missions", "mission_id", legacy_mission_id)["state"] == "CANCELLED"
+    assert cycle.status == "MISSION_MATERIALIZED"
+    assert cycle.materialization["mission_id"]
+    assert len(cycle.mission_requests) == 1
+    assert cycle.mission_requests[0]["item_id"] == (
+        f"executive-step:{cycle.objective_id}:execute"
+    )
+    assert len(database.events(event_types=("provider.dispatch_attempted",))) == 0
+
+
+def test_owner_goal_plan_steps_get_distinct_items_without_reusing_legacy_identity(
+    tmp_path: Path,
+) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Complete two checks. success: first receipt; second receipt")
+    objective = sync_owner_goals(database)[0]
+    plan = build_plan(database, objective.objective_id, [
+        {
+            "step_id": "first",
+            "description": "Complete the first check",
+            "output_contract": ["first receipt exists"],
+        },
+        {
+            "step_id": "second",
+            "description": "Complete the second check",
+            "output_contract": ["second receipt exists"],
+        },
+    ])
+
+    requests = generate_missions_for_objective(
+        database, objective.objective_id, max_new=2,
+    )
+
+    assert len(requests) == 2
+    assert requests[0]["item_id"] == f"owner-goal:{objective.provenance['directive_id']}"
+    assert requests[1]["item_id"] == (
+        f"executive-step:{objective.objective_id}:second"
+    )
+    assert plan.plan_id == requests[0]["plan_id"] == requests[1]["plan_id"]
+
+
+def test_owner_goal_without_executable_contract_waits_without_creating_mission(
+    tmp_path: Path,
+) -> None:
+    database, _ = _db(tmp_path)
+    _goal(
+        database,
+        "V7 full autonomy: complete bounded local work end to end, keep "
+        "independent verification honest, prefer useful maintenance when no "
+        "mission work exists, and WAIT when no action has positive expected value.",
+    )
+
+    cycle = run_autonomy_cycle(
+        database, cycle_id="uncontracted-owner-goal-cycle",
+        resource_id="resource-v8",
+    )
+
+    assert cycle.status == "WAITING"
+    assert cycle.portfolio_decision["decision"] == "WAIT"
+    assert not cycle.mission_requests
+    with database.connect(readonly=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 0
+    blocked = database.events(event_types=("executive.mission_generation_blocked",))
+    assert any("no explicit executable" in event.payload.get("reason", "") for event in blocked)
+
+
+def test_invalid_intent_and_blank_recipe_do_not_make_a_contractless_goal_executable(
+    tmp_path: Path,
+) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Continue bounded maintenance. WAIT when no useful action exists.")
+    objective = sync_owner_goals(database)[0]
+    update_objective(
+        database, objective.objective_id,
+        {"metadata": {
+            "intent": {"unrecognized": "not a normalized intent"},
+            "recipe_id": "  ",
+        }},
+    )
+
+    cycle = run_autonomy_cycle(
+        database, cycle_id="invalid-owner-intent-cycle",
+        resource_id="resource-v8",
+    )
+
+    assert cycle.status == "WAITING"
+    assert cycle.portfolio_decision["decision"] == "WAIT"
+    assert not cycle.mission_requests
+    with database.connect(readonly=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 0
+
+
+def test_valid_owner_goal_intent_uses_cycle_resource_for_contract_validation(
+    tmp_path: Path,
+) -> None:
+    database, _ = _db(tmp_path)
+    _goal(database, "Resolve the registered resource check.")
+    objective = sync_owner_goals(database)[0]
+    update_objective(
+        database, objective.objective_id,
+        {"metadata": {"intent": {"needs": ["registered resource check"]}}},
+    )
+    build_plan(database, objective.objective_id, [
+        {"step_id": "execute", "description": objective.objective},
+    ])
+
+    requests = generate_missions_for_objective(
+        database, objective.objective_id, resource_id="resource-v8",
+    )
+
+    assert len(requests) == 1
+    assert requests[0]["step_id"] == "execute"
 
 
 def test_owner_goal_binds_only_registered_resource_targets(tmp_path: Path) -> None:
@@ -462,7 +634,12 @@ def test_command_center_exposes_additive_executive_projection(tmp_path: Path) ->
 
 def test_yaml_runtime_flag_is_opt_in(tmp_path: Path) -> None:
     config_file = tmp_path / "worker.yaml"
-    config_file.write_text("enabled: true\nexecutive:\n  autonomy_enabled: true\n", encoding="utf-8")
+    config_file.write_text(
+        "enabled: true\n"
+        "executive:\n  autonomy_enabled: true\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n",
+        encoding="utf-8",
+    )
     config = WorkerRuntimeConfig.from_yaml(config_file)
     assert config.executive_autonomy_enabled is True
     assert WorkerRuntimeConfig(enabled=True).executive_autonomy_enabled is False

@@ -26,6 +26,7 @@ _TERMINAL_OBJECTIVE = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"
 _ACTIVE_OBJECTIVE = frozenset({"ACTIVE", "BLOCKED", "WAITING", "PLANNING", "REGRESSED"})
 _MISSION_GENERATION_OBJECTIVE = frozenset({"ACTIVE", "PLANNING", "REGRESSED"})
 _TERMINAL_STEP = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
+_GENERIC_EXECUTIVE_OUTPUT_CONTRACTS = frozenset({"durable outcome evidence"})
 
 
 def _number(value: Any, default: float = 0.0) -> float:
@@ -1348,6 +1349,7 @@ def generate_missions_for_objective(
     objective_id: str,
     *,
     controller: str = SUPERVISOR_CONTROLLER,
+    resource_id: str | None = None,
     max_new: int = 1,
     source_id: str = "v8-executive-autonomy",
 ) -> list[dict[str, Any]]:
@@ -1381,8 +1383,9 @@ def generate_missions_for_objective(
         return []
     from ..evolution.executive_portfolio import register_work_item, rebuild_portfolio_state
     portfolio = rebuild_portfolio_state(database)
-    existing = set(portfolio.work_items)
+    existing = portfolio.work_items
     requests: list[dict[str, Any]] = []
+    requested_item_ids: set[str] = set()
     max_missions = int(_number(objective.budget.get("max_missions"), 0))
     if max_missions > 0 and len(objective.mission_ids) >= max_missions:
         _append(database, "executive.mission_generation_blocked", {"objective_id": objective_id, "reason": "objective mission budget exhausted", "max_missions": max_missions}, key=f"executive.mission_generation_blocked:budget:{objective_id}", source_id=source_id, correlation_id=objective_id)
@@ -1391,10 +1394,90 @@ def generate_missions_for_objective(
         if len(requests) >= max(0, int(max_new)):
             break
         directive_id = str(objective.provenance.get("directive_id") or "")
-        base_item_id = f"owner-goal:{directive_id}" if directive_id else f"executive-step:{objective_id}:{step.step_id}"
+        intent_block = objective.metadata.get("intent")
+        has_intent = False
+        if isinstance(intent_block, Mapping):
+            from ..mission.intent import MissionIntent
+
+            try:
+                MissionIntent.from_mapping(
+                    intent_block,
+                    intent_id=f"owner-goal:{objective_id}:{step.step_id}",
+                    resource_id=str(
+                        step.resource_id or objective.resource_id or resource_id or ""
+                    ),
+                    objective=step.description,
+                    source="executive-autonomy",
+                )
+                has_intent = True
+            except (TypeError, ValueError):
+                # Match the portfolio bridge's validation so invalid metadata
+                # cannot make a contractless owner goal look executable.
+                intent_block = None
+        has_recipe = bool(str(objective.metadata.get("recipe_id") or "").strip())
+        explicit_success_criteria = tuple(
+            str(value).strip()
+            for value in objective.success_criteria
+            if str(value).strip()
+            and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
+        )
+        explicit_step_contract = any(
+            str(value).strip()
+            and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
+            for value in step.output_contract
+        )
+        if directive_id and not (
+            explicit_success_criteria or has_recipe or has_intent
+            or explicit_step_contract
+        ):
+            _append(
+                database,
+                "executive.mission_generation_blocked",
+                {
+                    "objective_id": objective_id,
+                    "step_id": step.step_id,
+                    "reason": (
+                        "owner GOAL has no explicit executable success criteria, "
+                        "recipe, normalized intent, or plan-step output contract"
+                    ),
+                },
+                key=(
+                    f"executive.mission_generation_blocked:contract:"
+                    f"{objective_id}:{plan.plan_id}:{step.step_id}"
+                ),
+                source_id=source_id,
+                correlation_id=objective_id,
+            )
+            continue
+        legacy_item_id = f"owner-goal:{directive_id}" if directive_id else ""
+        step_item_id = f"executive-step:{objective_id}:{step.step_id}"
+        base_item_id = legacy_item_id or step_item_id
         suffix = f":retry:{step.retries}" if step.retries else ""
         item_id = f"{base_item_id}{suffix}"
-        if item_id in existing:
+        if item_id in requested_item_ids:
+            item_id = f"{step_item_id}{suffix}"
+        existing_item = existing.get(item_id)
+        if existing_item is not None:
+            existing_metadata = existing_item.metadata
+            belongs_to_step = (
+                str(existing_metadata.get("executive_objective_id") or "") == objective_id
+                and str(existing_metadata.get("executive_step_id") or "") == step.step_id
+            )
+            belongs_to_objective = (
+                str(existing_metadata.get("executive_objective_id") or "")
+                == objective_id
+            )
+            if belongs_to_step:
+                continue
+            if (
+                not belongs_to_objective
+                and existing_item.status not in {"BLOCKED", "FAILED", "CANCELLED"}
+            ):
+                continue
+            # Keep legacy history and same-objective work for other steps
+            # untouched while giving this READY step its own stable identity.
+            item_id = f"{step_item_id}{suffix}"
+        if item_id in existing or item_id in requested_item_ids:
             continue
         blockers = _capability_blockers(database, step)
         if blockers:
@@ -1415,13 +1498,14 @@ def generate_missions_for_objective(
             ))),
             "probation_capabilities": list(step.probation_capabilities),
             "goal_id": objective.provenance.get("directive_id"),
-            "success_criteria": list(objective.success_criteria),
+            "success_criteria": list(
+                explicit_success_criteria or step.output_contract
+            ),
             "constraints": list(objective.constraints),
             "time_horizon": objective.deadline,
             "recipe_id": objective.metadata.get("recipe_id"),
             "recipe_params": dict(objective.metadata.get("recipe_params") or {}),
         }
-        intent_block = objective.metadata.get("intent")
         if isinstance(intent_block, Mapping):
             # A normalized mission intent travels with the work item so the
             # materialization boundary can resolve the workflow/action plan
@@ -1430,7 +1514,7 @@ def generate_missions_for_objective(
         register_work_item(
             database, item_id=item_id, kind="OWNER_GOAL", objective=step.description,
             controller=controller, goal_ids=(directive_id or objective_id,), project_id=objective.metadata.get("project_id"),
-            resource_id=step.resource_id or objective.resource_id, expected_value=max(0.9, objective.expected_impact),
+            resource_id=step.resource_id or objective.resource_id or resource_id, expected_value=max(0.9, objective.expected_impact),
             urgency=max(0.2, objective.urgency), confidence=max(0.8, objective.confidence), effort=objective.effort,
             risk=objective.risk, reversibility=objective.reversibility, opportunity_cost=objective.opportunity_cost,
             dependencies=tuple(f"executive-step:{objective_id}:{dep}" for dep in step.dependencies),
@@ -1439,6 +1523,7 @@ def generate_missions_for_objective(
             metadata=item_metadata,
             source_type="supervisor", source_id=source_id,
         )
+        requested_item_ids.add(item_id)
         request = {"request_id": item_id, "objective_id": objective_id, "plan_id": plan.plan_id, "step_id": step.step_id, "item_id": item_id, "status": "REQUESTED"}
         _append(database, "executive.mission_requested", request, key=f"executive.mission_requested:{item_id}", source_id=source_id, correlation_id=objective_id)
         requests.append(request)
@@ -2576,7 +2661,10 @@ def run_autonomy_cycle(
     if selected_oid is not None:
         pre_continuation = decide_continuation(database, selected_oid, controller=controller)
         if pre_continuation.action != "CLOSE":
-            requests = generate_missions_for_objective(database, selected_oid, controller=controller, max_new=max_new_missions)
+            requests = generate_missions_for_objective(
+                database, selected_oid, controller=controller,
+                resource_id=resource_id, max_new=max_new_missions,
+            )
     portfolio_payload: dict[str, Any] = {"decision": "WAIT", "reason": "no objective selected"}
     materialization: dict[str, Any] = {"materialized": False, "mission_id": None, "blocked_reason": None}
     continuation: ContinuationDecision | None = None
