@@ -889,9 +889,38 @@ def a2_precondition(
             "DEFERRED", "CAPABILITY_UNAVAILABLE",
             "canonical Fabric capability requirements unavailable: " + reason,
         )
+    identity = requirement_set.get("candidate_identity") or {}
+    candidate_type = str(identity.get("candidate_type") or "").strip().lower()
+    expected_first_use_scope = (
+        "REGISTERED_PROJECT_READ_ONLY"
+        if candidate_type in {"project_drift", "project_staleness"}
+        else ""
+    )
+    qualification_ids = set(
+        str(value) for value in
+        (requirement_set.get("qualification_required_capability_ids") or ())
+    )
+    qualification_evidence = {
+        str(item.get("capability_id") or ""): item
+        for item in (requirement_set.get("capability_evidence") or ())
+        if isinstance(item, dict)
+    }
+    qualified_unknown = {
+        capability_id
+        for capability_id in qualification_ids
+        if expected_first_use_scope
+        and capability_states.get(capability_id) == "UNKNOWN"
+        and unattended_states.get(capability_id) == "ALLOWED"
+        and str(
+            qualification_evidence.get(capability_id, {}).get("qualification_scope") or ""
+        ) == expected_first_use_scope
+    }
     unavailable = [
         capability_id for capability_id, state in capability_states.items()
-        if state != "READY" or unattended_states.get(capability_id) != "ALLOWED"
+        if (
+            (state != "READY" and capability_id not in qualified_unknown)
+            or unattended_states.get(capability_id) != "ALLOWED"
+        )
     ]
     if unavailable:
         return (

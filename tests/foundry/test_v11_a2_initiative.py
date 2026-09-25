@@ -13,10 +13,16 @@ import jarvis_foundry.executive.intelligence as executive_intelligence
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_sources import SourceSpec
 from jarvis_foundry.executive.owner_context import seed_owner_context
-from jarvis_foundry.fabric.catalog import record_outcome
+from jarvis_foundry.executive.decisions import a2_precondition
+from jarvis_foundry.executive.scoring import CandidateScore, FactorValue
+from jarvis_foundry.fabric.catalog import get_spec, observed_readiness, record_outcome
 from jarvis_foundry.fabric.loop import seed_builtins
 from jarvis_foundry.fabric.model import VerifyVerdict
-from jarvis_foundry.initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
+from jarvis_foundry.initiative_a2 import (
+    InitiativeA2Bounds,
+    run_continuous_observation_cycle,
+    run_initiative_a2_cycle,
+)
 from jarvis_foundry.runtime.provider_config import ProviderSettings
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.paths import FoundryPaths
@@ -147,6 +153,73 @@ def _source(root: Path, *, interval: int = 1) -> SourceSpec:
 
 def _events(database: FoundryDatabase, event_type: str) -> int:
     return database.event_count(event_type=event_type)
+
+
+def test_a2_allows_only_declared_read_only_first_use_qualification() -> None:
+    capability_ids = ("cap.git.inspect", "cap.git.diff")
+    requirement_set = {
+        "executable": True,
+        "candidate_identity": {"candidate_type": "project_drift"},
+        "qualification_required_capability_ids": list(capability_ids),
+        "capability_evidence": [
+            {
+                "capability_id": capability_id,
+                "state": "UNKNOWN",
+                "unattended": "ALLOWED",
+                "qualification_scope": "REGISTERED_PROJECT_READ_ONLY",
+            }
+            for capability_id in capability_ids
+        ],
+    }
+    score = CandidateScore(
+        candidate_id="candidate-first-use",
+        objective="review registered project drift",
+        source="initiative_observation",
+        composite=0.8,
+        base_score=0.8,
+        goal_fit=0.8,
+        calibration_adjustment=0.0,
+        owner_priority=0.0,
+        factors=(
+            FactorValue("confidence", 0.8, "KNOWN", 0.0, 0.0),
+            FactorValue("reversibility", 0.9, "KNOWN", 0.0, 0.0),
+        ),
+        compared_goals=(),
+        a2_metadata={
+            "capability_states": dict.fromkeys(capability_ids, "UNKNOWN"),
+            "unattended_states": dict.fromkeys(capability_ids, "ALLOWED"),
+            "capability_requirement_set": requirement_set,
+            "dependencies": {"states": {}},
+            "autonomous_wip": 0,
+            "autonomous_wip_cap": 1,
+        },
+    )
+
+    assert a2_precondition(score) is None
+
+    mismatched = CandidateScore(
+        **{
+            field: getattr(score, field)
+            for field in CandidateScore.__dataclass_fields__
+            if field != "a2_metadata"
+        },
+        a2_metadata={
+            **score.a2_metadata,
+            "capability_requirement_set": {
+                **requirement_set,
+                "capability_evidence": [
+                    {
+                        "capability_id": capability_id,
+                        "state": "UNKNOWN",
+                        "unattended": "ALLOWED",
+                        "qualification_scope": "A3_ISOLATED_WORKTREE",
+                    }
+                    for capability_id in capability_ids
+                ],
+            },
+        },
+    )
+    assert a2_precondition(mismatched)[1] == "CAPABILITY_UNAVAILABLE"
 
 
 def test_cycle_researches_judges_waits_and_replays_without_execution(tmp_path: Path) -> None:
@@ -432,3 +505,50 @@ def test_existing_worker_choke_point_returns_wait_before_mission_paths(tmp_path:
     assert _events(database, "mission.created") == 0
     assert _events(database, "executive.objective_created") == 0
     assert not any(event.event_type.startswith("system.action_") for event in database.events())
+    assert _events(database, "fabric.capability.registered") > 0
+    for capability_id in ("cap.git.inspect", "cap.git.diff"):
+        assert get_spec(database, capability_id) is not None
+        assert observed_readiness(database, capability_id).state.value == "UNKNOWN"
+
+
+def test_fabric_change_reconsiders_candidates_without_waiting_for_project_poll(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    _project(root)
+    database = FoundryDatabase(tmp_path / "fabric-reevaluation.db")
+    database.initialize()
+    seed_builtins(database)
+    source = _source(root, interval=300)
+    now = "2026-09-25T20:00:00Z"
+
+    first = run_continuous_observation_cycle(
+        database, sources=(source,), now=now,
+    )
+    unchanged = run_continuous_observation_cycle(
+        database, sources=(source,), now=now,
+    )
+    assert first["cycles_dispatched"] == 1
+    assert unchanged["cycles_dispatched"] == 0
+
+    record_outcome(
+        database,
+        "cap.git.inspect",
+        success=True,
+        verified=VerifyVerdict.MATCH,
+        note="verified Fabric readiness change",
+        at=now,
+    )
+    reevaluated = run_continuous_observation_cycle(
+        database, sources=(source,), now=now,
+    )
+
+    assert reevaluated["cycles_dispatched"] == 1
+    assert reevaluated["fabric_triggered_reevaluation"] is True
+    assert reevaluated["research_triggered_reevaluation"] is False
+    completed = next(
+        event.payload for event in reversed(database.events(
+            event_types=("initiative.cycle_completed",), readonly=True,
+        )) if event.payload.get("cycle_id") == reevaluated["cycle_id"]
+    )
+    assert completed["metrics"]["fabric_catalog_changed"] is True

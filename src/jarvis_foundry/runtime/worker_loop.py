@@ -1235,6 +1235,12 @@ def run_cycle(
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
         invoke_fault_hook(fault_hook, "post worker_loop.cycle_started")
+        # Candidate selection resolves requirements from the canonical Fabric
+        # Catalog. Register its built-in specs before A2/A3 observation; their
+        # readiness remains UNKNOWN until a real Fabric action is verified.
+        from ..fabric.loop import seed_builtins
+
+        seed_builtins(database)
         from ..effects import discover_reconcilable_developer_effects
 
         developer_effect_recovery = discover_reconcilable_developer_effects(database)
@@ -1567,11 +1573,21 @@ def run_cycle(
             ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
             if not sources:
                 from ..executive.intelligence import observation_sources_from_registered_projects
+                required_source_capabilities = raw.get("required_capabilities")
+                configured_policy = raw.get("policy") or {}
+                if (
+                    required_source_capabilities is None
+                    and isinstance(configured_policy, dict)
+                    and "required_fabric_capabilities" in configured_policy
+                ):
+                    required_source_capabilities = configured_policy.get(
+                        "required_fabric_capabilities"
+                    )
+                if not isinstance(required_source_capabilities, (list, tuple)):
+                    required_source_capabilities = ()
                 sources = observation_sources_from_registered_projects(
                     database,
-                    required_capabilities=tuple(
-                        A3AdmissionPolicy().required_fabric_capabilities
-                    ),
+                    required_capabilities=tuple(required_source_capabilities),
                 )
             if not sources:
                 record_product_wait_diagnosis(

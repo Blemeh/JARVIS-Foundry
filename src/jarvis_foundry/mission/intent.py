@@ -76,6 +76,7 @@ NEED_SPREADSHEET_COMPOSE = "spreadsheet.compose"
 NEED_REPOSITORY_PRESERVE = "repository.preserve"
 NEED_REPOSITORY_PUBLISH = "repository.publish"
 NEED_REPOSITORY_INSPECT = "repository.inspect"
+NEED_REPOSITORY_DIFF = "repository.diff"
 NEED_ARTIFACT_STAGE = "artifact.stage_to_repository"
 NEED_NOTE_WRITE = "note.bounded_write"
 NEED_FILE_HASH = "compute.file_hash"
@@ -87,7 +88,7 @@ NEED_VOCABULARY = frozenset({
     NEED_WEB_RESEARCH, NEED_WEB_AUTHENTICATED, NEED_ARTIFACT, NEED_NATIVE_VERIFY,
     NEED_DESKTOP_APP, NEED_SPREADSHEET_EDIT, NEED_DOCUMENT_COMPOSE,
     NEED_SPREADSHEET_COMPOSE, NEED_REPOSITORY_PRESERVE, NEED_REPOSITORY_PUBLISH,
-    NEED_REPOSITORY_INSPECT, NEED_ARTIFACT_STAGE, NEED_NOTE_WRITE,
+    NEED_REPOSITORY_INSPECT, NEED_REPOSITORY_DIFF, NEED_ARTIFACT_STAGE, NEED_NOTE_WRITE,
     NEED_FILE_HASH, NEED_FILE_READ, NEED_FILE_WRITE, NEED_SYSTEM_DIAGNOSE,
 })
 
@@ -113,6 +114,10 @@ _NEED_ACTIONS: dict[str, dict[str, Any]] = {
         "action_kind": "git.inspect",
         "payload": {"worktree": "$inputs.owned_repository_root"},
     },
+    NEED_REPOSITORY_DIFF: {
+        "action_kind": "git.diff",
+        "payload": {"worktree": "$inputs.owned_repository_root"},
+    },
     NEED_SYSTEM_DIAGNOSE: {
         "action_kind": "system.diagnose",
         "payload": {},
@@ -131,7 +136,7 @@ _ACTIONS_MISSING = object()
 CANDIDATE_NEEDS: dict[str, tuple[str, ...]] = {
     # Registered-project review / investigation: read the repository state.
     "project_staleness": (NEED_REPOSITORY_INSPECT,),
-    "project_drift": (NEED_REPOSITORY_INSPECT,),
+    "project_drift": (NEED_REPOSITORY_INSPECT, NEED_REPOSITORY_DIFF),
     # Bounded local diagnosis needs no supplied role facts.
     "world_signal": (NEED_SYSTEM_DIAGNOSE,),
 }

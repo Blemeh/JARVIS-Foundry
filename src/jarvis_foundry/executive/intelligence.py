@@ -631,7 +631,7 @@ def discover_and_admit_next_work(
     prepare_executive_observation(database, cycle_id=cycle_id)
     resolved_sources = tuple(sources) or observation_sources_from_registered_projects(
         database,
-        required_capabilities=tuple(required_capabilities or policy.required_fabric_capabilities),
+        required_capabilities=tuple(required_capabilities),
     )
     if not resolved_sources:
         reason = "V11 A3 has no registered project sources"
