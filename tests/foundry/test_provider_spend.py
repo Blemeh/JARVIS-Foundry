@@ -246,7 +246,7 @@ def test_reservation_settlement_and_next_reservation_account_cumulatively(monkey
     gate = gateway(db)
     first_id = str(uuid.uuid4())
     first_reserved = gate._reserve(first_id, "a" * 64, 128, 64)
-    assert first_reserved == Decimal("1.000000")
+    assert first_reserved == spend._worst_case_cost(128, 64)
 
     cost = spend._money(
         Decimal(120)
@@ -261,7 +261,15 @@ def test_reservation_settlement_and_next_reservation_account_cumulatively(monkey
         overrun=False,
     )
     second_reserved = gate._reserve(str(uuid.uuid4()), "b" * 64, 128, 64)
-    assert second_reserved == Decimal("0.999973")
+    assert second_reserved == spend._worst_case_cost(128, 64)
+    reservations = [
+        event for event in db.events()
+        if event.event_type == "provider.compute_reserved"
+    ]
+    assert all(
+        event.payload["reservation_policy"] == spend.REQUEST_BOUND_RESERVATION_POLICY
+        for event in reservations
+    )
 
 
 def test_corrupt_negative_settlement_blocks_following_provider_dispatch(monkeypatch, db):
@@ -296,33 +304,98 @@ def test_corrupt_negative_settlement_blocks_following_provider_dispatch(monkeypa
         gate._reserve(str(uuid.uuid4()), "f" * 64, 128, 64)
 
 
-def test_unknown_usage_holds_remaining_budget_and_blocks_next_dispatch(monkeypatch, db):
+@pytest.mark.parametrize("first_status", [200, 429])
+def test_unknown_usage_holds_request_bound_and_allows_next_dispatch(monkeypatch, db, first_status):
     install_policy(monkeypatch)
     calls: list[bytes] = []
 
     def transport(body, _headers):
         calls.append(body)
+        if len(calls) == 2:
+            return spend.UpstreamResponse(
+                200,
+                {"Content-Type": "application/json"},
+                b'{"status":"completed","usage":{"input_tokens":12,"output_tokens":8,"total_tokens":20}}',
+            )
         return spend.UpstreamResponse(
-            200,
+            first_status,
             {"Content-Type": "application/json"},
-            b'{"status":"completed","usage":null}',
+            b'{"status":"completed","usage":null}' if first_status == 200 else b'{"error":"rate_limited"}',
         )
 
     gate = gateway(db, transport=transport)
     base_url = gate.start()
     try:
-        with post_to_gateway(base_url, gate.local_api_key, request_body()) as response:
-            assert response.status == 200
+        if first_status == 200:
+            with post_to_gateway(base_url, gate.local_api_key, request_body()) as response:
+                assert response.status == 200
+        else:
+            with pytest.raises(urllib.error.HTTPError) as failed:
+                post_to_gateway(base_url, gate.local_api_key, request_body())
+            assert failed.value.code == 429
         assert len(calls) == 1
 
-        with pytest.raises(urllib.error.HTTPError) as blocked:
-            post_to_gateway(base_url, gate.local_api_key, request_body("next request"))
-        assert blocked.value.code == 429
-        assert len(calls) == 1
+        with post_to_gateway(base_url, gate.local_api_key, request_body("next request")) as response:
+            assert response.status == 200
+        assert len(calls) == 2
     finally:
         gate.close()
 
-    assert [event.event_type for event in db.events()].count("provider.compute_held") == 1
+    events = db.events()
+    assert [event.event_type for event in events].count("provider.compute_held") == 1
+    first_reservation = next(event for event in events if event.event_type == "provider.compute_reserved")
+    assert first_reservation.payload["reserved_usd"] == first_reservation.payload["request_worst_case_usd"]
+    with db.transaction() as connection:
+        states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
+    assert sorted(state["status"] for state in states.values()) == ["held", "settled"]
+    held = next(state for state in states.values() if state["status"] == "held")
+    assert spend._accounted_exposure(held) == Decimal(first_reservation.payload["request_worst_case_usd"])
+
+
+def test_legacy_full_remaining_hold_uses_recorded_request_bound(monkeypatch, db):
+    install_policy(monkeypatch)
+    gate = gateway(db)
+    legacy_id = str(uuid.uuid4())
+    bound = spend._worst_case_cost(64_560, 4_096)
+    db.append(Event.create(
+        "provider.compute_reserved",
+        {
+            "spend_scope_id": spend.SPEND_SCOPE_ID,
+            "request_id": legacy_id,
+            "request_sha256": "a" * 64,
+            "provider": spend.AUTHORIZED_PROVIDER,
+            "model": spend.AUTHORIZED_MODEL,
+            "reserved_usd": "1.000000",
+            "request_bytes": 64_560,
+            "max_output_tokens": 4_096,
+            "request_worst_case_usd": format(bound, "f"),
+            "ceiling_usd": "1.00",
+        },
+        source_type="provider_spend_gate", source_id=spend.SPEND_SCOPE_ID,
+    ))
+    gate._hold(legacy_id, Decimal("1.000000"), "upstream response lacked authoritative usage")
+
+    with db.transaction() as connection:
+        states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
+    assert states[legacy_id]["reserved_usd"] == Decimal("1.000000")
+    assert spend._accounted_exposure(states[legacy_id]) == bound
+    next_bound = spend._worst_case_cost(128, 64)
+    assert gate._reserve(str(uuid.uuid4()), "b" * 64, 128, 64) == next_bound
+
+
+def test_unknown_holds_accumulate_until_next_request_cannot_fit(monkeypatch, db):
+    install_policy(monkeypatch)
+    gate = gateway(db)
+    bound = spend._worst_case_cost(600_000, 4_096)
+    assert bound * 3 < spend.SPEND_CEILING_USD < bound * 4
+    for _ in range(3):
+        request_id = str(uuid.uuid4())
+        reserved = gate._reserve(request_id, "c" * 64, 600_000, 4_096)
+        assert reserved == bound
+        gate._hold(request_id, reserved, "usage unavailable")
+    with pytest.raises(spend.ProviderSpendBlocked, match="worst-case cost exceeds"):
+        gate._reserve(str(uuid.uuid4()), "d" * 64, 600_000, 4_096)
+    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 3
 
 
 def test_request_that_cannot_fit_remaining_budget_never_reaches_transport(monkeypatch, db):
@@ -346,7 +419,7 @@ def test_request_that_cannot_fit_remaining_budget_never_reaches_transport(monkey
         prior_id,
         reservation,
         spend.SpendUsage(None, None, 4_000_000, high_cost),
-        overrun=False,
+        overrun=True,
     )
 
     base_url = gate.start()

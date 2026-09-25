@@ -1,10 +1,9 @@
 """Authenticated, run-scoped spend gate for the OpenCode Go Muse Spark route.
 
 Every Hermes model request must pass through this loopback gateway.  It reserves
-the full remaining owner-authorized ceiling in the append-only Foundry event
-ledger before opening an upstream connection.  Successful responses release
-the unused part only when they contain parseable provider token usage; ambiguous
-responses keep the whole reservation charged.
+that request's conservative upper bound in the append-only Foundry event ledger
+before opening an upstream connection.  Successful responses settle against
+provider token usage; ambiguous responses keep the request bound charged.
 """
 from __future__ import annotations
 
@@ -37,6 +36,7 @@ AUTHORIZED_API_MODE = "codex_responses"
 AUTHORIZED_BASE_URL = "https://opencode.ai/zen/go/v1"
 SPEND_SCOPE_ID = "jarvis-sustained-autonomy-2026-09-24-opencode-go-muse-spark-1.3-contributor"
 SPEND_CEILING_USD = Decimal("1.00")
+REQUEST_BOUND_RESERVATION_POLICY = "request_bound_v1"
 MAX_OUTPUT_TOKENS = 4096
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -148,6 +148,20 @@ def _require_owner_compute_policy(database: FoundryDatabase) -> None:
             raise ProviderSpendBlocked("an active unclassified owner constraint may restrict model spending")
 
 
+def _accounted_exposure(state: dict[str, Any]) -> Decimal:
+    status = state["status"]
+    if status == "settled":
+        return state["cost_usd"]
+    if status == "held":
+        # A legacy reservation may have held the entire remaining ceiling.
+        # Its validated request bound is the maximum uncertain exposure, while
+        # the original reservation and hold events remain untouched.
+        return state["request_worst_case_usd"]
+    if status == "reserved":
+        return state["reserved_usd"]
+    raise ProviderSpendBlocked("provider-compute ledger has an invalid request state")
+
+
 def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
     states: dict[str, dict[str, Any]] = {}
     rows = connection.execute(
@@ -207,6 +221,18 @@ def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
                 ) from error
             request_bytes = payload.get("request_bytes")
             max_output = payload.get("max_output_tokens")
+            remaining = _money(
+                SPEND_CEILING_USD
+                - sum(_accounted_exposure(state) for state in states.values())
+            )
+            reservation_policy = payload.get("reservation_policy")
+            if reservation_policy is None:
+                # Preserve the original full-remaining reservation contract.
+                reservation_matches = reserved == remaining
+            elif reservation_policy == REQUEST_BOUND_RESERVATION_POLICY:
+                reservation_matches = reserved == worst_case and worst_case <= remaining
+            else:
+                reservation_matches = False
             if (
                 not re.fullmatch(r"[0-9a-f]{64}", str(payload.get("request_sha256", "")))
                 or not isinstance(request_bytes, int)
@@ -222,12 +248,7 @@ def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
                 or not Decimal("0") < worst_case <= reserved
                 or worst_case != _worst_case_cost(request_bytes, max_output)
                 or ceiling != SPEND_CEILING_USD
-                or reserved != _money(
-                    SPEND_CEILING_USD - sum(
-                        state.get("cost_usd", state.get("reserved_usd", Decimal("0")))
-                        for state in states.values()
-                    )
-                )
+                or not reservation_matches
                 or any(state.get("status") == "reserved" for state in states.values())
             ):
                 raise ProviderSpendBlocked(
@@ -632,12 +653,12 @@ class OpenCodeSpendGateway:
             upstream = self._upstream_transport(normalized, handler.headers)
         except Exception:
             self._hold(request_id, reserved, "upstream transport result is ambiguous")
-            self._respond(handler, 502, {"error": "upstream result is ambiguous; remaining authorized spend is held"})
+            self._respond(handler, 502, {"error": "upstream result is ambiguous; request spend bound is held"})
             return
 
         if 300 <= upstream.status < 400:
             self._hold(request_id, reserved, "upstream redirect rejected")
-            self._respond(handler, 502, {"error": "upstream redirect rejected; remaining authorized spend is held"})
+            self._respond(handler, 502, {"error": "upstream redirect rejected; request spend bound is held"})
             return
         usage = parse_provider_usage(upstream.body, upstream.headers.get("Content-Type", ""))
         if not 200 <= upstream.status < 300 or usage is None:
@@ -651,7 +672,7 @@ class OpenCodeSpendGateway:
             except Exception:
                 _LOG.exception("provider usage settlement failed; full request reservation remains charged")
                 self._hold(request_id, reserved, "provider usage settlement could not be recorded")
-                self._respond(handler, 503, {"error": "provider usage could not be recorded; remaining authorized spend is held"})
+                self._respond(handler, 503, {"error": "provider usage could not be recorded; request spend bound is held"})
                 return
 
         safe_body = _redact_provider_secret(upstream.body, self.settings.api_key or "")
@@ -675,10 +696,7 @@ class OpenCodeSpendGateway:
         with self.database.transaction() as connection:
             _require_owner_compute_policy(self.database)
             states = _event_usage(connection, SPEND_SCOPE_ID)
-            total = sum(
-                state.get("cost_usd", state.get("reserved_usd", Decimal("0")))
-                for state in states.values()
-            )
+            total = sum(_accounted_exposure(state) for state in states.values())
             inflight = [state for state in states.values() if state.get("status") == "reserved"]
             remaining = SPEND_CEILING_USD - total
             if remaining <= 0:
@@ -693,7 +711,8 @@ class OpenCodeSpendGateway:
                 "request_sha256": request_hash,
                 "provider": AUTHORIZED_PROVIDER,
                 "model": AUTHORIZED_MODEL,
-                "reserved_usd": format(_money(remaining), "f"),
+                "reserved_usd": format(upper_bound, "f"),
+                "reservation_policy": REQUEST_BOUND_RESERVATION_POLICY,
                 "request_bytes": request_bytes,
                 "max_output_tokens": max_output,
                 "request_worst_case_usd": format(upper_bound, "f"),
@@ -706,7 +725,7 @@ class OpenCodeSpendGateway:
                 payload,
                 f"provider.compute_reserved:{SPEND_SCOPE_ID}:{request_id}",
             )
-            return _money(remaining)
+            return upper_bound
 
     def _hold(self, request_id: str, reserved: Decimal, reason: str) -> None:
         try:
