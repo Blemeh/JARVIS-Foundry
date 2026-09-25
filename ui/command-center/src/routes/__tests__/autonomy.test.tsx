@@ -69,6 +69,11 @@ const projection = (overrides: Partial<AutonomyProjection> = {}): AutonomyProjec
     state: "WAIT", supervisor_state: "RUNNING", trust_state: "SUSPENDED",
     cycle_id: "cycle-1", stage: "COMPLETE", last_observation_cycle: "2026-09-02T10:05:00Z",
     next_wake: "2026-09-02T10:20:00Z", wait_reason: "No additional eligible work survived policy.",
+    owner_action: {
+      value: null, status: "AVAILABLE", items: [], count: 0,
+      open_count: 0, scan_truncated: false, items_truncated: false,
+      scan_limit: 500,
+    },
     active_wip: { value: null, status: "UNAVAILABLE" },
   },
   funnel: {
@@ -109,6 +114,43 @@ describe("V11 Autonomy Command Center", () => {
     expect(screen.getByText("DEFERRED")).toBeInTheDocument();
     expect(screen.getByText("Provider unavailable; deferred by policy")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "event source-2" })).toHaveAttribute("href", "/timeline?event=source-2");
+  });
+
+  it("shows the Executive recommendation and options for open owner escalations", () => {
+    const ownerAction = {
+      escalation_id: "escalation:retry-budget",
+      objective_id: "objective-retry",
+      decision: "retry budget exhausted",
+      why: "The execute step exhausted its bounded retry budget.",
+      recommendation: "Suspend until owner direction or a materially different capability is available.",
+      options: ["change strategy", "grant capability", "suspend objective"],
+      delay_consequence: "Downstream work remains blocked.",
+      created_at: "2026-09-25T06:20:00Z",
+      event_id: "escalation-event-1",
+    };
+    const current = projection();
+    renderAutonomy(<AutonomyView
+      projection={projection({
+        executive: {
+          ...current.executive,
+          owner_action: {
+          value: ownerAction, status: "AVAILABLE", items: [ownerAction],
+            count: 1, open_count: 1, scan_truncated: false,
+            items_truncated: false, scan_limit: 500,
+          },
+        },
+      })}
+      filter="all"
+      onFilter={() => undefined}
+    />);
+    const panel = screen.getByRole("region", { name: "Owner direction" });
+    expect(within(panel).getByText("The execute step exhausted its bounded retry budget.")).toBeInTheDocument();
+    expect(within(panel).getByText(ownerAction.recommendation)).toBeInTheDocument();
+    expect(within(panel).getByText("grant capability")).toBeInTheDocument();
+    expect(within(panel).getByText(/If deferred: Downstream work remains blocked\./)).toBeInTheDocument();
+    expect(within(panel).getByRole("link", { name: "View escalation record" }))
+      .toHaveAttribute("href", "/timeline?event=escalation-event-1");
+    expect(within(panel).queryByText(/no durable owner requirement is recorded/i)).not.toBeInTheDocument();
   });
 
   it("keeps every candidate provenance source inspectable", () => {

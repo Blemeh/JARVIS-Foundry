@@ -115,3 +115,40 @@ def test_fallback_chain_restart_remains_legal(tmp_path):
             "WHERE run_id = 'r4'").fetchone()
     assert row[0] == "vertex_ai"       # the completed provider identity
     assert row[1] is None              # stale attempt failure cleared
+
+
+def test_failure_result_is_projected_and_cleared_when_run_retries(tmp_path):
+    database = make_db(tmp_path)
+    database.append(started("r5", "s:r5"))
+    database.append(ev(
+        "agent_run.failed",
+        {
+            "run_id": "r5",
+            "failure_class": "worker_runtime_failure",
+            "result": {
+                "status": "FAILED",
+                "error_class": "worker_runtime_failure",
+                "evidence": ["Hermes exited with code 2"],
+            },
+        },
+        "f:r5:diagnostic",
+    ))
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT status, failure_class, result_json FROM agent_runs "
+            "WHERE run_id = 'r5'").fetchone()
+    assert row[0] == "FAILED"
+    assert row[1] == "worker_runtime_failure"
+    assert row[2] == (
+        '{"error_class":"worker_runtime_failure",'
+        '"evidence":["Hermes exited with code 2"],"status":"FAILED"}'
+    )
+
+    database.append(started("r5", "s2:r5", manifest_hash="h2"))
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT status, failure_class, result_json FROM agent_runs "
+            "WHERE run_id = 'r5'").fetchone()
+    assert row[0] == "RUNNING"
+    assert row[1] is None
+    assert row[2] is None

@@ -1,9 +1,11 @@
-"""Authenticated, run-scoped spend gate for the OpenCode Go Muse Spark route.
+"""Authenticated, request-bounded gateway for the OpenCode Go Muse Spark route.
 
-Every Hermes model request must pass through this loopback gateway.  It reserves
-that request's conservative upper bound in the append-only Foundry event ledger
-before opening an upstream connection.  Successful responses settle against
-provider token usage; ambiguous responses keep the request bound charged.
+Every Hermes model request must pass through this loopback gateway. It records
+that request's conservative usage-equivalent bound in the append-only Foundry
+event ledger before opening an upstream connection. Successful responses
+settle against provider token usage; ambiguous responses retain the request
+bound as evidence. Included OpenCode Go quota is authorized by owner policy and
+is not subject to a dollar-equivalent cumulative ceiling.
 """
 from __future__ import annotations
 
@@ -35,8 +37,9 @@ AUTHORIZED_MODEL = "muse-spark-1.3-contributor"
 AUTHORIZED_API_MODE = "codex_responses"
 AUTHORIZED_BASE_URL = "https://opencode.ai/zen/go/v1"
 SPEND_SCOPE_ID = "jarvis-sustained-autonomy-2026-09-24-opencode-go-muse-spark-1.3-contributor"
-SPEND_CEILING_USD = Decimal("1.00")
+LEGACY_SPEND_CEILING_USD = Decimal("1.00")
 REQUEST_BOUND_RESERVATION_POLICY = "request_bound_v1"
+INCLUDED_SUBSCRIPTION_USAGE_MODE = "included_subscription"
 MAX_OUTPUT_TOKENS = 4096
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -48,7 +51,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class ProviderSpendBlocked(RuntimeError):
-    """The owner policy or cumulative model-compute ceiling blocks a request."""
+    """Owner policy or a bounded-request safety check blocks a request."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +99,10 @@ def _require_owner_compute_policy(database: FoundryDatabase) -> None:
         or metadata.get("provider") != AUTHORIZED_PROVIDER
         or metadata.get("model") != AUTHORIZED_MODEL
         or metadata.get("spend_scope_id") != SPEND_SCOPE_ID
-        or str(metadata.get("spend_ceiling_usd")) != "1.00"
+        or metadata.get("usage_mode") != INCLUDED_SUBSCRIPTION_USAGE_MODE
+        or metadata.get("included_subscription_usage_allowed") is not True
+        or metadata.get("additional_billable_charges_allowed") is not False
+        or "spend_ceiling_usd" in metadata
         or metadata.get("fallbacks_allowed") is not False
         or metadata.get("use_credit_balance_fallback_allowed") is not False
         or metadata.get("fail_closed") is not True
@@ -210,27 +216,54 @@ def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
                 raise ProviderSpendBlocked(
                     "provider-compute ledger has a duplicate reservation"
                 )
+            usage_mode = payload.get("usage_mode")
             try:
                 reserved = Decimal(str(payload["reserved_usd"]))
                 worst_case = Decimal(str(payload["request_worst_case_usd"]))
-                ceiling = Decimal(str(payload["ceiling_usd"]))
             except (KeyError, ArithmeticError, ValueError) as error:
                 raise ProviderSpendBlocked(
                     "provider-compute reservation has malformed accounting values"
                 ) from error
             request_bytes = payload.get("request_bytes")
             max_output = payload.get("max_output_tokens")
-            remaining = _money(
-                SPEND_CEILING_USD
-                - sum(_accounted_exposure(state) for state in states.values())
-            )
             reservation_policy = payload.get("reservation_policy")
-            if reservation_policy is None:
-                # Preserve the original full-remaining reservation contract.
-                reservation_matches = reserved == remaining
-            elif reservation_policy == REQUEST_BOUND_RESERVATION_POLICY:
-                reservation_matches = reserved == worst_case and worst_case <= remaining
+            if usage_mode == INCLUDED_SUBSCRIPTION_USAGE_MODE:
+                # New records describe included quota. They remain request
+                # bounded and auditable, but are deliberately independent of
+                # any historical dollar-equivalent ceiling or held reservation.
+                ceiling_valid = "ceiling_usd" not in payload
+                reservation_matches = (
+                    reservation_policy == REQUEST_BOUND_RESERVATION_POLICY
+                    and reserved == worst_case
+                )
+                ceiling = None
+            elif usage_mode is None:
+                # Replay the old $1 policy exactly as recorded. Historical
+                # reservations and holds remain valid evidence, but they do
+                # not consume included subscription quota.
+                try:
+                    ceiling = Decimal(str(payload["ceiling_usd"]))
+                except (KeyError, ArithmeticError, ValueError) as error:
+                    raise ProviderSpendBlocked(
+                        "legacy provider-compute reservation has malformed ceiling"
+                    ) from error
+                legacy_exposure = sum(
+                    _accounted_exposure(state)
+                    for state in states.values()
+                    if state.get("usage_mode") is None
+                )
+                remaining = _money(LEGACY_SPEND_CEILING_USD - legacy_exposure)
+                if reservation_policy is None:
+                    # Preserve the original full-remaining reservation contract.
+                    reservation_matches = reserved == remaining
+                elif reservation_policy == REQUEST_BOUND_RESERVATION_POLICY:
+                    reservation_matches = reserved == worst_case and worst_case <= remaining
+                else:
+                    reservation_matches = False
+                ceiling_valid = ceiling == LEGACY_SPEND_CEILING_USD
             else:
+                ceiling = None
+                ceiling_valid = False
                 reservation_matches = False
             if (
                 not re.fullmatch(r"[0-9a-f]{64}", str(payload.get("request_sha256", "")))
@@ -242,11 +275,9 @@ def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
                 or not 1 <= max_output <= MAX_OUTPUT_TOKENS
                 or not reserved.is_finite()
                 or not worst_case.is_finite()
-                or not ceiling.is_finite()
-                or not Decimal("0") < reserved <= SPEND_CEILING_USD
                 or not Decimal("0") < worst_case <= reserved
                 or worst_case != _worst_case_cost(request_bytes, max_output)
-                or ceiling != SPEND_CEILING_USD
+                or not ceiling_valid
                 or not reservation_matches
             ):
                 raise ProviderSpendBlocked(
@@ -256,6 +287,7 @@ def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
                 "status": "reserved",
                 "reserved_usd": reserved,
                 "request_worst_case_usd": worst_case,
+                "usage_mode": usage_mode,
             }
         elif event_type == "provider.compute_held":
             state = states.get(request_id)
@@ -353,9 +385,9 @@ def _append_event(database: FoundryDatabase, connection, event_type: str, payloa
 
 
 def _worst_case_cost(request_bytes: int, max_output_tokens: int) -> Decimal:
-    # JSON bytes overstate escaped text and include request/tool framing. The
-    # 2x multiplier and 10% margin cover tokenization and billing-rounding
-    # uncertainty while remaining below the $1 ceiling at the 2 MiB body cap.
+    # JSON bytes overstate escaped text and include request/tool framing. Keep
+    # this conservative estimate for per-request usage evidence; it is not a
+    # financial authorization or an included-quota ceiling.
     token_bound = (
         Decimal(request_bytes) * MAX_TOKEN_BOUND_MULTIPLIER
         + Decimal(max_output_tokens)
@@ -693,28 +725,22 @@ class OpenCodeSpendGateway:
         upper_bound = _worst_case_cost(request_bytes, max_output)
         with self.database.transaction() as connection:
             _require_owner_compute_policy(self.database)
-            states = _event_usage(connection, SPEND_SCOPE_ID)
-            total = sum(_accounted_exposure(state) for state in states.values())
-            remaining = SPEND_CEILING_USD - total
-            if remaining <= 0:
-                raise ProviderSpendBlocked("the authorized $1.00 provider-compute ceiling has been reached")
-            # Requests from the same worker can overlap while a prior response
-            # is still being read. Keep each open request charged at its bound;
-            # a late or lost settlement must not freeze unrelated safe work.
-            if upper_bound > remaining:
-                raise ProviderSpendBlocked("request worst-case cost exceeds the remaining authorized spend")
+            # Validate prior records, including legacy $1-ceiling receipts,
+            # without carrying their internal dollar-equivalent total into the
+            # current included-subscription authorization.
+            _event_usage(connection, SPEND_SCOPE_ID)
             payload = {
                 "spend_scope_id": SPEND_SCOPE_ID,
                 "request_id": request_id,
                 "request_sha256": request_hash,
                 "provider": AUTHORIZED_PROVIDER,
                 "model": AUTHORIZED_MODEL,
+                "usage_mode": INCLUDED_SUBSCRIPTION_USAGE_MODE,
                 "reserved_usd": format(upper_bound, "f"),
                 "reservation_policy": REQUEST_BOUND_RESERVATION_POLICY,
                 "request_bytes": request_bytes,
                 "max_output_tokens": max_output,
                 "request_worst_case_usd": format(upper_bound, "f"),
-                "ceiling_usd": format(SPEND_CEILING_USD, "f"),
             }
             _append_event(
                 self.database,

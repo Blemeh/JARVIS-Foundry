@@ -2,10 +2,10 @@
 
 Role sessions (executive, builder, verifier, ...) return a ``RoleResult``:
 a machine-readable outcome carrying status, verdict, provider identity, model,
-evidence, and error class. The dispatcher serializes the result into the
-durable ``agent_runs.result_json`` column via ``agent_run.completed`` /
-``agent_run.failed`` events, so structured results survive process death and
-can be reconciled.
+evidence, and error class. The dispatcher serializes completed results and
+failed results that it receives into the durable ``agent_runs.result_json``
+column through ``agent_run.completed`` / ``agent_run.failed`` events. Generic
+reaper failures may not include a structured result.
 """
 from __future__ import annotations
 

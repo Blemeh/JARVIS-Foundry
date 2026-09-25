@@ -172,6 +172,87 @@ def test_projection_exposes_funnel_reasons_sources_wait_and_candidate_details(tm
     assert rejected["candidates"][0]["rejection"]["reason_code"] == "LOW_OWNER_RELEVANCE"
 
 
+def test_projection_surfaces_open_owner_escalations_and_resolutions(tmp_path):
+    database = FoundryDatabase(tmp_path / "owner-actions.db")
+    database.initialize()
+    _seed(database)
+    opened = _append(database, "executive.escalation_opened", {
+        "escalation_id": "escalation:objective-retry",
+        "objective_id": "objective-retry",
+        "decision": "retry budget exhausted",
+        "why": "The execute step exhausted its bounded retry budget.",
+        "options": ["change strategy", "grant capability", "suspend objective"],
+        "recommendation": "Suspend until owner direction or a materially different capability is available.",
+        "delay_consequence": "Downstream work remains blocked.",
+        "created_at": "2026-09-25T06:20:00Z",
+        "status": "OPEN",
+    }, "escalation-opened:objective-retry")
+
+    projection = build_autonomy_projection(database)
+    owner_action = projection["executive"]["owner_action"]
+    assert owner_action["status"] == "AVAILABLE"
+    assert owner_action["count"] == 1
+    assert owner_action["value"] == owner_action["items"][0]
+    assert owner_action["items"][0] == {
+        "escalation_id": "escalation:objective-retry",
+        "objective_id": "objective-retry",
+        "decision": "retry budget exhausted",
+        "why": "The execute step exhausted its bounded retry budget.",
+        "recommendation": "Suspend until owner direction or a materially different capability is available.",
+        "options": ["change strategy", "grant capability", "suspend objective"],
+        "delay_consequence": "Downstream work remains blocked.",
+        "created_at": "2026-09-25T06:20:00Z",
+        "event_id": opened.event_id,
+    }
+    timeline_item = next(
+        item for item in projection["timeline"]
+        if item["event_id"] == opened.event_id
+    )
+    assert timeline_item["stage"] == "OWNER_ACTION"
+
+    _append(database, "executive.escalation_resolved", {
+        "escalation_id": "escalation:objective-retry",
+        "objective_id": "objective-retry",
+        "decision": "retry budget exhausted",
+        "status": "RESOLVED",
+    }, "escalation-resolved:objective-retry")
+    resolved = build_autonomy_projection(database)
+    assert resolved["executive"]["owner_action"]["items"] == []
+    assert resolved["executive"]["owner_action"]["value"] is None
+
+
+def test_owner_action_projection_marks_item_truncation_and_bounds_text(tmp_path):
+    database = FoundryDatabase(tmp_path / "owner-action-limits.db")
+    database.initialize()
+    _seed(database)
+    for index in range(21):
+        long_text = "x" * 1_500 if index == 20 else f"decision {index}"
+        _append(database, "executive.escalation_opened", {
+            "escalation_id": f"escalation:{index}",
+            "objective_id": "objective-limits",
+            "decision": long_text,
+            "why": long_text,
+            "recommendation": long_text,
+            "options": [long_text for _ in range(16)],
+            "delay_consequence": long_text,
+            "status": "OPEN",
+        }, f"escalation-opened:{index}")
+
+    owner_action = build_autonomy_projection(database)["executive"]["owner_action"]
+    assert owner_action["status"] == "PARTIAL"
+    assert owner_action["count"] == 20
+    assert owner_action["open_count"] == 21
+    assert owner_action["items_truncated"] is True
+    assert owner_action["scan_truncated"] is False
+    assert owner_action["items"][0]["escalation_id"] == "escalation:20"
+    assert len(owner_action["items"][0]["decision"]) == 1_200
+    assert len(owner_action["items"][0]["why"]) == 1_200
+    assert len(owner_action["items"][0]["recommendation"]) == 1_200
+    assert len(owner_action["items"][0]["options"]) == 12
+    assert all(len(option) == 240 for option in owner_action["items"][0]["options"])
+    assert len(owner_action["items"][0]["delay_consequence"]) == 1_200
+
+
 def test_projection_keeps_optional_research_capability_and_context_contracts_durable(tmp_path):
     database = FoundryDatabase(tmp_path / "contracts.db")
     database.initialize()
@@ -270,6 +351,18 @@ def test_projection_empty_state_is_honest(tmp_path):
     assert projection["current_work"] is None
     assert projection["funnel"]["observed"] == {
         "value": None, "status": "UNAVAILABLE",
+    }
+    unavailable = build_autonomy_projection(FoundryDatabase(tmp_path / "missing.db"))
+    assert unavailable["status"] == "UNAVAILABLE"
+    assert unavailable["executive"]["owner_action"] == {
+        "value": None,
+        "status": "UNAVAILABLE",
+        "items": [],
+        "count": 0,
+        "open_count": None,
+        "scan_truncated": False,
+        "items_truncated": False,
+        "scan_limit": 500,
     }
 
 
@@ -376,13 +469,19 @@ def test_projection_queries_are_read_only_and_limits_are_hard_bounded(tmp_path, 
     assert before == after
     assert projection["limits"]["candidate_limit"] == 50
     assert projection["limits"]["timeline_limit"] == 100
+    assert projection["limits"]["owner_action_scan_limit"] == 500
+    assert projection["limits"]["owner_action_limit"] == 20
     assert len(projection["candidates"]) <= 50
     assert len(projection["timeline"]) <= 100
     selects = [statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]
-    assert len(selects) <= 16
+    assert len(selects) <= 17
     assert sum("FROM candidate_sources" in statement for statement in selects) == 1
     assert sum("FROM research_queue" in statement for statement in selects) == 1
     assert sum("FROM verification_verdicts" in statement for statement in selects) <= 1
+    assert sum(
+        "FROM events" in statement and "ORDER BY sequence DESC LIMIT 501" in statement
+        for statement in selects
+    ) == 1
 
 
 def test_autonomy_http_api_applies_filters_and_rejects_invalid_requests(tmp_path):

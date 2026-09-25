@@ -45,7 +45,9 @@ def authorized_directives() -> list[SimpleNamespace]:
             provider=spend.AUTHORIZED_PROVIDER,
             model=spend.AUTHORIZED_MODEL,
             spend_scope_id=spend.SPEND_SCOPE_ID,
-            spend_ceiling_usd="1.00",
+            usage_mode=spend.INCLUDED_SUBSCRIPTION_USAGE_MODE,
+            included_subscription_usage_allowed=True,
+            additional_billable_charges_allowed=False,
             fallbacks_allowed=False,
             use_credit_balance_fallback_allowed=False,
             fail_closed=True,
@@ -122,6 +124,12 @@ def test_owner_compute_policy_requires_exact_no_fallback_terms(monkeypatch, db):
 
     directives = authorized_directives()
     directives[0].metadata["fallbacks_allowed"] = True
+    monkeypatch.setattr(spend, "active_owner_directives", lambda _db: directives)
+    with pytest.raises(spend.ProviderSpendBlocked, match="exact bounded route"):
+        spend._require_owner_compute_policy(db)
+
+    directives = authorized_directives()
+    directives[0].metadata["spend_ceiling_usd"] = "1.00"
     monkeypatch.setattr(spend, "active_owner_directives", lambda _db: directives)
     with pytest.raises(spend.ProviderSpendBlocked, match="exact bounded route"):
         spend._require_owner_compute_policy(db)
@@ -241,7 +249,7 @@ def test_usage_parser_requires_completed_response_and_sse_usage():
     assert spend.parse_provider_usage(b'{"status":"incomplete","usage":{}}', "application/json") is None
 
 
-def test_reservation_settlement_and_next_reservation_account_cumulatively(monkeypatch, db):
+def test_reservation_settlement_records_request_usage(monkeypatch, db):
     install_policy(monkeypatch)
     gate = gateway(db)
     first_id = str(uuid.uuid4())
@@ -268,6 +276,11 @@ def test_reservation_settlement_and_next_reservation_account_cumulatively(monkey
     ]
     assert all(
         event.payload["reservation_policy"] == spend.REQUEST_BOUND_RESERVATION_POLICY
+        for event in reservations
+    )
+    assert all(
+        event.payload["usage_mode"] == spend.INCLUDED_SUBSCRIPTION_USAGE_MODE
+        and "ceiling_usd" not in event.payload
         for event in reservations
     )
 
@@ -386,63 +399,33 @@ def test_legacy_full_remaining_unsettled_request_uses_recorded_bound(monkeypatch
     assert gate._reserve(str(uuid.uuid4()), "b" * 64, 128, 64) == next_bound
 
 
-def test_unknown_holds_accumulate_until_next_request_cannot_fit(monkeypatch, db):
+def test_unknown_holds_preserve_evidence_without_capping_included_quota(monkeypatch, db):
     install_policy(monkeypatch)
     gate = gateway(db)
     bound = spend._worst_case_cost(600_000, 4_096)
-    assert bound * 3 < spend.SPEND_CEILING_USD < bound * 4
-    for _ in range(3):
+    for _ in range(4):
         request_id = str(uuid.uuid4())
         reserved = gate._reserve(request_id, "c" * 64, 600_000, 4_096)
         assert reserved == bound
         gate._hold(request_id, reserved, "usage unavailable")
-    with pytest.raises(spend.ProviderSpendBlocked, match="worst-case cost exceeds"):
-        gate._reserve(str(uuid.uuid4()), "d" * 64, 600_000, 4_096)
-    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 3
+    assert bound * 4 > spend.LEGACY_SPEND_CEILING_USD
+    assert gate._reserve(str(uuid.uuid4()), "d" * 64, 600_000, 4_096) == bound
+    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 5
 
 
-def test_request_that_cannot_fit_remaining_budget_never_reaches_transport(monkeypatch, db):
-    install_policy(monkeypatch)
-    calls: list[bytes] = []
-
-    def transport(body, _headers):
-        calls.append(body)
-        raise AssertionError("unaffordable dispatch reached upstream transport")
-
-    gate = gateway(db, transport=transport)
-    prior_id = str(uuid.uuid4())
-    reservation = gate._reserve(prior_id, "c" * 64, 128, 64)
-    high_cost = spend._money(
-        Decimal(4_000_000)
-        * spend.USD_PER_MILLION_TOKENS_UPPER_BOUND
-        / Decimal(1_000_000)
-        * spend.METERING_MARGIN
-    )
-    gate._settle(
-        prior_id,
-        reservation,
-        spend.SpendUsage(None, None, 4_000_000, high_cost),
-        overrun=True,
-    )
-
-    base_url = gate.start()
-    too_large = request_body("x" * 800_000)
-    try:
-        with pytest.raises(urllib.error.HTTPError) as blocked:
-            post_to_gateway(base_url, gate.local_api_key, too_large)
-        assert blocked.value.code == 429
-    finally:
-        gate.close()
-    assert calls == []
+def test_oversized_request_is_rejected_by_request_bound():
+    too_large = request_body("x" * spend.MAX_REQUEST_BYTES)
+    with pytest.raises(spend.ProviderSpendBlocked, match="bounded 2 MiB"):
+        spend._request_token_bound(too_large)
 
 
-def test_concurrent_reservations_cannot_exceed_cumulative_ceiling(monkeypatch, db):
+def test_concurrent_included_reservations_are_not_limited_by_equivalent_dollars(monkeypatch, db):
     install_policy(monkeypatch)
     gate = gateway(db)
     barrier = threading.Barrier(5)
     outcomes: list[str] = []
     bound = spend._worst_case_cost(600_000, 4_096)
-    assert bound * 3 < spend.SPEND_CEILING_USD < bound * 4
+    assert bound * 4 > spend.LEGACY_SPEND_CEILING_USD
 
     def reserve() -> None:
         barrier.wait()
@@ -460,11 +443,11 @@ def test_concurrent_reservations_cannot_exceed_cumulative_ceiling(monkeypatch, d
         thread.join(timeout=10)
         assert not thread.is_alive()
 
-    assert sorted(outcomes) == ["blocked", "reserved", "reserved", "reserved"]
-    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 3
+    assert sorted(outcomes) == ["reserved"] * 4
+    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 4
     with db.transaction() as connection:
         states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
-    assert sum(spend._accounted_exposure(state) for state in states.values()) == bound * 3
+    assert sum(spend._accounted_exposure(state) for state in states.values()) == bound * 4
 
 
 def test_open_request_bound_allows_later_dispatch_and_late_settlement(monkeypatch, db):

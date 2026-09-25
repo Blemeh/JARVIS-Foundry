@@ -827,7 +827,16 @@ export interface AutonomyProjection {
     wait_reason: string | null;
     wait_boundary?: string | null;
     wait_reason_code?: string | null;
-    owner_action?: { value: string | null; status: ProjectionAvailability };
+    owner_action?: {
+      value: AutonomyOwnerAction | null;
+      status: ProjectionAvailability | "PARTIAL";
+      items: AutonomyOwnerAction[];
+      count: number;
+      open_count: number | null;
+      scan_truncated: boolean;
+      items_truncated: boolean;
+      scan_limit: number;
+    };
     active_wip: AutonomyMetric;
   };
   funnel: Record<string, AutonomyMetric>;
@@ -869,6 +878,18 @@ export interface AutonomyProjection {
   wait?: AutonomyContractProjection;
   contract_versions?: Record<string, string>;
   limits: Record<string, number>;
+}
+
+export interface AutonomyOwnerAction {
+  escalation_id: string;
+  objective_id: string | null;
+  decision: string;
+  why: string;
+  recommendation: string;
+  options: string[];
+  delay_consequence: string | null;
+  created_at: string | null;
+  event_id: string | null;
 }
 
 export interface JarvisClient {

@@ -14,7 +14,8 @@ import { Drawer } from "../components/Drawer";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import type {
   AutonomyCandidate, AutonomyCandidateFilter, AutonomyFactor,
-  AutonomyContractProjection, AutonomyMetric, AutonomyProjection, AutonomyWorkField,
+  AutonomyContractProjection, AutonomyMetric, AutonomyOwnerAction,
+  AutonomyProjection, AutonomyWorkField,
 } from "../lib/contracts";
 
 const FILTERS: AutonomyCandidateFilter[] = ["eligible", "rejected", "researched", "stale", "all"];
@@ -406,6 +407,83 @@ function CurrentWork({ projection }: { projection: AutonomyProjection }) {
   );
 }
 
+function OwnerActions({ projection }: { projection: AutonomyProjection }) {
+  const ownerAction = projection.executive.owner_action;
+  const items = ownerAction?.items ?? [];
+  const badgeStatus = ownerAction?.status === "PARTIAL"
+    ? "PARTIAL"
+    : ownerAction?.status === "AVAILABLE"
+      ? items.length > 0 ? "BLOCKED" : "AVAILABLE"
+      : "UNAVAILABLE";
+  const emptyMessage = ownerAction?.status === "PARTIAL"
+    ? ownerAction.scan_truncated
+      ? "No open escalation appears in the latest scan; older records may remain open."
+      : "Owner actions are only partially available in this projection."
+    : ownerAction?.status === "AVAILABLE"
+      ? "No open Executive escalation needs owner direction."
+      : "Owner action state is unavailable in this projection.";
+
+  return (
+    <section className="autonomy-section owner-actions" aria-labelledby="owner-actions-title">
+      <header>
+        <div>
+          <span className="section-kicker">Executive exception channel</span>
+          <h2 id="owner-actions-title">Owner direction</h2>
+        </div>
+        <StatusBadge status={badgeStatus} />
+      </header>
+      {items.length === 0 ? <p className="honest-empty">{emptyMessage}</p> : (
+        <ol className="owner-action-list">
+          {items.map((item: AutonomyOwnerAction) => (
+            <li key={item.escalation_id}>
+              <div className="owner-action-identity">
+                <small>Objective {item.objective_id ?? "unavailable"}</small>
+                <strong>{item.decision}</strong>
+                <small>{item.escalation_id}</small>
+              </div>
+              <div className="owner-action-details">
+                {item.why && <p>{item.why}</p>}
+                {item.recommendation && (
+                  <div className="owner-action-guidance">
+                    <small>Executive recommendation</small>
+                    <p>{item.recommendation}</p>
+                  </div>
+                )}
+                {item.options.length > 0 && (
+                  <div className="owner-action-options">
+                    <small>Available paths</small>
+                    <ul>{item.options.map((option) => <li key={option}>{option}</li>)}</ul>
+                  </div>
+                )}
+                {item.delay_consequence && (
+                  <p className="owner-action-consequence">
+                    If deferred: {item.delay_consequence}
+                  </p>
+                )}
+                {item.event_id && (
+                  <Link className="owner-action-link" to={`/timeline?event=${encodeURIComponent(item.event_id)}`}>
+                    View escalation record
+                  </Link>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      {ownerAction?.items_truncated && (
+        <p className="owner-action-truncation">
+          Showing the latest {ownerAction.count} of {ownerAction.open_count} open escalations in the scanned records.
+        </p>
+      )}
+      {ownerAction?.scan_truncated && (
+        <p className="owner-action-truncation">
+          Scanned the latest {ownerAction.scan_limit} escalation events. Older open escalations may also need attention.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function AutonomyView({
   projection, filter, onFilter,
 }: { projection: AutonomyProjection; filter: AutonomyCandidateFilter; onFilter: (filter: AutonomyCandidateFilter) => void }) {
@@ -430,7 +508,6 @@ export function AutonomyView({
           <p>{projection.executive.wait_boundary ?? projection.executive.wait_reason ?? (unavailable ? projection.reason : "No durable WAIT reason recorded.")}</p>
           {projection.executive.wait_reason_code && <span className="wait-code">{projection.executive.wait_reason_code}</span>}
           {projection.executive.wait_boundary && projection.executive.wait_reason && <small className="cycle-decision">Cycle decision: {projection.executive.wait_reason}</small>}
-          <small className="owner-action">Owner action: {projection.executive.owner_action?.status ?? "UNAVAILABLE"} — no durable owner requirement is recorded.</small>
         </div>
         <dl className="autonomy-clock">
           <div><dt><Clock3 size={13} aria-hidden /> Last observation cycle</dt><dd>{instant(projection.executive.last_observation_cycle)}</dd></div>
@@ -438,6 +515,8 @@ export function AutonomyView({
           <div><dt><GitBranch size={13} aria-hidden /> Active autonomous WIP</dt><dd>{metricValue(projection.executive.active_wip)}</dd></div>
         </dl>
       </section>
+
+      <OwnerActions projection={projection} />
 
       <section className="funnel-ribbon" aria-label="Candidate funnel">
         {FUNNEL.map(([key, label], index) => (

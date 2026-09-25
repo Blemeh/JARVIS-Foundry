@@ -32,6 +32,7 @@ from jarvis_foundry.roles.adapter import (
     AdapterConfigurationError,
     FakeHermesAdapter,
     HermesOneshotAdapter,
+    ProviderFailure,
     ProviderUnavailable,
 )
 from jarvis_foundry.roles.dispatcher import RoleDispatcher
@@ -757,6 +758,8 @@ def test_existing_failed_workforce_run_requires_fresh_identity(
         manifest,
         config.preferred_provider,
         config.preferred_model,
+        attempt_generation=0,
+        attempt_ordinal=1,
     )
     dispatcher._fail_run(run_id, "heartbeat_timeout")
 
@@ -823,6 +826,8 @@ def test_existing_workforce_run_cannot_relax_different_lineage(
         stale,
         config.preferred_provider,
         config.preferred_model,
+        attempt_generation=0,
+        attempt_ordinal=1,
     )
 
     with pytest.raises(EventConflict, match="different execution lineage"):
@@ -892,6 +897,8 @@ def test_existing_running_workforce_run_is_never_redispatched(
         manifest,
         config.preferred_provider,
         config.preferred_model,
+        attempt_generation=0,
+        attempt_ordinal=1,
     )
 
     result = dispatcher.dispatch(
@@ -2185,6 +2192,8 @@ def test_unbudgeted_workforce_dangling_attempt_is_not_dispatched_again(
 
 
 def test_provider_wait_resume_uses_a_new_settlement_generation(tmp_path):
+    secret = "provider-token-" + "Q" * 20
+
     class ResumedProvider:
         def __init__(self):
             self.calls = 0
@@ -2201,7 +2210,10 @@ def test_provider_wait_resume_uses_a_new_settlement_generation(tmp_path):
                     model=manifest.model,
                     verdict="BLOCKED",
                     error_class="provider_unavailable",
-                    error_detail="provider is temporarily unavailable",
+                    error_detail=(
+                        "provider is temporarily unavailable; token=" + secret
+                    ),
+                    evidence=("worker stderr: token=" + secret,),
                     cost_usd=0.1,
                 )
             return RoleResult(
@@ -2303,6 +2315,23 @@ def test_provider_wait_resume_uses_a_new_settlement_generation(tmp_path):
         if event.event_type == "provider.dispatch_attempt_settled"
     }
     assert generations == {0, 1}
+    start_events = [
+        event for event in database.events()
+        if event.event_type == "agent_run.started"
+        and event.payload.get("run_id") == kwargs["run_id"]
+    ]
+    assert {
+        (event.payload["attempt_generation"], event.payload["attempt_ordinal"])
+        for event in start_events
+    } == {(0, 1), (1, 1)}
+    projected = run_row(database, kwargs["run_id"])
+    assert projected["status"] == "COMPLETED"
+    assert json.loads(projected["result_json"])["status"] == "COMPLETED"
+    assert all(
+        secret not in json.dumps(event.payload)
+        for event in database.events()
+        if event.payload.get("run_id") == kwargs["run_id"]
+    )
 
 
 def test_identical_provider_wait_opens_a_new_episode_after_resume(tmp_path):
@@ -3556,6 +3585,220 @@ def test_adapter_crash_marks_run_failed(tmp_path):
     row = run_row(database, "run-crash")
     assert row["status"] == "FAILED"
     assert row["failure_class"] == "adapter_crash"
+    payload = json.loads(row["result_json"])
+    assert payload["status"] == "FAILED"
+    assert payload["error_detail"] == "boom"
+
+
+def test_failed_role_result_is_durable_and_redacted(tmp_path):
+    database = mission_database(tmp_path)
+    secret = "sk-" + "Z" * 24
+
+    class FailedWithDiagnostic(FakeHermesAdapter):
+        def dispatch(self, manifest, *, heartbeat):
+            heartbeat()
+            return RoleResult(
+                run_id=manifest.run_id,
+                role=manifest.role,
+                status=FAILED,
+                provider=manifest.provider,
+                model=manifest.model,
+                verdict="NOT_TESTED",
+                evidence=(
+                    f"stdout: plan.md missing; token={secret}",
+                    "stderr: worker exited with code 2",
+                ),
+                error_class="worker_runtime_failure",
+                error_detail=f"expected plan artifact missing; token={secret}",
+            )
+
+    result = RoleDispatcher(
+        database, RoleRouter(), FailedWithDiagnostic(),
+    ).dispatch(
+        role="builder",
+        mission_id="mission-1",
+        resource_id="resource-1",
+        capability="write",
+        run_id="run-failed-diagnostic",
+    )
+
+    assert result.status == FAILED
+    row = run_row(database, "run-failed-diagnostic")
+    durable = json.loads(row["result_json"])
+    failed_event = next(
+        event for event in database.events()
+        if event.event_type == "agent_run.failed"
+        and event.payload.get("run_id") == "run-failed-diagnostic"
+    )
+    assert durable["evidence"] == [
+        "stdout: plan.md missing; token=[REDACTED]",
+        "stderr: worker exited with code 2",
+    ]
+    assert "expected plan artifact missing" in durable["error_detail"]
+    assert secret not in json.dumps(failed_event.payload)
+    assert failed_event.payload["result"] == durable
+
+
+def test_provider_diagnostic_events_redact_secret_assignments(tmp_path):
+    database = mission_database(tmp_path)
+    dispatcher = RoleDispatcher(database, RoleRouter(), FakeHermesAdapter())
+    secret = "diagnostic-secret-" + "R" * 20
+    detail = f"provider response included token={secret}"
+
+    dispatcher._record_cost_unavailable(
+        run_id="run-provider-diagnostics",
+        mission_id="mission-1",
+        step_id="step-1",
+        role="builder",
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        attempt_generation=1,
+        attempt_ordinal=1,
+        reason=detail,
+        lineage={},
+    )
+    database.append(dispatcher._effect_reconciliation_requirement(
+        run_id="run-provider-diagnostics",
+        mission_id="mission-1",
+        step_id="step-1",
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        failure_class="provider_effect_reconciliation_required",
+        reason=detail,
+        effect_action_key="effect:provider-diagnostics",
+        attempt_generation=1,
+        attempt_ordinal=1,
+        lineage={},
+    ))
+    database.append(dispatcher._effect_identity_mismatch_event(
+        run_id="run-provider-diagnostics",
+        mission_id="mission-1",
+        step_id="step-1",
+        provider="opencode_go",
+        expected_action_key="effect:expected-provider-diagnostics",
+        observed_action_key=f"token={secret}",
+        attempt_generation=1,
+        attempt_ordinal=2,
+        lineage={},
+    ))
+    database.append(dispatcher._effect_reconciliation_requirement(
+        run_id="run-provider-diagnostics",
+        mission_id="mission-1",
+        step_id="step-1",
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        failure_class="provider_effect_reconciliation_required",
+        reason=detail,
+        effect_action_key=f"token={secret}",
+        attempt_generation=1,
+        attempt_ordinal=3,
+        lineage={},
+    ))
+    record_provider_readiness(
+        database,
+        provider_id="opencode_go",
+        model="muse-spark-1.3-contributor",
+        readiness=ProviderReadiness.OUTAGE,
+        reason=detail,
+        evidence_refs=(detail,),
+        notify_wakes=False,
+    )
+
+    class AmbiguousProviderFailure:
+        def dispatch(self, manifest, *, heartbeat):
+            heartbeat()
+            raise ProviderFailure(
+                detail,
+                possible_effect=True,
+                effect_action_key=f"token={secret}",
+            )
+
+    dispatch_result = RoleDispatcher(
+        database,
+        RoleRouter(),
+        AmbiguousProviderFailure(),
+        provider_candidates=(priced_candidate("opencode_go", 0.1),),
+    ).dispatch(
+        role="builder",
+        mission_id="mission-1",
+        resource_id="resource-1",
+        capability="write",
+        step_id="step-provider-diagnostics",
+        run_id="run-unsafe-provider-action-key",
+        instructions="record an ambiguous provider failure safely",
+    )
+    assert dispatch_result.status == BLOCKED
+    assert dispatch_result.effect_action_key == "token=[REDACTED]"
+    schedule_mission_provider_wait(
+        database,
+        mission_id="mission-1",
+        step_id="step-provider-diagnostics",
+        run_id="run-unsafe-provider-action-key",
+        reason=dispatch_result.error_detail or "provider effect requires reconciliation",
+        error_class=str(dispatch_result.error_class),
+        effect_action_key=dispatch_result.effect_action_key,
+    )
+    wait_event = next(
+        event for event in database.events()
+        if event.event_type == "mission.provider_wait_started"
+        and event.payload.get("run_id") == "run-unsafe-provider-action-key"
+    )
+    assert wait_event.payload["effect_action_key"] == "token=[REDACTED]"
+    assert wait_event.payload["effect_requirement_id"].endswith(
+        ":token=[REDACTED]"
+    )
+    assert secret not in json.dumps(wait_event.payload)
+    assert secret not in str(wait_event.idempotency_key)
+
+    durable = [
+        event for event in database.events()
+        if event.event_type in {
+            "provider.dispatch_cost_unavailable",
+            "provider.effect_reconciliation_required",
+            "provider.effect_identity_mismatch",
+            "provider.readiness_observed",
+            "provider.dispatch_failed",
+        }
+    ]
+    assert {event.event_type for event in durable} == {
+        "provider.dispatch_cost_unavailable",
+        "provider.effect_reconciliation_required",
+        "provider.effect_identity_mismatch",
+        "provider.readiness_observed",
+        "provider.dispatch_failed",
+    }
+    assert all(secret not in json.dumps(event.payload) for event in durable)
+    assert all(
+        secret not in str(event.idempotency_key)
+        for event in durable
+    )
+    assert all(
+        "token=[REDACTED]" in event.payload["reason"]
+        for event in durable
+        if "reason" in event.payload
+    )
+    unsafe_action_requirement = next(
+        event for event in durable
+        if event.event_type == "provider.effect_reconciliation_required"
+        and event.payload.get("attempt_ordinal") == 3
+    )
+    assert unsafe_action_requirement.payload["effect_action_key"] == (
+        "token=[REDACTED]"
+    )
+    assert dispatcher._pending_effect_reconciliation(
+        "run-provider-diagnostics"
+    ) == ("token=[REDACTED]", "opencode_go")
+    mismatch = next(
+        event for event in durable
+        if event.event_type == "provider.effect_identity_mismatch"
+    )
+    assert mismatch.payload["observed_effect_action_key"] == "token=[REDACTED]"
+    failed_dispatch = next(
+        event for event in durable
+        if event.event_type == "provider.dispatch_failed"
+        and event.payload.get("run_id") == "run-unsafe-provider-action-key"
+    )
+    assert failed_dispatch.payload["effect_action_key"] == "token=[REDACTED]"
 
 
 # ---------------------------------------------------------------------------

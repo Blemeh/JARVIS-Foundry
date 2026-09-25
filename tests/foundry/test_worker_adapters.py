@@ -237,6 +237,45 @@ def test_hermes_adapter_redacts_captured_secrets(tmp_path, monkeypatch):
     assert "<REDACTED>" in envelope.summary
 
 
+def test_hermes_failed_adapter_keeps_both_bounded_redacted_streams(
+        tmp_path, monkeypatch):
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    token = "sk-" + "Y" * 24
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"],
+        2,
+        f"stdout diagnostic: plan.md missing; token={token}",
+        "stderr diagnostic: worker exited with code 2",
+    )
+    (tmp_path / "home").mkdir()
+    adapter = _hermes_adapter(
+        tmp_path,
+        hermes_root=tmp_path,
+        hermes_home=tmp_path / "home",
+        enabled=True,
+        timeout_seconds=0,
+        python_exe="python",
+    )
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+
+    assert envelope.worker_status == "FAILED"
+    assert envelope.exit_state == "EXIT_2"
+    assert "stdout diagnostic: plan.md missing" in envelope.summary
+    assert "stderr diagnostic: worker exited with code 2" in envelope.summary
+    assert "stdout: " in envelope.summary
+    assert "stderr: " in envelope.summary
+    assert token not in envelope.summary
+    assert "<REDACTED>" in envelope.summary
+    assert len(envelope.summary) <= adapter.FAILURE_DIAGNOSTIC_LIMIT
+
+
 def test_openhands_scrubs_disposable_run_state(tmp_path):
     """Retained disposable conversation events must never hold the key."""
     data_dir = tmp_path / "openhands-data"

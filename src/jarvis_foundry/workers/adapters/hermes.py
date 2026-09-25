@@ -69,6 +69,8 @@ from ..result_contract import MISSING_RESULT_NOTE, ingest_result_claim, result_e
 class HermesWorkerAdapter:
     LIVE_HERMES = LiveHermesPath(checkout=True)
     LIVE_HERMES_HOME = LiveHermesPath(checkout=False)
+    FAILURE_DIAGNOSTIC_LIMIT = 500
+    FAILURE_STREAM_TAIL_LIMIT = 240
 
     #: Router provider names -> Hermes CLI canonical provider ids (verified
     #: against the .h checkout: "opencode_go" is not a CLI alias).
@@ -310,7 +312,9 @@ class HermesWorkerAdapter:
                 worker_status=FAILED,
                 verdict=VERDICT_FAIL if contract.role == "verifier" else VERDICT_NOT_TESTED,
                 claimed_outcome="Hermes CLI exited non-zero",
-                summary=(stderr or stdout or "").strip()[-500:],
+                summary=self._failure_diagnostic(
+                    stdout, stderr, process.returncode,
+                ),
                 started_at=started,
                 exit_state=f"EXIT_{process.returncode}",
                 usage_cost=cost if usage_availability == "available" else NOT_AVAILABLE,
@@ -389,6 +393,20 @@ class HermesWorkerAdapter:
                 if value in cls._VERDICT_VALUES:
                     verdict = value
         return verdict
+
+    @classmethod
+    def _failure_diagnostic(
+        cls, stdout: str, stderr: str, returncode: int,
+    ) -> str:
+        """Retain bounded context from both redacted CLI output streams."""
+        parts = []
+        for name, value in (("stderr", stderr), ("stdout", stdout)):
+            tail = str(value or "").strip()[-cls.FAILURE_STREAM_TAIL_LIMIT:]
+            if tail:
+                parts.append(f"{name}: {tail}")
+        if not parts:
+            return f"Hermes CLI exited with code {returncode}"
+        return "\n".join(parts)[:cls.FAILURE_DIAGNOSTIC_LIMIT]
 
     @staticmethod
     def _read_usage_cost(usage_path: Path | None) -> float:

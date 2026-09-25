@@ -252,6 +252,7 @@ def record_provider_readiness(
     having a configured provider never does.
     """
 
+    from ..control.redaction import redact_payload
     from ..events import Event, canonical_json
 
     state = ProviderReadiness(str(readiness).upper())
@@ -279,6 +280,9 @@ def record_provider_readiness(
         "evidence_refs": list(dict.fromkeys(str(item) for item in evidence_refs)),
         "retry_after_seconds": retry_after_seconds,
     }
+    payload = redact_payload(payload)
+    if not isinstance(payload, dict):
+        raise ValueError("provider readiness payload must remain an object")
     digest = hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()[:24]
     previous = latest_provider_readiness(database, provider_id, model)
     if previous is not None:
