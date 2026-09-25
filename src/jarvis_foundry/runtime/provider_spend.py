@@ -152,13 +152,12 @@ def _accounted_exposure(state: dict[str, Any]) -> Decimal:
     status = state["status"]
     if status == "settled":
         return state["cost_usd"]
-    if status == "held":
-        # A legacy reservation may have held the entire remaining ceiling.
-        # Its validated request bound is the maximum uncertain exposure, while
-        # the original reservation and hold events remain untouched.
+    if status in {"held", "reserved"}:
+        # Legacy reservations may name the entire remaining ceiling. Their
+        # validated request bound is the maximum unsettled exposure, whether
+        # the response is still in flight or its result is permanently unknown.
+        # Original reservation and hold events remain untouched.
         return state["request_worst_case_usd"]
-    if status == "reserved":
-        return state["reserved_usd"]
     raise ProviderSpendBlocked("provider-compute ledger has an invalid request state")
 
 
@@ -249,7 +248,6 @@ def _event_usage(connection, scope_id: str) -> dict[str, dict[str, Any]]:
                 or worst_case != _worst_case_cost(request_bytes, max_output)
                 or ceiling != SPEND_CEILING_USD
                 or not reservation_matches
-                or any(state.get("status") == "reserved" for state in states.values())
             ):
                 raise ProviderSpendBlocked(
                     "provider-compute reservation does not match the bounded route"
@@ -697,12 +695,12 @@ class OpenCodeSpendGateway:
             _require_owner_compute_policy(self.database)
             states = _event_usage(connection, SPEND_SCOPE_ID)
             total = sum(_accounted_exposure(state) for state in states.values())
-            inflight = [state for state in states.values() if state.get("status") == "reserved"]
             remaining = SPEND_CEILING_USD - total
             if remaining <= 0:
                 raise ProviderSpendBlocked("the authorized $1.00 provider-compute ceiling has been reached")
-            if inflight:
-                raise ProviderSpendBlocked("another provider request still holds the authorized spend reservation")
+            # Requests from the same worker can overlap while a prior response
+            # is still being read. Keep each open request charged at its bound;
+            # a late or lost settlement must not freeze unrelated safe work.
             if upper_bound > remaining:
                 raise ProviderSpendBlocked("request worst-case cost exceeds the remaining authorized spend")
             payload = {

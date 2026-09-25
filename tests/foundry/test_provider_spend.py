@@ -352,7 +352,8 @@ def test_unknown_usage_holds_request_bound_and_allows_next_dispatch(monkeypatch,
     assert spend._accounted_exposure(held) == Decimal(first_reservation.payload["request_worst_case_usd"])
 
 
-def test_legacy_full_remaining_hold_uses_recorded_request_bound(monkeypatch, db):
+@pytest.mark.parametrize("held", [False, True])
+def test_legacy_full_remaining_unsettled_request_uses_recorded_bound(monkeypatch, db, held):
     install_policy(monkeypatch)
     gate = gateway(db)
     legacy_id = str(uuid.uuid4())
@@ -373,11 +374,13 @@ def test_legacy_full_remaining_hold_uses_recorded_request_bound(monkeypatch, db)
         },
         source_type="provider_spend_gate", source_id=spend.SPEND_SCOPE_ID,
     ))
-    gate._hold(legacy_id, Decimal("1.000000"), "upstream response lacked authoritative usage")
+    if held:
+        gate._hold(legacy_id, Decimal("1.000000"), "upstream response lacked authoritative usage")
 
     with db.transaction() as connection:
         states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
     assert states[legacy_id]["reserved_usd"] == Decimal("1.000000")
+    assert states[legacy_id]["status"] == ("held" if held else "reserved")
     assert spend._accounted_exposure(states[legacy_id]) == bound
     next_bound = spend._worst_case_cost(128, 64)
     assert gate._reserve(str(uuid.uuid4()), "b" * 64, 128, 64) == next_bound
@@ -433,21 +436,23 @@ def test_request_that_cannot_fit_remaining_budget_never_reaches_transport(monkey
     assert calls == []
 
 
-def test_concurrent_requests_cannot_hold_two_reservations(monkeypatch, db):
+def test_concurrent_reservations_cannot_exceed_cumulative_ceiling(monkeypatch, db):
     install_policy(monkeypatch)
     gate = gateway(db)
-    barrier = threading.Barrier(3)
+    barrier = threading.Barrier(5)
     outcomes: list[str] = []
+    bound = spend._worst_case_cost(600_000, 4_096)
+    assert bound * 3 < spend.SPEND_CEILING_USD < bound * 4
 
     def reserve() -> None:
         barrier.wait()
         try:
-            gate._reserve(str(uuid.uuid4()), "d" * 64, 128, 64)
+            gate._reserve(str(uuid.uuid4()), "d" * 64, 600_000, 4_096)
             outcomes.append("reserved")
         except spend.ProviderSpendBlocked:
             outcomes.append("blocked")
 
-    threads = [threading.Thread(target=reserve) for _ in range(2)]
+    threads = [threading.Thread(target=reserve) for _ in range(4)]
     for thread in threads:
         thread.start()
     barrier.wait()
@@ -455,8 +460,80 @@ def test_concurrent_requests_cannot_hold_two_reservations(monkeypatch, db):
         thread.join(timeout=10)
         assert not thread.is_alive()
 
-    assert sorted(outcomes) == ["blocked", "reserved"]
-    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 1
+    assert sorted(outcomes) == ["blocked", "reserved", "reserved", "reserved"]
+    assert [event.event_type for event in db.events()].count("provider.compute_reserved") == 3
+    with db.transaction() as connection:
+        states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
+    assert sum(spend._accounted_exposure(state) for state in states.values()) == bound * 3
+
+
+def test_open_request_bound_allows_later_dispatch_and_late_settlement(monkeypatch, db):
+    install_policy(monkeypatch)
+    first = gateway(db)
+    first_id = str(uuid.uuid4())
+    first_bound = first._reserve(first_id, "a" * 64, 64_560, 4_096)
+
+    # A response can outlive its worker session. Replay keeps the open bound
+    # charged, while a new gateway may reserve only from the safe remainder.
+    later = gateway(db)
+    later_id = str(uuid.uuid4())
+    later_bound = later._reserve(later_id, "b" * 64, 128, 64)
+    with db.transaction() as connection:
+        states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
+    assert states[first_id]["status"] == states[later_id]["status"] == "reserved"
+    assert sum(spend._accounted_exposure(state) for state in states.values()) == first_bound + later_bound
+
+    usage = spend.SpendUsage(None, None, 100, spend._money(
+        Decimal(100) * spend.USD_PER_MILLION_TOKENS_UPPER_BOUND
+        / Decimal(1_000_000) * spend.METERING_MARGIN
+    ))
+    first._settle(first_id, first_bound, usage, overrun=False)
+    with db.transaction() as connection:
+        states = spend._event_usage(connection, spend.SPEND_SCOPE_ID)
+    assert states[first_id]["status"] == "settled"
+    assert states[later_id]["status"] == "reserved"
+    assert sum(spend._accounted_exposure(state) for state in states.values()) == usage.conservative_cost_usd + later_bound
+
+
+def test_gateway_dispatches_while_another_response_is_in_flight(monkeypatch, db):
+    install_policy(monkeypatch)
+    first_upstream = threading.Event()
+    release_first = threading.Event()
+    first_results: list[int | Exception] = []
+
+    def transport(body, _headers):
+        if b'"input":"first"' in body:
+            first_upstream.set()
+            assert release_first.wait(timeout=5)
+        return spend.UpstreamResponse(
+            200,
+            {"Content-Type": "application/json"},
+            b'{"status":"completed","usage":{"input_tokens":12,"output_tokens":8,"total_tokens":20}}',
+        )
+
+    gate = gateway(db, transport=transport)
+    base_url = gate.start()
+
+    def first_request() -> None:
+        try:
+            with post_to_gateway(base_url, gate.local_api_key, request_body("first")) as response:
+                first_results.append(response.status)
+        except Exception as error:
+            first_results.append(error)
+
+    thread = threading.Thread(target=first_request)
+    try:
+        thread.start()
+        assert first_upstream.wait(timeout=5)
+        with post_to_gateway(base_url, gate.local_api_key, request_body("second")) as response:
+            assert response.status == 200
+    finally:
+        release_first.set()
+        thread.join(timeout=10)
+        gate.close()
+    assert not thread.is_alive()
+    assert first_results == [200]
+    assert [event.event_type for event in db.events()].count("provider.compute_settled") == 2
 
 
 def test_gateway_profile_pins_route_and_removes_every_fallback(tmp_path):
