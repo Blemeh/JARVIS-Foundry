@@ -6,19 +6,74 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Thursday, September 24, 2026 after the candidate-only Hermes
-verdict parsing repair, immutable release build, provider preflight, one
-Supervisor/runtime A lifecycle, and independent raw-state review.
+Last reconciled: Friday, September 25, 2026 after canonical promotion, the
+immutable release activation, live identity and schema parity checks, and a
+complete owner-authorized autonomous mission lifecycle.
 
-The Wave 2 product source is `fc4a7b99f707b20df1d97f610f5c0993d6819a6f` on
-`candidate/wave2-canonical-convergence-20260920`; its tree is
-`2499b00dd6fbea5753ff23a2e251fbe709358c69`. The immutable candidate release is
-`rel-fc4a7b99f707-95c4527d` (manifest SHA-256
-`2eb20661fcef88a9dfad5b67ce542c1341f6829483d56c6696d61c92d7d8d7a1`), built
-with schema 41. Candidate `CURRENT` points to this release. The candidate was
-not merged, pushed, or promoted. Live `CURRENT`, `main`, and `origin/main`
-remain `ddec34efc96b9a0154eb9821d6cc496ef76906a3`; the live database passed
-SQLite integrity checking and contained no candidate markers.
+## Current canonical and live state — 2026-09-25
+
+The canonical product source is commit
+`db913bdcd23438fa1b9cc51395e4e08d31719a3b` on `main`, with tree
+`271cba7df5b7059839c49446ec5d2c18d6c9248e`. The immutable release is
+`rel-db913bdcd234-7b4b1ce8`, built from that exact commit and tree with schema
+41. Installed `CURRENT`, the release manifest, canonical source, and runtime
+all identify that commit; `PREVIOUS` is `4159264d2875f4795c3fa668e742c3d0ce0c5635`.
+The single authorized non-force fast-forward publication includes this final
+docs-only reconciliation, whose source parent is the product commit above.
+
+The live health endpoint returned `OK`, ready, not degraded, release `VALID`,
+parity `MATCH`, schema 41, and a fresh Supervisor heartbeat at
+2026-09-25 06:29:16 UTC. STOP was clear and trust remains `SUSPENDED`. The
+service-owned process tree has one Supervisor (PID 22048), created at
+2026-09-25 01:24:45 local time, with one hidden Python wrapper and the
+Task-Scheduler-launched `wscript.exe` headless entry point. The task is enabled
+and Running with `MultipleInstances=IgnoreNew`. Its minute-trigger result
+`0x800710E0` maps to a refused request; with the same healthy singleton still
+owning port 8767 and fresh heartbeats, this is consistent with an ignored
+overlapping trigger, not a Supervisor restart. Task Scheduler Operational
+history is disabled.
+
+The authoritative Windows launch path is already headless: the task invokes
+`wscript.exe //B //Nologo`, the Supervisor uses `pythonw.exe`, and worker
+subprocesses use `CREATE_NO_WINDOW`, `STARTF_USESHOWWINDOW`, and `SW_HIDE` via
+`headless_popen_kwargs`. No JARVIS `cmd.exe` appeared in the recorded process
+ancestry. A 12-second visible-console sample found no visible console windows,
+so the reported desktop flicker was not reproduced and its visible source is
+not established by that sample. No launch semantics were changed.
+
+The only configured provider route is OpenCode Go
+`opencode_go/muse-spark-1.3-contributor`. Provider resilience and alternative
+model/provider fallbacks are disabled; owner policy rejects Use Credit/balance
+fallback, and the owner confirmed the OpenCode Go “Use balance” toggle is OFF.
+The authenticated owner policy permits this Contributor training-data tier.
+The JARVIS dispatch/accounting gate reserves conservatively, fails closed, and
+caps this sustained-autonomy run at $1.00. At 2026-09-25 06:29 UTC, its ledger
+recorded $0.338500 across 93 settled requests, with no open or held reservation
+and $0.661500 remaining. This is JARVIS usage accounting, not a claim about a
+provider dashboard’s delayed final billing.
+
+Authenticated owner directive `owner-a0d2b90624a94968dd324025` produced
+mission `mission-f9cba19f530e`. Its plan and execution steps each completed a
+Builder and independent Verifier run; verification was accepted, evidence was
+created, and the portfolio outcome was `PASSED`. The registered worktree has
+only the requested tracked one-line removal in
+`scripts/phase2_independent_verifier.py`; pinned Ruff 0.16.5 F401 checking and
+`python -m py_compile` both pass. The mission completed at 2026-09-25 06:24:14
+UTC. Its next-action wake was scheduled and consumed by the live loop. The
+subsequent continuous-observation/initiative cycle returned `WAIT` because no
+other eligible work was found; the worker loop remains enabled and the
+Supervisor continues heartbeating. No synthetic work was created.
+
+The repo/provider-focused check `tests/foundry/test_provider_spend.py` passed
+all 10 tests. Provider dispatches observed for the live mission used only the
+authorized OpenCode Go/Muse route. No STOP, trust, or broad Wave-2 gate was
+advanced by this state reconciliation.
+
+## Historical Wave 2 candidate record — superseded for current truth
+
+The sections below preserve dated candidate and prior-runtime evidence. Their
+statements describe the state at the time recorded; where they differ from
+the current canonical/live facts above, the current record above governs.
 
 WAVE2 CANONICAL CONVERGENCE CANDIDATE (source only, isolated worktree):
 WAVE2 CANDIDATE BRANCH:        candidate/wave2-canonical-convergence-20260920
@@ -174,7 +229,7 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `fc4a7b99f707b20df1d97f610f5c0993d6819a6f`
+DOCUMENTATION STATE BASE SHA: `db913bdcd23438fa1b9cc51395e4e08d31719a3b`
 
 The SHA above is the immediate parent of this final docs-only reconciliation
 commit, as required by `scripts/doc_staleness_check.py`. It names the Wave 2
@@ -388,8 +443,8 @@ FRESH PROVIDER PROBE:          PASS (opencode_go / deepseek-v4.1-flash)
 FRESH A3:                      PASS (one bounded, independently verified candidate)
 FRESH A4:                      PARTIAL (6/6 fault points; two end-state findings open)
 48H TRUST WINDOW:              NOT_STARTED
-CURRENT/CANDIDATE SCHEMA:     v41 (canonical source candidate only)
-LIVE SCHEMA:                  v38
+CURRENT/CANDIDATE SCHEMA:     v41 (at this 2026-09-06 historical snapshot; canonical source candidate only)
+LIVE SCHEMA:                  v38 (at this 2026-09-06 historical snapshot; superseded by live v41)
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
 v34 live baseline:            historical predecessor retained for migration proof
@@ -1117,15 +1172,10 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-The normal Git merge of the exact verified repair is complete: local `main`
-and `origin/main` carry this reconciliation commit, and the pinned SHA above
-names the source state it describes. The next authorized action is one fresh
-independent promotion preflight against that exact final canonical source,
-with live production strictly read-only. Live deployment, CURRENT/PREVIOUS
-changes, Supervisor retargeting, live database migration, provider probing,
-trust restoration, Prompt 3, or V14 remain unauthorized here. After the fresh
-preflight's report is recorded, stop.
-
-No fresh provider run, genuine cold V11 A3 flagship, immediate A4 campaign, or
-separately guarded 48-hour runner was started by this repair. Source
-promotion does not close those gates or grant production trust.
+Keep the canonical worker loop enabled under the existing STOP, owner-policy,
+route, and $1.00 provider-spend controls. The current owner mission and its
+next-action wake completed, and the fresh Executive/initiative cycle returned
+WAIT because it found no further eligible work. Continue only when normal
+owner/standing-intent or source-discovery mechanisms present legitimate work;
+do not manufacture a workload. Keep trust `SUSPENDED` and do not reopen Wave 2
+or unrelated historical gates.
