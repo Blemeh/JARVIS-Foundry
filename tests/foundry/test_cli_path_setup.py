@@ -1,9 +1,22 @@
 """Global ``jarvis`` command installation."""
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from jarvis_foundry.deployment.layout import cli_cmd
+from jarvis_foundry.deployment.cli_launcher import (
+    CliLaunchError,
+    _inside,
+    _parse_current_value,
+)
 from jarvis_foundry.deployment.path_setup import bootstrap_global_cli
-from jarvis_foundry.deployment.release import JARVIS_CLI_CMD_TEXT, install_cli_launcher
+from jarvis_foundry.deployment.release import (
+    JARVIS_CLI_CMD_TEXT,
+    LAUNCHER_CMD_TEXT,
+    install_cli_launcher,
+)
 
 
 def test_install_cli_launcher_writes_jarvis_cmd(tmp_path, monkeypatch):
@@ -33,10 +46,30 @@ def test_cli_launcher_uses_current_immutable_release_and_fails_closed():
 
     assert 'set "CURRENT_FILE=%JARVIS_INSTALL_ROOT%\\CURRENT"' in text
     assert 'set "PY=%RELEASE%\\.venv\\Scripts\\python.exe"' in text
+    assert 'set "CLI_ENTRY=%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py"' in text
+    assert '"%PY%" -I "%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py" %*' in text
+    assert "-I -m jarvis_foundry.deployment.launcher" in LAUNCHER_CMD_TEXT
+    assert "CURRENT release CLI bootstrap missing" in text
     assert 'FAIL_CLOSED: CURRENT pointer missing' in text
     assert 'FAIL_CLOSED: release python missing' in text
     assert 'JARVIS_RELEASE_SHA=%SHA%' in text
-    assert '"%PY%" -m jarvis_foundry.cli.main %*' in text
     assert "C:\\Python313\\python.exe" not in text
     assert "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" not in text
     assert "where py" not in text
+
+
+def test_current_pointer_value_must_be_one_full_lowercase_git_object_id():
+    valid = "a" * 40
+    assert _parse_current_value(f"{valid}\n") == valid
+    for malformed in (
+        "", "../outside", "A" * 40, "c" * 41,
+        f"{valid}\n{'b' * 40}\n",
+    ):
+        with pytest.raises(CliLaunchError):
+            _parse_current_value(malformed)
+
+
+def test_cli_source_origin_must_remain_inside_current_release():
+    release = Path("C:/JARVIS/releases/" + "a" * 40)
+    assert _inside(release / "src" / "jarvis_foundry" / "cli" / "main.py", release)
+    assert not _inside(Path(r"C:\temp\stale\jarvis_foundry\cli\main.py"), release)

@@ -56,16 +56,25 @@ if not exist "%PY%" (
 set "JARVIS_RELEASE_ID=%SHA%"
 set "JARVIS_RELEASE_SHA=%SHA%"
 set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\\.pw"
-"%PY%" -m jarvis_foundry.deployment.launcher %*
+"%PY%" -I -m jarvis_foundry.deployment.launcher %*
 exit /b %ERRORLEVEL%
 """
 
 # Keep the owner-facing CLI on the same immutable CURRENT-release route as
-# the Supervisor launcher. A global or editable Python install can resolve a
-# stale worktree and silently run a different JARVIS source tree.
+# the Supervisor launcher. Execute its bootstrap from the selected release
+# itself: `-I -m` would still allow a venv's editable-install metadata to pick
+# a different source tree, while an ordinary `-m` can be shadowed by cwd.
 JARVIS_CLI_CMD_TEXT = LAUNCHER_CMD_TEXT.replace(
-    "jarvis_foundry.deployment.launcher",
-    "jarvis_foundry.cli.main",
+    "-I -m jarvis_foundry.deployment.launcher",
+    '-I "%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py"',
+).replace(
+    'set "JARVIS_RELEASE_ID=%SHA%"',
+    'set "CLI_ENTRY=%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py"\n'
+    'if not exist "%CLI_ENTRY%" (\n'
+    '  echo FAIL_CLOSED: CURRENT release CLI bootstrap missing>&2\n'
+    '  exit /b 2\n'
+    ')\n'
+    'set "JARVIS_RELEASE_ID=%SHA%"',
 )
 
 
