@@ -182,8 +182,9 @@ def _with_default_world_context_source(sources: Sequence[Any]) -> tuple[Any, ...
         source_identity="world-model",
         poll_interval_s=300,
         config={
-            "candidate_stale_missions": False,
-            "candidate_repeated_failures": False,
+            "include_unverified_signals": False,
+            "include_stale_mission_context": False,
+            "include_repeated_failures": False,
         },
         enabled=True,
     ),)

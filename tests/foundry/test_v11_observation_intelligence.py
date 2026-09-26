@@ -334,6 +334,12 @@ def test_default_executive_source_includes_world_context_without_promoting_histo
         provenance={"verified": True, "authority": "OWNER_AUTHORITY"},
         recommended_action="Inspect the current registered project's active objective.",
     )
+    WorldSignalStore(database).record(
+        "FOLLOW_UP", "Unverified historical context",
+        evidence=["old-record:context"],
+        provenance={"authority": "DATA_ONLY"},
+        recommended_action="Do not use unverified historical context as new work.",
+    )
 
     result = read_world_source(world, store=WorldSignalStore(database))
     candidates = [item for item in result.observations if item.candidate_on == "always"]
@@ -341,6 +347,12 @@ def test_default_executive_source_includes_world_context_without_promoting_histo
         ("world_signal", "Inspect the current registered project's active objective."),
     ]
     assert all(item.payload.get("kind") != "stale_assumption" for item in candidates)
+    assert not any(item.candidate_type == "world_stale_assumption" for item in result.observations)
+    assert not any(item.candidate_type == "world_repeated_failure" for item in result.observations)
+    assert not any(
+        item.payload.get("title") == "Unverified historical context"
+        for item in result.observations
+    )
 
     _start(database, "world-context")
     cycle = run_source_observation_cycle(
