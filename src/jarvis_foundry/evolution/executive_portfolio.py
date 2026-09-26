@@ -451,7 +451,12 @@ def _project_from_event(state: PortfolioState, event: Event) -> None:
 def rebuild_portfolio_state(database: FoundryDatabase) -> PortfolioState:
     """Rebuild the V7 portfolio projection from the append-only ledger."""
     state = PortfolioState()
-    for sequence, event in enumerate(database.events(), start=1):
+    # This projection is entirely derived from portfolio-domain events. Keep
+    # the original ledger sequence while avoiding decoding unrelated worker,
+    # provider, and perception history on every reconstruction.
+    for sequence, event in database.events_with_sequences(
+        event_type_prefixes=("portfolio.",),
+    ):
         payload = event.payload
         _project_from_event(state, event)
         if event.event_type == "portfolio.policy_configured":
