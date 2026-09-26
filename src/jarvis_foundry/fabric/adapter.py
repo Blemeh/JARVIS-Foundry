@@ -18,6 +18,7 @@ from ..effects import FAILED as EFFECT_FAILED
 from ..effects import FROZEN, effect_state, finalize_verified_effect
 from ..connectors.github_write import github_write_dispatch_settings
 from ..connectors.web_research import browser_execution_authorization_from_environment
+from ..control.capabilities import blocking_capability_state
 from ..events import Event, payload_hash
 from ..roles.adapter import RoleAdapter
 from ..roles.manifest import ContextManifest
@@ -889,16 +890,28 @@ def try_fabric_dispatch(
                 "repair_of_effect_id": original_effect_id,
             }
     seed_builtins(database)
+    intent = TaskIntent(
+        task_id=f"mission.{manifest.mission_id}",
+        required_actions=(action,),
+        unattended=True,
+        resource_id=dispatch_manifest.resource_id,
+        resource_capability=dispatch_manifest.capability,
+    )
+    scoped_blocker = blocking_capability_state(
+        database,
+        dispatch_manifest.resource_id,
+        dispatch_manifest.capability,
+    )
     selection = select_capability(
         database,
-        TaskIntent(
-            task_id=f"mission.{manifest.mission_id}",
-            required_actions=(action,),
-            unattended=True,
-        ),
+        intent,
         action,
     )
-    if not selection.available and not action.startswith("mcp."):
+    if (
+        not selection.available
+        and not action.startswith("mcp.")
+        and scoped_blocker is None
+    ):
         # DEGRADED / VETOED / missing: do not execute, and do not claim
         # the step. The inner Hermes path may still satisfy it.
         return None
@@ -928,6 +941,8 @@ def try_fabric_dispatch(
             attempt=manifest.attempt,
             result_scope=f"{manifest.role}:{manifest.run_id}",
             route_owner="general_work" if general_work is not None else None,
+            resource_id=dispatch_manifest.resource_id,
+            resource_capability=dispatch_manifest.capability,
         )
     except FabricError as error:
         # An attempted fabric effect must not also run Hermes.
@@ -941,6 +956,24 @@ def try_fabric_dispatch(
             evidence=(f"fabric:{action}", "verified:UNKNOWN"),
             error_class="fabric_effect_failed",
             error_detail=str(error),
+            identity_transition_authorized=True,
+        )
+    if (
+        scoped_blocker is not None
+        and str(receipt.get("claimed") or "") == "BLOCKED"
+        and str(receipt.get("note") or "") == str(scoped_blocker["reason"])
+        and not receipt.get("effect_id")
+    ):
+        return RoleResult(
+            run_id=manifest.run_id,
+            role=manifest.role,
+            status=BLOCKED,
+            provider="fabric",
+            model="local",
+            verdict=VERDICT_NOT_TESTED,
+            evidence=(f"fabric:{action}", "verified:UNKNOWN"),
+            error_class="fabric_resource_capability_suspended",
+            error_detail=str(scoped_blocker["reason"]),
             identity_transition_authorized=True,
         )
     success = bool(receipt.get("success"))

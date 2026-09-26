@@ -1417,6 +1417,7 @@ def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_
         return ()
     from .portfolio_bridge import capability_readiness
     from ..fabric.catalog import get_spec, observed_readiness
+    from ..control.capabilities import blocking_capability_state
     blockers: list[str] = []
     for capability in step.required_capabilities:
         # Fabric catalog ids are the canonical selection/readiness authority.
@@ -1434,6 +1435,13 @@ def _capability_blockers(database: FoundryDatabase, step: PlanStep, *, resource_
             blockers.extend(_fabric_capability_blockers(
                 database, capability, allow_probation=allow_probation,
             ))
+            scoped_blocker = blocking_capability_state(
+                database, str(resource), capability,
+            )
+            if scoped_blocker is not None:
+                blockers.append(
+                    f"{capability}:RESOURCE_{scoped_blocker['state']}"
+                )
             continue
         readiness = capability_readiness(database, resource_id=str(resource), capability=capability)
         if not readiness.get("ready", False) or str(readiness.get("state") or "UNKNOWN") in {"UNREGISTERED", "UNKNOWN"}:

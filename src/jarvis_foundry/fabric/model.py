@@ -300,6 +300,8 @@ class TaskIntent:
     unattended: bool = True
     preferred: str | None = None
     constraints: tuple[str, ...] = ()
+    resource_id: str | None = None
+    resource_capability: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "task_id", _identity(self.task_id, "task_id"))
@@ -311,6 +313,17 @@ class TaskIntent:
         object.__setattr__(
             self, "constraints", tuple(_text(item, "constraint") for item in self.constraints)
         )
+        if (self.resource_id is None) != (self.resource_capability is None):
+            raise FabricError(
+                "resource_id and resource_capability must be supplied together"
+            )
+        if self.resource_id is not None:
+            object.__setattr__(self, "resource_id", _identity(self.resource_id, "resource_id"))
+            object.__setattr__(
+                self,
+                "resource_capability",
+                _identity(self.resource_capability, "resource_capability"),
+            )
 
 
 @dataclass(frozen=True, slots=True)

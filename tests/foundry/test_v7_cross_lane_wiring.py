@@ -19,6 +19,7 @@ import pytest
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
+from jarvis_foundry.domain import CapabilityState
 from jarvis_foundry.executive import portfolio_bridge
 from jarvis_foundry.executive.portfolio_bridge import (
     capability_readiness,
@@ -345,6 +346,42 @@ def test_missing_capability_state_is_unknown_not_ready(tmp_path: Path) -> None:
         effect_ticket="effect:proc-unknown:step-1")
     assert receipt["state"] == "UNKNOWN"
     assert receipt["ready"] is False
+
+
+def test_fabric_objective_readiness_respects_resource_incident_state(
+        tmp_path: Path) -> None:
+    from jarvis_foundry.executive.autonomy import PlanStep, _capability_blockers
+    from jarvis_foundry.fabric.catalog import record_outcome
+    from jarvis_foundry.fabric.loop import seed_builtins
+    from jarvis_foundry.fabric.model import VerifyVerdict
+
+    db = database(tmp_path)
+    register_resource(db)
+    seed_builtins(db)
+    record_outcome(
+        db, "cap.file.write", success=True,
+        verified=VerifyVerdict.MATCH, note="disposable readiness fixture",
+    )
+    set_capability_state(
+        db, "resource-1", "cap.file.write", CapabilityState.READY.value,
+        source_id="test-resource-readiness",
+    )
+    step = PlanStep(
+        step_id="step-resource-write",
+        objective_id="objective-resource-write",
+        description="write to the registered resource",
+        required_capabilities=("cap.file.write",),
+        resource_id="resource-1",
+    )
+    assert _capability_blockers(db, step) == ()
+
+    set_capability_state(
+        db, "resource-1", "cap.file.write", CapabilityState.STOPPED.value,
+        source_id="incident:test-objective-readiness",
+    )
+    assert _capability_blockers(db, step) == (
+        "cap.file.write:RESOURCE_STOPPED",
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -31,7 +31,12 @@ from dataclasses import replace
 from typing import Any, Iterable, Mapping
 
 from ..control.broker import emergency_stop_reason, matching_veto_reason
-from ..control.capabilities import capability_state_recorded, set_capability_state
+from ..control.capabilities import (
+    BLOCKING_STATES as _BLOCKING_CAPABILITY_STATES,
+    capability_state_recorded,
+    latest_capability_state as _latest_capability_state,
+    set_capability_state,
+)
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict
 from ..fabric.catalog import get_spec, observed_readiness
@@ -62,26 +67,15 @@ def latest_capability_state(
     capability: str,
 ) -> dict[str, Any] | None:
     """Return the newest durable capability.state_changed for the pair."""
-    with database.connect(readonly=True) as connection:
-        row = connection.execute(
-            "SELECT payload_json, source_id FROM events "
-            "WHERE event_type = 'capability.state_changed' "
-            "AND json_extract(payload_json, '$.resource_id') = ? "
-            "AND json_extract(payload_json, '$.capability') = ? "
-            "ORDER BY sequence DESC LIMIT 1",
-            (resource_id, capability),
-        ).fetchone()
-    if row is None:
+    latest = _latest_capability_state(database, resource_id, capability)
+    if latest is None:
         return None
-    raw = row["payload_json"]
-    payload = json.loads(raw) if isinstance(raw, str) else dict(raw or {})
     return {
-        "state": str(payload.get("state") or ""),
-        "source_id": str(row["source_id"] or ""),
+        "state": str(latest.get("state") or ""),
+        "source_id": str(latest.get("source_id") or ""),
     }
 
 
-_BLOCKING_CAPABILITY_STATES = frozenset({"STOPPED", "VETOED", "DEGRADED"})
 _READY_CAPABILITY_STATES = frozenset({"READY", "ACTIVE"})
 
 

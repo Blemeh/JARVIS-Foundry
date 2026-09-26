@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
+from ..control.capabilities import blocking_capability_state
 from ..database import FoundryDatabase
 from ..platform.windows_subprocess import headless_run_kwargs
 from .catalog import (
@@ -533,6 +534,18 @@ def select_capability(
     intent: TaskIntent,
     action_kind: str,
 ) -> Selection:
+    if intent.resource_id and intent.resource_capability:
+        suspended = blocking_capability_state(
+            database, intent.resource_id, intent.resource_capability,
+        )
+        if suspended is not None:
+            return Selection(
+                task_id=intent.task_id,
+                action_kind=action_kind,
+                capability_id=None,
+                fallbacks=(),
+                reason=str(suspended["reason"]),
+            )
     specs = list(specs_for_action(database, action_kind))
     if not specs:
         gap = GapRecord(
