@@ -722,6 +722,9 @@ def run_initiative_a2_cycle(
     if not cycle_id.strip():
         raise ValueError("cycle_id is required")
     policy = bounds or InitiativeA2Bounds()
+    sources = _with_default_vault_source(
+        database, sources, source_limit=policy.source_limit,
+    )
     if len(sources) > policy.source_limit:
         raise ValueError("configured source count exceeds observation bound")
     stopped = _stop_reason(database, stop_path)
@@ -1038,6 +1041,33 @@ def _configured_source_specs(database: FoundryDatabase) -> tuple[SourceSpec, ...
     )
 
 
+def _with_default_vault_source(
+    database: FoundryDatabase,
+    sources: Sequence[SourceSpec],
+    *,
+    source_limit: int,
+) -> tuple[SourceSpec, ...]:
+    """Keep the already-indexed owner vault on the canonical A2 watch path."""
+    resolved = tuple(sources)
+    if any(spec.source_kind == "vault" for spec in resolved):
+        return resolved
+    if len(resolved) >= source_limit:
+        return resolved
+    from .vault_indexer import configured_vault_root
+
+    root = configured_vault_root(database)
+    if root is None:
+        return resolved
+    return resolved + (SourceSpec(
+        source_id="owner-vault",
+        source_kind="vault",
+        source_identity=str(root),
+        poll_interval_s=300,
+        config={},
+        enabled=True,
+    ),)
+
+
 def _current_time(value: datetime | str | None) -> datetime:
     if value is None:
         return datetime.now(timezone.utc)
@@ -1143,6 +1173,13 @@ def run_continuous_observation_cycle(
             "cycles_dispatched": 0, "research_dispatches": 0,
             "next_due_at": next_monitor_due_at(database),
         }
+
+    sources = tuple(sources) or _configured_source_specs(database)
+    sources = _with_default_vault_source(
+        database, sources, source_limit=policy.source_limit,
+    )
+    if len(sources) > policy.source_limit:
+        raise ValueError("configured source count exceeds observation bound")
 
     # A non-empty source list is the complete desired configuration. Empty is
     # a restart path: continue from durable configuration without requiring

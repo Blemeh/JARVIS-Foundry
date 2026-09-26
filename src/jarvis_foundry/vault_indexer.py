@@ -14,14 +14,54 @@ Deterministic + idempotent by construction:
 from __future__ import annotations
 
 import hashlib
+import os
+import sqlite3
 import uuid
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from .database import FoundryDatabase
 from .events import Event
 
 _INDEXABLE = {".md", ".txt", ".markdown"}
+
+
+def latest_vault_sync_root(db: FoundryDatabase) -> Path | None:
+    """Return the exact root of the latest completed vault index."""
+    try:
+        with db.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT root FROM vault_sync_state "
+                "WHERE completed_at IS NOT NULL AND root != '' "
+                "ORDER BY completed_at DESC, rowid DESC LIMIT 1",
+            ).fetchone()
+    except sqlite3.OperationalError:
+        return None
+    if row is None:
+        return None
+    root = Path(str(row[0])).expanduser().resolve()
+    return root
+
+
+def configured_vault_root(db: FoundryDatabase) -> Path | None:
+    """Resolve the one vault whose relative paths the index currently owns.
+
+    An environment override is accepted for first-time indexing, but when an
+    index already exists it must match that root.  ``vault_files.rel_path``
+    has one global namespace, so silently switching roots would corrupt it.
+    """
+    indexed_root = latest_vault_sync_root(db)
+    for env_key in ("OBSIDIAN_VAULT", "JARVIS_OBSIDIAN_VAULT"):
+        value = os.environ.get(env_key)
+        if not value:
+            continue
+        candidate = Path(value).expanduser().resolve()
+        if not candidate.is_dir():
+            continue
+        if indexed_root is not None and candidate != indexed_root:
+            return None
+        return candidate
+    return indexed_root if indexed_root is not None and indexed_root.is_dir() else None
 
 
 def _file_sha256(path: Path) -> str:
@@ -51,7 +91,8 @@ def _known_active(db: FoundryDatabase) -> dict[str, str]:
 def sync_vault(db: FoundryDatabase, vault_root: str | Path,
                subset: Iterable[str] | None = None,
                *, source_id: str = "vault-indexer",
-               started_at: str | None = None) -> dict[str, Any]:
+               started_at: str | None = None,
+               stop_check: Callable[[], bool] | None = None) -> dict[str, Any]:
     """Index (or refresh) the bounded vault subset. Returns the report.
 
     Restart-safe: each file mutation is its own event append; a crash
@@ -67,6 +108,10 @@ def sync_vault(db: FoundryDatabase, vault_root: str | Path,
     indexed = changed = removed = 0
 
     for path in files:
+        if stop_check and stop_check():
+            return {"sync_id": sync_id, "files_indexed": indexed,
+                    "files_changed": changed, "files_removed": removed,
+                    "stopped": True}
         rel = path.relative_to(root).as_posix()
         digest = _file_sha256(path)
         size = path.stat().st_size
@@ -90,6 +135,10 @@ def sync_vault(db: FoundryDatabase, vault_root: str | Path,
             changed += 1
 
     for rel in known:
+        if stop_check and stop_check():
+            return {"sync_id": sync_id, "files_indexed": indexed,
+                    "files_changed": changed, "files_removed": removed,
+                    "stopped": True}
         if not (root / rel).is_file():
             db.append(Event.create(
                 "vault.file_removed",

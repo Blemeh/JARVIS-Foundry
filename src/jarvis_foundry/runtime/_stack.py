@@ -525,14 +525,16 @@ def build_worker_stack(
                 evidence=(),
             )
 
-    vault = paths.home / "connector-root"
+    from ..vault_indexer import configured_vault_root
+
+    vault = configured_vault_root(database)
     bridge = HybridWorkerRoleAdapter(
         database=database,
         router=router,
         registry=registry,
         role_signals=dict(config.role_signals),
         stop_path=config.resolve_stop_path(paths.home),
-        vault_root=vault if vault.is_dir() else None,
+        vault_root=vault,
         use_fabric=not config.lab_scripted_hermes,
         mcp_backend=mcp_backend,
     )

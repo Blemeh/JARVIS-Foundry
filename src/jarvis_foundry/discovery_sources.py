@@ -37,7 +37,7 @@ from .world_model.signals import WorldSignalStore
 
 
 SOURCE_STATUSES = frozenset({"READY", "BLOCKED", "UNKNOWN", "IDLE"})
-EXTERNAL_SOURCE_KINDS = frozenset({"github", "web", "project"})
+EXTERNAL_SOURCE_KINDS = frozenset({"github", "web", "project", "vault"})
 _REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _TEXT_EXTENSIONS = frozenset({
     ".md", ".txt", ".py", ".js", ".ts", ".tsx", ".jsx", ".toml",
@@ -168,7 +168,9 @@ class SourceSpec:
     def __post_init__(self) -> None:
         if not self.source_id.strip() or not self.source_identity.strip():
             raise ValueError("source_id and source_identity are required")
-        if self.source_kind not in {"github", "web", "project", "world", "gmail"}:
+        if self.source_kind not in {
+            "github", "web", "project", "world", "gmail", "vault",
+        }:
             raise ValueError(f"unsupported source_kind {self.source_kind!r}")
         if not 1 <= int(self.poll_interval_s) <= 86_400:
             raise ValueError("poll_interval_s must be between 1 and 86400")
@@ -1251,6 +1253,74 @@ def read_world_source(
     return SourceReadResult("READY", tuple(observations[: limit + fact_limit * 4]))
 
 
+def read_vault_source(
+    spec: SourceSpec,
+    *,
+    database: FoundryDatabase,
+    stop_check: Callable[[], bool] | None = None,
+) -> SourceReadResult:
+    """Refresh the canonical vault index and expose a data-only snapshot.
+
+    Note text stays in the existing bounded mission-context retrieval path;
+    this observation carries only the indexed path/hash inventory.  The
+    global ``vault_files.rel_path`` projection cannot safely switch roots.
+    """
+    from .vault_indexer import latest_vault_sync_root, sync_vault
+
+    if stop_check and stop_check():
+        return SourceReadResult("BLOCKED", reason="stop requested")
+    root = Path(spec.source_identity).expanduser().resolve()
+    if not root.is_dir():
+        return SourceReadResult("BLOCKED", reason="configured vault root is unavailable")
+    indexed_root = latest_vault_sync_root(database)
+    if indexed_root is not None and indexed_root != root:
+        return SourceReadResult(
+            "BLOCKED",
+            reason="configured vault root differs from the indexed root",
+        )
+
+    report = sync_vault(
+        database,
+        root,
+        source_id=spec.source_id,
+        started_at=(
+            _iso(_utc(spec.config.get("now")))
+            if spec.config.get("now") else _iso(_utc())
+        ),
+        stop_check=stop_check,
+    )
+    if report.get("stopped") or (stop_check and stop_check()):
+        return SourceReadResult("BLOCKED", reason="stop requested during vault indexing")
+
+    with database.connect(readonly=True) as connection:
+        rows = [
+            [str(row[0]), str(row[1])]
+            for row in connection.execute(
+                "SELECT rel_path, content_sha256 FROM vault_files "
+                "WHERE status = 'ACTIVE' ORDER BY rel_path",
+            ).fetchall()
+        ]
+    inventory_hash = content_hash(rows)
+    payload = {
+        "active_file_count": len(rows),
+        "index_hash": inventory_hash,
+    }
+    observation = SourceObservation(
+        source_kind="vault",
+        source_identity=f"vault-index:{spec.source_id}",
+        source_ref=str(root),
+        payload=payload,
+        content_hash=content_hash(payload),
+        authority="DATA_ONLY",
+        candidate_type="vault_index",
+        candidate_on="never",
+        raw_content_hash=inventory_hash,
+        opportunity_key=f"vault-index:{spec.source_id}",
+        significance_hint="institutional knowledge index refreshed",
+    )
+    return SourceReadResult("READY", (observation,))
+
+
 def read_gmail_source(spec: SourceSpec) -> SourceReadResult:
     del spec
     return SourceReadResult("BLOCKED", reason="Gmail observation is deferred; no configured read capability")
@@ -1803,6 +1873,8 @@ def run_source_observation_cycle(
                 result = read_project_source(spec, stop_check=stop_check)
             elif spec.source_kind == "world":
                 result = read_world_source(spec, store=WorldSignalStore(db), stop_check=stop_check)
+            elif spec.source_kind == "vault":
+                result = read_vault_source(spec, database=db, stop_check=stop_check)
             else:
                 result = read_gmail_source(spec)
         except Exception as error:  # isolate one real-source failure

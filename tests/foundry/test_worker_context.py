@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -61,6 +62,33 @@ def test_delivery_records_row_and_event(db: FoundryDatabase, vault: Path):
             "SELECT COUNT(*) FROM events WHERE event_type = "
             "'worker.manifest_delivered'").fetchone()[0]
     assert events == 1
+
+
+def test_real_worker_instructions_receive_retrieved_vault_text(
+        db: FoundryDatabase, vault: Path):
+    from jarvis_foundry.workers.mission_bridge import HybridWorkerRoleAdapter
+
+    _seed(db, vault)
+    bridge = object.__new__(HybridWorkerRoleAdapter)
+    bridge.database = db
+    bridge.vault_root = vault
+    bridge.stop_path = None
+    manifest = SimpleNamespace(
+        run_id="run-live-context",
+        role="builder",
+        mission_id="mission-wfm-optimizer",
+        instructions="gateway retries",
+        capability="cap.file.read",
+    )
+
+    instructions = bridge._advisory_context(
+        manifest, "Implement the mission's retry behavior.",
+    )
+
+    assert "ADVISORY MEMORY" in instructions
+    assert "The gateway retries." in instructions
+    assert "Backoff is exponential." in instructions
+    assert "hybrid_memory_manifest_hash=" in instructions
 
 
 def test_delivery_is_deterministic(db: FoundryDatabase, vault: Path):

@@ -30,6 +30,68 @@ def _payload_hash(payload: dict[str, Any]) -> str:
         canonical_json(payload).encode("utf-8")).hexdigest()
 
 
+def _render_advisory_context(payload: dict[str, Any], tier_c: dict[str, Any],
+                             max_chars: int) -> str:
+    """Render only retrieved knowledge for the worker prompt, within budget."""
+    budget = max(0, min(int(max_chars), 12_000))
+    if budget == 0:
+        return ""
+    parts: list[str] = []
+    used = 0
+
+    def add(label: str, value: str) -> None:
+        nonlocal used
+        if used >= budget or not value:
+            return
+        separator_chars = 2 if parts else 0
+        remaining = budget - used - separator_chars
+        if remaining <= 0:
+            return
+        block = f"{label}\n{value}"
+        if len(block) > remaining:
+            marker = "\n[advisory context truncated]"
+            block = (
+                block[:max(0, remaining - len(marker))]
+                + marker[:remaining]
+            )
+        parts.append(block)
+        used += separator_chars + len(block)
+
+    claims = payload.get("claims")
+    if isinstance(claims, dict):
+        claim_view = {
+            key: claims.get(key)
+            for key in ("active_claims", "stale_claims", "conflicts", "truncated")
+            if claims.get(key)
+        }
+        if claim_view:
+            add("Knowledge claims and conflicts:", json.dumps(
+                claim_view, ensure_ascii=False, sort_keys=True,
+            ))
+    for note in payload.get("notes") or ():
+        if not isinstance(note, dict):
+            continue
+        rel_path = str(note.get("rel_path") or "")[:300]
+        text = str(note.get("text") or "")
+        if note.get("truncated"):
+            text += "\n[note text was truncated by the retrieval budget]"
+        add(f"Vault note {rel_path}:", text)
+
+    sections = tier_c.get("sections") if isinstance(tier_c, dict) else None
+    if isinstance(sections, dict):
+        for key, label in (
+            ("tier_b_knowledge", "Durable knowledge memory:"),
+            ("core_memory", "Core memory:"),
+            ("recalled_experience", "Relevant prior experience:"),
+            ("procedures", "Relevant procedures:"),
+            ("builder_claims", "Unverified builder claims:"),
+        ):
+            value = str(sections.get(key) or "")
+            if value and not value.startswith("(no "):
+                add(label, value)
+    return "\n\n".join(parts)
+
+
 def _note_texts(vault_root: Path, rel_paths: list[str],
                 budget_chars: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Read the matched notes (bounded by budget); explicit truncation."""
@@ -195,6 +257,9 @@ def deliver_hybrid_worker_context(db: FoundryDatabase, vault_root: str | Path, *
         "truncation_json": canonical_json(payload["truncation"]),
         "tier_c_json": canonical_json({"role": role, "package": tier_c}),
     }
+    record["advisory_context"] = _render_advisory_context(
+        payload, tier_c, max_chars=max_chars + tier_c_budget,
+    )
     db.append(Event.create(
         "worker.manifest_delivered",
         {"manifest_id": manifest_id, "run_id": run_id, "worker": worker,
