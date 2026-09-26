@@ -789,6 +789,26 @@ def discover_and_admit_next_work(
     resolved_sources = _with_default_world_context_source(
         _with_registered_github_sources(database, configured_sources)
     )
+    # Compile bounded project understanding even when the watched checkout is
+    # unchanged.  This is data-only context; A2 remains the sole selector and
+    # source observations still decide whether any candidate exists.
+    from .project_context import resolve_registered_project_context
+
+    for source in resolved_sources:
+        if str(getattr(source, "source_kind", "")) != "project" or not source.enabled:
+            continue
+        source_config = dict(source.config or {})
+        resource = str(source_config.get("resource_id") or "")
+        if not resource:
+            continue
+        resolve_registered_project_context(
+            database,
+            project_id=str(source_config.get("project_id") or resource),
+            resource_id=resource,
+            root=str(source_config.get("root") or source.source_identity),
+            cycle_id=cycle_id,
+            min_interval_s=max(1, int(source.poll_interval_s)),
+        )
     if not resolved_sources:
         reason = "V11 A3 has no registered project sources"
         record_product_wait_diagnosis(database, cycle_id=cycle_id, reason=reason)

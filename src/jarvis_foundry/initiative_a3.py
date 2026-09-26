@@ -690,6 +690,20 @@ class InitiativeAdmissionAuthority:
         if source_root is None:
             return _blocked(self.database, candidate_id, "TARGET_UNAVAILABLE", "candidate has no explicit owner-repository mapping")
 
+        # Carry the same registered, read-only project understanding used by
+        # Executive observation into the admitted objective. Repository text
+        # remains advisory; the candidate judgment and admission gates below
+        # retain their existing authority.
+        from .executive.project_context import resolve_registered_project_context
+
+        project_context = resolve_registered_project_context(
+            self.database,
+            project_id=project,
+            resource_id=project,
+            root=source_root,
+            cycle_id=f"admission:{candidate_id}",
+        )
+
         requirement_set = resolve_capability_requirements(
             self.database, candidate, unattended=True,
         )
@@ -835,6 +849,13 @@ class InitiativeAdmissionAuthority:
             f"Perform the admitted candidate in the isolated worktree: {objective_text}. "
             "Make the smallest useful repository change and run its relevant tests."
         )
+        if project_context.get("status") == "AVAILABLE":
+            plan_description += (
+                " Registered project profile is advisory repository data: "
+                f"{project_context['classification']} "
+                f"({project_context['unknown_count']} unresolved context items); "
+                "inspect current project instructions before acting."
+            )
         observed_actions = tuple(dict.fromkeys(
             evidence_by_capability[capability_id].action_kind
             for capability_id in required
@@ -891,6 +912,16 @@ class InitiativeAdmissionAuthority:
                 "branch": prepared["branch"],
                 "base_sha": prepared["base_sha"],
                 "qualification_required_capability_ids": sorted(qualification_ids),
+                "project_profile_ref": (
+                    {
+                        key: project_context[key]
+                        for key in (
+                            "profile_id", "profile_hash", "evidence_hash",
+                            "source_fingerprint", "authority",
+                        )
+                    }
+                    if project_context.get("status") == "AVAILABLE" else None
+                ),
                 **({"intent": intent_payload} if intent_payload else {}),
             },
             source_id="v11-a3-admission",
