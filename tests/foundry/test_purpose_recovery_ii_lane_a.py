@@ -8,7 +8,11 @@ from jarvis_foundry.command_center import _executive_projection
 from jarvis_foundry.control.registration import inspect_git_resource, registration_event
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
-from jarvis_foundry.executive.autonomy import rebuild_executive_state, sync_owner_goals
+from jarvis_foundry.executive.autonomy import (
+    create_objective,
+    rebuild_executive_state,
+    sync_owner_goals,
+)
 from jarvis_foundry.executive.calibration import rebuild_calibration
 from jarvis_foundry.executive.goals import active_goals, goal_alignment_score
 from jarvis_foundry.executive.intelligence import (
@@ -19,6 +23,10 @@ from jarvis_foundry.executive.intelligence import (
 )
 from jarvis_foundry.executive.owner_context import seed_owner_context
 from jarvis_foundry.executive.standing_intent import is_discovery_mandate
+from jarvis_foundry.executive.continuous import (
+    rebuild_wake_state,
+    schedule_wait_for_resource,
+)
 from jarvis_foundry.fabric.catalog import record_outcome as record_fabric_outcome
 from jarvis_foundry.fabric.loop import seed_builtins
 from jarvis_foundry.fabric.model import VerifyVerdict
@@ -29,6 +37,13 @@ from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 STANDING_GOAL = (
     "Keep improving my active projects while I'm away. "
     "Find what is worth improving among my registered projects and take the best next step."
+)
+
+CURRENT_PRODUCT_INTENT = (
+    "Current owner objective: finish JARVIS as a persistent autonomous personal "
+    "executive institution. Use real world and project observation to select "
+    "useful work, plan execution, and continue until useful work proceeds or "
+    "JARVIS truthfully waits."
 )
 
 
@@ -81,6 +96,7 @@ def _ready(tmp_path: Path) -> FoundryDatabase:
 
 def test_discovery_mandate_is_not_an_executable_recipe() -> None:
     assert is_discovery_mandate(STANDING_GOAL)
+    assert is_discovery_mandate(CURRENT_PRODUCT_INTENT)
     assert not is_discovery_mandate(
         "Improve gateway reliability and reduce customer outage risk today. "
         "priority: 3 success: latency under 200ms"
@@ -124,6 +140,76 @@ def test_sync_owner_goals_records_standing_intent_instead_of_mission_recipe(tmp_
     ]
     assert intents
     assert intents[0].payload.get("kind") == "DISCOVERY_MANDATE"
+
+
+def test_sync_reclassifies_existing_global_discovery_objective_and_clears_its_wait(tmp_path: Path) -> None:
+    database = _ready(tmp_path)
+    secret = b"test-secret-32-bytes-minimum!!"
+    _goal(database, secret, CURRENT_PRODUCT_INTENT, "current-product-intent")
+    goal = active_goals(database)[0]
+    objective_id = f"owner-goal:{goal.goal_id}"
+
+    database.append(Event.create(
+        "executive.standing_intent_recorded",
+        {
+            "directive_id": goal.goal_id,
+            "objective": CURRENT_PRODUCT_INTENT,
+            "kind": "EXECUTABLE_GOAL",
+            "drives_discovery": False,
+            "executable_recipe": True,
+        },
+        source_type="executive",
+        source_id="legacy-owner-goal-admission",
+        idempotency_key=f"executive.standing_intent_recorded:{goal.goal_id}",
+    ))
+
+    # Model the durable state written by the old classifier: a broad GLOBAL
+    # mandate was admitted as an active executable objective with no resource.
+    create_objective(
+        database,
+        CURRENT_PRODUCT_INTENT,
+        objective_id=objective_id,
+        resource_id=None,
+        provenance={"directive_id": goal.goal_id},
+    )
+    schedule_wait_for_resource(
+        database,
+        objective_id,
+        resource_id="resource-missing",
+        reason="legacy global goal has no bound resource",
+    )
+
+    assert sync_owner_goals(database) == []
+
+    state = rebuild_executive_state(database)
+    assert state.objectives[objective_id].status == "SUSPENDED"
+    assert state.objectives[objective_id].resource_id is None
+    assert goal.goal_id in {row.goal_id for row in active_goals(database)}
+    assert not any(
+        event.payload.get("objective_id") == objective_id
+        for event in database.events(event_types=("executive.objective_authority_revoked",))
+    )
+    assert not any(
+        wake.get("objective_id") == objective_id and wake.get("status") == "ACTIVE"
+        for wake in rebuild_wake_state(database).values()
+    )
+    schedule_wait_for_resource(
+        database,
+        objective_id,
+        resource_id="resource-stale-after-suspension",
+        reason="exercise restart-safe cleanup of a stale executable wake",
+    )
+    sync_owner_goals(database)
+    assert not any(
+        wake.get("objective_id") == objective_id and wake.get("status") == "ACTIVE"
+        for wake in rebuild_wake_state(database).values()
+    )
+    intents = [
+        event.payload
+        for event in database.events(event_types=("executive.standing_intent_recorded",))
+        if event.payload.get("directive_id") == goal.goal_id
+    ]
+    assert intents[-1]["kind"] == "DISCOVERY_MANDATE"
 
 
 def _two_projects(tmp_path: Path) -> tuple[FoundryDatabase, Path, Path]:

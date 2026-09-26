@@ -325,7 +325,10 @@ def record_standing_intents(database: FoundryDatabase) -> list[dict[str, Any]]:
             database,
             "executive.standing_intent_recorded",
             payload,
-            key=f"executive.standing_intent_recorded:{goal.goal_id}",
+            key=(
+                "executive.standing_intent_recorded:"
+                f"{goal.goal_id}:{payload['kind']}"
+            ),
         )
         intents.append(payload)
     return intents

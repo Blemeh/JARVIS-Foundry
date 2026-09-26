@@ -915,20 +915,50 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
     created: list[ObjectiveRecord] = []
     for record in active_records:
         oid = f"owner-goal:{record.directive_id}"
-        if oid in state.objectives:
-            continue
         from .standing_intent import is_discovery_mandate, standing_intent_payload
         goal_text = str(record.exact_text or "owner goal")
         if is_discovery_mandate(goal_text):
+            existing = state.objectives.get(oid)
+            if existing is not None:
+                reason = (
+                    "active owner GOAL is a standing discovery mandate; "
+                    "keep it as Executive guidance instead of an executable "
+                    "resource-bound objective"
+                )
+                if existing.status in _ACTIVE_OBJECTIVE:
+                    set_objective_status(
+                        database,
+                        oid,
+                        "SUSPENDED",
+                        controller=controller,
+                        reason=reason,
+                        evidence_refs=tuple(filter(None, (
+                            str(record.event_id or ""),
+                            f"owner-directive:{record.directive_id}",
+                        ))),
+                    )
+                from .continuous import clear_wakes_for_objective
+
+                clear_wakes_for_objective(
+                    database,
+                    oid,
+                    controller=controller,
+                    reason=reason,
+                )
             _append(
                 database,
                 "executive.standing_intent_recorded",
                 standing_intent_payload(
                     goal_text, directive_id=str(record.directive_id),
                 ),
-                key=f"executive.standing_intent_recorded:{record.directive_id}",
+                key=(
+                    "executive.standing_intent_recorded:"
+                    f"{record.directive_id}:DISCOVERY_MANDATE"
+                ),
                 source_id="v8-owner-goal-admission",
             )
+            continue
+        if oid in state.objectives:
             continue
         metadata = _parse_goal_metadata(record)
         target_resource_id = str(record.target or "").strip()

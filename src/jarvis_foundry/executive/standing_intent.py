@@ -20,6 +20,8 @@ DISCOVERY_PHRASES = (
     "while away",
     "find what is worth",
     "worth improving",
+    "select useful work",
+    "discover useful work",
     "best next step",
     "registered projects",
     "active projects",
