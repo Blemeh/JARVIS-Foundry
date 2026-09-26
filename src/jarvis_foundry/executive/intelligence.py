@@ -121,6 +121,71 @@ def _github_repository_for_root(root: Path) -> str | None:
     return _github_repository_from_remote(_git(root, "remote", "get-url", "origin"))
 
 
+def _with_registered_github_sources(
+    database: FoundryDatabase,
+    sources: Sequence[Any],
+) -> tuple[Any, ...]:
+    """Attach one bounded GitHub watch to each registered project source."""
+    from ..discovery_sources import SourceSpec
+
+    resolved = tuple(sources)
+    registered_ids = {
+        str(row.get("resource_id") or "")
+        for row in registered_project_rows(database)
+        if row.get("resource_id")
+    }
+    seen_repositories: set[str] = set()
+    seen_source_ids = {str(getattr(source, "source_id", "")) for source in resolved}
+    for source in resolved:
+        if str(getattr(source, "source_kind", "")) == "github":
+            config = dict(getattr(source, "config", {}) or {})
+            repository = str(config.get("repo") or source.source_identity).strip().rstrip("/")
+            if repository.lower().endswith(".git"):
+                repository = repository[:-4]
+            if repository:
+                seen_repositories.add(repository.casefold())
+
+    additions: list[Any] = []
+    for source in resolved:
+        if str(getattr(source, "source_kind", "")) != "project":
+            continue
+        config = dict(getattr(source, "config", {}) or {})
+        resource_id = str(config.get("resource_id") or config.get("project_id") or "")
+        if not resource_id or resource_id not in registered_ids:
+            continue
+        root = Path(str(config.get("root") or source.source_identity or ""))
+        if not root.is_dir():
+            continue
+        repository = _github_repository_for_root(root)
+        repository_key = repository.casefold() if repository else ""
+        source_id = f"github:{resource_id}"
+        if (
+            not repository
+            or repository_key in seen_repositories
+            or source_id in seen_source_ids
+        ):
+            continue
+        project_id = str(
+            config.get("project_id") or config.get("resource_id") or source.source_id
+        )
+        additions.append(SourceSpec(
+            source_id=source_id,
+            source_kind="github",
+            source_identity=repository,
+            poll_interval_s=300,
+            config={
+                "repo": repository,
+                "target_project": project_id,
+                "max_items": 10,
+                "recent_days": 30,
+            },
+            enabled=True,
+        ))
+        seen_repositories.add(repository_key)
+        seen_source_ids.add(source_id)
+    return resolved + tuple(additions)
+
+
 def registered_project_rows(database: FoundryDatabase) -> list[dict[str, Any]]:
     with database.connect(readonly=True) as connection:
         rows = connection.execute(
@@ -178,8 +243,6 @@ def observation_sources_from_registered_projects(
     """Turn registered git resources into A2/A3 project observation sources."""
     from ..discovery_sources import SourceSpec
     specs: list[Any] = []
-    github_specs: list[Any] = []
-    seen_github_repositories: set[str] = set()
     for row in assemble_project_inventory(database):
         root = Path(str(row.get("root") or ""))
         if not root.is_dir():
@@ -201,24 +264,7 @@ def observation_sources_from_registered_projects(
             },
             enabled=True,
         ))
-        github_repository = _github_repository_for_root(root)
-        repository_key = github_repository.casefold() if github_repository else ""
-        if github_repository and repository_key not in seen_github_repositories:
-            seen_github_repositories.add(repository_key)
-            github_specs.append(SourceSpec(
-                source_id=f"github:{resource_id}",
-                source_kind="github",
-                source_identity=github_repository,
-                poll_interval_s=300,
-                config={
-                    "repo": github_repository,
-                    "target_project": project_id,
-                    "max_items": 10,
-                    "recent_days": 30,
-                },
-                enabled=True,
-            ))
-    return tuple([*specs, *github_specs])
+    return _with_registered_github_sources(database, specs)
 
 
 def project_roots_from_sources(sources: Sequence[Any]) -> dict[str, str]:
@@ -227,7 +273,9 @@ def project_roots_from_sources(sources: Sequence[Any]) -> dict[str, str]:
         if str(getattr(spec, "source_kind", "")) != "project":
             continue
         config = dict(spec.config or {})
-        project_id = str(config.get("project_id") or spec.source_id)
+        project_id = str(
+            config.get("project_id") or config.get("resource_id") or spec.source_id
+        )
         root = str(config.get("root") or spec.source_identity or "")
         if project_id and root:
             roots[project_id] = root
@@ -734,11 +782,12 @@ def discover_and_admit_next_work(
         if name in InitiativeA2Bounds.__dataclass_fields__
     })
     prepare_executive_observation(database, cycle_id=cycle_id)
+    configured_sources = tuple(sources) or observation_sources_from_registered_projects(
+        database,
+        required_capabilities=tuple(required_capabilities),
+    )
     resolved_sources = _with_default_world_context_source(
-        tuple(sources) or observation_sources_from_registered_projects(
-            database,
-            required_capabilities=tuple(required_capabilities),
-        )
+        _with_registered_github_sources(database, configured_sources)
     )
     if not resolved_sources:
         reason = "V11 A3 has no registered project sources"

@@ -40,6 +40,11 @@ def test_registered_project_adds_bounded_github_watch_and_keeps_project_root(
     )
     monkeypatch.setattr(
         intelligence,
+        "registered_project_rows",
+        lambda _database: [{"resource_id": "foundry-resource"}],
+    )
+    monkeypatch.setattr(
+        intelligence,
         "_github_repository_for_root",
         lambda _root: "Blemeh/JARVIS-Foundry",
     )
@@ -76,6 +81,14 @@ def test_registered_projects_deduplicate_github_watch_by_repository(
     )
     monkeypatch.setattr(
         intelligence,
+        "registered_project_rows",
+        lambda _database: [
+            {"resource_id": "a-resource"},
+            {"resource_id": "b-resource"},
+        ],
+    )
+    monkeypatch.setattr(
+        intelligence,
         "_github_repository_for_root",
         lambda _root: "Blemeh/JARVIS-Foundry",
     )
@@ -85,6 +98,38 @@ def test_registered_projects_deduplicate_github_watch_by_repository(
     github = [source for source in sources if source.source_kind == "github"]
     assert len(github) == 1
     assert github[0].config["target_project"] == "a-resource"
+
+
+def test_explicit_registered_project_sources_are_augmented_by_the_executive(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "foundry"
+    root.mkdir()
+    project = SourceSpec(
+        source_id="project:foundry-resource",
+        source_kind="project",
+        source_identity=str(root),
+        config={"root": str(root), "resource_id": "foundry-resource"},
+    )
+    monkeypatch.setattr(
+        intelligence,
+        "registered_project_rows",
+        lambda _database: [{"resource_id": "foundry-resource"}],
+    )
+    monkeypatch.setattr(
+        intelligence,
+        "_github_repository_for_root",
+        lambda _root: "Blemeh/JARVIS-Foundry",
+    )
+
+    sources = intelligence._with_registered_github_sources(object(), (project,))
+
+    github = next(source for source in sources if source.source_kind == "github")
+    assert github.config["target_project"] == "foundry-resource"
+    assert intelligence.project_roots_from_sources(sources) == {
+        "foundry-resource": str(root),
+    }
 
 
 class _GitHubFixture:
