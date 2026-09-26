@@ -1300,7 +1300,7 @@ def run_cycle(
         campaign_resume_payload: dict[str, Any] | None = None
         campaign_blocked_mission_ids: tuple[str, ...] = ()
         campaign_dispatchable_mission_ids: tuple[str, ...] = ()
-        campaign_objective_ids: tuple[str, ...] = ()
+        campaign_excluded_objective_ids: tuple[str, ...] = ()
         # Once a campaign has been durably created, its recovery/dispatch
         # guard remains active even if a later worker config omits the opt-in
         # flag.  Otherwise a config flip or stale process would let campaign
@@ -1352,6 +1352,31 @@ def run_cycle(
                     "status": "FAILED",
                     "reason": f"{type(error).__name__}: {error}"[:300],
                 }]
+            from ..executive.campaigns import reconcile_campaign_step_bindings
+
+            try:
+                binding_results = reconcile_campaign_step_bindings(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                )
+            except PermissionError:
+                # STOP belongs to startup_resume_pass below, which propagates
+                # the exact stopped checkpoint before the worker can select.
+                binding_results = []
+            except Exception as error:  # noqa: BLE001 - no unbound mission dispatch
+                return {
+                    "loop_id": loop_id,
+                    "outcome": "BLOCKED",
+                    "reason": f"campaign mission binding failed: {type(error).__name__}: {error}"[:500],
+                }
+            if any(row.get("status") in {"AMBIGUOUS", "CONFLICT"} for row in binding_results):
+                return {
+                    "loop_id": loop_id,
+                    "outcome": "BLOCKED",
+                    "reason": "campaign mission binding has conflicting canonical identities",
+                    "campaign_bindings": binding_results,
+                }
             # Campaign recovery is a Supervisor-owned startup seam.  It only
             # reconciles durable mission/effect/provider truth and re-derives
             # wakes; dispatch still enters through the existing selector and
@@ -1374,11 +1399,23 @@ def run_cycle(
                 campaign_dispatchable_mission_ids = tuple(
                     campaign_resume.dispatchable_mission_ids)
                 from ..executive.campaigns import rebuild_campaign_state
+                from ..executive.autonomy import rebuild_executive_state
 
-                campaign_objective_ids = tuple(sorted({
+                executive_state = rebuild_executive_state(database)
+                # Previously all campaign objectives were excluded from the
+                # Executive, leaving children permanently unbound.  Admit
+                # authenticated owner objectives through their existing
+                # mission path; keep unrelated/manual campaigns on their
+                # prior guarded path.
+                campaign_excluded_objective_ids = tuple(sorted({
                     campaign.objective_id
                     for campaign in rebuild_campaign_state(database).campaigns.values()
                     if campaign.status not in {"COMPLETED", "CANCELLED"}
+                    and not (
+                        (objective := executive_state.objectives.get(campaign.objective_id))
+                        and objective.provenance.get("directive_id")
+                        and objective.provenance.get("authenticated")
+                    )
                 }))
                 database.append(Event.create(
                     "worker_loop.campaign_resume_completed",
@@ -1757,7 +1794,7 @@ def run_cycle(
                     paths=paths,
                     loop_id=loop_id,
                     instance_id=instance_id,
-                    excluded_objective_ids=campaign_objective_ids,
+                    excluded_objective_ids=campaign_excluded_objective_ids,
                 )
                 # The Continuous Executive is the canonical next-work authority.
                 # Once it has run, no later factory may create the mission in
@@ -1767,7 +1804,7 @@ def run_cycle(
                 mission_id = _maybe_executive_autonomy(
                     database, config, paths=paths,
                     loop_id=loop_id, instance_id=instance_id,
-                    excluded_objective_ids=campaign_objective_ids)
+                    excluded_objective_ids=campaign_excluded_objective_ids)
             if mission_id is None and not getattr(config, "continuous_enabled", False) \
                     and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(

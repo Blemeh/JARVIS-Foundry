@@ -1283,6 +1283,97 @@ def materialize_campaign_children(
     return summaries
 
 
+def reconcile_campaign_step_bindings(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+) -> list[dict[str, str]]:
+    """Recover the exact canonical mission/child edge after an interrupted pass.
+
+    Portfolio materialization and campaign binding are distinct durable
+    authorities.  Re-read their receipts before selection so a crash between
+    those appends cannot leave an executable mission outside its campaign.
+    """
+    _gate(database, controller, stop_path=stop_path)
+    from .autonomy import active_plan, bind_mission_to_step
+    from ..evolution.executive_portfolio import rebuild_portfolio_state
+    from ..mission.contracts import MissionStepContractError, next_executable_contract
+
+    state = rebuild_campaign_state(database)
+    if not any(not child.mission_id or child.status == "PENDING"
+               for child in state.children.values()):
+        return []
+    portfolio = rebuild_portfolio_state(database)
+    results: list[dict[str, str]] = []
+    for child in tuple(state.children.values()):
+        if child.mission_id and child.status != "PENDING":
+            continue
+        campaign = state.campaigns.get(child.campaign_id)
+        if campaign is None or campaign.status in {"COMPLETED", "CANCELLED"}:
+            continue
+        plan = active_plan(database, campaign.objective_id)
+        step = next((row for row in (plan.steps if plan else ())
+                     if row.step_id == child.step_id), None)
+        if step is None:
+            continue
+        candidates = {str(step.mission_id)} if step.mission_id else set()
+        for item in portfolio.work_items.values():
+            metadata = item.metadata
+            if (
+                item.kind != "OWNER_GOAL"
+                or str(metadata.get("executive_objective_id") or "") != campaign.objective_id
+                or str(metadata.get("executive_step_id") or "") != child.step_id
+            ):
+                continue
+            with database.connect(readonly=True) as connection:
+                rows = connection.execute(
+                    "SELECT json_extract(payload_json, '$.mission_id') AS mission_id "
+                    "FROM events WHERE event_type = 'portfolio.selection_materialized' "
+                    "AND json_extract(payload_json, '$.item_id') = ?",
+                    (item.item_id,),
+                ).fetchall()
+                # The mission and its executable contracts can be durable
+                # before the final portfolio receipt.  Recover that narrow
+                # crash window from the canonical created_from projection.
+                mission_rows = connection.execute(
+                    "SELECT mission_id FROM missions WHERE created_from = ?",
+                    (f"portfolio:{item.item_id}",),
+                ).fetchall()
+            candidates.update(str(row["mission_id"]) for row in rows if row["mission_id"])
+            candidates.update(str(row["mission_id"]) for row in mission_rows if row["mission_id"])
+        if child.mission_id:
+            candidates.add(child.mission_id)
+        executable: set[str] = set()
+        for mission_id in candidates:
+            if database.row("missions", "mission_id", mission_id) is None:
+                continue
+            try:
+                contract = next_executable_contract(database, mission_id)
+            except MissionStepContractError:
+                contract = None
+            if contract is not None:
+                executable.add(mission_id)
+        candidates = executable
+        if len(candidates) != 1:
+            if len(candidates) > 1:
+                results.append({"child_id": child.child_id, "status": "AMBIGUOUS"})
+            continue
+        mission_id = next(iter(candidates))
+        if child.mission_id and child.mission_id != mission_id:
+            results.append({"child_id": child.child_id, "status": "CONFLICT"})
+            continue
+        if step.mission_id is None:
+            bind_mission_to_step(database, campaign.objective_id, str(child.step_id), mission_id, controller=controller)
+        if child.mission_id is None:
+            bind_child_mission(database, child.child_id, mission_id, controller=controller, stop_path=stop_path)
+        current = rebuild_campaign_state(database).child(child.child_id)
+        if current.status == "PENDING" and not _unmet_dependencies(rebuild_campaign_state(database), current):
+            record_child_state(database, child.child_id, "READY", reason="canonical Executive step mission recovered", controller=controller, stop_path=stop_path)
+        results.append({"child_id": child.child_id, "mission_id": mission_id, "status": "BOUND"})
+    return results
+
+
 def _campaign_status_event(
     database: FoundryDatabase,
     campaign: CampaignRecord,
@@ -1442,6 +1533,13 @@ def _sync_campaign_readiness(
         and not _unmet_dependencies(state, child)
         for child in children
     )
+    pending_materialization = any(
+        child.status == "PENDING" and not child.mission_id
+        and child.metadata.get("materialization_version") == CAMPAIGN_CHILD_MATERIALIZATION_VERSION
+        and bool(child.metadata.get("plan_id"))
+        and not _unmet_dependencies(state, child)
+        for child in children
+    )
     explicit_wait = any(
         child.status in {"WAITING", "UNKNOWN", "BLOCKED"}
         or (
@@ -1451,12 +1549,13 @@ def _sync_campaign_readiness(
         or bool(child.wait_kind or child.wait_reason)
         for child in children
     )
-    if dispatchable and campaign.status == "WAITING":
+    if (dispatchable or pending_materialization) and campaign.status == "WAITING":
         updated = _campaign_status_event(
             database,
             campaign,
             "EXECUTING",
-            reason="a child is dispatchable after wait recovery",
+            reason=("a child is dispatchable after wait recovery" if dispatchable
+                    else "a dependency-free child awaits canonical mission materialization"),
             controller=controller,
             stop_path=stop_path,
         )
@@ -1483,7 +1582,7 @@ def _sync_campaign_readiness(
         )
         sync_objective_wait("EXECUTING")
         return updated
-    if not dispatchable and explicit_wait and campaign.status == "EXECUTING":
+    if not dispatchable and not pending_materialization and explicit_wait and campaign.status == "EXECUTING":
         updated = _campaign_status_event(
             database,
             campaign,
@@ -5210,7 +5309,7 @@ __all__ = [
     "CampaignError", "CampaignRecord", "ChildMissionRecord", "Campaign", "ChildMission", "CampaignProgress",
     "CampaignCheckpoint", "CampaignState", "CampaignResumeReport",
     "rebuild_campaign_state", "create_campaign", "declare_child_mission",
-    "materialize_campaign_children", "CAMPAIGN_CHILD_MATERIALIZATION_VERSION",
+    "materialize_campaign_children", "reconcile_campaign_step_bindings", "CAMPAIGN_CHILD_MATERIALIZATION_VERSION",
     "bind_child_mission", "bind_child_effect", "record_child_state",
     "reconcile_child_effects", "reconcile_campaign_children",
     "checkpoint_campaign", "record_campaign_checkpoint",

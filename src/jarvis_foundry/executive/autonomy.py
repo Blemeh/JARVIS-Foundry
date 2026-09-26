@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,11 @@ _ACTIVE_OBJECTIVE = frozenset({"ACTIVE", "BLOCKED", "WAITING", "PLANNING", "REGR
 _MISSION_GENERATION_OBJECTIVE = frozenset({"ACTIVE", "PLANNING", "REGRESSED"})
 _TERMINAL_STEP = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
 _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS = frozenset({"durable outcome evidence"})
+_DECOMPOSITION_ACTIONS = frozenset({
+    "build", "create", "implement", "migrate", "integrate", "configure",
+    "repair", "replace", "test", "verify", "validate", "deploy", "release",
+    "publish", "measure", "document", "register", "connect", "remove",
+})
 
 
 def _number(value: Any, default: float = 0.0) -> float:
@@ -1176,6 +1182,85 @@ def active_plan(database: FoundryDatabase, objective_id: str) -> PlanRecord | No
     return _active_plan_from_state(state, objective_id)
 
 
+def _warranted_objective_steps(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+    *,
+    capability: str,
+) -> tuple[PlanStep, ...]:
+    """Use independently actionable owner outcomes as a bounded plan.
+
+    A list of vague acceptance conditions is not a work plan.  Only an
+    authenticated owner goal, a registered target, and two or more distinct
+    action-bearing outcomes justify decomposition.  The Executive records its
+    evidence before creating the plan; campaign admission still reads only
+    that durable plan through its own authority.
+    """
+    directive_id = str(objective.provenance.get("directive_id") or "")
+    target = str(objective.resource_id or "")
+    if (
+        not directive_id
+        or not objective.provenance.get("authenticated")
+        or not target
+        or database.row("resources", "resource_id", target) is None
+        or objective.metadata.get("intent")
+    ):
+        return ()
+    criteria = tuple(str(value).strip() for value in objective.success_criteria)
+    if not 2 <= len(criteria) <= 6:
+        return ()
+    actions: list[str] = []
+    numbered: list[int | None] = []
+    for criterion in criteria:
+        match = re.match(r"^(?:(\d+)[.)]\s*)?(?:then\s+)?([a-z]+)\b\s+(.+)$", criterion, re.I)
+        if match is None or match.group(2).casefold() not in _DECOMPOSITION_ACTIONS:
+            return ()
+        action = f"{match.group(2)} {match.group(3)}".strip()
+        if len(action) < 12:
+            return ()
+        actions.append(action)
+        numbered.append(int(match.group(1)) if match.group(1) else None)
+    if len({action.casefold() for action in actions}) != len(actions):
+        return ()
+    ordered = numbered == list(range(1, len(numbered) + 1))
+    if any(value is not None for value in numbered) and not ordered:
+        return ()
+    if not ordered:
+        ordered = any(re.match(r"^then\b", value, re.I) for value in criteria[1:])
+    warrant = {
+        "objective_id": objective.objective_id,
+        "directive_id": directive_id,
+        "owner_event_id": objective.provenance.get("event_id"),
+        "resource_id": target,
+        "basis": "distinct actionable owner success criteria on a registered resource",
+        "criteria": list(criteria),
+        "ordered": ordered,
+        "step_count": len(actions),
+    }
+    warrant_ref = _append(
+        database,
+        "executive.decomposition_warranted",
+        warrant,
+        key=f"executive.decomposition_warranted:{objective.objective_id}:{_hash(warrant)}",
+        correlation_id=objective.objective_id,
+    )
+    return tuple(
+        PlanStep(
+            step_id=f"outcome-{index}",
+            objective_id=objective.objective_id,
+            description=action,
+            dependencies=(f"outcome-{index - 1}",) if ordered and index > 1 else (),
+            required_capabilities=objective.required_capabilities or (capability,),
+            resource_id=target,
+            output_contract=(criterion,),
+            verification_contract=(criterion,),
+            evidence_refs=(f"event:{warrant_ref}",),
+            max_retries=int(_number(objective.budget.get("max_retries"), 1)),
+        )
+        for index, (action, criterion) in enumerate(zip(actions, criteria), 1)
+    )
+
+
 def _active_plan_from_state(
     state: ExecutiveAutonomyState, objective_id: str,
 ) -> PlanRecord | None:
@@ -1529,7 +1614,8 @@ def generate_missions_for_objective(
             "probation_capabilities": list(step.probation_capabilities),
             "goal_id": objective.provenance.get("directive_id"),
             "success_criteria": list(
-                explicit_success_criteria or step.output_contract
+                step.output_contract if len(plan.steps) > 1
+                else explicit_success_criteria or step.output_contract
             ),
             "constraints": list(objective.constraints),
             "time_horizon": objective.deadline,
@@ -2643,14 +2729,31 @@ def run_autonomy_cycle(
             or active_plan(database, objective.objective_id) is not None
         ):
             continue
-        step = PlanStep(
-            step_id="execute", objective_id=objective.objective_id, description=objective.objective,
-            required_capabilities=objective.required_capabilities or (capability,), resource_id=objective.resource_id or resource_id,
-            output_contract=objective.success_criteria or ("durable outcome evidence",),
-            verification_contract=objective.success_criteria or ("independent verification agrees with direct inspection",),
-            max_retries=int(_number(objective.budget.get("max_retries"), 1)),
+        steps = _warranted_objective_steps(
+            database, objective, capability=capability,
         )
-        plans.append(build_plan(database, objective.objective_id, (step,), controller=controller))
+        if not steps:
+            steps = (PlanStep(
+                step_id="execute", objective_id=objective.objective_id, description=objective.objective,
+                required_capabilities=objective.required_capabilities or (capability,), resource_id=objective.resource_id or resource_id,
+                output_contract=objective.success_criteria or ("durable outcome evidence",),
+                verification_contract=objective.success_criteria or ("independent verification agrees with direct inspection",),
+                max_retries=int(_number(objective.budget.get("max_retries"), 1)),
+            ),)
+        plans.append(build_plan(database, objective.objective_id, steps, controller=controller))
+    # A newly decomposed objective waits for the campaign authority to admit
+    # its durable plan on the next Supervisor pass.  Its first child must not
+    # escape as an ordinary one-step mission in this cycle.
+    from .campaigns import campaign_for_objective
+
+    for objective in rebuild_executive_state(database).objectives.values():
+        plan = active_plan(database, objective.objective_id)
+        if (
+            plan is not None
+            and len(plan.steps) > 1
+            and campaign_for_objective(database, objective.objective_id) is None
+        ):
+            excluded.add(objective.objective_id)
     # Planner-owned, structured ``cap.*`` requirements that the canonical
     # Catalog confirms missing enter the durable gap/WAIT/expansion bridge.
     # Legacy resource capability ids stay on their existing compatibility
@@ -2714,6 +2817,25 @@ def run_autonomy_cycle(
             resolved_resource = str(decision.selected_item.get("resource_id") or resource_id or state.objectives[selected_oid].resource_id or "")
             materialization = materialize_portfolio_selection(database, decision=portfolio_payload, resource_id=resolved_resource, capability=capability, source_id="v8-executive-autonomy")
             if materialization.get("materialized"):
+                item = decision.selected_item
+                item_meta = _json(item.get("metadata"))
+                if item_meta.get("executive_objective_id") == selected_oid and item_meta.get("executive_step_id"):
+                    bind_mission_to_step(database, selected_oid, str(item_meta["executive_step_id"]), str(materialization.get("mission_id")), controller=controller)
+                    plan = active_plan(database, selected_oid)
+                    if plan is not None and len(plan.steps) > 1:
+                        from .campaigns import (
+                            bind_child_mission, rebuild_campaign_state,
+                            record_child_state,
+                        )
+
+                        campaign = campaign_for_objective(database, selected_oid)
+                        child = next((row for row in rebuild_campaign_state(database).children.values()
+                                      if campaign is not None and row.campaign_id == campaign.campaign_id
+                                      and row.step_id == str(item_meta["executive_step_id"])), None)
+                        if child is None:
+                            raise RuntimeError("decomposed mission has no declared campaign child")
+                        bind_child_mission(database, child.child_id, str(materialization["mission_id"]), controller=controller)
+                        record_child_state(database, child.child_id, "READY", reason="canonical Executive step mission is bound", controller=controller)
                 try:
                     claim_selection(database, decision, controller=controller, source_id="v8-executive-autonomy")
                 finally:
@@ -2721,10 +2843,6 @@ def run_autonomy_cycle(
                         release_selection_claim(database, decision.entity_id, controller=controller, source_id="v8-executive-autonomy")
                     except Exception:
                         pass
-                item = decision.selected_item
-                item_meta = _json(item.get("metadata"))
-                if item_meta.get("executive_objective_id") == selected_oid and item_meta.get("executive_step_id"):
-                    bind_mission_to_step(database, selected_oid, str(item_meta["executive_step_id"]), str(materialization.get("mission_id")), controller=controller)
         continuation = decide_continuation(database, selected_oid, controller=controller)
     elif pre_continuation is not None:
         continuation = pre_continuation
