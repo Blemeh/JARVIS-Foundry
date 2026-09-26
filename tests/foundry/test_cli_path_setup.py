@@ -26,3 +26,17 @@ def test_bootstrap_writes_launcher(tmp_path, monkeypatch):
     launcher = bootstrap_global_cli(root)
     assert launcher.is_file()
     assert JARVIS_CLI_CMD_TEXT.splitlines()[0] in launcher.read_text(encoding="utf-8")
+
+
+def test_cli_launcher_uses_current_immutable_release_and_fails_closed():
+    text = JARVIS_CLI_CMD_TEXT
+
+    assert 'set "CURRENT_FILE=%JARVIS_INSTALL_ROOT%\\CURRENT"' in text
+    assert 'set "PY=%RELEASE%\\.venv\\Scripts\\python.exe"' in text
+    assert 'FAIL_CLOSED: CURRENT pointer missing' in text
+    assert 'FAIL_CLOSED: release python missing' in text
+    assert 'JARVIS_RELEASE_SHA=%SHA%' in text
+    assert '"%PY%" -m jarvis_foundry.cli.main %*' in text
+    assert "C:\\Python313\\python.exe" not in text
+    assert "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" not in text
+    assert "where py" not in text

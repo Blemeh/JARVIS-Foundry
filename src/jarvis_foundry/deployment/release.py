@@ -60,36 +60,13 @@ set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\\.pw"
 exit /b %ERRORLEVEL%
 """
 
-JARVIS_CLI_CMD_TEXT = """@echo off
-setlocal EnableExtensions
-set "PYTHONPATH="
-set "PYTHONHOME="
-if exist "C:\\Python313\\python.exe" (
-  "C:\\Python313\\python.exe" -m jarvis_foundry.cli.main %*
-  exit /b %ERRORLEVEL%
+# Keep the owner-facing CLI on the same immutable CURRENT-release route as
+# the Supervisor launcher. A global or editable Python install can resolve a
+# stale worktree and silently run a different JARVIS source tree.
+JARVIS_CLI_CMD_TEXT = LAUNCHER_CMD_TEXT.replace(
+    "jarvis_foundry.deployment.launcher",
+    "jarvis_foundry.cli.main",
 )
-if exist "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" (
-  "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" %*
-  exit /b %ERRORLEVEL%
-)
-where py >nul 2>nul && (
-  py -3.13 -m jarvis_foundry.cli.main %*
-  exit /b %ERRORLEVEL%
-)
-if not defined JARVIS_INSTALL_ROOT set "JARVIS_INSTALL_ROOT=%LOCALAPPDATA%\\JARVIS"
-set "CURRENT_FILE=%JARVIS_INSTALL_ROOT%\\CURRENT"
-if exist "%CURRENT_FILE%" (
-  set /p SHA=<"%CURRENT_FILE%"
-  for /f "tokens=* delims= " %%A in ("%SHA%") do set "SHA=%%A"
-  set "PY=%JARVIS_INSTALL_ROOT%\\releases\\%SHA%\\.venv\\Scripts\\python.exe"
-  if exist "%PY%" (
-    "%PY%" -m jarvis_foundry.cli.main %*
-    exit /b %ERRORLEVEL%
-  )
-)
-echo FAIL_CLOSED: jarvis CLI not installed. Run: pip install -e . from JARVIS-Foundry>&2
-exit /b 2
-"""
 
 
 def _packaging_template(name: str) -> Path:
