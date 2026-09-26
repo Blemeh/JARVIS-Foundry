@@ -958,12 +958,34 @@ def try_fabric_dispatch(
             error_detail=str(error),
             identity_transition_authorized=True,
         )
-    if (
-        scoped_blocker is not None
-        and str(receipt.get("claimed") or "") == "BLOCKED"
-        and str(receipt.get("note") or "") == str(scoped_blocker["reason"])
-        and not receipt.get("effect_id")
-    ):
+    latest_scoped_blocker = blocking_capability_state(
+        database,
+        dispatch_manifest.resource_id,
+        dispatch_manifest.capability,
+    )
+    receipt_error = receipt.get("error")
+    receipt_error_class = (
+        str(receipt_error.get("class") or "")
+        if isinstance(receipt_error, Mapping) else ""
+    )
+    scoped_admission_block = (
+        str(receipt.get("claimed") or "") == "BLOCKED"
+        and (
+            (
+                not receipt.get("effect_id")
+                and latest_scoped_blocker is not None
+            )
+            or (
+                latest_scoped_blocker is not None
+                and receipt_error_class in {
+                    "stop_requested", "resource_capability_suspended",
+                }
+            )
+        )
+    )
+    if scoped_admission_block:
+        blocker = latest_scoped_blocker or scoped_blocker
+        assert blocker is not None
         return RoleResult(
             run_id=manifest.run_id,
             role=manifest.role,
@@ -973,7 +995,7 @@ def try_fabric_dispatch(
             verdict=VERDICT_NOT_TESTED,
             evidence=(f"fabric:{action}", "verified:UNKNOWN"),
             error_class="fabric_resource_capability_suspended",
-            error_detail=str(scoped_blocker["reason"]),
+            error_detail=str(blocker["reason"]),
             identity_transition_authorized=True,
         )
     success = bool(receipt.get("success"))

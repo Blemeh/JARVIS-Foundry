@@ -1656,6 +1656,24 @@ def execute_action(
         )
         if recovery_intent is not None:
             request_identity["recovery_intent"] = recovery_intent
+
+        def effect_blocked() -> bool:
+            if emergency_stop_reason(
+                database,
+                payload.get("stop_path"),
+                identities=stop_identities,
+            ):
+                return True
+            return bool(
+                intent.resource_id
+                and intent.resource_capability
+                and blocking_capability_state(
+                    database,
+                    intent.resource_id,
+                    intent.resource_capability,
+                )
+            )
+
         claimed = execute_fabric_effect(
             database,
             action_key=request.effect_id,
@@ -1672,17 +1690,26 @@ def execute_action(
             action_id=request.request_id,
             request_identity=request_identity,
             perform=perform,
-            stop_check=lambda: bool(
-                emergency_stop_reason(
-                    database,
-                    payload.get("stop_path"),
-                    identities=stop_identities,
-                )
-            ),
+            stop_check=effect_blocked,
             claim_ttl_s=float(payload.get("claim_ttl_s") or 300.0),
         )
     else:
-        claimed = perform()
+        scoped_blocker = (
+            blocking_capability_state(
+                database, intent.resource_id, intent.resource_capability,
+            )
+            if intent.resource_id and intent.resource_capability else None
+        )
+        claimed = (
+            {
+                "claimed": "BLOCKED",
+                "performed": False,
+                "replayed": False,
+                "error_code": "resource_capability_suspended",
+                "detail": str(scoped_blocker["reason"]),
+            }
+            if scoped_blocker is not None else perform()
+        )
     if (
         action_kind.startswith("mcp.")
         and request.effect_class is not EffectClass.READ_ONLY
@@ -1716,7 +1743,21 @@ def execute_action(
             route_owner,
         )
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
-    if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
+    scoped_effect_blocker = (
+        blocking_capability_state(
+            database, intent.resource_id, intent.resource_capability,
+        )
+        if intent.resource_id and intent.resource_capability else None
+    )
+    if (
+        claimed_outcome is ClaimOutcome.BLOCKED
+        and scoped_effect_blocker is not None
+        and claimed.get("error_code") in {
+            "stop_requested", "resource_capability_suspended",
+        }
+    ):
+        note = str(scoped_effect_blocker["reason"])
+    elif claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
         note = "worker claim diverged from observed effect"
     else:
         note = str(claimed.get("error_code") or "")
