@@ -154,8 +154,16 @@ class ProjectIdentityResolver:
             if slug not in slugs:
                 slugs.append(slug)
         canonical = f"git:{slugs[0]}" if slugs else str(root)
+        # ``canonical`` identifies the project, while ``discover_resource``
+        # needs the physical checkout path for its local_repository record.
+        # Passing a hosted slug as that path fails path validation for every
+        # repository with a remote. Keep the deterministic project identity
+        # derived from the canonical endpoint and observe the actual checkout.
+        resource_id = "resource-" + hashlib.sha256(
+            f"local_repository\x00{canonical}".encode("utf-8")
+        ).hexdigest()[:24]
         record = discover_resource(
-            "local_repository", canonical,
+            "local_repository", root, resource_id=resource_id,
             provenance={
                 "observation_mode": "local",
                 "authority": "discovery-is-not-authority",
