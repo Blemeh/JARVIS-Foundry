@@ -305,6 +305,7 @@ def read_github_source(
     repo = str(spec.config.get("repo") or spec.source_identity).strip()
     if not _REPO.fullmatch(repo):
         return SourceReadResult("BLOCKED", reason="invalid configured GitHub repository")
+    target_project = str(spec.config.get("target_project") or repo).strip() or repo
     limit = max(1, min(int(spec.config.get("max_items", 10)), 20))
     recent_days = max(1, min(int(spec.config.get("recent_days", 30)), 365))
     reader = connector or GitHubResearchConnector()
@@ -430,7 +431,7 @@ def read_github_source(
             "github", opportunity, safe["url"] or f"https://github.com/{repo}/issues/{number}",
             safe, content_hash(semantic),
             proposed_outcome=(f"Evaluate and resolve GitHub issue #{number}: {title}" if state == "open" else None),
-            target_project=repo, alias_key=opportunity, candidate_type="github_issue",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_issue",
             confidence=0.8, candidate_on="always" if state == "open" else "never",
             raw_content_hash=content_hash(safe), opportunity_key=opportunity,
             significance_hint="issue content or lifecycle changed",
@@ -462,7 +463,7 @@ def read_github_source(
         observations.append(SourceObservation(
             "github", opportunity, safe["url"] or f"https://github.com/{repo}/pull/{number}",
             safe, content_hash(semantic), proposed_outcome=outcome,
-            target_project=repo, alias_key=opportunity, candidate_type="github_pull_request",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_pull_request",
             confidence=0.7, candidate_on="change_only" if outcome else "never",
             raw_content_hash=content_hash(safe), opportunity_key=opportunity,
             significance_hint="pull request lifecycle changed",
@@ -494,7 +495,7 @@ def read_github_source(
             safe, content_hash(safe),
             proposed_outcome=(f"Review {repo} release {tag} for current runtime compatibility"
                               if affects_runtime and recent and not safe["draft"] else None),
-            target_project=str(spec.config.get("target_project") or repo), alias_key=opportunity,
+            target_project=target_project, alias_key=opportunity,
             candidate_type="github_release", confidence=0.85,
             candidate_on="always" if affects_runtime and recent else "never",
             raw_content_hash=content_hash(item), opportunity_key=opportunity,
@@ -517,7 +518,7 @@ def read_github_source(
             {"kind": "tags", "repo": repo, "tags": tag_state}, content_hash(tag_state),
             proposed_outcome=(f"Review {repo} tag {latest_tag} for current runtime compatibility"
                               if tag_affects_runtime else None),
-            target_project=str(spec.config.get("target_project") or repo),
+            target_project=target_project,
             alias_key=tag_opportunity, candidate_type="github_release_tag",
             confidence=0.8, candidate_on="always" if tag_affects_runtime else "never",
             raw_content_hash=content_hash(tags[:limit]),
@@ -541,7 +542,7 @@ def read_github_source(
         observations.append(SourceObservation(
             "github", f"github:{repo}:workflow:{run_id}", safe["url"] or f"https://github.com/{repo}/actions",
             safe, content_hash(safe), proposed_outcome=f"Investigate failed GitHub workflow {name}",
-            target_project=repo, alias_key=opportunity, candidate_type="github_workflow_failure",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_workflow_failure",
             confidence=0.75, raw_content_hash=content_hash(item), opportunity_key=opportunity,
             significance_hint="failed workflow observed",
             expires_at=_historical_expiry(item.get("updated_at") or item.get("created_at")),
@@ -562,7 +563,7 @@ def read_github_source(
         observations.append(SourceObservation(
             "github", opportunity, f"https://github.com/{repo}", safe, content_hash(safe),
             proposed_outcome=f"Investigate recurring project problem in {repo}: {key}",
-            target_project=repo, alias_key=opportunity, candidate_type="github_recurring_problem",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_recurring_problem",
             confidence=0.8, opportunity_key=opportunity,
             significance_hint="recurring open project problem observed",
         ))
@@ -587,7 +588,7 @@ def read_github_source(
             "github", f"github:{repo}:tree:{path}", f"https://github.com/{repo}/blob/{default_branch}/{path}",
             safe, content_hash(safe),
             proposed_outcome=f"Review dependency or configuration change in {repo}: {path}",
-            target_project=repo, alias_key=opportunity, candidate_type="github_dependency_change",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_dependency_change",
             confidence=0.75, candidate_on="change_only", opportunity_key=opportunity,
             significance_hint="dependency or configuration object changed",
         ))

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -66,6 +67,58 @@ def _git(root: Path, *args: str) -> str:
     if result.returncode != 0:
         return ""
     return result.stdout.strip()
+
+
+_GITHUB_REPOSITORY_PART = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _github_repository_from_remote(remote: str) -> str | None:
+    """Return a sanitized owner/repository pair for a GitHub origin URL."""
+    value = str(remote or "").strip()
+    if not value:
+        return None
+
+    scp = re.fullmatch(
+        r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?/?",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if scp:
+        owner, repository = scp.groups()
+    else:
+        from urllib.parse import urlsplit
+
+        try:
+            parsed = urlsplit(value)
+            if (
+                parsed.scheme.lower() not in {"https", "ssh"}
+                or (parsed.hostname or "").lower() != "github.com"
+                or parsed.port is not None
+                or parsed.query
+                or parsed.fragment
+                or parsed.password
+                or (parsed.scheme.lower() == "https" and parsed.username)
+                or (parsed.scheme.lower() == "ssh" and parsed.username != "git")
+            ):
+                return None
+        except ValueError:
+            return None
+        parts = parsed.path.strip("/").split("/")
+        if len(parts) != 2:
+            return None
+        owner, repository = parts
+        if repository.lower().endswith(".git"):
+            repository = repository[:-4]
+
+    if not all(_GITHUB_REPOSITORY_PART.fullmatch(part) for part in (owner, repository)):
+        return None
+    return f"{owner}/{repository}"
+
+
+def _github_repository_for_root(root: Path) -> str | None:
+    # Keep the remote URL in process only. Source identity and durable evidence
+    # contain the sanitized GitHub owner/repository pair, never URL credentials.
+    return _github_repository_from_remote(_git(root, "remote", "get-url", "origin"))
 
 
 def registered_project_rows(database: FoundryDatabase) -> list[dict[str, Any]]:
@@ -125,6 +178,8 @@ def observation_sources_from_registered_projects(
     """Turn registered git resources into A2/A3 project observation sources."""
     from ..discovery_sources import SourceSpec
     specs: list[Any] = []
+    github_specs: list[Any] = []
+    seen_github_repositories: set[str] = set()
     for row in assemble_project_inventory(database):
         root = Path(str(row.get("root") or ""))
         if not root.is_dir():
@@ -146,7 +201,24 @@ def observation_sources_from_registered_projects(
             },
             enabled=True,
         ))
-    return tuple(specs)
+        github_repository = _github_repository_for_root(root)
+        repository_key = github_repository.casefold() if github_repository else ""
+        if github_repository and repository_key not in seen_github_repositories:
+            seen_github_repositories.add(repository_key)
+            github_specs.append(SourceSpec(
+                source_id=f"github:{resource_id}",
+                source_kind="github",
+                source_identity=github_repository,
+                poll_interval_s=300,
+                config={
+                    "repo": github_repository,
+                    "target_project": project_id,
+                    "max_items": 10,
+                    "recent_days": 30,
+                },
+                enabled=True,
+            ))
+    return tuple([*specs, *github_specs])
 
 
 def project_roots_from_sources(sources: Sequence[Any]) -> dict[str, str]:
