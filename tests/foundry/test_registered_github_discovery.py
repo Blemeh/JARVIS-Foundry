@@ -155,6 +155,26 @@ class _GitHubFixture:
         return SimpleNamespace(outcome="COMPLETED", error_code=None), document
 
 
+class _WorkflowFailureFixture(_GitHubFixture):
+    def __init__(self, updated_at: str) -> None:
+        self.updated_at = updated_at
+
+    def read_api(self, action: str, endpoint: str):
+        if "/actions/runs?" in endpoint:
+            return SimpleNamespace(outcome="COMPLETED", error_code=None), {
+                "workflow_runs": [{
+                    "id": 42,
+                    "name": "windows-ci",
+                    "conclusion": "failure",
+                    "head_sha": "a" * 40,
+                    "created_at": self.updated_at,
+                    "updated_at": self.updated_at,
+                    "html_url": "https://github.com/Blemeh/JARVIS-Foundry/actions/runs/42",
+                }],
+            }
+        return super().read_api(action, endpoint)
+
+
 def test_github_candidates_target_the_registered_local_project() -> None:
     spec = SourceSpec(
         source_id="github:foundry-resource",
@@ -174,3 +194,38 @@ def test_github_candidates_target_the_registered_local_project() -> None:
     assert issue.target_project == "foundry-resource"
     assert issue.authority == "DATA_ONLY"
     assert issue.proposed_outcome == "Evaluate and resolve GitHub issue #17: Complete current owner task"
+
+
+@pytest.mark.parametrize(
+    ("updated_at", "expected_candidate"),
+    [
+        ("2026-08-19T03:42:59Z", False),
+        ("2026-09-25T03:42:59Z", True),
+    ],
+)
+def test_github_workflow_failures_expire_before_candidate_generation(
+    updated_at: str,
+    expected_candidate: bool,
+) -> None:
+    spec = SourceSpec(
+        source_id="github:foundry-resource",
+        source_kind="github",
+        source_identity="Blemeh/JARVIS-Foundry",
+        poll_interval_s=300,
+        config={
+            "repo": "Blemeh/JARVIS-Foundry",
+            "target_project": "foundry-resource",
+            "now": "2026-09-26T12:00:00Z",
+        },
+    )
+
+    result = read_github_source(
+        spec,
+        connector=_WorkflowFailureFixture(updated_at),
+    )
+
+    failures = [
+        item for item in result.observations
+        if item.candidate_type == "github_workflow_failure"
+    ]
+    assert bool(failures) is expected_candidate

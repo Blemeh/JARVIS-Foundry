@@ -531,6 +531,14 @@ def read_github_source(
     for item in runs[:limit]:
         if not isinstance(item, dict) or item.get("conclusion") not in {"failure", "cancelled", "timed_out"}:
             continue
+        expires_at = _historical_expiry(item.get("updated_at") or item.get("created_at"))
+        if expires_at is None:
+            continue
+        try:
+            if _utc(expires_at) <= now:
+                continue
+        except (TypeError, ValueError):
+            continue
         run_id, name = item.get("id"), _bounded_text(item.get("name"), 160) or "workflow"
         safe = {
             "kind": "workflow_run", "repo": repo, "run_id": run_id, "name": name,
@@ -545,7 +553,7 @@ def read_github_source(
             target_project=target_project, alias_key=opportunity, candidate_type="github_workflow_failure",
             confidence=0.75, raw_content_hash=content_hash(item), opportunity_key=opportunity,
             significance_hint="failed workflow observed",
-            expires_at=_historical_expiry(item.get("updated_at") or item.get("created_at")),
+            expires_at=expires_at,
         ))
         failures_by_name.setdefault(name.lower(), []).append(run_id)
 
