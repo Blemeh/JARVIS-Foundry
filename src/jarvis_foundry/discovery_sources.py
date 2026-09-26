@@ -1124,9 +1124,18 @@ def read_world_source(
         stale = str(entity.get("state") or "") == "STALE" or bool(
             entity.get("stale_after") and str(entity["stale_after"]) <= now
         )
-        is_project = entity.get("entity_type") == "PROJECT"
+        entity_type = str(entity.get("entity_type") or "")
+        is_project = entity_type == "PROJECT"
         if not stale and not is_project:
             continue
+        stale_mission_candidate = (
+            stale
+            and entity_type == "MISSION"
+            and bool(spec.config.get("candidate_stale_missions", True))
+        )
+        stale_candidate = stale and verified and (
+            entity_type != "MISSION" or stale_mission_candidate
+        )
         kind = "stale_assumption" if stale else "project_state"
         safe = {
             "kind": kind, "entity_id": entity.get("entity_id"),
@@ -1142,11 +1151,11 @@ def read_world_source(
             "world", opportunity, opportunity, safe, content_hash(safe),
             authority="SYSTEM_OBSERVATION" if verified else "DATA_ONLY",
             proposed_outcome=(f"Re-verify stale WorldModel assumption: {safe['name']}"
-                              if stale and verified else None),
+                              if stale_candidate else None),
             target_project=safe["name"] if is_project else "",
             alias_key=opportunity, candidate_type=("world_stale_assumption" if stale else "world_project_state"),
             confidence=float(entity.get("confidence") or 0.5),
-            candidate_on="always" if stale and verified else "never",
+            candidate_on="always" if stale_candidate else "never",
             raw_content_hash=content_hash(entity), opportunity_key=opportunity,
             significance_hint=("verified assumption became stale" if stale else "verified project state changed"),
         ))
@@ -1212,7 +1221,11 @@ def read_world_source(
             "evidence_refs": evidence, "confidence": pattern.get("confidence"),
         }
         opportunity = f"world:pattern:{pattern.get('pattern_id')}"
-        candidate_authority = bool(evidence) and float(pattern.get("confidence") or 0.0) >= 0.5
+        candidate_authority = (
+            bool(evidence)
+            and float(pattern.get("confidence") or 0.0) >= 0.5
+            and bool(spec.config.get("candidate_repeated_failures", True))
+        )
         observations.append(SourceObservation(
             "world", opportunity, opportunity, safe, content_hash(safe),
             authority="SYSTEM_OBSERVATION" if candidate_authority else "DATA_ONLY",

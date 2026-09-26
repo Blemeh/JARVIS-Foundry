@@ -152,12 +152,41 @@ def observation_sources_from_registered_projects(
 def project_roots_from_sources(sources: Sequence[Any]) -> dict[str, str]:
     roots: dict[str, str] = {}
     for spec in sources:
+        if str(getattr(spec, "source_kind", "")) != "project":
+            continue
         config = dict(spec.config or {})
         project_id = str(config.get("project_id") or spec.source_id)
         root = str(config.get("root") or spec.source_identity or "")
         if project_id and root:
             roots[project_id] = root
     return roots
+
+
+def _with_default_world_context_source(sources: Sequence[Any]) -> tuple[Any, ...]:
+    """Keep durable WorldModel context in the canonical A2 observation feed.
+
+    Runtime source configuration may add or replace project/external inputs,
+    but omitting a world source must not disconnect already-recorded owner and
+    system observations from Executive discovery. Historical mission summaries
+    and repeated-failure patterns stay contextual; they do not become fresh
+    autonomous work through this default source.
+    """
+    resolved = tuple(sources)
+    if any(str(getattr(source, "source_kind", "")) == "world" for source in resolved):
+        return resolved
+    from ..discovery_sources import SourceSpec
+
+    return resolved + (SourceSpec(
+        source_id="world-model",
+        source_kind="world",
+        source_identity="world-model",
+        poll_interval_s=300,
+        config={
+            "candidate_stale_missions": False,
+            "candidate_repeated_failures": False,
+        },
+        enabled=True,
+    ),)
 
 
 def prepare_executive_observation(
@@ -632,9 +661,11 @@ def discover_and_admit_next_work(
         if name in InitiativeA2Bounds.__dataclass_fields__
     })
     prepare_executive_observation(database, cycle_id=cycle_id)
-    resolved_sources = tuple(sources) or observation_sources_from_registered_projects(
-        database,
-        required_capabilities=tuple(required_capabilities),
+    resolved_sources = _with_default_world_context_source(
+        tuple(sources) or observation_sources_from_registered_projects(
+            database,
+            required_capabilities=tuple(required_capabilities),
+        )
     )
     if not resolved_sources:
         reason = "V11 A3 has no registered project sources"
