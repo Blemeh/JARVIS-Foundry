@@ -164,6 +164,51 @@ def test_record_requires_known_improvement_and_resource(
         _bind(db, improvement_id, "res-nope", repo)
 
 
+def test_record_rejects_whitespace_forbidden_and_strips_paths(
+        db: FoundryDatabase, repo: Path) -> None:
+    _register(db, "res-a", repo)
+    improvement_id = _improvement(db)
+    with pytest.raises(ImprovementBindingError):
+        _bind(db, improvement_id, "res-a", repo, forbidden_paths=["   "])
+    recorded = _bind(db, improvement_id, "res-a", repo,
+                     allowed_paths=["  probe.py  "],
+                     forbidden_paths=[" README.md "])
+    assert recorded["allowed_paths"] == ["probe.py"]
+    assert recorded["forbidden_paths"] == ["README.md"]
+    assert get_execution_binding(db, improvement_id) is not None
+
+
+def test_identical_rerecord_dedupes(db: FoundryDatabase, repo: Path) -> None:
+    _register(db, "res-a", repo)
+    improvement_id = _improvement(db)
+    first = _bind(db, improvement_id, "res-a", repo)
+    second = _bind(db, improvement_id, "res-a", repo)
+    assert second["recorded_at"] == first["recorded_at"]
+    events = [event for event in db.events(
+        event_types=("improvement.binding_recorded",), readonly=True)
+        if event.payload.get("improvement_id") == improvement_id]
+    assert len(events) == 1
+
+
+def test_contract_construction_failure_leaves_no_mission(
+        db: FoundryDatabase, repo: Path, monkeypatch) -> None:
+    import jarvis_foundry.evolution.binding as binding_module
+    _register(db, "res-a", repo)
+    improvement_id = _improvement(db)
+    _bind(db, improvement_id, "res-a", repo)
+    monkeypatch.setattr(binding_module, "_bounded_instructions",
+                        lambda binding, step: "   ")
+    with pytest.raises(ImprovementBindingError):
+        materialize_bound_improvement(
+            db, item_id="item-1", decision_id="decision-1",
+            improvement_id=improvement_id, objective="memoize the probe read",
+        )
+    created = [event for event in db.events(
+        event_types=("mission.created",), readonly=True)]
+    assert created == []
+    assert get_execution_binding(db, improvement_id) is not None
+
+
 def test_record_rejects_bad_sha_scope_tests_and_risk(
         db: FoundryDatabase, repo: Path) -> None:
     _register(db, "res-a", repo)

@@ -85,7 +85,7 @@ def _require_list(value: Any, label: str) -> list[str]:
 
 def _canonical_relative(path: str, label: str) -> str:
     """Repo-relative scope path in the same canonical form the step-contract gate uses."""
-    raw = str(path or "").replace("\\", "/")
+    raw = str(path or "").strip().replace("\\", "/")
     parts = tuple(part for part in raw.split("/") if part not in ("", "."))
     if not parts or ".." in parts:
         raise ImprovementBindingError(
@@ -194,11 +194,16 @@ def record_execution_binding(
             f"resource {payload['resource_id']!r} is not registered: "
             "a binding needs a registered repository/resource"
         )
+    content_key = f"{BINDING_RECORDED_EVENT}:{payload['improvement_id']}:{payload_hash(payload)}"
+    latest = get_execution_binding(database, payload["improvement_id"])
+    if latest is not None:
+        prior = {key: value for key, value in latest.items() if key != "recorded_at"}
+        if prior == payload:
+            return latest
     payload["recorded_at"] = isoformat()
-    key = f"{BINDING_RECORDED_EVENT}:{payload['improvement_id']}:{payload_hash(payload)}"
     database.append(Event.create(
         BINDING_RECORDED_EVENT, payload,
-        source_type=source_type, source_id=source_id, idempotency_key=key,
+        source_type=source_type, source_id=source_id, idempotency_key=content_key,
     ))
     return payload
 
@@ -357,7 +362,11 @@ def materialize_bound_improvement(
     and recovery stay on the canonical MissionLoop; nothing here dispatches
     work or invents worker authority.
     """
-    from ..mission.contracts import MissionStepContract, record_step_contract
+    from ..mission.contracts import (
+        MissionStepContract,
+        MissionStepContractError,
+        record_step_contract,
+    )
 
     for event in reversed(database.events(
             event_types=("portfolio.selection_materialized",), readonly=True)):
@@ -373,6 +382,74 @@ def materialize_bound_improvement(
     forbidden = tuple(binding["forbidden_paths"])
     tests = tuple(binding["required_tests"])
     success = str(binding["success_criterion"])
+
+    mission_id = f"mission-{uuid.uuid4().hex[:12]}"
+    provenance = {
+        "decision_id": decision_id,
+        "portfolio_item_id": item_id,
+        "portfolio_class": "IMPROVEMENT",
+        "improvement_id": improvement_id,
+        "baseline_sha": binding["baseline_sha"],
+        "measurement_ref": binding["measurement_ref"],
+    }
+    # Construct both contracts BEFORE any ledger write: constructor
+    # validation is pure, so binding content that cannot become contracts
+    # fails here with nothing created and no orphan mission left behind.
+    try:
+        plan = MissionStepContract(
+            mission_id=mission_id,
+            step_id="01-plan",
+            version=1,
+            resource_id=resource_id,
+            capability=PLAN_CAPABILITY,
+            target_relative_path=primary_target,
+            instructions=_bounded_instructions(binding, step="plan"),
+            expected_effects=(
+                "bounded change plan recorded for the bound improvement",
+                "plan names the required tests and their evidence",
+            ),
+            rollback={"method": "no-op: the planning step performs no writes",
+                      "reversible": True},
+            risk_class=risk_class,
+            verification_criteria=(
+                "bounded plan covers exactly the bound scope",
+                f"plan names required tests: {', '.join(tests)}",
+            ),
+            expected_artifacts=(),
+            forbidden_paths=forbidden,
+            recorded_by="supervisor",
+            source="v6-improvement-binding",
+            provenance={**provenance, "step": "plan"},
+        )
+        execute = MissionStepContract(
+            mission_id=mission_id,
+            step_id="02-execute",
+            version=1,
+            resource_id=resource_id,
+            capability=EXECUTE_CAPABILITY,
+            target_relative_path=primary_target,
+            instructions=_bounded_instructions(binding, step="execute"),
+            expected_effects=(
+                "bounded change applied inside the bound scope",
+                "required tests executed with evidence",
+            ),
+            rollback={"method": "revert the improvement commit in the isolated worktree",
+                      "reversible": True},
+            risk_class=risk_class,
+            verification_criteria=(
+                success,
+                f"required tests executed with evidence: {', '.join(tests)}",
+            ),
+            expected_artifacts=(),
+            forbidden_paths=forbidden,
+            recorded_by="supervisor",
+            source="v6-improvement-binding",
+            provenance={**provenance, "step": "execute"},
+        )
+    except MissionStepContractError as error:
+        raise ImprovementBindingError(
+            f"binding content cannot become step contracts: {error}"
+        ) from error
 
     from ..evolution.executive_portfolio import register_work_item
     try:
@@ -396,7 +473,6 @@ def materialize_bound_improvement(
     except Exception:  # noqa: BLE001 - mirror failure is recorded, never fatal here
         pass
 
-    mission_id = f"mission-{uuid.uuid4().hex[:12]}"
     acceptance = [
         f"{objective} completed within declared capacity/budget",
         "independent verification PASS or honest BLOCKED with evidence",
@@ -436,66 +512,16 @@ def materialize_bound_improvement(
             source_id=source_id,
             idempotency_key=f"mission.state_changed:{mission_id}:{state}:portfolio",
         ))
-    provenance = {
-        "decision_id": decision_id,
-        "portfolio_item_id": item_id,
-        "portfolio_class": "IMPROVEMENT",
-        "improvement_id": improvement_id,
-        "baseline_sha": binding["baseline_sha"],
-        "measurement_ref": binding["measurement_ref"],
-    }
-    plan = MissionStepContract(
-        mission_id=mission_id,
-        step_id="01-plan",
-        version=1,
-        resource_id=resource_id,
-        capability=PLAN_CAPABILITY,
-        target_relative_path=primary_target,
-        instructions=_bounded_instructions(binding, step="plan"),
-        expected_effects=(
-            "bounded change plan recorded for the bound improvement",
-            "plan names the required tests and their evidence",
-        ),
-        rollback={"method": "no-op: the planning step performs no writes",
-                  "reversible": True},
-        risk_class=risk_class,
-        verification_criteria=(
-            "bounded plan covers exactly the bound scope",
-            f"plan names required tests: {', '.join(tests)}",
-        ),
-        expected_artifacts=(),
-        forbidden_paths=forbidden,
-        recorded_by="supervisor",
-        source="v6-improvement-binding",
-        provenance={**provenance, "step": "plan"},
-    )
-    record_step_contract(database, plan)
-    execute = MissionStepContract(
-        mission_id=mission_id,
-        step_id="02-execute",
-        version=1,
-        resource_id=resource_id,
-        capability=EXECUTE_CAPABILITY,
-        target_relative_path=primary_target,
-        instructions=_bounded_instructions(binding, step="execute"),
-        expected_effects=(
-            "bounded change applied inside the bound scope",
-            "required tests executed with evidence",
-        ),
-        rollback={"method": "revert the improvement commit in the isolated worktree",
-                  "reversible": True},
-        risk_class=risk_class,
-        verification_criteria=(
-            success,
-            f"required tests executed with evidence: {', '.join(tests)}",
-        ),
-        expected_artifacts=(),
-        forbidden_paths=forbidden,
-        recorded_by="supervisor",
-        source="v6-improvement-binding",
-        provenance={**provenance, "step": "execute"},
-    )
-    record_step_contract(database, execute)
+    # Contracts were constructed (and validated) before the first ledger
+    # write above.  Recording them can still refuse on database binding;
+    # that failure converts to a closed refusal, never a crash.
+    try:
+        record_step_contract(database, plan)
+        record_step_contract(database, execute)
+    except MissionStepContractError as error:
+        raise ImprovementBindingError(
+            f"bound contracts refused by the ledger: {error}"
+        ) from error
     database.append(Event.create(
         "portfolio.selection_materialized",
         {
