@@ -60,28 +60,53 @@ set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\\.pw"
 exit /b %ERRORLEVEL%
 """
 
-# Keep the owner-facing CLI on the same immutable CURRENT-release route as
-# the Supervisor launcher. Execute its bootstrap from the selected release
-# itself: `-I -m` would still allow a venv's editable-install metadata to pick
-# a different source tree, while an ordinary `-m` can be shadowed by cwd.
-JARVIS_CLI_CMD_TEXT = LAUNCHER_CMD_TEXT.replace(
-    "-I -m jarvis_foundry.deployment.launcher",
-    '-I "%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py"',
-).replace(
-    'set "JARVIS_RELEASE_ID=%SHA%"',
-    'set "CLI_ENTRY=%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py"\n'
-    'set "JARVIS_RELEASE_ID=%SHA%"',
-).replace(
-    '"%PY%" -I "%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py" %*\n'
-    'exit /b %ERRORLEVEL%\n',
-    'if exist "%CLI_ENTRY%" (\n'
-    '  "%PY%" -I "%CLI_ENTRY%" %*\n'
-    '  exit /b %ERRORLEVEL%\n'
-    ')\n'
-    'rem Backward-compatible route for immutable releases predating the CLI bootstrap.\n'
-    '"%PY%" -I -m jarvis_foundry.cli.main %*\n'
-    'exit /b %ERRORLEVEL%\n',
+# Validate CURRENT in a static PowerShell file so its raw bytes never enter
+# CMD syntax. The only value returned to the batch file is a lowercase
+# 40/64-character Git object id, safe to place in the immutable release path.
+JARVIS_CLI_CURRENT_SHA_VALIDATOR_TEXT = r"""try {
+    $raw = [IO.File]::ReadAllText([IO.Path]::Combine($env:JARVIS_INSTALL_ROOT, 'CURRENT'))
+} catch {
+    exit 2
+}
+$match = [regex]::Match($raw, '^([0-9a-f]{40}|[0-9a-f]{64})(?:\r?\n)?\z')
+if ($match.Success) {
+    [Console]::Out.WriteLine($match.Groups[1].Value)
+    exit 0
+}
+exit 2
+"""
+
+# The direct bootstrap pins imports to source copied into a new immutable
+# release. A release predating that file still runs from its own venv package.
+JARVIS_CLI_CMD_TEXT = rf"""@echo off
+setlocal EnableExtensions
+set "PYTHONPATH="
+set "PYTHONHOME="
+if not defined JARVIS_INSTALL_ROOT set "JARVIS_INSTALL_ROOT=%LOCALAPPDATA%\JARVIS"
+set "SHA="
+for /f "usebackq delims=" %%A in (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -NonInteractive -File "%JARVIS_INSTALL_ROOT%\bin\validate-current.ps1"`) do set "SHA=%%A"
+if not defined SHA (
+  echo FAIL_CLOSED: CURRENT pointer must contain one full lowercase Git object id>&2
+  exit /b 2
 )
+set "RELEASE=%JARVIS_INSTALL_ROOT%\releases\%SHA%"
+set "PY=%RELEASE%\.venv\Scripts\python.exe"
+if not exist "%PY%" (
+  echo FAIL_CLOSED: release python missing>&2
+  exit /b 2
+)
+set "CLI_ENTRY=%RELEASE%\source\src\jarvis_foundry\deployment\cli_launcher.py"
+set "JARVIS_RELEASE_ID=%SHA%"
+set "JARVIS_RELEASE_SHA=%SHA%"
+set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\.pw"
+if exist "%CLI_ENTRY%" (
+  "%PY%" -I "%CLI_ENTRY%" %*
+  exit /b %ERRORLEVEL%
+)
+rem Backward-compatible route for immutable releases predating the CLI bootstrap.
+"%PY%" -I -m jarvis_foundry.cli.main %*
+exit /b %ERRORLEVEL%
+"""
 
 
 def _packaging_template(name: str) -> Path:
