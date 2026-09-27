@@ -52,8 +52,8 @@ def _current_release() -> tuple[Path, str]:
 def _validated_cli_main() -> Any:
     root, sha = _current_release()
     release = (root / "releases" / sha).resolve()
-    source_root = release / "src"
-    entry = release / "src" / "jarvis_foundry" / "deployment" / "cli_launcher.py"
+    source_root = release / "source" / "src"
+    entry = source_root / "jarvis_foundry" / "deployment" / "cli_launcher.py"
     try:
         actual_entry = Path(__file__).resolve(strict=True)
     except OSError as error:

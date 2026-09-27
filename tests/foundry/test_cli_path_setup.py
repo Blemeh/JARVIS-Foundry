@@ -25,13 +25,15 @@ def test_install_cli_launcher_writes_jarvis_cmd(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", str(local))
     path = install_cli_launcher(root)
     assert path == cli_cmd(root)
-    assert "jarvis_foundry.cli.main" in path.read_text(encoding="utf-8")
+    assert "source\\src\\jarvis_foundry\\deployment\\cli_launcher.py" in path.read_text(
+        encoding="utf-8")
     python_bin = local / "Python" / "bin" / "jarvis.cmd"
     assert python_bin.is_file()
 
 
 def test_bootstrap_writes_launcher(tmp_path, monkeypatch):
     root = tmp_path / "JARVIS"
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
     monkeypatch.setattr(
         "jarvis_foundry.deployment.path_setup.ensure_jarvis_bin_on_path",
         lambda *_a, **_k: False,
@@ -46,10 +48,10 @@ def test_cli_launcher_uses_current_immutable_release_and_fails_closed():
 
     assert 'set "CURRENT_FILE=%JARVIS_INSTALL_ROOT%\\CURRENT"' in text
     assert 'set "PY=%RELEASE%\\.venv\\Scripts\\python.exe"' in text
-    assert 'set "CLI_ENTRY=%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py"' in text
-    assert '"%PY%" -I "%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py" %*' in text
+    assert 'set "CLI_ENTRY=%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py"' in text
+    assert '"%PY%" -I "%CLI_ENTRY%" %*' in text
     assert "-I -m jarvis_foundry.deployment.launcher" in LAUNCHER_CMD_TEXT
-    assert "CURRENT release CLI bootstrap missing" in text
+    assert '"%PY%" -I -m jarvis_foundry.cli.main %*' in text
     assert 'FAIL_CLOSED: CURRENT pointer missing' in text
     assert 'FAIL_CLOSED: release python missing' in text
     assert 'JARVIS_RELEASE_SHA=%SHA%' in text

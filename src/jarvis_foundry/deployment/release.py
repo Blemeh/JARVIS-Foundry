@@ -66,15 +66,21 @@ exit /b %ERRORLEVEL%
 # a different source tree, while an ordinary `-m` can be shadowed by cwd.
 JARVIS_CLI_CMD_TEXT = LAUNCHER_CMD_TEXT.replace(
     "-I -m jarvis_foundry.deployment.launcher",
-    '-I "%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py"',
+    '-I "%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py"',
 ).replace(
     'set "JARVIS_RELEASE_ID=%SHA%"',
-    'set "CLI_ENTRY=%RELEASE%\\src\\jarvis_foundry\\deployment\\cli_launcher.py"\n'
-    'if not exist "%CLI_ENTRY%" (\n'
-    '  echo FAIL_CLOSED: CURRENT release CLI bootstrap missing>&2\n'
-    '  exit /b 2\n'
-    ')\n'
+    'set "CLI_ENTRY=%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py"\n'
     'set "JARVIS_RELEASE_ID=%SHA%"',
+).replace(
+    '"%PY%" -I "%RELEASE%\\source\\src\\jarvis_foundry\\deployment\\cli_launcher.py" %*\n'
+    'exit /b %ERRORLEVEL%\n',
+    'if exist "%CLI_ENTRY%" (\n'
+    '  "%PY%" -I "%CLI_ENTRY%" %*\n'
+    '  exit /b %ERRORLEVEL%\n'
+    ')\n'
+    'rem Backward-compatible route for immutable releases predating the CLI bootstrap.\n'
+    '"%PY%" -I -m jarvis_foundry.cli.main %*\n'
+    'exit /b %ERRORLEVEL%\n',
 )
 
 
