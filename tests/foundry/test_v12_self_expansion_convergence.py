@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -54,7 +55,7 @@ from jarvis_foundry.fabric.gap_bridge import (
     rebuild_gap_state,
     start_expansion_attempt,
 )
-from jarvis_foundry.fabric.loop import execute_action
+from jarvis_foundry.fabric.loop import execute_action, seed_builtins
 from jarvis_foundry.fabric.model import (
     Readiness,
     Semantic,
@@ -730,6 +731,83 @@ def test_callable_expansion_entrypoint_resumes_and_replays_without_duplicate_tri
         engine.close()
 
 
+def test_supervisor_default_expansion(tmp_path: Path) -> None:
+    """The ordinary Executive dispatch must own the resolver and Catalog path."""
+    # Keep the database parent short enough for Windows to create the
+    # DB-adjacent immutable adapter/trial artifacts under production_port.
+    scratch_root = Path(__file__).resolve().parents[2] / f"tmp-exp-{tmp_path.name[-8:]}"
+    scratch_root.mkdir()
+    database = FoundryDatabase(scratch_root / "f.db")
+    database.initialize()
+    objective_id = "objective-supervisor-default-source-adapter"
+    try:
+        create_objective(
+            database,
+            "Resume the original objective through the declared SHA256 adapter",
+            objective_id=objective_id,
+            required_capabilities=(MISSING,),
+            success_criteria=("the original objective is active after gap resolution",),
+            budget={"max_missions": 1, "max_retries": 1},
+        )
+
+        waiting_cycle = run_autonomy_cycle(
+            database,
+            cycle_id="supervisor-default-source-adapter-wait",
+        )
+        assert waiting_cycle.materialization["materialized"] is False
+        opened_gap = next(iter(rebuild_gap_state(database).values()))
+        assert opened_gap.origin_objective_id == objective_id
+        assert opened_gap.required_capability_id == MISSING
+        assert rebuild_executive_state(database).objectives[objective_id].status == "WAITING"
+
+        # This is the production entry point: run_autonomy_cycle creates and closes
+        # production_port(database), which selects canonical_blueprint_resolver.
+        # No resolver, engine, discovery result, or Catalog registration is injected.
+        run_autonomy_cycle(
+            database,
+            cycle_id="supervisor-default-source-adapter-expand",
+            self_expansion=True,
+        )
+
+        dispatches = _events(database, "executive.self_expansion_dispatch_recorded")
+        assert len(dispatches) == 1
+        dispatch = dispatches[0].payload
+        assert dispatch["objective_id"] == objective_id
+        assert dispatch["gap_ids"] == [opened_gap.gap_id]
+        assert dispatch["resumed_gap_ids"] == [opened_gap.gap_id]
+        assert dispatch["waiting_gap_ids"] == []
+
+        selected = _events(database, "fabric.self_expansion.solution_selected")
+        assert len(selected) == 1
+        assert selected[0].payload["adapter_id"].startswith(
+            "adapter.jarvis.source.hash-file-sha256."
+        )
+        completed = _events(database, RUN_COMPLETED)
+        assert len(completed) == 1
+        receipt = completed[0].payload["receipt"]
+        assert receipt["status"] == "REGISTERED"
+        assert receipt["gap_id"] == opened_gap.gap_id
+        assert receipt["trust"] == "PROBATION"
+        assert receipt["independent_verification"] == "PASS"
+
+        # Re-read active readiness through the Fabric Catalog after adoption.
+        registration = capability_registration(database, MISSING)
+        readiness = observed_readiness(database, MISSING)
+        assert registration is not None
+        assert registration["registration_id"] == receipt["registration_id"]
+        assert readiness.state is Readiness.READY
+        assert readiness.trust_state.value == "PROBATION"
+
+        resumed_gap = rebuild_gap_state(database)[opened_gap.gap_id]
+        assert resumed_gap.status.value == "RESUMED"
+        assert resumed_gap.effective_capability_state == "PROBATION"
+        assert rebuild_executive_state(database).objectives[objective_id].status == "ACTIVE"
+        assert len(_events(database, WAKE_FIRED)) == 1
+        assert len(_events(database, RESUMED)) == 1
+    finally:
+        shutil.rmtree(scratch_root, ignore_errors=True)
+
+
 def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: Path) -> None:
     database = _database(tmp_path)
     repository = _git_repository(tmp_path)
@@ -766,6 +844,9 @@ def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: P
     executive = rebuild_executive_state(database)
     assert executive.objectives[objective_id].status == "WAITING"
     assert len(_events(database, GAP_OPENED)) == 1
+    # Match normal worker-loop boot before pinning the Catalog rollback base.
+    # The worker initializes these canonical rows before any mission dispatch.
+    seed_builtins(database)
     before_catalog = catalog_truth_snapshot(database)
 
     resolver_calls: list[str] = []
@@ -938,12 +1019,17 @@ def test_real_gap_discover_adapt_trial_probation_resume_and_complete(tmp_path: P
         tmp_path / "artifact-trials",
         project_root=ROOT,
     ).disable(winning_artifact, capability_id=MISSING)
+    after_rollback_catalog = catalog_truth_snapshot(database)
     assert rollback.status == "RESTORED"
+    assert after_rollback_catalog["sha256"] == before_catalog["sha256"]
     assert catalog_truth_snapshot(database)["sha256"] == before_catalog["sha256"]
     stale = engine.dispatch(delivered[0])
     assert stale["status"] == "FAILED"
     assert stale["reason_code"] == "ADOPTION_NO_LONGER_ACTIVE"
-    assert len(_events(database, REGISTERED)) == 1
+    assert len([
+        event for event in _events(database, REGISTERED)
+        if event.payload.get("capability_id") == MISSING
+    ]) == 1
     assert len(_events(database, RECURSION_BLOCKED)) == 0
     assert database.quick_check() == "ok"
 

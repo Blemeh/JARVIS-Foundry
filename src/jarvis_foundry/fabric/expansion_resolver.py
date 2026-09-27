@@ -67,12 +67,12 @@ ADAPTER_TABLE_AUTHORITY = "JARVIS_SYSTEM_METADATA"
 #: the action; the resolver re-checks both at resolve time.
 JARVIS_SOURCE_ADAPTERS: dict[str, dict[str, Any]] = {
     "hash.file.sha256": {
-        "source_path": "src/jarvis_foundry/fabric/executors.py",
-        "module": "jarvis_foundry.fabric.executors",
+        "source_path": "src/jarvis_foundry/hashing.py",
+        "module": "jarvis_foundry.hashing",
         "attribute": "sha256_path",
         "semantic": Semantic.READ,
         "effect_class": EffectClass.READ_ONLY,
-        "invocation_target": "jarvis_foundry.fabric.executors:sha256_path",
+        "invocation_target": "jarvis_foundry.hashing:sha256_path",
         "arguments": ("$input.path",),
         # The observation must name the SUBJECT the action was invoked on, not
         # only its result: the canonical verifier re-derives the verdict for a
