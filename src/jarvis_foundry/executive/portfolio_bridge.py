@@ -594,6 +594,21 @@ def materialize_portfolio_selection(
             "and MissionLoop evidence; refusing the generic report mission"
         )
         if improvement_id:
+            try:
+                from ..evolution.binding import (
+                    ImprovementBindingError,
+                    materialize_bound_improvement,
+                )
+                return materialize_bound_improvement(
+                    database,
+                    item_id=item_id,
+                    decision_id=decision_id,
+                    improvement_id=improvement_id,
+                    objective=objective,
+                    source_id=source_id,
+                )
+            except ImprovementBindingError as error:
+                reason = f"{reason} (binding check: {error})"
             database.append(Event.create(
                 "improvement.implementation_blocked",
                 {

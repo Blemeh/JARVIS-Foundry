@@ -1,5 +1,13 @@
 """V6-S8: atomic promotion and automatic rollback.
 
+PRODUCTION-TRUTH NOTE (V6 convergence): this gate chain evaluates
+ledger-internal slot promotions ONLY.  Production activation and rollback
+use exclusively ``deployment/release.py`` (``set_current`` /
+``rollback_current``) through the CURRENT/PREVIOUS pointers plus the
+managed Supervisor restart; see ``evolution/registry.py`` for the full
+note.  ``rollback_release`` here quarantines a ledger slot, it never
+restores a production runtime.
+
 Promotion requires the full gate chain — candidate slot, trusted
 independent PASS verdict (is_trusted_verdict), measured improvement
 (lab comparison with improvement_met=True), and a successful canary

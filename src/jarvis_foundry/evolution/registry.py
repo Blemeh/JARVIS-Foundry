@@ -6,6 +6,15 @@ hashes, dependencies, runtime identity, parent release, improvement
 verdicts and the rollback target. An external controller (never a
 candidate) owns the live/candidate/previous/quarantine slot pointers.
 
+PRODUCTION-TRUTH NOTE (V6 convergence): these slots are ledger-internal
+evaluation state ONLY.  The sole production release truth is the
+immutable release system in ``deployment/release.py`` (``build_release``,
+``validate_release``, ``set_current``, ``rollback_current``,
+``release_authority_report``) driving the CURRENT/PREVIOUS filesystem
+pointers plus the managed Supervisor restart.  No slot transition here
+may cut over or roll back production; real cutover/rollback goes only
+through ``set_current``/``rollback_current`` with the consistency check.
+
 Integrity rules implemented here:
 
 - identical re-registration dedupes (content-derived release id);
