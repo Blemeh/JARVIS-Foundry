@@ -276,6 +276,43 @@ def test_hermes_failed_adapter_keeps_both_bounded_redacted_streams(
     assert len(envelope.summary) <= adapter.FAILURE_DIAGNOSTIC_LIMIT
 
 
+def test_hermes_nonzero_rate_limit_keeps_typed_provider_failure(
+        tmp_path, monkeypatch):
+    from unittest import mock
+    from jarvis_foundry.roles.adapter import ProviderFailure
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"],
+        2,
+        "",
+        'Contributor consent notice: '
+        'security.allow_data_training_tiers_noninteractive is true.\n'
+        'HTTP 429: {"type":"rate_limit_exceeded",'
+        '"message":"Rate limit exceeded. Please retry after a brief wait."}',
+    )
+    (tmp_path / "home").mkdir()
+    adapter = _hermes_adapter(
+        tmp_path,
+        hermes_root=tmp_path,
+        hermes_home=tmp_path / "home",
+        enabled=True,
+        timeout_seconds=0,
+        python_exe="python",
+    )
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        with pytest.raises(ProviderFailure) as raised:
+            adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+
+    assert raised.value.failure_class == "RATE_LIMITED"
+    assert raised.value.retryable is True
+    assert "HTTP 429" in str(raised.value)
+
+
 def test_openhands_scrubs_disposable_run_state(tmp_path):
     """Retained disposable conversation events must never hold the key."""
     data_dir = tmp_path / "openhands-data"

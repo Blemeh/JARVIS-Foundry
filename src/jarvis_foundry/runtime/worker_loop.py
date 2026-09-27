@@ -1995,15 +1995,34 @@ def run_cycle(
                 config.executive_autonomy_enabled or config.initiative_a3_enabled
             ):
                 try:
-                    from ..executive.autonomy import observe_mission_outcome
+                    from ..executive.autonomy import (
+                        decide_continuation,
+                        observe_mission_outcome,
+                        rebuild_executive_state,
+                    )
+
                     observe_mission_outcome(database, mission_id)
+                    executive_state = rebuild_executive_state(database)
+                    affected_objectives = sorted({
+                        plan.objective_id
+                        for plan in executive_state.plans.values()
+                        for step in plan.steps
+                        if step.mission_id == mission_id
+                    })
+                    for objective_id in affected_objectives:
+                        # Mission terminality is not owner-goal terminality.
+                        # The existing Executive must make a fresh, durable
+                        # goal-level decision immediately after reconciling the
+                        # accepted mission/verifier outcome. Idempotent
+                        # continuation keys make restart/replay harmless.
+                        decide_continuation(database, objective_id)
                 except Exception as error:  # noqa: BLE001 - outcome remains authoritative
                     database.append(Event.create(
-                        "worker_loop.executive_autonomy_observation_blocked",
+                        "worker_loop.executive_terminal_decision_blocked",
                         {"loop_id": loop_id, "mission_id": mission_id,
                          "reason": f"{type(error).__name__}: {error}"[:500]},
                         source_type="supervisor", source_id=instance_id,
-                        idempotency_key=f"worker_loop.executive_autonomy_observation_blocked:{loop_id}",
+                        idempotency_key=f"worker_loop.executive_terminal_decision_blocked:{mission_id}",
                     ))
             elif learning.get("finalized") and getattr(config, "continuous_enabled", False):
                 try:

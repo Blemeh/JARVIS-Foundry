@@ -14,7 +14,10 @@ from jarvis_foundry.events import Event
 from jarvis_foundry.executive.continuous import resume_mission_provider_waits
 from jarvis_foundry.fabric.adapter import FabricRoleAdapter
 from jarvis_foundry.mission.loop import BLOCKED_OUTCOME, MissionLoop, PASSED
-from jarvis_foundry.roles.adapter import ProviderFailure
+from jarvis_foundry.roles.adapter import (
+    ProviderFailure,
+    classify_provider_failure,
+)
 from jarvis_foundry.roles.dispatcher import RoleDispatcher
 from jarvis_foundry.roles.results import COMPLETED, RoleResult
 from jarvis_foundry.roles.router import ProviderRouteCandidate, RoleRouter
@@ -338,6 +341,72 @@ def test_outage_and_rate_limit_take_one_compatible_alternate(tmp_path):
         attempts = [event for event in db.events()
                     if event.event_type == "provider.dispatch_attempted"]
         assert len(attempts) == 2
+
+
+def test_spend_gateway_contention_and_ceiling_have_distinct_classes():
+    consent_notice = (
+        "Proceeding in non-interactive mode because "
+        "security.allow_data_training_tiers_noninteractive is true."
+    )
+    assert classify_provider_failure(consent_notice) == "BLOCKED_POLICY"
+    assert classify_provider_failure(
+        consent_notice + "\nprovider_spend_blocked: another provider request "
+        "still holds the authorized spend reservation"
+    ) == "RATE_LIMITED"
+    assert classify_provider_failure(
+        consent_notice + "\nprovider_spend_blocked: request worst-case cost "
+        "exceeds the remaining authorized spend"
+    ) == "COST_BLOCKED"
+
+
+def test_hybrid_rate_limit_parks_exact_mission_on_provider_wake(tmp_path):
+    db, repository, policy = mission_fixture(tmp_path)
+
+    class RateLimitedWorker(ScriptedWorkerAdapter):
+        def dispatch(self, contract, *, heartbeat):
+            raise ProviderFailure(
+                "HTTP 429 rate_limit_exceeded",
+                failure_class="RATE_LIMITED",
+                retryable=True,
+            )
+
+    worker = RateLimitedWorker(WORKER_HERMES)
+    worker_router = WorkerRouter()
+    worker_router.mark_ready(
+        WORKER_HERMES, state=READY, note="disposable provider wait proof",
+        evidence=("goal-resilience-rate-limit",),
+    )
+    bridge = HybridWorkerRoleAdapter(
+        database=db,
+        router=worker_router,
+        registry=WorkerRegistry({WORKER_HERMES: worker}),
+        role_signals={"builder": {
+            "ambiguous": True, "root_cause_required": True,
+        }},
+    )
+    outcome = MissionLoop(
+        db,
+        router(),
+        bridge,
+        policy=policy,
+        provider_candidates=(candidate("provider-a"),),
+    ).run_step(**step(repository, run_id="run-goal-resilience-rate"))
+
+    assert outcome.outcome == BLOCKED_OUTCOME, outcome
+    assert db.row("missions", "mission_id", "mission-v12")["state"] == "BLOCKED"
+    waits = [event.payload for event in db.events(
+        event_types=("mission.provider_wait_started",),
+    )]
+    assert len(waits) == 1
+    assert waits[0]["mission_id"] == "mission-v12"
+    assert waits[0]["run_id"] == "run-goal-resilience-rate"
+    assert waits[0]["error_class"] == "provider_rate_limited"
+    assert waits[0]["provider_ids"] == ["provider-a"]
+    with db.connect(readonly=True) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM verification_verdicts "
+            "WHERE mission_id = ?", ("mission-v12",),
+        ).fetchone()[0] == 0
 
 
 def test_classified_failure_crosses_real_hybrid_worker_bridge(tmp_path):

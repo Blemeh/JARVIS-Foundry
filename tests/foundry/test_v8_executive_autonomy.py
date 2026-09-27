@@ -366,10 +366,133 @@ def test_failed_strategy_retries_once_then_escalates(tmp_path: Path) -> None:
     missions = [row["mission_id"] for row in database.all("mission_step_contracts")]
     assert len(set(missions)) == 2
     continuation_actions = [event.payload.get("action") for event in database.events(event_types=("executive.continuation_decided",))]
-    assert "RETRY" in continuation_actions
+    assert "REPLAN" in continuation_actions
+    assert "RETRY" not in continuation_actions
     assert "ESCALATE" in continuation_actions
     assert any(item.status == "OPEN" for item in rebuild_executive_state(database).escalations.values())
     assert "BLOCKED" in [report["outcome"] for report in reports]
+    state = rebuild_executive_state(database)
+    objective = next(iter(state.objectives.values()))
+    plan = next(plan for plan in state.plans.values()
+                if plan.objective_id == objective.objective_id)
+    step = next(step for step in plan.steps if step.step_id == "execute")
+    assert step.status == "BLOCKED"
+    assert step.attempted_strategies[0] == "primary"
+    assert step.attempted_strategies[1] == step.recovery_plan["strategy_id"]
+    assert step.recovery_plan["source_verdict_id"] in step.evidence_refs
+    with database.connect(readonly=True) as connection:
+        recovery_instructions = connection.execute(
+            "SELECT instructions FROM mission_step_contracts "
+            "WHERE mission_id = ? ORDER BY step_id",
+            (step.mission_id,),
+        ).fetchall()
+    assert recovery_instructions
+    assert all(
+        "EXECUTIVE-DIRECTED RECOVERY PLAN" in str(row["instructions"])
+        for row in recovery_instructions
+    )
+    from datetime import datetime, timezone
+    from jarvis_foundry.executive.continuous import (
+        is_wake_due,
+        rebuild_wake_state,
+    )
+
+    owner_wakes = [
+        wake for wake in rebuild_wake_state(database).values()
+        if wake.get("objective_id") == objective.objective_id
+        and wake.get("kind") == "WAIT_FOR_OWNER"
+        and wake.get("status") == "ACTIVE"
+    ]
+    assert len(owner_wakes) == 1
+    assert not is_wake_due(
+        database, owner_wakes[0], datetime.now(timezone.utc),
+    )
+
+
+def test_verifier_failure_gets_changed_strategy_then_completes_owner_goal(
+        tmp_path: Path, monkeypatch) -> None:
+    from jarvis_foundry.deployment.lab_hermes import LabHermesAdapter
+
+    database, repository = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    config = WorkerRuntimeConfig(
+        enabled=True, status="ACTIVE", resource_id="resource-v8",
+        lab_scripted_hermes=True, lab_false_success_step_id="02-execute",
+        max_repairs=0, executive_autonomy_enabled=True,
+        runtime_state_root=str(tmp_path / "runtime"),
+    )
+    original_dispatch = LabHermesAdapter.dispatch
+    failed_once = {"value": False}
+
+    def fail_first_execute_only(self, contract, *, heartbeat):
+        if (
+            not failed_once["value"]
+            and contract.role == "builder"
+            and contract.step_id == "02-execute"
+        ):
+            failed_once["value"] = True
+            self.false_success_step_id = "02-execute"
+        else:
+            self.false_success_step_id = None
+        return original_dispatch(self, contract, heartbeat=heartbeat)
+
+    monkeypatch.setattr(LabHermesAdapter, "dispatch", fail_first_execute_only)
+    paths = FoundryPaths(tmp_path)
+    reports = [
+        run_cycle(
+            database, paths, config,
+            loop_id=f"replan-success-{index}",
+            instance_id=f"replan-success-worker-{index}",
+        )
+        for index in range(1, 9)
+    ]
+
+    state = rebuild_executive_state(database)
+    objective = next(iter(state.objectives.values()))
+    plan = next(plan for plan in state.plans.values()
+                if plan.objective_id == objective.objective_id)
+    step = next(step for step in plan.steps if step.step_id == "execute")
+    actions = [
+        event.payload.get("action")
+        for event in database.events(
+            event_types=("executive.continuation_decided",),
+        )
+    ]
+    assert failed_once["value"] is True
+    assert objective.status == "COMPLETED"
+    assert step.status == "COMPLETED"
+    assert step.attempted_strategies[0] == "primary"
+    assert step.attempted_strategies[1] == step.recovery_plan["strategy_id"]
+    assert "REPLAN" in actions and "CLOSE" in actions
+    assert "ESCALATE" not in actions
+    mission_ids = {
+        str(row["mission_id"])
+        for row in database.all("mission_step_contracts")
+    }
+    assert len(mission_ids) == 2
+    with database.connect(readonly=True) as connection:
+        verdicts = connection.execute(
+            "SELECT status, verifier_run_id, builder_run_id FROM "
+            "verification_verdicts WHERE mission_id = ? ORDER BY rowid",
+            (step.mission_id,),
+        ).fetchall()
+        assert verdicts and verdicts[-1]["status"] == "PASS"
+        assert verdicts[-1]["verifier_run_id"] != verdicts[-1]["builder_run_id"]
+        recovery_contracts = connection.execute(
+            "SELECT instructions, target_relative_path FROM mission_step_contracts "
+            "WHERE mission_id = ? ORDER BY step_id",
+            (step.mission_id,),
+        ).fetchall()
+    assert recovery_contracts
+    assert all(
+        "EXECUTIVE-DIRECTED RECOVERY PLAN" in str(row["instructions"])
+        for row in recovery_contracts
+    )
+    assert all(
+        (repository / str(row["target_relative_path"])).is_file()
+        for row in recovery_contracts
+    )
+    assert any(report["outcome"] == "PASSED" for report in reports)
 
 
 def test_stop_sentinel_blocks_executive_mutation(tmp_path: Path) -> None:

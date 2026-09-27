@@ -307,14 +307,40 @@ class HermesWorkerAdapter:
             stderr, configured_key=gateway.local_api_key)
         self._scrub_disposable_home(extra_secrets=(gateway.local_api_key,))
         if process.returncode != 0:
+            diagnostic = self._failure_diagnostic(
+                stdout, stderr, process.returncode,
+            )
+            normalized_failure_text = (
+                f"{stderr}\n{stdout}".lower().replace("_", " ")
+            )
+            # Hermes reports upstream HTTP errors before returning EXIT_2.
+            # Keep those typed across the worker bridge so MissionLoop parks
+            # the exact run on the existing Supervisor provider-wake authority
+            # instead of misclassifying a provider outage as a missing-artifact
+            # failure and replaying the same work strategy.
+            provider_failure_markers = (
+                "http 429", "rate limit", "too many requests", "quota",
+                "provider spend blocked", "another provider request still holds",
+                "holds the authorized spend reservation",
+                "worst-case cost exceeds", "worst case cost exceeds",
+            )
+            if any(marker in normalized_failure_text
+                   for marker in provider_failure_markers):
+                failure_class = classify_provider_failure(
+                    normalized_failure_text,
+                )
+                raise ProviderFailure(
+                    f"Hermes CLI provider failure (exit {process.returncode}): "
+                    f"{diagnostic[:400]}",
+                    failure_class=failure_class,
+                    retryable=failure_class in {"RATE_LIMITED", "OUTAGE", "DEGRADED"},
+                )
             return ResultEnvelope.from_contract(
                 contract, framework=self.framework,
                 worker_status=FAILED,
                 verdict=VERDICT_FAIL if contract.role == "verifier" else VERDICT_NOT_TESTED,
                 claimed_outcome="Hermes CLI exited non-zero",
-                summary=self._failure_diagnostic(
-                    stdout, stderr, process.returncode,
-                ),
+                summary=diagnostic,
                 started_at=started,
                 exit_state=f"EXIT_{process.returncode}",
                 usage_cost=cost if usage_availability == "available" else NOT_AVAILABLE,

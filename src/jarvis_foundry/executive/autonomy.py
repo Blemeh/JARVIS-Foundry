@@ -241,6 +241,8 @@ class PlanStep:
     retries: int = 0
     max_retries: int = 1
     evidence_refs: tuple[str, ...] = ()
+    attempted_strategies: tuple[str, ...] = ("primary",)
+    recovery_plan: dict[str, Any] = field(default_factory=dict)
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -252,6 +254,8 @@ class PlanStep:
             "verification_contract": list(self.verification_contract), "fallback": self.fallback,
             "status": self.status, "mission_id": self.mission_id, "retries": self.retries,
             "max_retries": self.max_retries, "evidence_refs": list(self.evidence_refs),
+            "attempted_strategies": list(self.attempted_strategies),
+            "recovery_plan": dict(self.recovery_plan),
         }
 
     @classmethod
@@ -270,6 +274,9 @@ class PlanStep:
             retries=max(0, int(_number(p.get("retries")))),
             max_retries=max(0, int(_number(p.get("max_retries"), 1))),
             evidence_refs=_tuple(p.get("evidence_refs")),
+            attempted_strategies=(
+                _tuple(p.get("attempted_strategies")) or ("primary",)),
+            recovery_plan=_json(p.get("recovery_plan")),
         )
 
 
@@ -1149,6 +1156,9 @@ def build_plan(
                 status=str(data.get("status") or "READY"), mission_id=str(data["mission_id"]) if data.get("mission_id") else None,
                 retries=max(0, int(_number(data.get("retries")))), max_retries=max(0, int(_number(data.get("max_retries"), 1))),
                 evidence_refs=_tuple(data.get("evidence_refs")),
+                attempted_strategies=(
+                    _tuple(data.get("attempted_strategies")) or ("primary",)),
+                recovery_plan=_json(data.get("recovery_plan")),
             )
         if not step.step_id or not step.description:
             raise ValueError("plan steps require step_id and description")
@@ -1457,7 +1467,9 @@ def plan_ready_steps(database: FoundryDatabase, objective_id: str, *, resource_i
     completed = {step.step_id for step in plan.steps if step.status == "COMPLETED"}
     ready: list[PlanStep] = []
     for step in plan.steps:
-        if step.status in _TERMINAL_STEP or step.status in {"RUNNING", "IN_PROGRESS"}:
+        if step.status in _TERMINAL_STEP or step.status in {
+            "BLOCKED", "RUNNING", "IN_PROGRESS",
+        }:
             continue
         if any(dep not in completed for dep in step.dependencies):
             continue
@@ -1630,6 +1642,8 @@ def generate_missions_for_objective(
             "recipe_id": objective.metadata.get("recipe_id"),
             "recipe_params": dict(objective.metadata.get("recipe_params") or {}),
         }
+        if step.recovery_plan:
+            item_metadata["executive_recovery_plan"] = dict(step.recovery_plan)
         if isinstance(intent_block, Mapping):
             # A normalized mission intent travels with the work item so the
             # materialization boundary can resolve the workflow/action plan
@@ -1705,6 +1719,110 @@ def _mission_truth(database: FoundryDatabase, mission_id: str) -> dict[str, Any]
         if latest.get("status") in {"BLOCKED", "NOT_TESTED"} and result["status"] == "RUNNING":
             result["status"] = "BLOCKED"
     return result
+
+
+def _verifier_recovery_plan(
+    database: FoundryDatabase,
+    objective_id: str,
+    step: PlanStep,
+) -> dict[str, Any] | None:
+    """Select one grounded, untried recovery strategy from independent FAIL evidence.
+
+    The default owner-goal materializer has a bounded plan/execute contract
+    that can carry a verifier-guided change in both action order and artifact
+    handling. Explicit intent and recipe work keep their immutable action
+    contracts; when no safe transformation exists here they go to escalation,
+    never to a replay of the same strategy.
+    """
+
+    if not step.mission_id or not step.resource_id:
+        return None
+    objective = rebuild_executive_state(database).objectives.get(objective_id)
+    if objective is None or objective.metadata.get("recipe_id"):
+        return None
+    if isinstance(objective.metadata.get("intent"), Mapping):
+        return None
+    if database.row("resources", "resource_id", step.resource_id) is None:
+        return None
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT verdict_id, status, reason, findings_json, "
+            "repair_requirements_json FROM verification_verdicts "
+            "WHERE mission_id = ? ORDER BY rowid DESC LIMIT 1",
+            (step.mission_id,),
+        ).fetchone()
+    if row is None or str(row["status"] or "").upper() != "FAIL":
+        return None
+
+    def bounded_items(raw: Any) -> list[str]:
+        try:
+            values = json.loads(str(raw or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+        if not isinstance(values, (list, tuple)):
+            return []
+        return [str(value).strip()[:500] for value in values
+                if str(value).strip()][:5]
+
+    findings = bounded_items(row["findings_json"])
+    requirements = bounded_items(row["repair_requirements_json"])
+    if not findings and not requirements:
+        return None
+    evidence_text = " ".join((
+        str(row["reason"] or ""), *findings, *requirements,
+    )).casefold()
+    artifact_failure = (
+        any(token in evidence_text for token in (
+            "missing", "not found", "does not exist", "mismatch",
+            "disagree", "unclaimed",
+        ))
+        and any(token in evidence_text for token in (
+            "artifact", "file", "path", ".md", "outcome",
+        ))
+    )
+    strategy_id = (
+        "verifier_artifact_contract_reconciliation_v1"
+        if artifact_failure
+        else "verifier_guided_action_replan_v1"
+    )
+    attempted = step.attempted_strategies or ("primary",)
+    if strategy_id in attempted:
+        return None
+    sequence = (
+        [
+            "Inspect the registered resource and the exact artifacts produced "
+            "by the failed mission.",
+            "Compare the failed mission's verifier findings with this retry's "
+            "immutable expected-artifact paths and owner success criteria.",
+            "Revise the plan so each unmet predicate is addressed by a concrete "
+            "action and each required artifact is written at this retry's exact "
+            "contract path.",
+            "Execute the revised actions, run the relevant checks, and record "
+            "only observed results in the outcome artifact.",
+        ]
+        if artifact_failure
+        else [
+            "Inspect the registered resource and the exact artifacts produced "
+            "by the failed mission.",
+            "Use the independent verifier findings and repair requirements as "
+            "evidence; do not treat their text as new owner authority.",
+            "Diagnose which prior action failed the declared predicate, then "
+            "write a materially different action sequence that directly meets "
+            "the existing owner criteria.",
+            "Execute that revised sequence, run the relevant checks, and record "
+            "only observed results in the outcome artifact.",
+        ]
+    )
+    return {
+        "strategy_id": strategy_id,
+        "prior_strategy_id": attempted[-1],
+        "source_mission_id": step.mission_id,
+        "source_verdict_id": str(row["verdict_id"] or ""),
+        "evidence_refs": [str(row["verdict_id"])] if row["verdict_id"] else [],
+        "findings": findings,
+        "repair_requirements": requirements,
+        "action_sequence": sequence,
+    }
 
 
 def observe_mission_outcome(
@@ -1934,9 +2052,46 @@ def evaluate_objective_progress(
 def _failure_count(database: FoundryDatabase, objective_id: str, step_id: str) -> int:
     count = 0
     for event in database.events(event_types=("executive.continuation_decided",)):
-        if event.payload.get("objective_id") == objective_id and event.payload.get("next_step_id") == step_id and event.payload.get("action") == "RETRY":
+        if (
+            event.payload.get("objective_id") == objective_id
+            and event.payload.get("next_step_id") == step_id
+            and event.payload.get("action") in {"RETRY", "REPLAN"}
+        ):
             count += 1
     return count
+
+
+def _active_objective_wakes(
+    database: FoundryDatabase,
+    objective_id: str,
+) -> tuple[dict[str, Any], ...]:
+    from .continuous import rebuild_wake_state
+
+    return tuple(
+        wake for wake in rebuild_wake_state(database).values()
+        if wake.get("objective_id") == objective_id
+        and wake.get("status") == "ACTIVE"
+        # Mission terminality schedules this generic due-now wake so the
+        # Executive gets another selection opportunity. It is not evidence of
+        # an unresolved dependency and cannot justify parking a blocked goal.
+        and not str(wake.get("wake_id") or "").startswith("next-action:")
+    )
+
+
+def _owner_resolution_wake(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    reason: str,
+    controller: str,
+) -> str:
+    from .continuous import schedule_wait_for_owner
+
+    wake = schedule_wait_for_owner(
+        database, objective_id, signal="owner_directive", reason=reason,
+        controller=controller,
+    )
+    return str(wake.get("wake_id") or f"wake:{objective_id}:owner:owner_directive")
 
 
 def record_escalation(
@@ -2106,7 +2261,7 @@ def _objective_failure_history(
     for event in source_events:
         if event.event_type in {"executive.continuation_decided", "executive.objective_progress_recorded"} and event.payload.get("objective_id") == objective_id:
             attempts += 1
-            if event.payload.get("action") in {"RETRY", "ESCALATE"} or event.payload.get("status") == "FAILED":
+            if event.payload.get("action") in {"RETRY", "REPLAN", "ESCALATE"} or event.payload.get("status") == "FAILED":
                 failures += 1
     return _clamp(failures / max(1, attempts))
 
@@ -2155,7 +2310,7 @@ def rank_objectives(
             continue
         attempts_by_objective[objective_id] = attempts_by_objective.get(objective_id, 0) + 1
         if (
-            event.payload.get("action") in {"RETRY", "ESCALATE"}
+            event.payload.get("action") in {"RETRY", "REPLAN", "ESCALATE"}
             or event.payload.get("status") == "FAILED"
         ):
             failures_by_objective[objective_id] = failures_by_objective.get(objective_id, 0) + 1
@@ -2330,35 +2485,359 @@ def decide_continuation(
             if failed_step is not None:
                 next_step_id = failed_step.step_id
                 retry_number = _failure_count(database, objective_id, failed_step.step_id)
-                if retry_number < failed_step.max_retries:
-                    action = "RETRY"
-                    reason = f"step {failed_step.step_id} failed; retry {retry_number + 1}/{failed_step.max_retries} remains within budget"
-                    replacement = replace(failed_step, status="READY", mission_id=None, retries=failed_step.retries + 1)
-                    updated = PlanRecord(plan_id=plan.plan_id, objective_id=plan.objective_id, steps=tuple(replacement if row.step_id == failed_step.step_id else row for row in plan.steps), critical_path=plan.critical_path, status=plan.status, version=plan.version + 1)
-                    _append(database, "executive.plan_updated", updated.to_payload(), key=f"executive.plan_updated:{plan.plan_id}:{updated.version}", correlation_id=objective_id)
-                    if objective.status == "FAILED":
-                        set_objective_status(database, objective_id, "ACTIVE", controller=controller, reason="bounded retry reopened the objective", evidence_refs=failed_step.evidence_refs)
+                recovery = (
+                    _verifier_recovery_plan(database, objective_id, failed_step)
+                    if retry_number < failed_step.max_retries else None
+                )
+                if recovery is not None:
+                    action = "REPLAN"
+                    retry_number += 1
+                    strategy_id = str(recovery["strategy_id"])
+                    reason = (
+                        f"step {failed_step.step_id} failed; Executive selected "
+                        f"the evidence-grounded {strategy_id} strategy "
+                        f"({retry_number}/{failed_step.max_retries})"
+                    )
+                    replacement = replace(
+                        failed_step,
+                        status="READY",
+                        mission_id=None,
+                        retries=failed_step.retries + 1,
+                        attempted_strategies=(
+                            *failed_step.attempted_strategies, strategy_id,
+                        ),
+                        recovery_plan=recovery,
+                        evidence_refs=tuple(dict.fromkeys((
+                            *failed_step.evidence_refs,
+                            *tuple(recovery.get("evidence_refs") or ()),
+                        ))),
+                    )
+                    updated = PlanRecord(
+                        plan_id=plan.plan_id,
+                        objective_id=plan.objective_id,
+                        steps=tuple(
+                            replacement if row.step_id == failed_step.step_id
+                            else row for row in plan.steps
+                        ),
+                        critical_path=plan.critical_path,
+                        status=plan.status,
+                        version=plan.version + 1,
+                    )
+                    _append(
+                        database, "executive.plan_updated", updated.to_payload(),
+                        key=f"executive.plan_updated:{plan.plan_id}:{updated.version}",
+                        correlation_id=objective_id,
+                    )
+                    # The mission is terminal; reopening the owner objective
+                    # is a separate evidence-backed decision, not an implicit
+                    # consequence of changing a mission row.
+                    evaluate_objective_progress(
+                        database, objective_id, controller=controller,
+                    )
                 else:
-                    action = "ESCALATE"
-                    reason = f"step {failed_step.step_id} exhausted bounded retry budget"
-                    escalation = record_escalation(database, objective_id=objective_id, decision="retry budget exhausted", why=reason, evidence_refs=failed_step.evidence_refs, options=("owner changes strategy", "owner grants a new capability or budget", "suspend objective"), recommendation="suspend until owner direction or a materially different capability is available", delay_consequence="objective remains incomplete and downstream work stays blocked", controller=controller)
-                    escalation_id = escalation.escalation_id
+                    active_wakes = _active_objective_wakes(
+                        database, objective_id,
+                    )
+                    if active_wakes:
+                        action = "WAIT"
+                        wake_on = tuple(
+                            str(wake.get("wake_id") or "")
+                            for wake in active_wakes
+                            if wake.get("wake_id")
+                        )
+                        conditions = "; ".join(
+                            f"{wake.get('kind')}: {wake.get('reason')}"
+                            for wake in active_wakes
+                        )
+                        reason = (
+                            f"step {failed_step.step_id} has no safe replan "
+                            f"while its durable dependency is unresolved: {conditions}"
+                        )
+                    else:
+                        action = "ESCALATE"
+                        reason = (
+                            f"step {failed_step.step_id} has no untried, "
+                            "verifier-grounded replan within its bounded strategy "
+                            "budget; owner direction is required"
+                        )
+                    blocked = replace(
+                        failed_step,
+                        status="BLOCKED",
+                        evidence_refs=tuple(dict.fromkeys((
+                            *failed_step.evidence_refs, *evidence_refs,
+                        ))),
+                    )
+                    updated = PlanRecord(
+                        plan_id=plan.plan_id,
+                        objective_id=plan.objective_id,
+                        steps=tuple(
+                            blocked if row.step_id == failed_step.step_id
+                            else row for row in plan.steps
+                        ),
+                        critical_path=plan.critical_path,
+                        status=plan.status,
+                        version=plan.version + 1,
+                    )
+                    _append(
+                        database, "executive.plan_updated", updated.to_payload(),
+                        key=f"executive.plan_updated:{plan.plan_id}:{updated.version}",
+                        correlation_id=objective_id,
+                    )
+                    evaluate_objective_progress(
+                        database, objective_id, controller=controller,
+                    )
+                    if not active_wakes:
+                        escalation = record_escalation(
+                            database,
+                            objective_id=objective_id,
+                            decision="goal recovery requires owner direction",
+                            why=reason,
+                            evidence_refs=failed_step.evidence_refs,
+                            options=(
+                                "owner supplies the exact missing dependency or input",
+                                "owner authorizes a new bounded strategy after reviewing verifier evidence",
+                                "owner revokes or closes the goal with evidence",
+                            ),
+                            recommendation=(
+                                "keep the goal blocked until the referenced condition "
+                                "or owner decision changes"
+                            ),
+                            delay_consequence=(
+                                "the valid owner goal remains unresolved and no "
+                                "repeated mission is admitted"
+                            ),
+                            controller=controller,
+                        )
+                        escalation_id = escalation.escalation_id
+                        owner_wake_id = _owner_resolution_wake(
+                            database, objective_id, reason=reason,
+                            controller=controller,
+                        )
+                        wake_on = (owner_wake_id,)
             elif blocked_step is not None:
-                action = "WAIT"
                 next_step_id = blocked_step.step_id
-                reason = f"step {blocked_step.step_id} is blocked by an authoritative capability or dependency; wake on state change"
+                mission = (
+                    database.row("missions", "mission_id", blocked_step.mission_id)
+                    if blocked_step.mission_id else None
+                )
+                mission_state = str((mission or {}).get("state") or "")
+                if mission_state in {
+                    "ORIENTING", "ACTION_SELECTION", "READY", "EXECUTING",
+                    "VERIFYING", "REPAIRING", "ACCEPTING",
+                }:
+                    action = "CONTINUE"
+                    reason = (
+                        f"canonical mission {blocked_step.mission_id} resumed "
+                        "or remains in progress; preserve its existing lineage"
+                    )
+                else:
+                    active_wakes = _active_objective_wakes(database, objective_id)
+                    if active_wakes:
+                        action = "WAIT"
+                        wake_on = tuple(
+                            str(wake.get("wake_id") or "")
+                            for wake in active_wakes
+                            if wake.get("wake_id")
+                        )
+                        conditions = "; ".join(
+                            f"{wake.get('kind')}: {wake.get('reason')}"
+                            for wake in active_wakes
+                        )
+                        reason = (
+                            f"step {blocked_step.step_id} remains blocked; "
+                            f"resume only when its durable condition changes: "
+                            f"{conditions}"
+                        )
+                    else:
+                        truth = (
+                            _mission_truth(database, blocked_step.mission_id)
+                            if blocked_step.mission_id else {}
+                        )
+                        verdict = truth.get("verdict") or {}
+                        blocker = str(
+                            verdict.get("blocking_dependency")
+                            or truth.get("reason")
+                            or "blocked mission has no recorded resumable condition"
+                        )
+                        action = "ESCALATE"
+                        reason = (
+                            f"step {blocked_step.step_id} is blocked on "
+                            f"{blocker}; no durable wake owns this condition"
+                        )
+                        escalation = record_escalation(
+                            database,
+                            objective_id=objective_id,
+                            decision="blocked goal lacks a resumable condition",
+                            why=reason,
+                            evidence_refs=tuple(dict.fromkeys((
+                                *blocked_step.evidence_refs, *evidence_refs,
+                            ))),
+                            options=(
+                                "owner resolves or identifies the exact dependency",
+                                "owner authorizes a bounded alternative strategy",
+                                "owner revokes or closes the goal with evidence",
+                            ),
+                            recommendation=(
+                                "keep the owner goal blocked and wait for an "
+                                "explicit condition or owner decision"
+                            ),
+                            delay_consequence=(
+                                "the owner goal remains unresolved; no duplicate "
+                                "mission or effect is admitted"
+                            ),
+                            controller=controller,
+                        )
+                        escalation_id = escalation.escalation_id
+                        owner_wake_id = _owner_resolution_wake(
+                            database, objective_id, reason=reason,
+                            controller=controller,
+                        )
+                        wake_on = (owner_wake_id,)
             else:
                 ready = plan_ready_steps(database, objective_id)
                 if ready:
                     action = "CONTINUE"
                     next_step_id = ready[0].step_id
                     reason = f"continue with dependency-ready step {next_step_id}"
+                elif any(
+                    step.status in {"RUNNING", "IN_PROGRESS"}
+                    for step in plan.steps
+                ):
+                    running_step = next(
+                        step for step in plan.steps
+                        if step.status in {"RUNNING", "IN_PROGRESS"}
+                    )
+                    action = "CONTINUE"
+                    next_step_id = running_step.step_id
+                    reason = (
+                        f"step {running_step.step_id} already has a canonical "
+                        "mission in progress; preserve its lineage"
+                    )
                 elif progress.stale:
                     action = "REPRIORITIZE"
                     reason = "objective is stale without evidence; recompute priority before creating more work"
                 else:
-                    action = "WAIT"
-                    reason = "no ready step is available; wait for mission evidence or capability recovery"
+                    active_wakes = _active_objective_wakes(database, objective_id)
+                    if active_wakes:
+                        action = "WAIT"
+                        wake_on = tuple(
+                            str(wake.get("wake_id") or "")
+                            for wake in active_wakes
+                            if wake.get("wake_id")
+                        )
+                        reason = "; ".join(
+                            f"{wake.get('kind')}: {wake.get('reason')}"
+                            for wake in active_wakes
+                        )
+                    else:
+                        action = "WAIT"
+                        wait_reason = "no executable plan step or durable wake condition exists"
+                        planned = False
+                        completed_ids = {
+                            step.step_id for step in plan.steps
+                            if step.status == "COMPLETED"
+                        }
+                        for step in plan.steps:
+                            if step.status in _TERMINAL_STEP or step.status in {
+                                "RUNNING", "IN_PROGRESS",
+                            }:
+                                continue
+                            missing_dependencies = [
+                                dependency for dependency in step.dependencies
+                                if dependency not in completed_ids
+                            ]
+                            if missing_dependencies:
+                                from .continuous import schedule_wait_for_dependency
+
+                                dependency_id = missing_dependencies[0]
+                                wake = schedule_wait_for_dependency(
+                                    database, objective_id,
+                                    dependency_id=dependency_id,
+                                    reason=(
+                                        f"step {step.step_id} waits for planned "
+                                        f"dependency {dependency_id}"
+                                    ),
+                                    controller=controller,
+                                )
+                                action = "WAIT"
+                                wake_on = (str(wake.get("wake_id") or ""),)
+                                reason = str(wake.get("reason") or wait_reason)
+                                planned = True
+                                break
+                            blockers = _capability_blockers(database, step)
+                            if blockers:
+                                from .continuous import (
+                                    schedule_wait_for_capability,
+                                    schedule_wait_for_provider,
+                                )
+
+                                provider_blocker = next((
+                                    blocker for blocker in blockers
+                                    if blocker.startswith("provider:")
+                                ), None)
+                                if provider_blocker:
+                                    provider_id = provider_blocker.split(":", 2)[1]
+                                    wake = schedule_wait_for_provider(
+                                        database, objective_id,
+                                        provider_id=provider_id,
+                                        reason=provider_blocker,
+                                        controller=controller,
+                                    )
+                                elif step.required_capabilities:
+                                    capability_id = next((
+                                        capability for capability in
+                                        step.required_capabilities
+                                        if any(
+                                            blocker == capability
+                                            or blocker.startswith(
+                                                f"{capability}:")
+                                            for blocker in blockers
+                                        )
+                                    ), step.required_capabilities[0])
+                                    wake = schedule_wait_for_capability(
+                                        database, objective_id,
+                                        capability=capability_id,
+                                        resource_id=step.resource_id,
+                                        reason="; ".join(blockers),
+                                        controller=controller,
+                                    )
+                                else:
+                                    continue
+                                action = "WAIT"
+                                wake_on = (str(wake.get("wake_id") or ""),)
+                                reason = "; ".join(blockers)
+                                planned = True
+                                break
+                        if not planned:
+                            action = "ESCALATE"
+                            reason = wait_reason
+                            escalation = record_escalation(
+                                database,
+                                objective_id=objective_id,
+                                decision="owner goal has no executable next action",
+                                why=reason,
+                                evidence_refs=evidence_refs,
+                                options=(
+                                    "owner supplies the missing executable scope or dependency",
+                                    "owner authorizes a bounded alternative plan",
+                                    "owner revokes or closes the goal with evidence",
+                                ),
+                                recommendation=(
+                                    "keep the owner goal unresolved until an "
+                                    "explicit condition or owner decision changes"
+                                ),
+                                delay_consequence=(
+                                    "no work proceeds and the active goal remains "
+                                    "visible as blocked"
+                                ),
+                                controller=controller,
+                            )
+                            escalation_id = escalation.escalation_id
+                            owner_wake_id = _owner_resolution_wake(
+                                database, objective_id, reason=reason,
+                                controller=controller,
+                            )
+                            wake_on = (owner_wake_id,)
     decision = ContinuationDecision(objective_id, action, reason, evidence_refs, next_step_id, retry_number, escalation_id, _tuple(wake_on))
     prior = rebuild_executive_state(database).continuations.get(objective_id)
     if prior is not None and prior.to_payload() == decision.to_payload():
