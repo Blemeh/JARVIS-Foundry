@@ -410,6 +410,23 @@ class MissionLoop:
         findings: list[str], reason: str,
     ) -> StepOutcome:
         repair_budget = self.max_repairs
+        try:
+            mission = self.database.row("missions", "mission_id", mission_id) or {}
+            created_from = str(mission.get("created_from") or "")
+            # Executive-owned owner-goal missions carry their strategy in the
+            # Executive plan (attempted_strategies + recovery_plan), not in the
+            # MissionLoop repair role. A verifier FAIL here is strategy evidence
+            # for the Executive's next materially different mission, never a cue
+            # to replay the same contracts under REPAIRING. Fail closed to
+            # BLOCKED immediately so decide_continuation can REPLAN once with a
+            # grounded strategy instead of burning repair budget on the same one.
+            if created_from.startswith((
+                "portfolio:owner-goal:",
+                "portfolio:executive-step:",
+            )):
+                repair_budget = min(repair_budget, 0)
+        except Exception:
+            pass
         fails = failed_verdict_count(self.database, mission_id, step_id)
         if fails <= repair_budget:
             self._advance(mission_id, "REPAIRING", run_id=run_id)
