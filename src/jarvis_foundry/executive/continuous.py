@@ -1030,6 +1030,8 @@ def run_continuous_cycle(
     controller="supervisor",
     now=None,
     max_new_missions=1,
+    resource_id: str | None = None,
+    capability: str = "write_registered_worktree_files",
     excluded_objective_ids=(),
     discovery: Mapping[str, Any] | None = None,
     stop_path: str | Path | None = None,
@@ -1159,7 +1161,11 @@ def run_continuous_cycle(
         cycle = _run_auto(
             db,
             cycle_id=cycle_id,
+            resource_id=resource_id,
+            capability=capability,
             controller=controller,
+            max_new_missions=max_new_missions,
+            stop_path=stop_path,
             excluded_objective_ids=tuple(sorted(excluded)),
             self_expansion=bool(self_expansion),
         )

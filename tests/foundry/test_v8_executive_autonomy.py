@@ -359,7 +359,7 @@ def test_failed_strategy_retries_once_then_escalates(tmp_path: Path) -> None:
     config = WorkerRuntimeConfig(
         enabled=True, status="ACTIVE", resource_id="resource-v8",
         lab_scripted_hermes=True, lab_false_success_step_id="02-execute",
-        max_repairs=0, executive_autonomy_enabled=True,
+        max_repairs=0, continuous_enabled=True,
         runtime_state_root=str(tmp_path / "runtime"),
     )
     paths = FoundryPaths(tmp_path)
@@ -410,8 +410,9 @@ def test_failed_strategy_retries_once_then_escalates(tmp_path: Path) -> None:
     )
 
 
+@pytest.mark.parametrize("continuous_mode", [False, True], ids=["autonomy", "continuous"])
 def test_verifier_failure_gets_changed_strategy_then_completes_owner_goal(
-        tmp_path: Path, monkeypatch) -> None:
+        tmp_path: Path, monkeypatch, continuous_mode: bool) -> None:
     from jarvis_foundry.deployment.lab_hermes import LabHermesAdapter
 
     database, repository = _db(tmp_path)
@@ -419,7 +420,8 @@ def test_verifier_failure_gets_changed_strategy_then_completes_owner_goal(
     config = WorkerRuntimeConfig(
         enabled=True, status="ACTIVE", resource_id="resource-v8",
         lab_scripted_hermes=True, lab_false_success_step_id="02-execute",
-        max_repairs=0, executive_autonomy_enabled=True,
+        max_repairs=0, executive_autonomy_enabled=not continuous_mode,
+        continuous_enabled=continuous_mode,
         runtime_state_root=str(tmp_path / "runtime"),
     )
     original_dispatch = LabHermesAdapter.dispatch

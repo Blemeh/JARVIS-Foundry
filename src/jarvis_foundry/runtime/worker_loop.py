@@ -634,6 +634,9 @@ def _maybe_continuous_cycle(
             discovery=_discovery_settings(database, config, paths),
             stop_path=_default_stop_path(paths, config),
             consumer_id=f"worker-loop:{instance_id}",
+            resource_id=config.resource_id,
+            capability=config.capability,
+            max_new_missions=1,
             self_expansion=bool(getattr(config, "self_expansion_active", False)),
         )
         # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
@@ -1992,7 +1995,9 @@ def run_cycle(
                     database, mission_id=mission_id, outcome=outcome,
                     status=portfolio_status, instance_id=instance_id)
             if learning.get("finalized") and (
-                config.executive_autonomy_enabled or config.initiative_a3_enabled
+                config.executive_autonomy_enabled
+                or config.initiative_a3_enabled
+                or config.continuous_enabled
             ):
                 try:
                     from ..executive.autonomy import (
@@ -2001,7 +2006,20 @@ def run_cycle(
                         rebuild_executive_state,
                     )
 
-                    observe_mission_outcome(database, mission_id)
+                    if config.executive_autonomy_enabled or config.initiative_a3_enabled:
+                        observe_mission_outcome(database, mission_id)
+                    else:
+                        # Continuous Executive is the production next-work
+                        # authority in this runtime. Keep its wake/dependency
+                        # reconciliation, then ask the same Executive goal
+                        # continuation authority to decide what follows this
+                        # terminal mission. Mission failure alone must not
+                        # strand the owner objective in passive WAIT.
+                        from ..executive.continuous import on_mission_outcome
+
+                        observed = on_mission_outcome(database, mission_id)
+                        if observed.get("error"):
+                            raise RuntimeError(str(observed["error"]))
                     executive_state = rebuild_executive_state(database)
                     affected_objectives = sorted({
                         plan.objective_id
@@ -2023,18 +2041,6 @@ def run_cycle(
                          "reason": f"{type(error).__name__}: {error}"[:500]},
                         source_type="supervisor", source_id=instance_id,
                         idempotency_key=f"worker_loop.executive_terminal_decision_blocked:{mission_id}",
-                    ))
-            elif learning.get("finalized") and getattr(config, "continuous_enabled", False):
-                try:
-                    from ..executive.continuous import on_mission_outcome
-                    on_mission_outcome(database, mission_id)
-                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
-                    database.append(Event.create(
-                        "worker_loop.continuous_outcome_observation_blocked",
-                        {"loop_id": loop_id, "mission_id": mission_id,
-                         "reason": f"{type(error).__name__}: {error}"[:500]},
-                        source_type="supervisor", source_id=instance_id,
-                        idempotency_key=f"worker_loop.continuous_outcome_observation_blocked:{loop_id}",
                     ))
             if learning.get("finalized") and config.initiative_a3_enabled:
                 try:
