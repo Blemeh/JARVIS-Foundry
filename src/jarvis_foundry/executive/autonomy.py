@@ -2120,12 +2120,21 @@ def _active_objective_wakes(
     database: FoundryDatabase,
     objective_id: str,
 ) -> tuple[dict[str, Any], ...]:
-    from .continuous import rebuild_wake_state
+    from .continuous import rebuild_wake_state, _owner_wake_has_directive
 
+    # A historical or premature owner trigger without bound direction is
+    # still an unresolved wait until the Supervisor re-arms its durable wake.
     return tuple(
         wake for wake in rebuild_wake_state(database).values()
         if wake.get("objective_id") == objective_id
-        and wake.get("status") == "ACTIVE"
+        and (
+            wake.get("status") == "ACTIVE"
+            or (
+                wake.get("status") == "TRIGGERED"
+                and wake.get("kind") == "WAIT_FOR_OWNER"
+                and not _owner_wake_has_directive(database, wake)
+            )
+        )
         # Mission terminality schedules this generic due-now wake so the
         # Executive gets another selection opportunity. It is not evidence of
         # an unresolved dependency and cannot justify parking a blocked goal.
@@ -2238,6 +2247,22 @@ def _objective_blockers(
             blockers.extend(_capability_blockers(database, step))
     if objective.resource_id is None and objective.required_capabilities:
         blockers.append("resource_unconfigured")
+    if objective.status == "WAITING":
+        from .continuous import rebuild_wake_state, _owner_wake_has_directive
+
+        released = any(
+            wake.get("objective_id") == objective.objective_id
+            and wake.get("status") == "TRIGGERED"
+            and (
+                wake.get("kind") != "WAIT_FOR_OWNER"
+                or _owner_wake_has_directive(database, wake)
+            )
+            for wake in rebuild_wake_state(database).values()
+        )
+        if not released:
+            blockers.append("objective_waiting")
+    for wake in _active_objective_wakes(database, objective.objective_id):
+        blockers.append(f"wake:{wake.get('kind') or 'unknown'}:{wake.get('wake_id') or 'unknown'}")
     return tuple(dict.fromkeys(blockers))
 
 

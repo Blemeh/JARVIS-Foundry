@@ -58,7 +58,10 @@ def clear_wake(db, wake_id: str, *, controller="supervisor", reason=""):
     return _append(db, "executive.wake_cleared", {"wake_id": wake_id, "reason": reason}, key=f"executive.wake_cleared:{wake_id}", correlation_id=wake_id)
 def trigger_wake(db, wake_id: str, *, controller="supervisor", reason=""):
     if controller != SUPERVISOR_CONTROLLER: raise PermissionError("wake trigger is Supervisor-owned")
-    return _append(db, "executive.wake_triggered", {"wake_id": wake_id, "reason": reason, "triggered_at": isoformat()}, key=f"executive.wake_triggered:{wake_id}:{_hash(reason)}", correlation_id=wake_id)
+    wake = rebuild_wake_state(db).get(wake_id) or {}
+    generation = str(wake.get("rearm_event_id") or "")
+    trigger_key = _hash((reason, generation)) if generation else _hash(reason)
+    return _append(db, "executive.wake_triggered", {"wake_id": wake_id, "reason": reason, "triggered_at": isoformat()}, key=f"executive.wake_triggered:{wake_id}:{trigger_key}", correlation_id=wake_id)
 def rearm_wake(db, wake_id: str, *, controller="supervisor", reason="", generation: str | None = None):
     """Return a triggered wake to ACTIVE when its guarded predicate is false.
 
@@ -98,13 +101,60 @@ def rebuild_wake_state(db):
                 wakes[wid]["status"] = "TRIGGERED"
                 wakes[wid]["triggered_at"] = p.get("triggered_at")
                 wakes[wid]["triggered_event_id"] = ev.event_id
+                wakes[wid]["trigger_reason"] = p.get("reason")
         elif typ == "executive.wake_rearmed":
             wid = str(p.get("wake_id") or "")
             if wid in wakes:
                 wakes[wid]["status"] = "ACTIVE"
                 wakes[wid]["triggered_at"] = None
                 wakes[wid].pop("triggered_event_id", None)
+                wakes[wid].pop("trigger_reason", None)
+                wakes[wid]["rearm_event_id"] = ev.event_id
+                wakes[wid]["rearmed_at"] = p.get("rearmed_at")
     return wakes
+
+
+def _owner_wake_has_directive(db, wake: dict) -> bool:
+    """An owner wait is released only by direction bound to its objective."""
+    objective_id = str(wake.get("objective_id") or "")
+    directive_id = objective_id.removeprefix("owner-goal:")
+    created = _dt(wake.get("rearmed_at") or wake.get("created_at"))
+    if not objective_id or created is None:
+        return False
+    for ev in db.events(event_types=("owner_directive.recorded",)):
+        if _dt(ev.recorded_at) is None or _dt(ev.recorded_at) <= created:
+            continue
+        payload = ev.payload
+        if payload.get("authenticated") is not True:
+            continue
+        metadata = payload.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        if (
+            str(payload.get("target") or "") in {objective_id, directive_id}
+            or str(payload.get("supersedes") or "") == directive_id
+            or str(metadata.get("objective_id") or "") == objective_id
+        ):
+            return True
+    return False
+
+
+def reconcile_owner_wakes(db, *, controller="supervisor") -> list[str]:
+    """Rearm owner wakes fired without objective-bound direction."""
+    repaired = []
+    for wake in rebuild_wake_state(db).values():
+        if (
+            wake.get("kind") == "WAIT_FOR_OWNER"
+            and wake.get("status") == "TRIGGERED"
+            and not _owner_wake_has_directive(db, wake)
+        ):
+            rearm_wake(
+                db, str(wake["wake_id"]), controller=controller,
+                reason="trigger had no objective-bound owner direction",
+                generation=str(wake.get("triggered_event_id") or ""),
+            )
+            repaired.append(str(wake["wake_id"]))
+    return repaired
 def is_wake_due(db, wake: dict, now=None, *, state=None):
     from datetime import datetime, timezone
     n = now or datetime.now(timezone.utc)
@@ -175,14 +225,7 @@ def is_wake_due(db, wake: dict, now=None, *, state=None):
         # recovery event through the same durable API.
         return False
     if k == "WAIT_FOR_OWNER":
-        # Wakes on next owner directive (GOAL, VETO, CANCEL, etc.)
-        try:
-            for ev in db.events(event_type_prefixes=("owner_directive.", "executive.objective_", "owner_controls.")):
-                if _dt(wake.get("created_at")) and _dt(ev.recorded_at) and _dt(ev.recorded_at) > _dt(wake.get("created_at")):
-                    return True
-        except Exception:
-            pass
-        return False
+        return _owner_wake_has_directive(db, wake)
     if k == "WAIT_FOR_SIGNAL":
         sig = wake.get("signal")
         if not sig: return False
@@ -246,16 +289,17 @@ def _exec_state_for_objective(
     if veto: return "OWNER_BLOCKED"
     if emergency_stop_reason(db, db.path.parent / "EMERGENCY_STOP"): return "OWNER_BLOCKED"
     # Capability/provider blocked via progress blockers
+    row = None
     try:
         rows = ranking if ranking is not None else _rank(db, _state=st)
         row = next((r for r in rows if r.objective_id == objective_id), None)
         if row and not row.eligible and any("capability" in b or "provider" in b.lower() for b in row.blockers):
             if any("provider" in b.lower() for b in row.blockers): return "PROVIDER_BLOCKED"
             return "CAPABILITY_BLOCKED"
-        if row and not row.eligible and row.blockers: return "BLOCKED"
     except Exception: pass
     if my_wakes and not has_due: return "WAITING"
     if has_due: return "DUE"
+    if row and not row.eligible and row.blockers: return "BLOCKED"
     # Stale detection
     try:
         ev = _eval_pure(db, objective_id, state=st)
@@ -1063,6 +1107,7 @@ def run_continuous_cycle(
     # restart; the Worker wrapper may call the helper too, but idempotent wake
     # keys make that replay harmless.
     excluded = {str(value) for value in excluded_objective_ids}
+    reconcile_owner_wakes(db, controller=controller)
     parked = auto_wake_for_blocked(
         db,
         controller=controller,
@@ -2620,6 +2665,13 @@ def schedule_wait_for_owner(db, objective_id: str, *, signal: str = "owner_direc
     wid = f"wake:{objective_id}:owner:{signal}"
     wakes = rebuild_wake_state(db)
     if wid in wakes and wakes[wid].get("status")=="ACTIVE": return wakes[wid]
+    if wid in wakes and wakes[wid].get("status")=="TRIGGERED":
+        rearm_wake(
+            db, wid, controller=controller,
+            reason=reason or "new owner resolution episode",
+            generation=str(wakes[wid].get("triggered_event_id") or ""),
+        )
+        return rebuild_wake_state(db)[wid]
     w = WakeCondition(wake_id=wid, objective_id=objective_id, kind="WAIT_FOR_OWNER", reason=reason or "wait for owner input", created_at=__import__("jarvis_foundry.clock", fromlist=["isoformat"]).isoformat(), signal=signal)
     create_wake(db, w, controller=controller)
     return w.to_payload() if hasattr(w, "to_payload") else dict(w.__dict__)
