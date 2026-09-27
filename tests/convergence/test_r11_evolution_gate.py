@@ -784,6 +784,24 @@ def test_evolution_control_observe_active_gate(db: FoundryDatabase,
                           **args)  # type: ignore[arg-type]
 
 
+def test_production_evolution_control_refuses_synthetic_release_cycle(
+        db: FoundryDatabase, tmp_path: Path) -> None:
+    args = _cycle_args(db, tmp_path, risk="R1")
+    control = EvolutionControl(db, production_runtime=True)
+    control.enable(controller=SUPERVISOR_CONTROLLER)
+    events_before = len(db.events())
+
+    with pytest.raises(EvolutionControlError, match="immutable installed-release"):
+        control.run_cycle(controller=SUPERVISOR_CONTROLLER,
+                          **args)  # type: ignore[arg-type]
+
+    assert len(db.events()) == events_before
+    assert slot_pointers(db) == {
+        "live": None, "candidate": None,
+        "previous": None, "quarantine": None,
+    }
+
+
 # ---------------------------------------------------------------------------
 # operational acceptance minimums from the durable ledger
 # ---------------------------------------------------------------------------

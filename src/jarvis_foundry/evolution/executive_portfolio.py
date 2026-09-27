@@ -1440,6 +1440,7 @@ def _improvement_items(database: FoundryDatabase) -> list[WorkItem]:
     except ValueError:
         return []
     completed: set[str] = set()
+    implementation_blocked: set[str] = set()
     extension_refs: dict[str, list[str]] = {}
     extension_snapshots: dict[str, str] = {}
     for event in database.events():
@@ -1447,6 +1448,10 @@ def _improvement_items(database: FoundryDatabase) -> list[WorkItem]:
             improvement_id = str(event.payload.get("improvement_id") or "")
             if improvement_id:
                 completed.add(improvement_id)
+        elif event.event_type == "improvement.implementation_blocked":
+            improvement_id = str(event.payload.get("improvement_id") or "")
+            if improvement_id:
+                implementation_blocked.add(improvement_id)
         elif event.event_type == "improvement.evidence_extended":
             improvement_id = str(event.payload.get("improvement_id") or "")
             refs = event.payload.get("evidence_refs")
@@ -1462,7 +1467,11 @@ def _improvement_items(database: FoundryDatabase) -> list[WorkItem]:
     items: list[WorkItem] = []
     for row in rows:
         if str(row.get("state") or "") != "FROZEN" or \
-                str(row.get("improvement_id")) in completed:
+                str(row.get("improvement_id")) in completed or \
+                str(row.get("improvement_id")) in implementation_blocked:
+            # Frozen records are immutable. If implementation authority was
+            # missing, quarantine this record instead of reselecting it each
+            # cycle; any later scoped finding must be a new record identity.
             continue
         try:
             evidence_refs = json.loads(

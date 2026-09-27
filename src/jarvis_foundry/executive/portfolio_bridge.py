@@ -511,6 +511,37 @@ def materialize_portfolio_selection(
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": blocked}
 
+    if kind == "IMPROVEMENT":
+        metadata = dict(item.get("metadata") or {})
+        improvement_id = str(metadata.get("improvement_id") or "").strip()
+        reason = (
+            "V6 implementation is blocked: this materializer has no typed "
+            "repository/base/path/workload binding to isolated Workforce "
+            "and MissionLoop evidence; refusing the generic report mission"
+        )
+        if improvement_id:
+            database.append(Event.create(
+                "improvement.implementation_blocked",
+                {
+                    "improvement_id": improvement_id,
+                    "required_binding": [
+                        "registered repository identity",
+                        "exact base commit and isolated Workforce package",
+                        "enforceable allowed paths and required tests",
+                        "hash-pinned runnable workload",
+                        "accepted mission, verifier, and terminal commit evidence",
+                        "immutable release evaluation, promotion, and rollback link",
+                    ],
+                    "reason": reason,
+                },
+                source_type="supervisor",
+                source_id="v6-implementation-gate",
+                idempotency_key=(
+                    f"improvement.implementation_blocked:{improvement_id}"),
+            ))
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": reason}
+
     if kind == "CANDIDATE":
         candidate_id = str(item.get("candidate_id") or "")
         if not candidate_id:

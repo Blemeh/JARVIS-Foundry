@@ -135,12 +135,14 @@ class EvolutionControl:
 
     def __init__(self, database: FoundryDatabase, *, mode: str = "observe",
                  source_type: str = "supervisor", source_id: str = "v7",
-                 stop_path: str | Path | None = None) -> None:
+                 stop_path: str | Path | None = None,
+                 production_runtime: bool = False) -> None:
         _require(mode in _MODES, f"mode must be one of {_MODES}")
         self._database = database
         self._mode = mode
         self._source_type = source_type
         self._source_id = source_id
+        self._production_runtime = bool(production_runtime)
         self._stop_path = (
             Path(stop_path) if stop_path is not None else
             Path(database.path).parent / "EMERGENCY_STOP"
@@ -365,6 +367,10 @@ class EvolutionControl:
 
     def run_cycle(self, *, controller: str, **kwargs: Any) -> dict[str, Any]:
         self._gate(controller)
+        if self._production_runtime:
+            raise EvolutionControlError(
+                "the synthetic V6 cycle is isolated-only; production "
+                "promotion must use the immutable installed-release authority")
         return cycle_mod.run_cycle(
             self._database, controller=SUPERVISOR_CONTROLLER, **kwargs)
 

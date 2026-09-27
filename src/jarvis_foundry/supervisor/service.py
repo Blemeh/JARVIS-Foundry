@@ -173,6 +173,7 @@ class Supervisor:
                 source_id=SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID),
             source_id=SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID,
             stop_path=self.estop.path,
+            production_runtime=True,
         )
         self._reclaim_stale_supervisor_lease()
         request = latest_request(self.database)

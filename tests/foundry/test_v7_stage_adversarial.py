@@ -15,6 +15,7 @@ from jarvis_foundry.executive.portfolio_bridge import (
 )
 from jarvis_foundry.control.broker import record_decision
 from jarvis_foundry.evolution.executive_portfolio import (
+    _improvement_items,
     configure_portfolio_policy,
     register_maintenance,
     select_next_work,
@@ -123,6 +124,58 @@ def test_same_decision_cannot_admit_two_missions(tmp_path: Path) -> None:
     assert len(created) == 1
 
 
+def test_unscoped_v6_improvement_is_blocked_once_across_fresh_decisions(
+    tmp_path: Path,
+) -> None:
+    db = database(tmp_path)
+    payload = {
+        "decision_id": "decision-v6-unscoped",
+        "selected_class": "IMPROVEMENT",
+        "entity_id": "improvement:improvement-v6-unscoped",
+        "selected_item": {
+            "item_id": "improvement:improvement-v6-unscoped",
+            "kind": "IMPROVEMENT",
+            "objective": "reduce observed evaluation failures",
+            "metadata": {
+                "improvement_id": "improvement-v6-unscoped",
+                "risk_class": "R1",
+            },
+        },
+    }
+
+    result = materialize_portfolio_selection(
+        db, decision=payload, resource_id="resource-not-needed-for-block")
+    replay_payload = {
+        **payload,
+        "decision_id": "decision-v6-unscoped-retry",
+        "selected_item": {
+            **payload["selected_item"],
+            "item_id": "replayed-with-a-fresh-item-id",
+        },
+    }
+    replay = materialize_portfolio_selection(
+        db, decision=replay_payload,
+        resource_id="resource-not-needed-for-block")
+
+    assert result["materialized"] is False
+    assert result["mission_id"] is None
+    assert replay == result
+    assert "refusing the generic report mission" in result["blocked_reason"]
+    assert db.event_count(event_type="mission.created") == 0
+    assert db.all("mission_step_contracts") == []
+    blocked = [
+        event for event in db.events(
+            event_types=("improvement.implementation_blocked",))
+        if event.payload.get("improvement_id") == "improvement-v6-unscoped"
+    ]
+    assert len(blocked) == 1
+    assert blocked[0].payload["improvement_id"] == "improvement-v6-unscoped"
+    assert all(
+        item.item_id != "improvement:improvement-v6-unscoped"
+        for item in _improvement_items(db)
+    )
+
+
 # H4: busywork when WAIT is correct — no eligible capacity means WAIT with
 # rejected alternatives recorded, never a fabricated SELECT.
 def test_capacity_exhaustion_produces_wait_not_busywork(tmp_path: Path) -> None:
@@ -146,7 +199,7 @@ def test_portfolio_flag_defaults_off_and_parses(tmp_path: Path) -> None:
     assert cfg.portfolio_selection_enabled is False
     config_file = tmp_path / "worker.yaml"
     config_file.write_text(
-        "enabled: true\nexecutive:\n  portfolio_selection_enabled: true\n",
+        "enabled: false\nexecutive:\n  portfolio_selection_enabled: true\n",
         encoding="utf-8")
     parsed = WorkerRuntimeConfig.from_yaml(config_file)
     assert parsed.portfolio_selection_enabled is True

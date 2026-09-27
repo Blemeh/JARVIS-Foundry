@@ -433,9 +433,10 @@ def test_terminal_outcome_records_portfolio_calibration(
         tmp_path: Path) -> None:
     db = database(tmp_path)
     register_resource(db)
-    decision = decision_payload_for("cal-1", "IMPROVEMENT")
+    decision = decision_payload_for("cal-1", "NEW_MISSION")
     result = materialize_portfolio_selection(
         db, decision=decision, resource_id="resource-1")
+    assert result["materialized"] is True
     mission_id = result["mission_id"]
     recorded_id = record_mission_portfolio_outcome(
         db, decision=decision, mission_id=mission_id, status="PASSED",

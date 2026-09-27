@@ -135,15 +135,13 @@ def test_supervisor_intake_discovers_once_and_preserves_evidence_to_mission(
     assert set(decision.selected_item["evidence_refs"]) == set(refs)
     materialized = materialize_portfolio_selection(
         database, decision=decision.to_payload(), resource_id="intake-resource")
-    assert materialized["materialized"] is True
-    mission = next(
-        event for event in database.events()
-        if event.event_type == "mission.created"
-        and event.payload.get("mission_id") == materialized["mission_id"]
-    )
-    assert mission.payload["portfolio_item_id"] == decision.entity_id
-    assert set(mission.payload["evidence_refs"]) == set(refs)
-    assert mission.payload["provenance"]["detector_rule"]
+    assert materialized["materialized"] is False
+    assert materialized["mission_id"] is None
+    assert "typed repository/base/path/workload binding" in materialized[
+        "blocked_reason"]
+    assert database.event_count(event_type="mission.created") == 0
+    assert database.event_count(
+        event_type="improvement.implementation_blocked") == 1
 
 
 def test_observe_and_stop_keep_supervisor_intake_write_free(
@@ -219,7 +217,7 @@ def test_same_day_late_evidence_is_discovered_and_then_deduped(
     assert database.count("improvement_records") == len(second["improvement_ids"])
 
 
-def test_incremental_evidence_extends_one_improvement_and_reaches_mission(
+def test_incremental_evidence_extends_one_improvement_and_reaches_v6_gate(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     database = _database(tmp_path)
     clock = [utc_now()]
@@ -286,12 +284,17 @@ def test_incremental_evidence_extends_one_improvement_and_reaches_mission(
     assert decision.entity_id == f"improvement:{improvement_id}"
     materialized = materialize_portfolio_selection(
         database, decision=decision.to_payload(), resource_id="intake-resource")
-    mission = next(
-        event for event in database.events()
-        if event.event_type == "mission.created"
-        and event.payload.get("mission_id") == materialized["mission_id"]
+    assert materialized["materialized"] is False
+    assert materialized["mission_id"] is None
+    assert database.event_count(event_type="mission.created") == 0
+    blocked = database.events(
+        event_types=("improvement.implementation_blocked",))
+    assert len(blocked) == 1
+    assert blocked[0].payload["improvement_id"] == improvement_id
+    assert all(
+        item.item_id != f"improvement:{improvement_id}"
+        for item in _improvement_items(database)
     )
-    assert set(mission.payload["evidence_refs"]) == all_refs
 
 
 def test_terminal_agent_outcome_is_attributed_by_finish_day(
