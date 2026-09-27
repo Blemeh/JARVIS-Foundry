@@ -13,6 +13,7 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.evolution.executive_portfolio import register_work_item, set_work_status
 from jarvis_foundry.executive.autonomy import (
+    _verifier_recovery_plan,
     build_plan,
     create_objective,
     executive_autonomy_snapshot,
@@ -493,6 +494,53 @@ def test_verifier_failure_gets_changed_strategy_then_completes_owner_goal(
         for row in recovery_contracts
     )
     assert any(report["outcome"] == "PASSED" for report in reports)
+
+
+def test_crash_placeholder_verdict_cannot_authorize_recovery_strategy(
+        tmp_path: Path) -> None:
+    from jarvis_foundry.mission.verification import (
+        record_verification_outcome,
+        start_verification,
+    )
+
+    database, _ = _db(tmp_path)
+    _goal(database, "Create the durable receipt. success: outcome receipt exists")
+    cycle = run_autonomy_cycle(
+        database, cycle_id="crash-verifier-recovery", resource_id="resource-v8",
+    )
+    objective = rebuild_executive_state(database).objectives[cycle.objective_id]
+    plan = next(
+        row for row in rebuild_executive_state(database).plans.values()
+        if row.objective_id == objective.objective_id
+    )
+    step = next(row for row in plan.steps if row.mission_id)
+
+    # This models the historical crash placeholder: a FAIL verdict names a
+    # verifier identity but no corresponding verifier execution exists.
+    start_verification(
+        database,
+        verdict_id="verdict-crash-placeholder",
+        mission_id=step.mission_id,
+        step_id="02-execute",
+        builder_run_id="run-builder-missing",
+        verifier_run_id="run-verifier-crash-placeholder",
+        independence={
+            "builder_provider": "opencode_go",
+            "verifier_provider": "jarvis",
+            "session_independent": True,
+            "session_isolation": "fresh-session",
+        },
+        criteria=["the expected artifact exists"],
+    )
+    record_verification_outcome(
+        database,
+        verdict_id="verdict-crash-placeholder",
+        outcome="FAIL",
+        findings=["expected outcome artifact missing"],
+        evidence={},
+    )
+
+    assert _verifier_recovery_plan(database, objective.objective_id, step) is None
 
 
 def test_stop_sentinel_blocks_executive_mutation(tmp_path: Path) -> None:

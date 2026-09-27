@@ -1746,12 +1746,67 @@ def _verifier_recovery_plan(
         return None
     with database.connect(readonly=True) as connection:
         row = connection.execute(
-            "SELECT verdict_id, status, reason, findings_json, "
-            "repair_requirements_json FROM verification_verdicts "
-            "WHERE mission_id = ? ORDER BY rowid DESC LIMIT 1",
+            "SELECT v.verdict_id, v.status, v.reason, v.findings_json, "
+            "v.repair_requirements_json, v.subject_id, v.verifier_run_id, "
+            "v.builder_run_id, v.independence_json, "
+            "vr.mission_id AS verifier_mission_id, "
+            "vr.step_id AS verifier_step_id, vr.role AS verifier_role, "
+            "vr.status AS verifier_status, vr.provider AS verifier_provider, "
+            "vr.result_json AS verifier_result_json, "
+            "br.mission_id AS builder_mission_id, "
+            "br.step_id AS builder_step_id, br.role AS builder_role, "
+            "br.provider AS builder_provider "
+            "FROM verification_verdicts v "
+            "LEFT JOIN agent_runs vr ON vr.run_id = v.verifier_run_id "
+            "LEFT JOIN agent_runs br ON br.run_id = v.builder_run_id "
+            "WHERE v.mission_id = ? ORDER BY v.rowid DESC LIMIT 1",
             (step.mission_id,),
         ).fetchone()
     if row is None or str(row["status"] or "").upper() != "FAIL":
+        return None
+
+    # A terminal FAIL row is not enough to authorize a new worker strategy.
+    # Older crash recovery wrote synthetic ``*-crash`` verifier identities
+    # and copied worker/error text into the verdict. Bind the finding to the
+    # exact mission step and a completed, distinct verifier run instead.
+    verifier_run_id = str(row["verifier_run_id"] or "").strip()
+    builder_run_id = str(row["builder_run_id"] or "").strip()
+    subject_id = str(row["subject_id"] or "").strip()
+    if (
+        not verifier_run_id
+        or not builder_run_id
+        or verifier_run_id == builder_run_id
+        or row["verifier_mission_id"] != step.mission_id
+        or row["builder_mission_id"] != step.mission_id
+        or row["verifier_step_id"] != subject_id
+        or row["builder_step_id"] != subject_id
+        or row["verifier_role"] != "verifier"
+        or row["builder_role"] not in {"builder", "repair"}
+        or str(row["verifier_status"] or "").upper() != "COMPLETED"
+    ):
+        return None
+    try:
+        verifier_result = json.loads(str(row["verifier_result_json"] or "{}"))
+        independence = json.loads(str(row["independence_json"] or "{}"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(verifier_result, Mapping) or not isinstance(independence, Mapping):
+        return None
+    if (
+        str(verifier_result.get("status") or "").upper() != "COMPLETED"
+        or str(verifier_result.get("verdict") or "").upper() != "FAIL"
+        or independence.get("session_independent") is not True
+    ):
+        return None
+    if (
+        independence.get("builder_provider") != row["builder_provider"]
+        or independence.get("verifier_provider") != row["verifier_provider"]
+    ):
+        return None
+    if (
+        row["builder_provider"] == row["verifier_provider"]
+        and independence.get("session_isolation") != "fresh-session"
+    ):
         return None
 
     def bounded_items(raw: Any) -> list[str]:
