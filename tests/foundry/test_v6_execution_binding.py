@@ -338,8 +338,10 @@ def _decision(improvement_id: str) -> dict:
 def test_missing_binding_module_still_fails_closed(
         db: FoundryDatabase, monkeypatch) -> None:
     import sys
+    import jarvis_foundry.evolution as evolution_pkg
     improvement_id = _improvement(db)
     monkeypatch.setitem(sys.modules, "jarvis_foundry.evolution.binding", None)
+    monkeypatch.delattr(evolution_pkg, "binding")
     result = materialize_portfolio_selection(
         db, decision=_decision(improvement_id), resource_id="res-a",
     )

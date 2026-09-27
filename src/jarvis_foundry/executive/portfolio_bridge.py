@@ -595,25 +595,26 @@ def materialize_portfolio_selection(
         )
         if improvement_id:
             try:
-                from ..evolution.binding import (
-                    ImprovementBindingError,
-                    materialize_bound_improvement,
-                )
-                return materialize_bound_improvement(
-                    database,
-                    item_id=item_id,
-                    decision_id=decision_id,
-                    improvement_id=improvement_id,
-                    objective=objective,
-                    source_id=source_id,
-                )
-            except ImprovementBindingError as error:
-                reason = f"{reason} (binding check: {error})"
+                from ..evolution import binding as _binding
             except ImportError:
                 # Binding machinery absent on this runtime (e.g. a release
                 # predating the V6 convergence branch): keep the original
                 # refusal rather than crashing materialization.
+                _binding = None  # type: ignore[assignment]
+            if _binding is None:
                 reason = f"{reason} (binding machinery unavailable)"
+            else:
+                try:
+                    return _binding.materialize_bound_improvement(
+                        database,
+                        item_id=item_id,
+                        decision_id=decision_id,
+                        improvement_id=improvement_id,
+                        objective=objective,
+                        source_id=source_id,
+                    )
+                except _binding.ImprovementBindingError as error:
+                    reason = f"{reason} (binding check: {error})"
             database.append(Event.create(
                 "improvement.implementation_blocked",
                 {
