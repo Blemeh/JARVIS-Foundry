@@ -609,6 +609,11 @@ def materialize_portfolio_selection(
                 )
             except ImprovementBindingError as error:
                 reason = f"{reason} (binding check: {error})"
+            except ImportError:
+                # Binding machinery absent on this runtime (e.g. a release
+                # predating the V6 convergence branch): keep the original
+                # refusal rather than crashing materialization.
+                reason = f"{reason} (binding machinery unavailable)"
             database.append(Event.create(
                 "improvement.implementation_blocked",
                 {

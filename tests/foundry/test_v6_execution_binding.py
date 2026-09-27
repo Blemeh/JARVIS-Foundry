@@ -335,6 +335,18 @@ def _decision(improvement_id: str) -> dict:
     }
 
 
+def test_missing_binding_module_still_fails_closed(
+        db: FoundryDatabase, monkeypatch) -> None:
+    import sys
+    improvement_id = _improvement(db)
+    monkeypatch.setitem(sys.modules, "jarvis_foundry.evolution.binding", None)
+    result = materialize_portfolio_selection(
+        db, decision=_decision(improvement_id), resource_id="res-a",
+    )
+    assert result["materialized"] is False
+    assert "binding machinery unavailable" in (result["blocked_reason"] or "")
+
+
 def test_unbound_improvement_still_fails_closed(db: FoundryDatabase) -> None:
     improvement_id = _improvement(db)
     result = materialize_portfolio_selection(
