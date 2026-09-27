@@ -99,10 +99,10 @@ set "CLI_ENTRY=%RELEASE%\source\src\jarvis_foundry\deployment\cli_launcher.py"
 set "JARVIS_RELEASE_ID=%SHA%"
 set "JARVIS_RELEASE_SHA=%SHA%"
 set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\.pw"
-if exist "%CLI_ENTRY%" (
-  "%PY%" -I "%CLI_ENTRY%" %*
-  exit /b %ERRORLEVEL%
-)
+if not exist "%CLI_ENTRY%" goto legacy_cli
+"%PY%" -I "%CLI_ENTRY%" %*
+exit /b %ERRORLEVEL%
+:legacy_cli
 rem Backward-compatible route for immutable releases predating the CLI bootstrap.
 "%PY%" -I -m jarvis_foundry.cli.main %*
 exit /b %ERRORLEVEL%

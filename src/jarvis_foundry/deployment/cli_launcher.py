@@ -107,7 +107,11 @@ def _validated_cli_main() -> Any:
         raise CliLaunchError("CURRENT release manifest has no release_id")
     os.environ["JARVIS_RELEASE_ID"] = release_id.strip()
     os.environ["JARVIS_RELEASE_SHA"] = sha
-    configure_release_browser_runtime(identity)
+    try:
+        configure_release_browser_runtime(identity)
+    except (OSError, ReleaseError, ValueError) as error:
+        raise CliLaunchError(
+            f"CURRENT browser runtime validation failed: {error}") from error
     return cli.main
 
 
