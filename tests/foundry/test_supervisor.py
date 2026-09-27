@@ -322,8 +322,9 @@ def test_spawn_worker_loop_registers_child_when_enabled(tmp_path, monkeypatch):
 
     config = tmp_path / "workers.yaml"
     config.write_text(
-        "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
-        "model: deepseek-v4-flash\n",
+        "enabled: true\nstatus: ACTIVE\n"
+        "hermes:\n"
+        "  allow_data_training_tiers_noninteractive: true\n",
         encoding="utf-8")
     database = FoundryDatabase(tmp_path / "foundry.db")
     supervisor = Supervisor(

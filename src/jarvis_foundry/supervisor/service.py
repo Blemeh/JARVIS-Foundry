@@ -470,7 +470,38 @@ class Supervisor:
             idempotency_key=key,
         ))
         self.resilience_tick(metrics=resilience_metrics)
+        self._record_trust_gate_report()
         return "RUNNING"
+
+    def _record_trust_gate_report(self) -> None:
+        """Publish only observations derived by the active Supervisor."""
+        if self.estop.active():
+            return
+        try:
+            from ..trust import record_live_supervisor_gate_report
+
+            record_live_supervisor_gate_report(
+                self.database,
+                stop_path=self.estop.path,
+            )
+        except Exception as error:  # noqa: BLE001 - evidence collection cannot stop heartbeat
+            try:
+                self.database.append(Event.create(
+                    "trust.gate_report_failed",
+                    {
+                        "instance_id": self.instance_id,
+                        "generation": self._start_generation,
+                        "error_class": type(error).__name__,
+                    },
+                    source_type="supervisor",
+                    source_id=self.instance_id,
+                    idempotency_key=(
+                        f"trust.gate_report_failed:{self.instance_id}:"
+                        f"{self._start_generation}:{type(error).__name__}"
+                    ),
+                ))
+            except Exception:  # noqa: BLE001 - reporting must never widen heartbeat failure
+                pass
 
     def resilience_tick(self, *, metrics: Mapping[str, Any] | None = None) -> Any:
         """Run the bounded resilience coordinator without widening heartbeat failure.
