@@ -1440,24 +1440,67 @@ def _improvement_items(database: FoundryDatabase) -> list[WorkItem]:
     except ValueError:
         return []
     completed: set[str] = set()
+    extension_refs: dict[str, list[str]] = {}
+    extension_snapshots: dict[str, str] = {}
     for event in database.events():
         if event.event_type == "cycle.completed":
             improvement_id = str(event.payload.get("improvement_id") or "")
             if improvement_id:
                 completed.add(improvement_id)
-    return [
-        WorkItem(
+        elif event.event_type == "improvement.evidence_extended":
+            improvement_id = str(event.payload.get("improvement_id") or "")
+            refs = event.payload.get("evidence_refs")
+            if improvement_id and isinstance(refs, list):
+                bucket = extension_refs.setdefault(improvement_id, [])
+                bucket.extend(
+                    str(ref) for ref in refs
+                    if isinstance(ref, str) and ref.strip()
+                    and ref not in bucket)
+                snapshot_hash = event.payload.get("snapshot_hash")
+                if isinstance(snapshot_hash, str) and snapshot_hash:
+                    extension_snapshots[improvement_id] = snapshot_hash
+    items: list[WorkItem] = []
+    for row in rows:
+        if str(row.get("state") or "") != "FROZEN" or \
+                str(row.get("improvement_id")) in completed:
+            continue
+        try:
+            evidence_refs = json.loads(
+                str(row.get("evidence_refs_json") or "[]"))
+        except (TypeError, ValueError):
+            evidence_refs = []
+        if not isinstance(evidence_refs, list):
+            evidence_refs = []
+        try:
+            provenance = json.loads(
+                str(row.get("provenance_json") or "{}"))
+        except (TypeError, ValueError):
+            provenance = {}
+        if not isinstance(provenance, Mapping):
+            provenance = {}
+        improvement_id = str(row["improvement_id"])
+        evidence_refs = list(dict.fromkeys(
+            [str(ref) for ref in evidence_refs
+             if isinstance(ref, str) and ref.strip()]
+            + extension_refs.get(improvement_id, [])
+        ))
+        item_provenance = dict(provenance)
+        latest_snapshot = extension_snapshots.get(improvement_id)
+        if latest_snapshot:
+            item_provenance["latest_detector_snapshot_hash"] = latest_snapshot
+        items.append(WorkItem(
             item_id=f"improvement:{row['improvement_id']}", kind="IMPROVEMENT",
             objective=str(row.get("problem") or row["improvement_id"]),
             expected_value=0.7, urgency=0.4, information_gain=0.5,
             confidence=0.7, reversibility=0.8, requires_verifier=True,
             metadata={"improvement_id": row["improvement_id"],
                       "risk_class": row.get("risk_class")},
-        )
-        for row in rows
-        if str(row.get("state") or "") == "FROZEN"
-        and str(row.get("improvement_id")) not in completed
-    ]
+            evidence_refs=tuple(
+                str(ref) for ref in evidence_refs
+                if isinstance(ref, str) and ref.strip()),
+            provenance=item_provenance,
+        ))
+    return items
 
 
 _SEVERITY_URGENCY = {

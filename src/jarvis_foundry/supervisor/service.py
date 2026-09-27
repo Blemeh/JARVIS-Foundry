@@ -14,6 +14,7 @@ from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
 from ..runtime.authority import ALLOWED_TRUST_STATES
 from ..runtime.provider_config import ProviderConfigError, ProviderSettings
+from .authority import SUPERVISOR_CONTROLLER
 from .control import (
     RuntimeControlRequest,
     current_process_identity,
@@ -78,6 +79,7 @@ class Supervisor:
             if owner_secret_path is not None else
             Path(self.database.path).resolve().parent / "owner-control.key")
         self._command_center = None
+        self._evolution_control = None
 
     def _release_id(self) -> str | None:
         """Return only an explicitly supplied release identity.
@@ -158,6 +160,20 @@ class Supervisor:
         if self.started:
             return "FROZEN" if self.estop.active() else "RUNNING"
         self.database.initialize()
+        from .evolution_control import (
+            EvolutionControl,
+            SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID,
+            recorded_evolution_mode,
+        )
+
+        self._evolution_control = EvolutionControl(
+            self.database,
+            mode=recorded_evolution_mode(
+                self.database, source_type="supervisor",
+                source_id=SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID),
+            source_id=SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID,
+            stop_path=self.estop.path,
+        )
         self._reclaim_stale_supervisor_lease()
         request = latest_request(self.database)
         if request is not None and request_is_stale(request):
@@ -471,7 +487,32 @@ class Supervisor:
         ))
         self.resilience_tick(metrics=resilience_metrics)
         self._record_trust_gate_report()
+        self._record_evolution_discovery()
         return "RUNNING"
+
+    def _record_evolution_discovery(self) -> None:
+        """Run bounded V6 intake only when the durable Supervisor gate is active."""
+        control = self._evolution_control
+        if control is None or self.estop.active():
+            return
+        if control.refresh_recorded_mode() != "active":
+            return
+
+        window = control.next_discovery_window()
+        try:
+            control.run_discovery_window(
+                window=window,
+                controller=SUPERVISOR_CONTROLLER,
+            )
+        except Exception as error:  # noqa: BLE001 - discovery cannot kill heartbeat
+            try:
+                control.record_discovery_failure(
+                    window=window,
+                    error_class=type(error).__name__,
+                    controller=SUPERVISOR_CONTROLLER,
+                )
+            except Exception:  # noqa: BLE001 - telemetry cannot widen heartbeat failure
+                pass
 
     def _record_trust_gate_report(self) -> None:
         """Publish only observations derived by the active Supervisor."""

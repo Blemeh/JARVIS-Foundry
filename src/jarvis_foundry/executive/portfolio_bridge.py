@@ -497,6 +497,12 @@ def materialize_portfolio_selection(
     # step BEFORE this mission existed, so they are the earliest authoritative
     # source on the normal path.  Only Catalog-proven ``cap.*`` ids qualify.
     item_metadata = dict(item.get("metadata") or {})
+    item_evidence_refs = tuple(
+        str(value) for value in (item.get("evidence_refs") or ())
+        if isinstance(value, str) and value.strip())
+    item_provenance = item.get("provenance")
+    if not isinstance(item_provenance, Mapping):
+        item_provenance = {}
     declared_capabilities = _declared_fabric_capabilities(database, item_metadata)
     declared_objective_id = str(item_metadata.get("executive_objective_id") or "")
 
@@ -626,6 +632,8 @@ def materialize_portfolio_selection(
                 confidence=item.get("confidence"),
                 reversibility=item.get("reversibility"),
                 requires_verifier=bool(item.get("requires_verifier", True)),
+                evidence_refs=item_evidence_refs,
+                provenance=item_provenance,
                 metadata=dict(item.get("metadata") or {}),
                 source_type="supervisor",
                 source_id=source_id,
@@ -745,6 +753,8 @@ def materialize_portfolio_selection(
             confidence=item.get("confidence"),
             reversibility=item.get("reversibility"),
             requires_verifier=bool(item.get("requires_verifier", True)),
+            evidence_refs=item_evidence_refs,
+            provenance=item_provenance,
             metadata=dict(item.get("metadata") or {}),
             source_type="supervisor",
             source_id=source_id,
@@ -780,6 +790,9 @@ def materialize_portfolio_selection(
             "acceptance_criteria": acceptance,
             "next_action": f"execute: {objective}",
             "created_from": f"portfolio:{item_id}",
+            "portfolio_item_id": item_id,
+            "evidence_refs": list(item_evidence_refs),
+            "provenance": dict(item_provenance),
         },
         source_type="supervisor",
         source_id=source_id,
