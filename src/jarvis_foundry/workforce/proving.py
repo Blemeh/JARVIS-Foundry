@@ -1139,6 +1139,8 @@ def _write_lab_config(
             "enabled: true",
             "status: ACTIVE",
             "lab_scripted_hermes: true",
+            "hermes:",
+            "  allow_data_training_tiers_noninteractive: true",
             (
                 "lab_crash_after_write: true"
                 if crash_after_write
