@@ -45,11 +45,15 @@ RISK_TO_WORKFORCE = {"R0": "C0", "R1": "C1", "R2": "C2", "R3": "C3"}
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
-#: Capability a bound improvement executes under.  The worker operates only
-#: inside the registered resource root; the MissionLoop pre-dispatch gate
-#: refuses unregistered capabilities and out-of-root targets.
+#: Capability bound improvement steps execute under.  Both steps use the
+#: write capability — not because the plan step writes (its instructions
+#: forbid writes), but because the worker bridge routes write-capability
+#: contracts to model-backed workers while read-capability contracts may
+#: route to non-model local workers, whose result identity (fabric/local)
+#: fails provider reconciliation for a provider-backed mission.  This
+#: mirrors the proven owner-goal shape (both 01-plan and 02-execute under
+#: write_registered_worktree_files).
 EXECUTE_CAPABILITY = "write_registered_worktree_files"
-PLAN_CAPABILITY = "read_registered_files"
 
 
 class ImprovementBindingError(ValueError):
@@ -258,10 +262,6 @@ def verify_binding_for_execution(
         raise ImprovementBindingError(
             f"bound resource lacks the {EXECUTE_CAPABILITY!r} capability"
         )
-    if PLAN_CAPABILITY not in capabilities:
-        raise ImprovementBindingError(
-            f"bound resource lacks the {PLAN_CAPABILITY!r} capability"
-        )
     head = _git(root, "rev-parse", "HEAD").lower()
     if head != payload["baseline_sha"]:
         raise ImprovementBindingError(
@@ -357,8 +357,8 @@ def materialize_bound_improvement(
 
     Mirrors the owner-goal materialization shape (mission.created, ordered
     immutable contracts, portfolio.selection_materialized) with binding
-    content: 01-plan under the read capability, 02-execute under the write
-    capability, both scoped to the bound paths.  Execution, verification,
+    content: 01-plan and 02-execute both under the write capability so the worker bridge routes both steps to model-backed workers,
+    matching the proven owner-goal contract shape, both scoped to the bound paths.  Execution, verification,
     and recovery stay on the canonical MissionLoop; nothing here dispatches
     work or invents worker authority.
     """
@@ -401,7 +401,7 @@ def materialize_bound_improvement(
             step_id="01-plan",
             version=1,
             resource_id=resource_id,
-            capability=PLAN_CAPABILITY,
+            capability=EXECUTE_CAPABILITY,
             target_relative_path=primary_target,
             instructions=_bounded_instructions(binding, step="plan"),
             expected_effects=(

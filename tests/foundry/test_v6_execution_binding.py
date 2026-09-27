@@ -308,7 +308,7 @@ def test_materialize_bound_improvement(db: FoundryDatabase, repo: Path) -> None:
     contracts = latest_contracts_by_step(db, mission_id)
     assert sorted(contracts) == ["01-plan", "02-execute"]
     plan, execute = contracts["01-plan"], contracts["02-execute"]
-    assert plan.capability == "read_registered_files"
+    assert plan.capability == "write_registered_worktree_files"
     assert execute.capability == "write_registered_worktree_files"
     assert execute.target_relative_path == "probe.py"
     assert execute.risk_class == "C1"
@@ -323,6 +323,25 @@ def test_materialize_bound_improvement(db: FoundryDatabase, repo: Path) -> None:
         event_types=("portfolio.selection_materialized",), readonly=True)
         if event.payload.get("decision_id") == "decision-1"]
     assert len(materialized) == 1
+
+
+def test_both_steps_use_model_routed_write_capability(
+        db: FoundryDatabase, repo: Path) -> None:
+    """Live finding 2026-09-27: a read-capability 01-plan routes to a
+    non-model local worker whose fabric/local result identity fails
+    provider reconciliation (mission-eedbb3e8b29b BLOCKED).  Both steps
+    must use the write capability like the proven owner-goal shape."""
+    _register(db, "res-a", repo)
+    improvement_id = _improvement(db)
+    _bind(db, improvement_id, "res-a", repo)
+    result = materialize_bound_improvement(
+        db, item_id="item-1", decision_id="decision-1",
+        improvement_id=improvement_id, objective="memoize the probe read",
+    )
+    from jarvis_foundry.mission.contracts import latest_contracts_by_step
+    contracts = latest_contracts_by_step(db, result["mission_id"])
+    assert contracts["01-plan"].capability == "write_registered_worktree_files"
+    assert contracts["02-execute"].capability == "write_registered_worktree_files"
 
 
 def success_text(contract) -> str:
