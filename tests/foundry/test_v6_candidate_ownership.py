@@ -397,3 +397,39 @@ def test_dirty_worktree_refuses_before_any_mission_write(db, repo):
     assert list(db.events(event_types=("mission.created",))) == []
     assert list(db.events(
         event_types=("portfolio.selection_materialized",))) == []
+
+
+def test_no_verdict_refuses_commit(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    (repo / "probe.py").write_text("VALUE = 2\n", encoding="utf-8")
+    before = _git(repo, "rev-parse", "HEAD")
+    with pytest.raises(CommitError, match="no verification verdict"):
+        _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+    assert _git(repo, "rev-parse", "HEAD") == before
+
+
+def test_fail_verdict_refuses_commit(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    (repo / "probe.py").write_text("VALUE = 2\n", encoding="utf-8")
+    db.append(Event.create(
+        "verification.started",
+        {"verdict_id": "verdict-fail-1", "mission_id": "mission-1",
+         "subject_type": "mission_step", "subject_id": "02-execute",
+         "verifier_run_id": "run-1-verify", "builder_run_id": "run-1",
+         "independence": {}, "criteria": ["bounded change only"]},
+        source_type="test", source_id="test-suite",
+        idempotency_key="verification.started:verdict-fail-1",
+    ))
+    db.append(Event.create(
+        "verification.failed",
+        {"verdict_id": "verdict-fail-1", "verdict": "FAIL",
+         "findings": ["out of scope"], "missing_proof": [],
+         "scope_violations": ["other.py"]},
+        source_type="test", source_id="test-suite",
+        idempotency_key="verification.failed:verdict-fail-1",
+    ))
+    before = _git(repo, "rev-parse", "HEAD")
+    with pytest.raises(CommitError, match="verified PASS"):
+        _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+    assert _git(repo, "rev-parse", "HEAD") == before
+    assert list(db.events(event_types=(CANDIDATE_RECORDED_EVENT,))) == []
