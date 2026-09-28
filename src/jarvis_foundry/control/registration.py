@@ -80,6 +80,31 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _status_involved_paths(line: str) -> list[str]:
+    """All repository paths a porcelain line touches.
+
+    Renames/copies (``R``/``C``) name origin and destination separated by
+    ``' -> '``; every other entry names one path after the XY status field.
+    """
+    body = line[3:] if len(line) > 3 else line
+    if " -> " in body:
+        return [part.strip().strip('"') for part in body.split(" -> ")]
+    return [body.strip().strip('"')]
+
+
+def _is_exhaust_path(path: str) -> bool:
+    """Whether one path belongs to the runtime's prescribed exhaust namespace.
+
+    Exactly the top-level ``.jarvis`` directory and top-level ``.jarvis*``
+    result files.  Sibling directories such as ``.jarvis-evil/`` and nested
+    ``sub/.jarvis/`` paths are NOT exhaust: an actor able to write outside
+    the prescribed namespace must not inherit its tolerance.
+    """
+    if "/" in path:
+        return path.split("/", 1)[0] == ".jarvis"
+    return path == ".jarvis" or path.startswith(".jarvis")
+
+
 def _meaningful_status_lines(status_lines: list[str]) -> list[str]:
     """Porcelain lines that count as worktree dirt for readiness.
 
@@ -87,16 +112,16 @@ def _meaningful_status_lines(status_lines: list[str]) -> list[str]:
     outcomes and diagnoses, plus top-level ``.jarvis*`` result files) is
     tolerated by name: missions routinely leave evidence there (the B6
     receipt pattern), and treating that exhaust as dirt would demote every
-    resource a mission just used, blocking its own continuation.  Real
-    user/session changes anywhere else still count.  The full status stays
-    in the stored baseline; only the readiness derivation ignores exhaust.
+    resource a mission just used, blocking its own continuation.  Every
+    path a line touches must be exhaust (a staged rename out of ``.jarvis/``
+    into a real path still counts as dirt).  Real user/session changes
+    anywhere else still count.  The full status stays in the stored
+    baseline; only the readiness derivation ignores exhaust.
     """
     meaningful: list[str] = []
     for line in status_lines:
-        path = line[3:] if len(line) > 3 else line
-        stripped = path.strip().strip('"')
-        first = stripped.split("/", 1)[0]
-        if first == ".jarvis" or first.startswith(".jarvis"):
+        paths = _status_involved_paths(line)
+        if paths and all(_is_exhaust_path(path) for path in paths):
             continue
         meaningful.append(line)
     return meaningful

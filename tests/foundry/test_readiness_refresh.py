@@ -198,6 +198,21 @@ def test_real_dirt_beside_exhaust_still_blocks(tmp_path: Path) -> None:
     assert resource["readiness_state"] == "PROBING"
 
 
+def test_rename_and_sibling_namespace_edges(tmp_path: Path) -> None:
+    from jarvis_foundry.control.registration import _meaningful_status_lines as meaningful
+
+    # Staged rename OUT of exhaust into a real path still counts as dirt.
+    assert meaningful(["R  .jarvis/a.md -> payload.txt"]) == ["R  .jarvis/a.md -> payload.txt"]
+    # Rename within exhaust stays tolerated.
+    assert meaningful(["R  .jarvis/a.md -> .jarvis/b.md"]) == []
+    # Sibling directories are not exhaust.
+    assert meaningful(["?? .jarvis-evil/pwn.txt"]) == ["?? .jarvis-evil/pwn.txt"]
+    # Nested .jarvis paths are not exhaust.
+    assert meaningful(["?? sub/.jarvis/note.md"]) == ["?? sub/.jarvis/note.md"]
+    # Top-level result files and the directory itself are exhaust.
+    assert meaningful(["?? .jarvis-result.json", "?? .jarvis/"]) == []
+
+
 def test_mission_baseline_is_untouched_by_refresh(tmp_path: Path) -> None:
     database, repository = _db_with_probing_resource(tmp_path)
     missions_before = _table_dump(database, "missions")
