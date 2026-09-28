@@ -6,9 +6,67 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Monday, September 28, 2026 for V6 FINAL CLOSURE
-(autonomous candidate ownership + canonical convergence), live on the
-release below at reconciliation time.
+Last reconciled: Monday, September 28, 2026 for V7 READINESS + LIVE PROOF
+(stale capability-declaration repair, autonomous mission materialization,
+GitHub issue effect with provider-side reconciliation, desktop observation
+evidence, STOP drill), live on the release below at reconciliation time.
+
+## Current canonical and live state — 2026-09-28 (V7 READINESS + LIVE PROOF)
+
+DOCUMENTATION STATE BASE SHA: `962e663a7e2c870b946f4d6d883979c035c302e7`
+
+CURRENT/CANDIDATE SCHEMA: v41
+
+The SHA above is the immediate parent of this docs-only reconciliation
+commit, as required by `scripts/doc_staleness_check.py`. The live install at
+reconciliation time was built from
+`01fa151b5de6680fa41a46651bc5123f97b37fd8` (tree
+`db4aad6aa4a691dbee312a2ccb575990fe7a9ef7`,
+release `rel-01fa151b5de6-69c547fe`, schema 41): installed CURRENT, manifest,
+canonical source, origin/main and runtime all identify that commit with parity
+PASS, release authority CONSISTENT, STOP clear (after a completed freeze/thaw
+drill), Supervisor RUNNING singleton with a fresh heartbeat, worker-loop
+config carrying --spawn-worker-loop --worker-loop-config, and trust
+SUSPENDED.
+
+V7 readiness defect (root-caused, not bypassed): registration declares
+initial capability readiness once and the plane projects declarations
+first-write-only, so Sep-25 PROBING evidence for
+resource-jarvis-canonical/write_registered_worktree_files kept gating
+portfolio eligibility after the worktree moved on (clean at eae64dd).
+Repair (candidate branch, 3 commits): `refresh_git_resource_readiness`
+re-inspects the stored checkout and records fresh evidence only on change;
+incident-owned BLOCKING states are never overwritten; mission baselines
+untouched; the continuous cycle refreshes (max 2/cycle) only when no mission
+materialized; prescribed `.jarvis` exhaust is tolerated by name in dirt
+assessment (rename-out/sibling/nested edges fail closed). Targeted tests
+11/11 green on the repo interpreter (10 readiness + rename edges,
+registration, capability states, v9 continuous executive adjacent runs
+green); independent reviews PASS with zero open P0/P1 (full, focused,
+micro).
+
+Proven live on release `01fa151b5de6`: 20:13:37 UTC refresh flipped
+PROBING→READY with baseline 1db307f→eae64dd preserved in history; ranking
+flipped ineligible→eligible (0.404); portfolio SELECT materialized
+mission-842974eb5321, mission-94203aa46a67, retry mission-90563ccdd343,
+mission-bcea5e74189b and mission-dc7b2729d9e4 with zero owner "continue".
+mission-bcea5e74189b COMPLETE with verifier PASS+PASS: autonomous diagnosis
+(`.jarvis/owner-goals/37070afc86/diagnosis.md`, ledger/source/remote
+evidence with sequence numbers) reached the decision and became GitHub
+issue #1 (OPEN, provider-side content reconciled, exactly one issue, no
+duplicates), with outcome/learning (world+memory observations),
+next-action wake, consumption, and a fresh truthful WAIT decision after.
+Desktop observation ran live twice with full before/after evidence
+(window enumeration, capture, hash-verified scratch cycle, verified
+cleanup, provider discipline); both missions BLOCKED on mission
+bookkeeping (a circular owner success criterion since corrected by owner
+redirect, and a stale artifact-path binding recorded as follow-up), while
+independent verifiers confirmed the re-checkable operation state. A
+15-minute builder TIMEOUT produced evidence_mismatch FAIL (not PASS),
+mission BLOCKED, no duplicate effects. STOP drill: sentinel froze the
+Supervisor (FROZEN, CC truthful) and removal resumed cycles via lease
+reclaim with no new lineage. No synthetic work, no manual ledger edits,
+no manual READY promotion, no second authority at any layer.
 
 ## Current canonical and live state — 2026-09-28 (V6 FINAL CLOSURE)
 
