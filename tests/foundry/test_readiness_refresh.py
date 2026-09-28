@@ -47,7 +47,7 @@ def _git(*args: str, cwd: Path) -> None:
 
 def _make_repository(tmp_path: Path, name: str = "repo") -> Path:
     repository = tmp_path / name
-    repository.mkdir()
+    repository.mkdir(parents=True, exist_ok=True)
     _git("init", cwd=repository)
     _git("config", "user.email", "v7-refresh@example.invalid", cwd=repository)
     _git("config", "user.name", "V7 Refresh", cwd=repository)
@@ -131,16 +131,40 @@ def test_replay_and_restart_converge_without_duplicates(tmp_path: Path) -> None:
 
 
 def test_incident_owned_state_is_never_overwritten(tmp_path: Path) -> None:
+    from jarvis_foundry.control.capabilities import BLOCKING_STATES
+
+    for incident_state in sorted(BLOCKING_STATES):
+        database, repository = _db_with_probing_resource(tmp_path / incident_state.lower())
+        set_capability_state(database, "resource-1", WRITE, incident_state, evidence={"source": "incident"})
+        (repository / "uncommitted.txt").unlink()  # clean, but incident owns the state
+
+        result = refresh_git_resource_readiness(database, "resource-1")
+
+        assert _plane(database) == incident_state
+        assert result["refreshed"] is True  # baseline still updated
+        row = database.row("resources", "resource_id", "resource-1")
+        assert json.loads(row["capabilities_json"])[WRITE] == incident_state
+
+
+def test_failed_inspection_records_nothing(tmp_path: Path) -> None:
     database, repository = _db_with_probing_resource(tmp_path)
-    set_capability_state(database, "resource-1", WRITE, "DEGRADED", evidence={"source": "incident"})
-    (repository / "uncommitted.txt").unlink()  # clean, but incident owns the state
+    set_capability_state(database, "resource-1", WRITE, "PROBING", evidence={"source": "registration"})
+    events_before = len(database.events())
 
-    result = refresh_git_resource_readiness(database, "resource-1")
+    missing = refresh_git_resource_readiness(database, "resource-unknown")
+    assert missing["refreshed"] is False
 
-    assert _plane(database) == "DEGRADED"
-    assert result["refreshed"] is True  # baseline still updated
-    row = database.row("resources", "resource_id", "resource-1")
-    assert json.loads(row["capabilities_json"])[WRITE] == "DEGRADED"
+    # Point the checkout at a path that never existed: inspection must fail
+    # closed without recording anything.
+    with database.connect() as connection:
+        connection.execute(
+            "UPDATE resources SET resolved_root = ?, root_path = ? WHERE resource_id = ?",
+            (str(tmp_path / "gone"), str(tmp_path / "gone"), "resource-1"),
+        )
+    gone = refresh_git_resource_readiness(database, "resource-1")
+    assert gone["refreshed"] is False
+    assert len(database.events()) == events_before
+    assert _plane(database) == "PROBING"
 
 
 def test_mission_baseline_is_untouched_by_refresh(tmp_path: Path) -> None:
