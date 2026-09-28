@@ -174,9 +174,11 @@ def _materialization_for_decision(
     database: FoundryDatabase,
     decision_id: str,
 ) -> str | None:
-    for event in reversed(database.events()):
-        if event.event_type == "portfolio.selection_materialized" \
-                and str(event.payload.get("decision_id") or "") == decision_id:
+    for event in database.events(
+        event_types=("portfolio.selection_materialized",),
+        newest_first=True,
+    ):
+        if str(event.payload.get("decision_id") or "") == decision_id:
             mission_id = str(event.payload.get("mission_id") or "")
             return mission_id or None
     return None
