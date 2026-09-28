@@ -35,6 +35,14 @@ from ..v3_fault import invoke_fault_hook
 from ..workers.result_contract import RESULT_FILENAME
 from .verification import latest_verdict_for_step
 
+try:
+    from ..evolution import binding as _binding
+except ImportError:  # noqa: BLE001 - without the binding module there is
+    # no bound scope to enforce; improvement missions cannot materialize
+    # on such a runtime (the bridge refuses), so only legacy missions
+    # reach the commit path and they keep the unbounded behavior.
+    _binding = None  # type: ignore[assignment]
+
 
 class CommitError(RuntimeError):
     pass
@@ -216,6 +224,24 @@ def close_mission_commit_claims(
         closed.append(candidate)
     return closed
 
+def _changed_paths(worktree: Path) -> set[str]:
+    """Repo-relative posix paths changed in the worktree, minus the result file.
+
+    Covers staged, unstaged, and untracked files so a scope check cannot be
+    dodged by leaving a file unadded.
+    """
+    changed: set[str] = set()
+    for args in (
+        ("diff", "--cached", "--name-only"),
+        ("diff", "--name-only"),
+        ("ls-files", "--others", "--exclude-standard"),
+    ):
+        changed.update(
+            name for name in _git(worktree, *args).splitlines() if name.strip()
+        )
+    return {name for name in changed if name.strip() != RESULT_FILENAME}
+
+
 def _worktree_has_committable_change(worktree: Path) -> bool:
     """True when the worktree holds anything to commit besides the result file.
 
@@ -325,9 +351,57 @@ def commit_after_pass(
             f"refusing commit: run {run_id} does not match the PASS verdict's "
             f"builder run {verdict['builder_run_id']}")
 
+    # A bound improvement mission commits only inside its authorized scope;
+    # anything else fails closed here rather than landing unbounded.  Legacy
+    # missions (no improvement lineage) keep the unbounded path.
+    scope: dict[str, Any] | None = None
+    if _binding is not None:
+        try:
+            scope = _binding.commit_scope_for_mission(database, mission_id)
+        except Exception as error:  # noqa: BLE001 - fail closed, never crash past
+            raise CommitError(
+                f"refusing commit: bound scope does not resolve: {error}"
+            ) from error
+
     decision = evaluate_and_record(database, policy, envelope)
     if decision.decision != ActionDecision.ALLOWED:
         raise CommitError(f"commit not allowed: {decision.reason}")
+
+    def _finalize(result: dict[str, Any]) -> dict[str, Any]:
+        """Attach the JARVIS-owned candidate envelope to a real commit.
+
+        Legacy (unscoped) commits pass through untouched.  A bound commit
+        whose head did not advance is a no-change replay, not a candidate.
+        Recording is idempotent, so the crash-after-commit replay path and
+        the COMPLETED-effect replay path converge on one envelope.
+        """
+        if scope is None or _binding is None:
+            return result
+        commit_head = str(result.get("commit_head") or "")
+        baseline_commit = str(result.get("baseline_commit") or "")
+        if not commit_head or commit_head == baseline_commit:
+            return result
+        try:
+            tree_sha = _git(worktree, "rev-parse", f"{commit_head}^{{tree}}")
+            candidate = _binding.record_candidate(
+                database,
+                mission_id=mission_id, step_id=step_id, run_id=run_id,
+                verdict_id=str(verdict.get("verdict_id") or ""),
+                resource_id=str(scope["resource_id"]),
+                improvement_id=str(scope["improvement_id"]),
+                baseline_sha=str(scope["baseline_sha"]),
+                commit_head=commit_head, tree_sha=tree_sha,
+                worktree=str(worktree),
+                files_changed=list(result.get("files_changed") or []),
+            )
+        except Exception as error:  # noqa: BLE001 - fail closed, never crash past
+            raise CommitError(
+                f"commit landed but the candidate envelope refused: {error}"
+            ) from error
+        result["candidate_id"] = candidate["candidate_id"]
+        result["tree_sha"] = tree_sha
+        result["candidate_deduplicated"] = candidate["deduplicated"]
+        return result
 
     worktree = worktree.resolve()
     message = f"jarvis: {mission_id} {step_id} verified PASS (run {run_id})"
@@ -374,7 +448,7 @@ def commit_after_pass(
                     "replayed": True,
                     "reconciled": True,
                 })
-                return recovered
+                return _finalize(recovered)
         else:
             reconcile_effect(
                 database, action_key,
@@ -389,9 +463,28 @@ def commit_after_pass(
 
     def perform() -> dict[str, Any]:
         before = _git(worktree, "rev-parse", "HEAD")
-        _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
-        _git(worktree, "add", "-A")
-        _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
+        if scope is not None:
+            changed = _changed_paths(worktree)
+            outside = _binding.check_commit_scope(
+                tuple(scope["allowed_paths"]), changed)
+            if outside:
+                raise CommitError(
+                    "refusing commit: worktree holds changes outside the "
+                    f"bound scope: {', '.join(outside)}"
+                )
+            to_stage = sorted(changed & {
+                str(path) for path in scope["allowed_paths"]})
+            if not to_stage:
+                raise CommitError(
+                    "refusing commit: nothing committable inside the bound scope"
+                )
+            _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
+            _git(worktree, "add", "--", *to_stage)
+            _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
+        else:
+            _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
+            _git(worktree, "add", "-A")
+            _git(worktree, "reset", "-q", "--", RESULT_FILENAME)
         _git(worktree, "commit", "-m", message)
         after = _git(worktree, "rev-parse", "HEAD")
         invoke_fault_hook(fault_hook, "post effect dispatch")
@@ -436,7 +529,7 @@ def commit_after_pass(
     # result even if the worktree is now clean or has later changes. This also
     # preserves whether its auxiliary diff metadata was complete or degraded.
     if state.get("status") == COMPLETED:
-        return dispatch_effect()
+        return _finalize(dispatch_effect())
 
     # A verified step that changed nothing in the worktree has nothing to
     # commit. Dispatching `git commit` anyway fails on an empty index and the
@@ -464,4 +557,15 @@ def commit_after_pass(
         }
 
     invoke_fault_hook(fault_hook, "pre effect dispatch")
-    return dispatch_effect()
+    if scope is not None and _binding is not None:
+        # Fail fast before the effect journal opens a claim: a scope refusal
+        # is not a failed effect, so it must not leave a FAILED claim behind.
+        # perform() re-checks authoritatively inside the claim window.
+        outside = _binding.check_commit_scope(
+            tuple(scope["allowed_paths"]), _changed_paths(worktree))
+        if outside:
+            raise CommitError(
+                "refusing commit: worktree holds changes outside the "
+                f"bound scope: {', '.join(outside)}"
+            )
+    return _finalize(dispatch_effect())

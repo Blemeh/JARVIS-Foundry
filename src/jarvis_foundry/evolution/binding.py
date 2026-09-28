@@ -36,6 +36,7 @@ from ..events import Event, canonical_json, payload_hash
 
 BINDING_RECORDED_EVENT = "improvement.binding_recorded"
 BINDING_CONSUMED_EVENT = "improvement.binding_consumed"
+CANDIDATE_RECORDED_EVENT = "improvement.candidate_recorded"
 
 #: Improvement-scale risk classes (evolution/records.py RISK_ORDER).
 R_CLASSES = ("R0", "R1", "R2", "R3")
@@ -44,6 +45,14 @@ R_CLASSES = ("R0", "R1", "R2", "R3")
 RISK_TO_WORKFORCE = {"R0": "C0", "R1": "C1", "R2": "C2", "R3": "C3"}
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
+
+#: Local-commit capability the commit seam requires.  Registration leaves it
+#: PROBING; only a verified bound improvement promotes it to READY, so an
+#: operator-packaged worktree can never silently gain autonomous commits.
+COMMIT_CAPABILITY = "git_local_commit"
+
+#: Mission ``created_from`` values carrying an improvement lineage match this.
+_IMPROVEMENT_REF = re.compile(r"improvement-[0-9a-f]{12,}")
 
 #: Capability bound improvement steps execute under.  Both steps use the
 #: write capability — not because the plan step writes (its instructions
@@ -541,4 +550,168 @@ def materialize_bound_improvement(
         database, improvement_id=improvement_id, mission_id=mission_id,
         decision_id=decision_id, source_id=source_id,
     )
+    ensure_commit_capability(
+        database, resource_id=resource_id,
+        baseline_sha=str(binding["baseline_sha"]),
+        improvement_id=improvement_id,
+        binding_id=f"v6-binding:{improvement_id}",
+    )
     return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
+
+
+def ensure_commit_capability(
+    database: FoundryDatabase,
+    *,
+    resource_id: str,
+    baseline_sha: str,
+    improvement_id: str,
+    binding_id: str = "",
+) -> dict[str, Any]:
+    """Promote ``git_local_commit`` to READY for a bound resource.
+
+    This is the autonomous-packaging gate the V6 proof lacked: the loop's
+    ``commit_after_pass`` only fires when the resource carries a READY
+    commit capability, and registration leaves it PROBING.  Promotion
+    happens here — after the binding is verified and the mission is
+    materialized — and fails closed when the worktree is not a clean git
+    checkout exactly at the pinned baseline.  Evidence names the
+    improvement so a later audit can tell JARVIS-owned packaging from an
+    operator's manual commit.
+    """
+    from ..control import capabilities as _capabilities
+
+    resource = database.row("resources", "resource_id", resource_id)
+    if resource is None:
+        raise ImprovementBindingError(
+            f"resource {resource_id!r} is not registered: "
+            "no commit capability without a registered repository"
+        )
+    root = Path(str(resource["resolved_root"])).resolve()
+    try:
+        head = _git(root, "rev-parse", "HEAD").lower()
+    except ImprovementBindingError as error:
+        raise ImprovementBindingError(
+            f"resource root {root} is not a git checkout: {error}"
+        ) from error
+    if head != str(baseline_sha or "").lower():
+        raise ImprovementBindingError(
+            f"resource HEAD {head[:12]}... is not the pinned baseline "
+            f"{str(baseline_sha)[:12]}...: no commit capability off-baseline"
+        )
+    if _git(root, "status", "--porcelain=v1").strip():
+        raise ImprovementBindingError(
+            "resource worktree is dirty at materialization: no commit "
+            "capability until the baseline is clean"
+        )
+    event = _capabilities.set_capability_state(
+        database, resource_id, COMMIT_CAPABILITY, "READY",
+        source_id=binding_id or "v6-binding",
+        evidence={
+            "improvement_id": improvement_id,
+            "baseline_sha": str(baseline_sha).lower(),
+            "head": head,
+            "clean": True,
+        },
+    )
+    return {"resource_id": resource_id, "head": head, "state": "READY",
+            "event_id": event.event_id}
+
+
+def commit_scope_for_mission(
+    database: FoundryDatabase, mission_id: str,
+) -> dict[str, Any] | None:
+    """Return the bound commit scope governing a mission, if it has one.
+
+    ``None`` means the mission carries no improvement lineage and keeps
+    the legacy unbounded commit path.  An improvement-lineage mission
+    whose binding cannot be resolved fails closed — committing it
+    unbounded would silently exceed the authorized scope.
+    """
+    mission = database.row("missions", "mission_id", mission_id)
+    if mission is None:
+        return None
+    created_from = str(mission.get("created_from") or "")
+    match = _IMPROVEMENT_REF.search(created_from)
+    if match is None:
+        return None
+    improvement_id = match.group(0)
+    binding = get_execution_binding(database, improvement_id)
+    if binding is None:
+        raise ImprovementBindingError(
+            f"mission {mission_id} descends from {improvement_id} but no "
+            "execution binding resolves: refusing an unbounded commit"
+        )
+    return {
+        "improvement_id": improvement_id,
+        "resource_id": str(binding["resource_id"]),
+        "baseline_sha": str(binding["baseline_sha"]),
+        "allowed_paths": tuple(binding["allowed_paths"]),
+    }
+
+
+def check_commit_scope(
+    allowed_paths: tuple[str, ...] | list[str], changed_paths: set[str],
+) -> tuple[str, ...]:
+    """Return the changed paths that fall outside the allowed scope."""
+    allowed = {_canonical_relative(path, "allowed_paths item") for path in allowed_paths}
+    return tuple(sorted(path for path in changed_paths if path not in allowed))
+
+
+def record_candidate(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    step_id: str,
+    run_id: str,
+    verdict_id: str,
+    resource_id: str,
+    improvement_id: str,
+    baseline_sha: str,
+    commit_head: str,
+    tree_sha: str,
+    worktree: str,
+    files_changed: list[str],
+) -> dict[str, Any]:
+    """Persist the JARVIS-owned candidate envelope for a committed step.
+
+    Idempotent per (mission, step, commit): replaying the same packaging
+    step replays the recorded envelope instead of minting a duplicate
+    candidate.  The payload carries no volatile fields, so a byte-identical
+    retry dedupes at the ledger layer.
+    """
+    candidate_id = f"candidate:{mission_id}:{step_id}:{commit_head[:12]}"
+    payload = {
+        "candidate_id": candidate_id,
+        "mission_id": _require_text(mission_id, "mission_id"),
+        "step_id": _require_text(step_id, "step_id"),
+        "producer_run_id": _require_text(run_id, "run_id"),
+        "verdict_id": _require_text(verdict_id, "verdict_id"),
+        "resource_id": _require_text(resource_id, "resource_id"),
+        "improvement_id": _require_text(improvement_id, "improvement_id"),
+        "baseline_sha": _require_text(baseline_sha, "baseline_sha"),
+        "commit_head": _require_text(commit_head, "commit_head"),
+        "tree_sha": _require_text(tree_sha, "tree_sha"),
+        "worktree": _require_text(worktree, "worktree"),
+        "files_changed": list(files_changed),
+        "state": "RECORDED",
+    }
+    content_key = f"{CANDIDATE_RECORDED_EVENT}:{mission_id}:{step_id}:{commit_head}"
+    for event in database.events(event_types=(CANDIDATE_RECORDED_EVENT,), readonly=True):
+        if str(event.payload.get("candidate_id") or "") != candidate_id:
+            continue
+        prior = {key: value for key, value in event.payload.items()}
+        if prior == payload:
+            return {"candidate_id": candidate_id, "deduplicated": True,
+                    "event_id": event.event_id}
+        raise ImprovementBindingError(
+            f"candidate {candidate_id} already recorded with different "
+            "content: refusing a conflicting envelope"
+        )
+    event = Event.create(
+        CANDIDATE_RECORDED_EVENT, payload,
+        source_type="supervisor", source_id=f"v6-candidate:{run_id}",
+        correlation_id=mission_id, idempotency_key=content_key,
+    )
+    database.append(event)
+    return {"candidate_id": candidate_id, "deduplicated": False,
+            "event_id": event.event_id}
