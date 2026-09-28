@@ -40,6 +40,7 @@ from jarvis_foundry.evolution.binding import (  # noqa: E402
     ImprovementBindingError,
     commit_scope_for_mission,
     ensure_commit_capability,
+    materialize_bound_improvement,
     record_candidate,
     record_execution_binding,
 )
@@ -381,3 +382,18 @@ def test_conflicting_envelope_refused(db, repo):
             baseline_sha="0" * 40, commit_head="a" * 40,
             tree_sha="c" * 40, worktree=str(repo),
             files_changed=["probe.py"])
+
+
+def test_dirty_worktree_refuses_before_any_mission_write(db, repo):
+    _register(db, "res-1", repo)
+    improvement_id = _improvement(db)
+    _bind(db, improvement_id, "res-1", repo)
+    (repo / "probe.py").write_text("VALUE = 9\n", encoding="utf-8")
+    with pytest.raises(ImprovementBindingError, match="dirty"):
+        materialize_bound_improvement(
+            db, item_id="item-dirty", decision_id="decision-dirty",
+            improvement_id=improvement_id, objective="memoize the probe read",
+        )
+    assert list(db.events(event_types=("mission.created",))) == []
+    assert list(db.events(
+        event_types=("portfolio.selection_materialized",))) == []

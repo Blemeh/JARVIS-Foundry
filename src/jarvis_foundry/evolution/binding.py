@@ -385,6 +385,15 @@ def materialize_bound_improvement(
                 return {"materialized": True, "mission_id": prior,
                         "blocked_reason": None}
     binding = verify_binding_for_execution(database, improvement_id)
+    # Promote the commit capability BEFORE any mission write: a dirty or
+    # off-baseline worktree refuses here with nothing created and no
+    # orphan mission left behind.
+    ensure_commit_capability(
+        database, resource_id=str(binding["resource_id"]),
+        baseline_sha=str(binding["baseline_sha"]),
+        improvement_id=improvement_id,
+        binding_id=f"v6-binding:{improvement_id}",
+    )
     resource_id = str(binding["resource_id"])
     risk_class = str(binding["workforce_risk_class"])
     primary_target = str(binding["allowed_paths"][0])
@@ -549,12 +558,6 @@ def materialize_bound_improvement(
     record_binding_consumed(
         database, improvement_id=improvement_id, mission_id=mission_id,
         decision_id=decision_id, source_id=source_id,
-    )
-    ensure_commit_capability(
-        database, resource_id=resource_id,
-        baseline_sha=str(binding["baseline_sha"]),
-        improvement_id=improvement_id,
-        binding_id=f"v6-binding:{improvement_id}",
     )
     return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
 
