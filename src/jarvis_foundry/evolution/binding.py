@@ -385,6 +385,12 @@ def materialize_bound_improvement(
                 return {"materialized": True, "mission_id": prior,
                         "blocked_reason": None}
     binding = verify_binding_for_execution(database, improvement_id)
+    if improvement_id not in str(item_id or ""):
+        raise ImprovementBindingError(
+            "portfolio item carries no improvement lineage for "
+            f"{improvement_id}: the commit seam resolves scope from mission "
+            "lineage, so an unlinkable item would commit unbounded"
+        )
     # Promote the commit capability BEFORE any mission write: a dirty or
     # off-baseline worktree refuses here with nothing created and no
     # orphan mission left behind.

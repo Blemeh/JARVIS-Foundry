@@ -391,7 +391,8 @@ def test_dirty_worktree_refuses_before_any_mission_write(db, repo):
     (repo / "probe.py").write_text("VALUE = 9\n", encoding="utf-8")
     with pytest.raises(ImprovementBindingError, match="dirty"):
         materialize_bound_improvement(
-            db, item_id="item-dirty", decision_id="decision-dirty",
+            db, item_id=f"improvement:{improvement_id}",
+            decision_id="decision-dirty",
             improvement_id=improvement_id, objective="memoize the probe read",
         )
     assert list(db.events(event_types=("mission.created",))) == []
@@ -432,4 +433,53 @@ def test_fail_verdict_refuses_commit(db, repo, tmp_path):
     with pytest.raises(CommitError, match="verified PASS"):
         _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
     assert _git(repo, "rev-parse", "HEAD") == before
+    assert list(db.events(event_types=(CANDIDATE_RECORDED_EVENT,))) == []
+
+
+def test_unlinkable_item_refuses_before_any_write(db, repo):
+    _register(db, "res-1", repo)
+    improvement_id = _improvement(db)
+    _bind(db, improvement_id, "res-1", repo)
+    with pytest.raises(ImprovementBindingError, match="no improvement lineage"):
+        materialize_bound_improvement(
+            db, item_id="v6-closure-proof-m1", decision_id="decision-nolineage",
+            improvement_id=improvement_id, objective="memoize the probe read",
+        )
+    assert list(db.events(event_types=("mission.created",))) == []
+    assert list(db.events(
+        event_types=("portfolio.selection_materialized",))) == []
+
+
+def test_worker_committed_change_is_claimed(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    (repo / "probe.py").write_text("VALUE = 2\n", encoding="utf-8")
+    _git(repo, "add", "probe.py")
+    _git(repo, "commit", "-qm", "worker: memoize the probe read")
+    worker_head = _git(repo, "rev-parse", "HEAD")
+    _verdict(db, "mission-1", "02-execute", "run-1", "verdict-claim-1")
+
+    result = _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+
+    assert result["performed"] is False
+    assert result["worker_committed"] is True
+    assert result["commit_head"] == worker_head
+    assert result["files_changed"] == ["probe.py"]
+    candidate_id = result["candidate_id"]
+    events = [e for e in db.events(event_types=(CANDIDATE_RECORDED_EVENT,))
+              if e.payload.get("candidate_id") == candidate_id]
+    assert len(events) == 1
+    assert events[0].payload["producer_run_id"] == "run-1"
+    assert _git(repo, "rev-list", "--count", "HEAD") == "2"
+
+
+def test_worker_committed_outside_scope_fails_closed(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    (repo / "other.py").write_text("OTHER = 2\n", encoding="utf-8")
+    _git(repo, "add", "other.py")
+    _git(repo, "commit", "-qm", "worker: out of scope")
+    _verdict(db, "mission-1", "02-execute", "run-1", "verdict-claim-2")
+
+    with pytest.raises(CommitError, match="outside the bound scope"):
+        _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+
     assert list(db.events(event_types=(CANDIDATE_RECORDED_EVENT,))) == []

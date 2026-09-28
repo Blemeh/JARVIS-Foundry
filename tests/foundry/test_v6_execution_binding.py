@@ -200,7 +200,7 @@ def test_contract_construction_failure_leaves_no_mission(
                         lambda binding, step: "   ")
     with pytest.raises(ImprovementBindingError):
         materialize_bound_improvement(
-            db, item_id="item-1", decision_id="decision-1",
+            db, item_id=f"improvement:{improvement_id}", decision_id="decision-1",
             improvement_id=improvement_id, objective="memoize the probe read",
         )
     created = [event for event in db.events(
@@ -296,7 +296,7 @@ def test_materialize_bound_improvement(db: FoundryDatabase, repo: Path) -> None:
     improvement_id = _improvement(db)
     _bind(db, improvement_id, "res-a", repo)
     result = materialize_bound_improvement(
-        db, item_id="item-1", decision_id="decision-1",
+        db, item_id=f"improvement:{improvement_id}", decision_id="decision-1",
         improvement_id=improvement_id, objective="memoize the probe read",
     )
     assert result["materialized"] is True
@@ -335,7 +335,7 @@ def test_both_steps_use_model_routed_write_capability(
     improvement_id = _improvement(db)
     _bind(db, improvement_id, "res-a", repo)
     result = materialize_bound_improvement(
-        db, item_id="item-1", decision_id="decision-1",
+        db, item_id=f"improvement:{improvement_id}", decision_id="decision-1",
         improvement_id=improvement_id, objective="memoize the probe read",
     )
     from jarvis_foundry.mission.contracts import latest_contracts_by_step
@@ -354,17 +354,17 @@ def test_materialize_is_idempotent_per_decision(
     improvement_id = _improvement(db)
     _bind(db, improvement_id, "res-a", repo)
     first = materialize_bound_improvement(
-        db, item_id="item-1", decision_id="decision-1",
+        db, item_id=f"improvement:{improvement_id}", decision_id="decision-1",
         improvement_id=improvement_id, objective="memoize the probe read",
     )
     second = materialize_bound_improvement(
-        db, item_id="item-1", decision_id="decision-1",
+        db, item_id=f"improvement:{improvement_id}", decision_id="decision-1",
         improvement_id=improvement_id, objective="memoize the probe read",
     )
     assert first["mission_id"] == second["mission_id"]
     created = [event for event in db.events(
         event_types=("mission.created",), readonly=True)
-        if event.payload.get("portfolio_item_id") == "item-1"]
+        if event.payload.get("portfolio_item_id") == f"improvement:{improvement_id}"]
     assert len(created) == 1
 
 
@@ -390,7 +390,7 @@ def _decision(improvement_id: str) -> dict:
         "decision_id": "decision-9",
         "reason": "test selection",
         "selected_item": {
-            "item_id": "item-9",
+            "item_id": f"improvement:{improvement_id}",
             "objective": "memoize the probe read",
             "evidence_refs": [],
             "provenance": {},

@@ -497,6 +497,53 @@ def commit_after_pass(
             **_commit_diff_metadata(worktree, before, after),
         }
 
+    def _claim_worker_commit(
+        head: str, baseline: str,
+    ) -> dict[str, Any] | None:
+        """Claim a worker-landed commit as the candidate, if one exists.
+
+        The worker may commit inside its own step (it holds the worktree
+        capability).  When HEAD advanced past the pinned baseline with a
+        clean tree, the change is real verified work — envelope it rather
+        than leaving it unenveloped.  The diff is scope-checked first: a
+        worker commit outside the bound scope fails closed.  Returns None
+        when HEAD is still the baseline (true no-change).
+        """
+        if not head or head.lower() == baseline:
+            return None
+        try:
+            names = _git(
+                worktree, "diff", "--name-only", baseline, head, "--",
+            ).splitlines()
+        except (CommitError, subprocess.TimeoutExpired, OSError) as error:
+            raise CommitError(
+                f"refusing claim: cannot diff worker head {head[:12]}... "
+                f"against baseline: {error}"
+            ) from error
+        changed = {name for name in names if name.strip()}
+        outside = _binding.check_commit_scope(
+            tuple(scope["allowed_paths"]), changed)
+        if outside:
+            raise CommitError(
+                "refusing claim: worker committed outside the bound "
+                f"scope: {', '.join(outside)}"
+            )
+        return {
+            "claimed": COMPLETED,
+            "performed": False,
+            "worker_committed": True,
+            "baseline_commit": baseline,
+            "commit_head": head,
+            "message": message,
+            "files_changed": sorted(changed),
+            "diff_stat": "",
+            "diff_metadata_state": "COMPLETE",
+            "diff_metadata_error_code": None,
+            "diff_metadata_error_type": None,
+            "diff_metadata_error_detail": None,
+            "action_key": action_key,
+        }
+
     def dispatch_effect() -> dict[str, Any]:
         result = execute_fabric_effect(
             database,
@@ -538,6 +585,11 @@ def commit_after_pass(
     # PASS stands, no effect is dispatched, and the mission continues.
     if not _worktree_has_committable_change(worktree):
         head = _git(worktree, "rev-parse", "HEAD")
+        if scope is not None and _binding is not None:
+            claimed = _claim_worker_commit(
+                head, str(scope["baseline_sha"]).lower())
+            if claimed is not None:
+                return _finalize(claimed)
         return {
             "performed": False,
             "no_change": True,
