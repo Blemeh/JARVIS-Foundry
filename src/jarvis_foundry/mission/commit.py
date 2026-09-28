@@ -519,6 +519,12 @@ def commit_after_pass(
                 f"against baseline: {error}"
             ) from error
         changed = {name for name in names if name.strip()}
+        changed = {
+            name for name in changed
+            if not _binding.scope_ignored(name)
+        }
+        if not changed:
+            return None
         outside = _binding.check_commit_scope(
             tuple(scope["allowed_paths"]), changed)
         if outside:

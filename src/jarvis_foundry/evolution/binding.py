@@ -68,10 +68,10 @@ _SCOPE_IGNORED_DIRS = frozenset({"__pycache__", ".pytest_cache"})
 def scope_ignored(path: str) -> bool:
     """True when a worktree path is a control/build artifact, not scope.
 
-    The worker result file, the prescribed plan artifact, and Python
-    cache directories are never committable scope changes: they are
-    tolerated as untracked evidence and never staged.  Anything else —
-    including lookalikes in other directories — stays in scope.
+    The worker result file, the plan filename (by basename, at any depth),
+    and Python cache directories are never committable scope changes: they
+    are tolerated as untracked evidence and never staged.  Anything else —
+    including lookalikes that are not exactly these names — stays in scope.
     """
     raw = str(path or "").strip().replace("\\", "/")
     parts = tuple(part for part in raw.split("/") if part not in ("", "."))
@@ -383,7 +383,12 @@ def _bounded_instructions(binding: Mapping[str, Any], *, step: str) -> str:
         f"Forbidden (never touch, fail the step rather than widen scope):\n{forbidden}\n"
         f"Then run these required tests and keep their evidence:\n{tests}\n"
         f"Evidence references:\n{evidence}\n"
-        f"Success criterion: {binding['success_criterion']}"
+        f"Success criterion: {binding['success_criterion']}\n"
+        "Do NOT run git commit and do not create any file outside the "
+        "scope paths: leave the finished change uncommitted in the "
+        "worktree. JARVIS itself creates the single candidate commit "
+        "after the independent verifier records PASS; a worker-side "
+        "commit breaks verification and fails the step."
     )
 
 
@@ -497,6 +502,8 @@ def materialize_bound_improvement(
             verification_criteria=(
                 success,
                 f"required tests executed with evidence: {', '.join(tests)}",
+                "change is present uncommitted in the worktree "
+                "(a worker-side commit breaks verification)",
             ),
             expected_artifacts=(),
             forbidden_paths=forbidden,

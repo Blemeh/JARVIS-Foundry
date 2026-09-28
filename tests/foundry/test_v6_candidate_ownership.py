@@ -477,11 +477,15 @@ def test_worker_committed_outside_scope_fails_closed(db, repo, tmp_path):
     (repo / "other.py").write_text("OTHER = 2\n", encoding="utf-8")
     _git(repo, "add", "other.py")
     _git(repo, "commit", "-qm", "worker: out of scope")
+    head_before = _git(repo, "rev-parse", "HEAD")
+    count_before = _git(repo, "rev-list", "--count", "HEAD")
     _verdict(db, "mission-1", "02-execute", "run-1", "verdict-claim-2")
 
     with pytest.raises(CommitError, match="outside the bound scope"):
         _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
 
+    assert _git(repo, "rev-parse", "HEAD") == head_before
+    assert _git(repo, "rev-list", "--count", "HEAD") == count_before
     assert list(db.events(event_types=(CANDIDATE_RECORDED_EVENT,))) == []
 
 
@@ -518,3 +522,23 @@ def test_caches_only_is_no_change(db, repo, tmp_path):
 
     assert result.get("no_change") is True
     assert "candidate_id" not in result
+
+
+def test_worker_commit_sweeping_caches_still_claims_fix(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    (repo / "probe.py").write_text("VALUE = 2\n", encoding="utf-8")
+    (repo / "01-plan.md").write_text("# plan\n", encoding="utf-8")
+    cache = repo / "__pycache__"
+    cache.mkdir(exist_ok=True)
+    (cache / "probe.cpython-313.pyc").write_bytes(b"\x00")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "worker: sweep everything")
+    worker_head = _git(repo, "rev-parse", "HEAD")
+    _verdict(db, "mission-1", "02-execute", "run-1", "verdict-sweep-1")
+
+    result = _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+
+    assert result["worker_committed"] is True
+    assert result["commit_head"] == worker_head
+    assert result["files_changed"] == ["probe.py"]
+    assert result["candidate_id"].startswith("candidate:mission-1:02-execute:")
