@@ -167,6 +167,37 @@ def test_failed_inspection_records_nothing(tmp_path: Path) -> None:
     assert _plane(database) == "PROBING"
 
 
+def test_runtime_exhaust_does_not_count_as_dirt(tmp_path: Path) -> None:
+    database, repository = _db_with_probing_resource(tmp_path)
+    set_capability_state(database, "resource-1", WRITE, "PROBING", evidence={"source": "registration"})
+    (repository / "uncommitted.txt").unlink()
+    exhaust = repository / ".jarvis" / "owner-goals" / "abc123"
+    exhaust.mkdir(parents=True)
+    (exhaust / "diagnosis.md").write_text("# diagnosis\n", encoding="utf-8")
+    (repository / ".jarvis-result.json").write_text("{}\n", encoding="utf-8")
+
+    result = refresh_git_resource_readiness(database, "resource-1")
+
+    assert result["refreshed"] is True
+    assert _plane(database) == "READY"
+    # Full status truth is still stored.
+    row = database.row("resources", "resource_id", "resource-1")
+    stored = json.loads(row["baseline_json"])["status_porcelain"]
+    assert any(".jarvis" in line for line in stored)
+
+
+def test_real_dirt_beside_exhaust_still_blocks(tmp_path: Path) -> None:
+    from jarvis_foundry.control.registration import inspect_git_resource as inspect
+
+    repository = _make_repository(tmp_path, name="repo2")
+    (repository / ".jarvis").mkdir()
+    (repository / ".jarvis" / "note.md").write_text("exhaust\n", encoding="utf-8")
+    (repository / "user-change.txt").write_text("real dirt\n", encoding="utf-8")
+    resource = inspect(repository, resource_id="resource-2")
+    assert resource["capabilities"][WRITE] == "PROBING"
+    assert resource["readiness_state"] == "PROBING"
+
+
 def test_mission_baseline_is_untouched_by_refresh(tmp_path: Path) -> None:
     database, repository = _db_with_probing_resource(tmp_path)
     missions_before = _table_dump(database, "missions")

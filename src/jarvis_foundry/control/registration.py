@@ -80,6 +80,28 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _meaningful_status_lines(status_lines: list[str]) -> list[str]:
+    """Porcelain lines that count as worktree dirt for readiness.
+
+    The runtime's own prescribed exhaust namespace (``.jarvis/`` receipts,
+    outcomes and diagnoses, plus top-level ``.jarvis*`` result files) is
+    tolerated by name: missions routinely leave evidence there (the B6
+    receipt pattern), and treating that exhaust as dirt would demote every
+    resource a mission just used, blocking its own continuation.  Real
+    user/session changes anywhere else still count.  The full status stays
+    in the stored baseline; only the readiness derivation ignores exhaust.
+    """
+    meaningful: list[str] = []
+    for line in status_lines:
+        path = line[3:] if len(line) > 3 else line
+        stripped = path.strip().strip('"')
+        first = stripped.split("/", 1)[0]
+        if first == ".jarvis" or first.startswith(".jarvis"):
+            continue
+        meaningful.append(line)
+    return meaningful
+
+
 def inspect_git_resource(
     path: str | Path,
     *,
@@ -92,9 +114,10 @@ def inspect_git_resource(
     branch = _git(root, "branch", "--show-current") or "DETACHED"
     status = _git(root, "status", "--porcelain=v1")
     remotes = _git(root, "remote", "-v").splitlines()
+    meaningful = _meaningful_status_lines(status.splitlines())
     capabilities = {
         "read_registered_files": "READY",
-        "write_registered_worktree_files": "READY" if writable and not status else "PROBING",
+        "write_registered_worktree_files": "READY" if writable and not meaningful else "PROBING",
         "run_registered_local_commands": "READY",
         "git_local_commit": "PROBING",
         "git_push": "DISCOVERED",
@@ -111,7 +134,7 @@ def inspect_git_resource(
             "remotes": remotes,
         },
         "capabilities": capabilities,
-        "readiness_state": "READY" if not status else "PROBING",
+        "readiness_state": "READY" if not meaningful else "PROBING",
     }
 
 
@@ -183,10 +206,18 @@ def refresh_git_resource_readiness(
     except (TypeError, ValueError):
         stored_baseline = {}
     fresh_baseline = dict(inspected["baseline"])
+    # Exhaust-only churn (runtime .jarvis/ evidence coming and going) must
+    # neither flip readiness nor spam re-registration events; real changes
+    # still do.  The stored baseline keeps the full status truth.
+    stored_meaningful = _meaningful_status_lines(
+        [str(line) for line in (stored_baseline.get("status_porcelain") or [])]
+    )
+    fresh_meaningful = _meaningful_status_lines(
+        [str(line) for line in (fresh_baseline.get("status_porcelain") or [])]
+    )
     baseline_changed = (
         stored_baseline.get("head") != fresh_baseline.get("head")
-        or [str(line) for line in (stored_baseline.get("status_porcelain") or [])]
-        != [str(line) for line in (fresh_baseline.get("status_porcelain") or [])]
+        or stored_meaningful != fresh_meaningful
     )
     declared = {str(key): str(value) for key, value in dict(inspected["capabilities"]).items()}
     # Resolve each declaration against the current plane: the plane owns the
