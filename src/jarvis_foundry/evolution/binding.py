@@ -51,6 +51,37 @@ _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 #: operator-packaged worktree can never silently gain autonomous commits.
 COMMIT_CAPABILITY = "git_local_commit"
 
+try:
+    from ..workers.result_contract import RESULT_FILENAME
+except ImportError:  # noqa: BLE001 - the literal is stable contract
+    RESULT_FILENAME = ".jarvis-result.json"
+
+#: Plan artifact the bound plan step must record.  Builders durably emit
+#: plans as worktree files (observed live); prescribing the exact name
+#: keeps the output bounded instead of arid or sprawling.
+PLAN_FILENAME = "01-plan.md"
+
+#: Build-artifact directory names never treated as scope changes.
+_SCOPE_IGNORED_DIRS = frozenset({"__pycache__", ".pytest_cache"})
+
+
+def scope_ignored(path: str) -> bool:
+    """True when a worktree path is a control/build artifact, not scope.
+
+    The worker result file, the prescribed plan artifact, and Python
+    cache directories are never committable scope changes: they are
+    tolerated as untracked evidence and never staged.  Anything else —
+    including lookalikes in other directories — stays in scope.
+    """
+    raw = str(path or "").strip().replace("\\", "/")
+    parts = tuple(part for part in raw.split("/") if part not in ("", "."))
+    if not parts:
+        return True
+    if parts[-1] in (RESULT_FILENAME, PLAN_FILENAME):
+        return True
+    return any(part in _SCOPE_IGNORED_DIRS for part in parts)
+
+
 #: Mission ``created_from`` values carrying an improvement lineage match this.
 _IMPROVEMENT_REF = re.compile(r"improvement-[0-9a-f]{12,}")
 
@@ -339,7 +370,10 @@ def _bounded_instructions(binding: Mapping[str, Any], *, step: str) -> str:
             f"Scope is EXACTLY these repo-relative paths:\n{allowed}\n"
             f"Forbidden (never touch):\n{forbidden}\n"
             f"The plan must name these required tests and where their evidence goes:\n{tests}\n"
-            "Do not edit files in this step; record the plan so 02-execute can follow it."
+            "Record the plan as a worktree file named exactly 01-plan.md at "
+            "the resource root (this name is tolerated evidence, never "
+            "committed). Do not edit files in this step and do not create "
+            "any other file; record the plan so 02-execute can follow it."
         )
     return (
         f"Bound improvement {binding['improvement_id']} (baseline "
@@ -568,6 +602,16 @@ def materialize_bound_improvement(
     return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
 
 
+def _porcelain_path(line: str) -> str:
+    """Extract the worktree-relative path from a porcelain v1 status line."""
+    body = line.strip()
+    if len(body) > 3 and body[2] == " ":
+        body = body[3:].strip()
+    if " -> " in body:  # renames report old -> new; the new path matters
+        body = body.split(" -> ", 1)[1]
+    return body.strip().strip('"')
+
+
 def ensure_commit_capability(
     database: FoundryDatabase,
     *,
@@ -608,10 +652,16 @@ def ensure_commit_capability(
             f"{str(baseline_sha)[:12]}...: no commit capability off-baseline"
         )
     if _git(root, "status", "--porcelain=v1").strip():
-        raise ImprovementBindingError(
-            "resource worktree is dirty at materialization: no commit "
-            "capability until the baseline is clean"
-        )
+        dirty = [
+            line for line in
+            _git(root, "status", "--porcelain=v1").splitlines()
+            if line.strip() and not scope_ignored(_porcelain_path(line))
+        ]
+        if dirty:
+            raise ImprovementBindingError(
+                "resource worktree is dirty at materialization: no commit "
+                "capability until the baseline is clean"
+            )
     event = _capabilities.set_capability_state(
         database, resource_id, COMMIT_CAPABILITY, "READY",
         source_id=binding_id or "v6-binding",

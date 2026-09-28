@@ -225,10 +225,12 @@ def close_mission_commit_claims(
     return closed
 
 def _changed_paths(worktree: Path) -> set[str]:
-    """Repo-relative posix paths changed in the worktree, minus the result file.
+    """Repo-relative posix paths changed in the worktree, minus artifacts.
 
     Covers staged, unstaged, and untracked files so a scope check cannot be
-    dodged by leaving a file unadded.
+    dodged by leaving a file unadded.  Control/build artifacts (result
+    file, prescribed plan file, Python caches) are tolerated evidence, not
+    scope — they never stage and never trigger a refusal.
     """
     changed: set[str] = set()
     for args in (
@@ -239,26 +241,22 @@ def _changed_paths(worktree: Path) -> set[str]:
         changed.update(
             name for name in _git(worktree, *args).splitlines() if name.strip()
         )
+    if _binding is not None:
+        changed = {
+            name for name in changed if not _binding.scope_ignored(name)
+        }
     return {name for name in changed if name.strip() != RESULT_FILENAME}
 
 
 def _worktree_has_committable_change(worktree: Path) -> bool:
-    """True when the worktree holds anything to commit besides the result file.
+    """True when the worktree holds anything to commit besides artifacts.
 
     ``commit_after_pass`` deliberately resets ``RESULT_FILENAME`` out of the
     index, so a worktree whose only difference is the worker result file has
-    nothing to commit.
+    nothing to commit.  Control/build artifacts (plan file, caches) are
+    tolerated evidence with the same standing.
     """
-    changed: set[str] = set()
-    for args in (
-        ("diff", "--cached", "--name-only"),
-        ("diff", "--name-only"),
-        ("ls-files", "--others", "--exclude-standard"),
-    ):
-        changed.update(
-            name for name in _git(worktree, *args).splitlines() if name.strip()
-        )
-    return bool(changed - {RESULT_FILENAME})
+    return bool(_changed_paths(worktree))
 
 
 def _recorded_commit(root: Path, message: str) -> str | None:

@@ -483,3 +483,38 @@ def test_worker_committed_outside_scope_fails_closed(db, repo, tmp_path):
         _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
 
     assert list(db.events(event_types=(CANDIDATE_RECORDED_EVENT,))) == []
+
+
+def test_plan_file_and_caches_tolerated_not_committed(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    (repo / "probe.py").write_text("VALUE = 2\n", encoding="utf-8")
+    (repo / "01-plan.md").write_text("# plan\n", encoding="utf-8")
+    cache = repo / "__pycache__"
+    cache.mkdir(exist_ok=True)
+    (cache / "probe.cpython-313.pyc").write_bytes(b"\x00")
+    (repo / ".jarvis-result.json").write_text(
+        '{"files_changed": ["probe.py"]}', encoding="utf-8")
+    _verdict(db, "mission-1", "02-execute", "run-1", "verdict-tolerated-1")
+
+    result = _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+
+    assert result["performed"] is True
+    assert result["files_changed"] == ["probe.py"]
+    committed = _git(repo, "diff", "--name-only",
+                     result["baseline_commit"], result["commit_head"], "--")
+    assert committed.splitlines() == ["probe.py"]
+    status = _git(repo, "status", "--porcelain=v1")
+    assert "01-plan.md" in status  # still untracked evidence
+
+
+def test_caches_only_is_no_change(db, repo, tmp_path):
+    _bound_setup(db, repo)
+    cache = repo / "__pycache__"
+    cache.mkdir(exist_ok=True)
+    (cache / "probe.cpython-313.pyc").write_bytes(b"\x00")
+    _verdict(db, "mission-1", "02-execute", "run-1", "verdict-cache-1")
+
+    result = _commit(db, tmp_path, "mission-1", "res-1", repo, "run-1")
+
+    assert result.get("no_change") is True
+    assert "candidate_id" not in result
