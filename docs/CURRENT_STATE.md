@@ -6,9 +6,49 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Friday, September 25, 2026 after canonical promotion, the
-immutable release activation, live identity and schema parity checks, and a
-complete owner-authorized autonomous mission lifecycle.
+Last reconciled: Monday, September 28, 2026 for V6 FINAL CLOSURE
+(autonomous candidate ownership + canonical convergence), live on the
+release below at reconciliation time.
+
+## Current canonical and live state — 2026-09-28 (V6 FINAL CLOSURE)
+
+DOCUMENTATION STATE BASE SHA: `daf18effc8ecde7b6363d6d75c3d60aeabd495c2`
+
+The SHA above is the immediate parent of this final docs-only reconciliation
+commit, as required by `scripts/doc_staleness_check.py`. It names the V6
+closure matrix commit. The live install at reconciliation time was built from
+`49d32b24c62714fabb2a213eb24e8727b789b373` (tree
+`97f27d6d082832bef1fb8ab2dc04c6f8e8500e26`,
+release `rel-49d32b24c627-cefa8502`, schema 41): installed CURRENT, manifest,
+canonical source, and runtime all identified that commit with parity PASS,
+release authority CONSISTENT, STOP clear, Supervisor RUNNING singleton with a
+fresh heartbeat, and trust SUSPENDED.
+
+V6 FINAL CLOSURE was proven live with no second Executive, loop, authority,
+or synthetic truth: bound improvement -> MissionLoop worker change ->
+independent verifier PASS -> JARVIS-owned candidate commit (no operator
+packaging) -> risk gate -> immutable release -> live activation ->
+measurement -> KEEP, with real rollback authority already proven.
+Proof M1d `mission-2a61cbbd51af` (disposable improvement-626216429cf8, R1,
+baseline `4527894e55e63e838c5cde661abb5c841ed7502e`, scope
+probe.py/probe_test.py): 01-plan PASS with the prescribed plan file,
+02-execute change left uncommitted per the order rule, independent verifier
+PASS `verdict-v2-951ae87f17007a586081c371` (fresh session), JARVIS loop
+commit `1123d89b1bdbacfb5c9c3c192e88c7dc54c4ff7d` (probe.py only), candidate
+envelope RECORDED (tree `1e59e6a4218a7b8d34cf096f3b478b88a9f58026`, producer
+run-6284c5098f1e), mission COMPLETE, required tests 3/3 green, zero operator
+git. Fail-closed M2c `mission-50e8c3cbaa24` (rogue.py planted
+post-materialization): verifier PASS, then the seam refused before any effect
+claim (`refusing commit: worktree holds changes outside the bound scope:
+rogue.py`), mission BLOCKED, HEAD unchanged, zero candidates. Replay is
+idempotent (single commit plus single envelope); legacy missions keep the
+unbounded path; unbound improvements fail closed. Independent reviews PASS
+(seam 14/14, lineage/claim/tolerance 39/39, order/claim-filter 40/40).
+Goal Resilience remains frozen. The prior vertical-loop proof
+(improvement-1ae00eb761f0, 4.94s to 0.008s, KEEP, rollback drill, learning
+CONFIRMED) is reused unchanged; full detail lives in the CAPABILITY_MATRIX
+V6 sections. Publication was a single authorized non-force fast-forward of
+`main` (`09e6388..49d32b2` plus these docs commits).
 
 ## Current canonical and live state — 2026-09-25
 
@@ -231,9 +271,11 @@ ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 
 DOCUMENTATION STATE BASE SHA: `db913bdcd23438fa1b9cc51395e4e08d31719a3b`
 
-The SHA above is the immediate parent of this final docs-only reconciliation
-commit, as required by `scripts/doc_staleness_check.py`. It names the Wave 2
-product head described above, not a live install. The following paragraphs retain the separate historical Purpose Recovery II
+The SHA above was, at its own reconciliation commit, the immediate-parent
+docs-only pin required by `scripts/doc_staleness_check.py`. It named the Wave 2
+product head described in the surrounding paragraphs at that time, not a live
+install; the current live pin is the 2026-09-28 section at the top of this
+document. The following paragraphs retain the separate historical Purpose Recovery II
 review for branch
 `candidate/purpose-recovery-ii-canonical-convergence-20260918` in
 `C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918`
