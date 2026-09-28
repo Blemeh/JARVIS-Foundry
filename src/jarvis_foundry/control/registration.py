@@ -129,3 +129,122 @@ def registration_event(resource: dict[str, Any], *, source_id: str = "wp0") -> E
         idempotency_key=f"project.registered:{resource['resource_id']}:{payload_hash(resource)}",
     )
 
+
+def refresh_git_resource_readiness(
+    database: Any,
+    resource_id: str,
+    *,
+    source_id: str = "readiness-refresh",
+) -> dict[str, Any]:
+    """Re-inspect one git_worktree resource and supersede stale declarations.
+
+    Registration declares initial readiness (a clean worktree is READY for
+    ``write_registered_worktree_files``), but that declaration is projected
+    once and the stored baseline can drift (new HEAD, cleaned/dirtied tree)
+    while the old evidence keeps gating portfolio eligibility.  This refresh
+    re-runs the same inspection on the stored checkout and, only when the
+    current observation differs, records new evidence:
+
+    - dirty/stale/uncertain -> clean/resolved/current: the capability plane
+      moves to the fresh declaration (e.g. PROBING -> READY), so a parked
+      objective becomes eligible on the next cycle;
+    - clean -> dirty/unresolvable: the plane moves back to PROBING, so
+      mutation is blocked again.
+
+    History is preserved (append-only events; the old PROBING evidence stays
+    auditable).  Incident-owned BLOCKING states (STOPPED/VETOED/DEGRADED) are
+    never overwritten by an inspection: veto/STOP/suspension supremacy holds.
+    Mission-pinned baselines live in mission contracts and are untouched; only
+    the resource's current-observed baseline is updated.  A failed inspection
+    records nothing (fail closed).  An unchanged observation records nothing,
+    so replay and restart converge with no duplicate transitions.
+    """
+    import json
+
+    from .capabilities import (
+        BLOCKING_STATES,
+        DECLARED_STATES,
+        latest_capability_state,
+        set_capability_state,
+    )
+
+    row = database.row("resources", "resource_id", resource_id)
+    if row is None:
+        return {"resource_id": resource_id, "refreshed": False, "reason": "unknown resource"}
+    if str(row["kind"]) != "git_worktree":
+        return {"resource_id": resource_id, "refreshed": False, "reason": f"unsupported kind {row['kind']}"}
+    root = Path(str(row["resolved_root"] or row["root_path"] or ""))
+    try:
+        inspected = inspect_git_resource(root, resource_id=resource_id)
+    except Exception as error:  # noqa: BLE001 - failed inspection records nothing
+        return {"resource_id": resource_id, "refreshed": False, "reason": f"{type(error).__name__}: {error}"[:200]}
+    try:
+        stored_baseline = json.loads(str(row["baseline_json"] or "{}"))
+    except (TypeError, ValueError):
+        stored_baseline = {}
+    fresh_baseline = dict(inspected["baseline"])
+    baseline_changed = (
+        stored_baseline.get("head") != fresh_baseline.get("head")
+        or [str(line) for line in (stored_baseline.get("status_porcelain") or [])]
+        != [str(line) for line in (fresh_baseline.get("status_porcelain") or [])]
+    )
+    declared = {str(key): str(value) for key, value in dict(inspected["capabilities"]).items()}
+    # Resolve each declaration against the current plane: the plane owns the
+    # state; the inspection only supersedes non-incident states that changed.
+    effective: dict[str, str] = {}
+    transitions: list[dict[str, Any]] = []
+    for capability in sorted(declared):
+        state = declared[capability]
+        if state not in DECLARED_STATES:
+            continue
+        latest = latest_capability_state(database, resource_id, capability)
+        current = str((latest or {}).get("state") or "")
+        if current in BLOCKING_STATES:
+            effective[capability] = current
+            transitions.append({"capability": capability, "from": current, "to": current, "skipped": "incident-owned"})
+            continue
+        effective[capability] = state
+        if current == state:
+            continue
+        set_capability_state(
+            database,
+            resource_id,
+            capability,
+            state,
+            source_id=source_id,
+            evidence={
+                "source": "readiness-refresh",
+                "inspected_head": str(fresh_baseline.get("head") or ""),
+                "inspected_branch": str(fresh_baseline.get("branch") or ""),
+                "status_entries": len(fresh_baseline.get("status_porcelain") or []),
+                "prior_state": current or "UNRECORDED",
+                "projected_by": "control.registration.refresh_git_resource_readiness",
+            },
+        )
+        transitions.append({"capability": capability, "from": current or "UNRECORDED", "to": state})
+    if not baseline_changed and not any("skipped" not in item for item in transitions):
+        return {"resource_id": resource_id, "refreshed": False, "reason": "unchanged", "head": str(fresh_baseline.get("head") or "")}
+    if any(value in BLOCKING_STATES for value in effective.values()):
+        readiness_state = "DEGRADED"
+    elif any(value == "PROBING" for value in effective.values()):
+        readiness_state = "PROBING"
+    else:
+        readiness_state = "READY"
+    payload = {
+        "resource_id": resource_id,
+        "kind": "git_worktree",
+        "root_path": str(row["root_path"]),
+        "resolved_root": str(inspected["resolved_root"]),
+        "baseline": fresh_baseline,
+        "capabilities": effective,
+        "readiness_state": readiness_state,
+    }
+    database.append(registration_event(payload, source_id=source_id))
+    return {
+        "resource_id": resource_id,
+        "refreshed": True,
+        "head": str(fresh_baseline.get("head") or ""),
+        "readiness_state": readiness_state,
+        "transitions": transitions,
+    }
+

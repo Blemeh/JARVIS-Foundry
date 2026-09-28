@@ -1221,6 +1221,40 @@ def run_continuous_cycle(
             if isinstance(materialization, dict):
                 mission_id = materialization.get("mission_id")
         mission_id = mission_id or (discovery_report or {}).get("mission_id")
+        readiness_refresh: list[dict[str, Any]] = []
+        if mission_id is None:
+            # Demand-driven readiness re-evaluation: an objective parked only
+            # by stale resource capability evidence gets its resource
+            # re-inspected, so old PROBING evidence cannot freeze current
+            # readiness forever. Bounded (two resources per cycle), failure
+            # isolated (never aborts the cycle), and event-silent when the
+            # observation is unchanged. The next cycle re-ranks on the fresh
+            # evidence; no mission or wake is created here.
+            try:
+                from ..control.registration import refresh_git_resource_readiness
+                from ..executive.autonomy import rebuild_executive_state
+                ranking_rows = []
+                if isinstance(cycle_payload, dict):
+                    for row in (cycle_payload.get("ranking") or ()):
+                        if isinstance(row, Mapping) and not row.get("eligible", True):
+                            ranking_rows.append(row)
+                if ranking_rows:
+                    executive_state = rebuild_executive_state(db)
+                    seen_resources: set[str] = set()
+                    for row in ranking_rows:
+                        objective = executive_state.objectives.get(str(row.get("objective_id") or ""))
+                        resource = str((objective.resource_id if objective is not None else "") or "")
+                        if not resource or resource in seen_resources:
+                            continue
+                        seen_resources.add(resource)
+                        if len(seen_resources) > 2:
+                            break
+                        try:
+                            readiness_refresh.append(refresh_git_resource_readiness(db, resource, source_id="continuous-cycle"))
+                        except Exception:
+                            continue
+            except Exception:
+                pass
         continuation = record_next_action_continuation(
             db,
             cycle_id=cycle_id,
@@ -1239,7 +1273,7 @@ def run_continuous_cycle(
             expected_context_cycle_id=cycle_id,
             controller=controller,
         )
-        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation, "research_bridged": research_bridged, "research_wake_consumed": consumed_research, "research_wake_continuation": research_continuation}
+        return {"cycle_id": cycle_id, "status": cycle.status, "reason": cycle.reason, "triggered_wakes": triggered, "parked_objectives": parked, "autonomy_cycle": cycle_payload, "mission_id": mission_id, "readiness_refresh": readiness_refresh, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation, "research_bridged": research_bridged, "research_wake_consumed": consumed_research, "research_wake_continuation": research_continuation}
     except Exception as e:
         continuation = []
         try:
