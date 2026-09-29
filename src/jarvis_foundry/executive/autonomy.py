@@ -3823,6 +3823,27 @@ def run_autonomy_cycle(
         continuation = decide_continuation(database, selected_oid, controller=controller)
     elif pre_continuation is not None:
         continuation = pre_continuation
+    # Production readiness refresh.  The refresh pass inside
+    # run_continuous_cycle cannot heal production state because the
+    # continuous cycle is OFF by default (worker loop keeps the v3 split),
+    # so re-inspect generation-blocked step resources here: bounded to two
+    # per cycle, change-only, failure-isolated, mission baselines untouched.
+    try:
+        from .continuous import _generation_blocked_step_resources
+        from ..control.registration import refresh_git_resource_readiness
+        prod_state = rebuild_executive_state(database)
+        refreshed_count = 0
+        for refresh_resource in _generation_blocked_step_resources(database, prod_state):
+            if refreshed_count >= 2:
+                break
+            try:
+                refresh_git_resource_readiness(
+                    database, refresh_resource, source_id="autonomy-cycle")
+                refreshed_count += 1
+            except Exception:
+                continue
+    except Exception:
+        pass
     status = "MISSION_MATERIALIZED" if materialization.get("materialized") else ("WAITING" if portfolio_payload.get("decision") != "SELECT" else "BLOCKED")
     reason = str(materialization.get("blocked_reason") or portfolio_payload.get("reason") or "cycle completed")
     if continuation is not None and continuation.action == "CLOSE":

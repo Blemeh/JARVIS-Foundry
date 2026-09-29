@@ -322,3 +322,28 @@ def test_sweep_heals_unselected_objectives(tmp_path: Path) -> None:
     # parked objective materialized nothing.
     with database.connect(readonly=True) as connection:
         assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 1
+
+
+def test_production_cycle_refreshes_stale_baseline(tmp_path: Path) -> None:
+    # The autonomy cycle itself (the production path; the continuous cycle
+    # is OFF by default) re-inspects a generation-blocked step's resource,
+    # advancing a stale observed baseline without touching mission state.
+    import json as _json
+    database, repository = _db(tmp_path)
+    _goal(database, _contractless_goal(), nonce="coh-n15")
+    run_autonomy_cycle(database, cycle_id="coh-stale", resource_id="resource-t")
+    old_head = _json.loads(
+        database.row("resources", "resource_id", "resource-t")["baseline_json"])["head"]
+    (repository / "change.txt").write_text("change\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repository), "add", "change.txt"], check=True)
+    subprocess.run(["git", "-C", str(repository), "commit", "-m", "change"],
+                   check=True, capture_output=True, text=True)
+    run_autonomy_cycle(database, cycle_id="coh-refresh", resource_id="resource-t")
+    stored = database.row("resources", "resource_id", "resource-t")
+    live_head = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True).stdout.strip()
+    assert live_head != old_head
+    assert _json.loads(stored["baseline_json"])["head"] == live_head
+    with database.connect(readonly=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 0
