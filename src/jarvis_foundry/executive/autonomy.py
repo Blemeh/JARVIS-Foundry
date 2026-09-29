@@ -3598,6 +3598,22 @@ def _dispatch_capability_expansion(
     return receipts
 
 
+# Owner-declared domain vocabulary for autonomous project discovery.
+# The bridge only produces software-repository opportunities, so the
+# fallback serves parked objectives whose own text declares that domain.
+# Anything else (responsiveness probes, report-only mandates, ...) keeps
+# truthful WAIT: discovery must never invent a mandate it was not given.
+_PORTFOLIO_DOMAIN_WORDS = frozenset({
+    "portfolio", "project", "software", "repositor",
+})
+
+
+def _objective_in_portfolio_domain(objective: Any) -> bool:
+    """Return whether a parked objective declares the project domain."""
+    text = str(getattr(objective, "objective", "") or "").lower()
+    return any(word in text for word in _PORTFOLIO_DOMAIN_WORDS)
+
+
 def _objective_is_parked_broad(database: FoundryDatabase, objective_id: str) -> bool:
     """Return whether an objective is parked contractless-broad.
 
@@ -3937,11 +3953,14 @@ def run_autonomy_cycle(
         # discovery whether it was selected (scoped pool empty) or not
         # selected at all (admission-BLOCKED plans rank ineligible).
         fallback_oid: str | None = None
+        selected_objective = state.objectives.get(selected_oid)
         if (
             not materialization.get("materialized")
             and not requests
             and portfolio_payload.get("decision") == "WAIT"
             and _objective_is_parked_broad(database, selected_oid)
+            and selected_objective is not None
+            and _objective_in_portfolio_domain(selected_objective)
         ):
             fallback_oid = selected_oid
         if fallback_oid is not None:
@@ -3961,8 +3980,14 @@ def run_autonomy_cycle(
     # starvation fallback: discovery under its standing authority, then
     # exactly one objective-scoped reselection restricted to lane items.
     if selected_oid is None and portfolio_payload.get("decision") == "WAIT":
+        parked_state = rebuild_executive_state(database)
         for row in ranking:
-            if _objective_is_parked_broad(database, row.objective_id):
+            candidate_objective = parked_state.objectives.get(
+                row.objective_id)
+            if candidate_objective is None:
+                continue
+            if _objective_is_parked_broad(database, row.objective_id) \
+                    and _objective_in_portfolio_domain(candidate_objective):
                 fallback_payload, fallback_result = (
                     _run_discovery_starvation_fallback(
                         database, cycle_id=cycle_id,

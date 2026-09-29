@@ -871,3 +871,35 @@ def test_executable_objective_never_triggers_discovery(
         assert conn.execute(
             "SELECT COUNT(*) FROM events WHERE event_type = ?",
             ("portfolio.discovery_completed",)).fetchone()[0] == 0
+
+
+# 25. A parked broad goal OUTSIDE the project domain (responsiveness
+# probe, report-only mandate) never triggers code-change discovery.
+def test_non_portfolio_probe_never_triggers_discovery(
+    db, tmp_path, monkeypatch,
+) -> None:
+    from jarvis_foundry.executive.autonomy import run_autonomy_cycle
+    import jarvis_foundry.project_discovery as bridge_mod
+
+    _register(db, _make_repo(tmp_path / "repo", "Owner/Pi4"))
+    _owner_goal(
+        db, "Confirm owner control is responsive and report current "
+        "status. Do not mutate external state.")
+    calls = []
+
+    def faked_bridge(database, *, objective_id, source_id, **kwargs):
+        calls.append(objective_id)
+        return {"objective_id": objective_id, "lane": "test",
+                "repos": [], "generated_at": NOW.isoformat()}
+
+    monkeypatch.setattr(
+        bridge_mod, "discover_portfolio_opportunities", faked_bridge)
+    cycle = run_autonomy_cycle(db, cycle_id="discovery-cycle-3")
+    assert calls == []
+    assert cycle.status == "WAITING"
+    with db.connect(readonly=True) as conn:
+        assert conn.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = ?",
+            ("portfolio.discovery_completed",)).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT COUNT(*) FROM missions").fetchone()[0] == 0
