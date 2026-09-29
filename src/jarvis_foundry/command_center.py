@@ -320,7 +320,7 @@ def build_operational_status_snapshot(
                 rows = connection.execute(
                     f"SELECT {column}, COUNT(*) FROM {table} GROUP BY {column}"  # noqa: S608 - fixed table/column constants
                 ).fetchall()
-                return {str(row[0] or "UNKNOWN"): int(row[1]) for row in rows}
+                return {str(row[0]) if row[0] is not None else "UNKNOWN": int(row[1]) for row in rows}
 
             mission_counts = grouped("missions", "state")
             worker_counts = grouped("agent_runs", "status")

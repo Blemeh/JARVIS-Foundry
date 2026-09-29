@@ -497,3 +497,36 @@ def test_authenticated_controls_still_require_signature(db: FoundryDatabase, tmp
             assert json.loads(response.read())["status"] == "APPLIED"
     finally:
         server.close()
+
+
+def test_operational_status_directive_counts_labels_inactive_not_unknown(
+    db: FoundryDatabase, tmp_path: Path,
+) -> None:
+    """Inactive directives must project as '0', never as 'UNKNOWN'.
+
+    Regression: grouped() used ``str(row[0] or "UNKNOWN")`` so the falsy
+    integer 0 (inactive) coalesced to "UNKNOWN", telling operators that
+    inactive-directive state was missing when it was exactly known.
+    """
+    secret = b"directive-count-secret"
+    service = OwnerControlService(
+        db, secret=secret, stop_path=tmp_path / "STOP", owner_id="test-owner",
+    )
+    first = service.apply(
+        "GOAL", target="GLOBAL", exact_text="first goal",
+        nonce="dc-n1",
+        signature=sign_command(secret, "GOAL", "GLOBAL", "first goal", "dc-n1"),
+    )
+    service.apply(
+        "GOAL", target="GLOBAL", exact_text="second goal",
+        nonce="dc-n2",
+        signature=sign_command(secret, "GOAL", "GLOBAL", "second goal", "dc-n2"),
+    )
+    service.revoke(
+        first.directive_id, nonce="dc-n3",
+        signature=sign_command(secret, "REVOKE", first.directive_id, "revoke owner directive", "dc-n3"),
+    )
+
+    snapshot = build_operational_status_snapshot(db, stop_path=tmp_path / "STOP")
+
+    assert snapshot["directive_counts"] == {"1": 1, "0": 1}
