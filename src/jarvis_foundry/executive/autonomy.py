@@ -3703,6 +3703,21 @@ def run_autonomy_cycle(
             _refuse_contractless_step(
                 database, objective, new_plan, steps[0],
                 source_id="v8-executive-autonomy", controller=controller)
+    # Contract-conformance sweep over every active plan, not just the ranked
+    # selection: a stale READY step on an objective the ranking never selects
+    # would otherwise survive forever (WAITING objectives never reach
+    # generation).  Idempotent: already-marked steps and keyed receipts make
+    # repeat sweeps silent.
+    swept_state = rebuild_executive_state(database)
+    for swept_objective in swept_state.objectives.values():
+        if swept_objective.status in _TERMINAL_OBJECTIVE:
+            continue
+        swept_plan = _active_plan_from_state(swept_state, swept_objective.objective_id)
+        if swept_plan is None:
+            continue
+        _record_contract_conformance(
+            database, swept_objective, swept_plan,
+            source_id="v8-executive-autonomy", controller=controller)
     # A newly decomposed objective waits for the campaign authority to admit
     # its durable plan on the next Supervisor pass.  Its first child must not
     # escape as an ordinary one-step mission in this cycle.

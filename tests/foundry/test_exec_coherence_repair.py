@@ -18,6 +18,7 @@ from jarvis_foundry.control.registration import (
 )
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.executive.autonomy import (
+    CONTRACT_SCOPE_MARKER,
     active_plan,
     build_plan,
     decide_continuation,
@@ -290,3 +291,34 @@ def test_repair_creates_no_duplicates(tmp_path: Path) -> None:
     wakes = [w for w in rebuild_wake_state(database).values()
              if w.get("objective_id") == owned[0].objective_id and w.get("status") == "ACTIVE"]
     assert len(wakes) <= 1
+
+
+def test_sweep_heals_unselected_objectives(tmp_path: Path) -> None:
+    # A WAITING objective the ranking never selects must still converge:
+    # the cycle-wide conformance sweep coerces its stale READY step and
+    # records the refusal receipt without any mission.
+    from jarvis_foundry.executive.autonomy import set_objective_status
+    database, _ = _db(tmp_path)
+    _goal(database, _contractless_goal(), nonce="coh-n14a")
+    parked = sync_owner_goals(database)[0]
+    build_plan(database, parked.objective_id, [
+        {"step_id": "execute", "description": parked.objective,
+         "resource_id": "resource-t", "required_capabilities": (_CAP,)},
+    ])
+    set_objective_status(database, parked.objective_id, "WAITING",
+                         reason="parked for sweep coverage")
+    _goal(database, "Store the scoped receipt. success: scoped receipt stored",
+          nonce="coh-n14b")
+    run_autonomy_cycle(database, cycle_id="coh-sweep", resource_id="resource-t")
+    coerced = active_plan(database, parked.objective_id)
+    assert coerced is not None
+    assert coerced.steps[0].status == "BLOCKED"
+    assert CONTRACT_SCOPE_MARKER in tuple(coerced.steps[0].evidence_refs)
+    receipts = [e for e in database.events(
+        event_types=("executive.mission_generation_blocked",))
+        if e.payload.get("objective_id") == parked.objective_id]
+    assert any("no explicit executable" in e.payload.get("reason", "") for e in receipts)
+    # Exactly one mission exists: the explicitly-scoped objective's.  The
+    # parked objective materialized nothing.
+    with database.connect(readonly=True) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 1
