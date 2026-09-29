@@ -3598,6 +3598,119 @@ def _dispatch_capability_expansion(
     return receipts
 
 
+def _objective_is_parked_broad(database: FoundryDatabase, objective_id: str) -> bool:
+    """Return whether an objective is parked contractless-broad.
+
+    The exact shape the coherence repair produces for a valid broad goal
+    with no executable contract: one fallback step admitted BLOCKED with
+    the contract-scope marker. Only this shape may trigger autonomous
+    discovery — executable objectives must never be diverted.
+    """
+    try:
+        plan = active_plan(database, objective_id)
+    except Exception:  # noqa: BLE001 — unreadable plan is not parked-broad
+        return False
+    if plan is None or len(plan.steps) != 1:
+        return False
+    step = plan.steps[0]
+    return (
+        step.status == "BLOCKED"
+        and CONTRACT_SCOPE_MARKER in tuple(step.evidence_refs or ())
+    )
+
+
+def _run_discovery_starvation_fallback(
+    database: FoundryDatabase,
+    *,
+    cycle_id: str,
+    fallback_oid: str,
+    capability: str,
+    controller: str,
+    source_id: str = "v8-executive-autonomy",
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Run ONE bounded discovery pass plus one scoped reselection.
+
+    Fed items bind to the parked objective, so the reselection below uses
+    the CANONICAL objective scope (``objective_id=fallback_oid``): the
+    standing goal's echo item carries no such binding and is excluded by
+    construction, as are other objectives' items. Only lane items (exact
+    resource bindings) may materialize here. Returns (portfolio_payload,
+    materialization) on a lane SELECT, else (None, None). Never raises:
+    discovery must not break the autonomy cycle.
+    """
+    from ..evolution.executive_portfolio import (
+        claim_selection,
+        release_selection_claim,
+        select_next_work,
+    )
+    from ..project_discovery import discover_portfolio_opportunities
+    from .portfolio_bridge import (
+        _is_discovery_opportunity,
+        materialize_portfolio_selection,
+    )
+
+    try:
+        parked_directive = ""
+        try:
+            parked = rebuild_executive_state(database).objectives.get(
+                fallback_oid)
+        except Exception:  # noqa: BLE001 — stale state is not parked-broad
+            parked = None
+        if parked is not None:
+            parked_directive = str(
+                (parked.provenance or {}).get("directive_id") or "")
+        fed_report = discover_portfolio_opportunities(
+            database, objective_id=parked_directive or fallback_oid,
+            source_id=source_id, executive_objective_id=fallback_oid)
+        fed_any = any(
+            entry.get("portfolio_item_id")
+            and not entry.get("portfolio_error")
+            for repo in fed_report.get("repos", [])
+            for entry in (repo.get("fed") or []))
+        if not fed_any:
+            return None, None
+        scoped = select_next_work(
+            database,
+            loop_id=f"executive:{cycle_id}:discovery-fed",
+            resource_id=None,
+            capability=capability,
+            source_id=source_id,
+            objective_id=fallback_oid,
+        )
+        lane_payload: dict[str, Any] | None = None
+        lane_decision = None
+        if scoped.kind == "SELECT" and scoped.entity_id:
+            candidate = scoped.to_payload()
+            candidate_item = dict(candidate.get("selected_item") or {})
+            if candidate_item.get("resource_id") and _is_discovery_opportunity(
+                    candidate_item):
+                lane_payload = candidate
+                lane_decision = scoped
+        if lane_payload is None or lane_decision is None:
+            return None, None
+        payload = lane_payload
+        lane_item = dict(payload.get("selected_item") or {})
+        lane_resource = str(lane_item.get("resource_id") or "")
+        if not lane_resource:
+            return None, None
+        result = materialize_portfolio_selection(
+            database, decision=payload, resource_id=lane_resource,
+            capability=capability, source_id=source_id)
+        try:
+            claim_selection(database, lane_decision, controller=controller,
+                            source_id=source_id)
+        finally:
+            try:
+                release_selection_claim(database, lane_decision.entity_id,
+                                        controller=controller,
+                                        source_id=source_id)
+            except Exception:
+                pass
+        return payload, result
+    except Exception:  # noqa: BLE001 — discovery never breaks autonomy
+        return None, None
+
+
 def run_autonomy_cycle(
     database: FoundryDatabase,
     *,
@@ -3820,9 +3933,52 @@ def run_autonomy_cycle(
                         release_selection_claim(database, decision.entity_id, controller=controller, source_id="v8-executive-autonomy")
                     except Exception:
                         pass
+        # Starvation fallback marker: a parked-broad objective needs
+        # discovery whether it was selected (scoped pool empty) or not
+        # selected at all (admission-BLOCKED plans rank ineligible).
+        fallback_oid: str | None = None
+        if (
+            not materialization.get("materialized")
+            and not requests
+            and portfolio_payload.get("decision") == "WAIT"
+            and _objective_is_parked_broad(database, selected_oid)
+        ):
+            fallback_oid = selected_oid
+        if fallback_oid is not None:
+            fallback_payload, fallback_result = (
+                _run_discovery_starvation_fallback(
+                    database, cycle_id=cycle_id,
+                    fallback_oid=fallback_oid, capability=capability,
+                    controller=controller))
+            if fallback_payload is not None and fallback_result is not None:
+                portfolio_payload = fallback_payload
+                materialization = fallback_result
         continuation = decide_continuation(database, selected_oid, controller=controller)
     elif pre_continuation is not None:
         continuation = pre_continuation
+    # A parked-broad objective that ranking never selects (its
+    # admission-BLOCKED fallback plan ranks ineligible) needs the same
+    # starvation fallback: discovery under its standing authority, then
+    # exactly one objective-scoped reselection restricted to lane items.
+    if selected_oid is None and portfolio_payload.get("decision") == "WAIT":
+        for row in ranking:
+            if _objective_is_parked_broad(database, row.objective_id):
+                fallback_payload, fallback_result = (
+                    _run_discovery_starvation_fallback(
+                        database, cycle_id=cycle_id,
+                        fallback_oid=row.objective_id,
+                        capability=capability, controller=controller))
+                if fallback_payload is not None \
+                        and fallback_result is not None:
+                    portfolio_payload = fallback_payload
+                    materialization = fallback_result
+                    continuation = decide_continuation(
+                        database, row.objective_id,
+                        controller=controller)
+                    # The cycle did work FOR this objective even though
+                    # ranking never selected it; record that lineage.
+                    selected_oid = row.objective_id
+                break
     # Production readiness refresh.  The refresh pass inside
     # run_continuous_cycle cannot heal production state because the
     # continuous cycle is OFF by default (worker loop keeps the v3 split),

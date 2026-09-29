@@ -790,3 +790,84 @@ def test_missing_total_count_fails_closed(db, tmp_path) -> None:
     entry = report["repos"][0]
     assert entry["outcome"] == "skipped"
     assert "CI state unreadable" in (entry["reason"] or "")
+
+
+def _owner_goal(db: FoundryDatabase, text: str) -> None:
+    """Record an authenticated GLOBAL owner GOAL (v8 harness pattern)."""
+    from jarvis_foundry.owner_controls import OwnerControlService, sign_command
+
+    secret = b"discovery-bridge-owner-secret-32B-min"
+    service = OwnerControlService(db, secret=secret, owner_id="owner")
+    nonce = "discovery-goal-" + str(abs(hash(text)))
+    service.apply(
+        "GOAL", target="GLOBAL", exact_text=text, nonce=nonce,
+        signature=sign_command(secret, "GOAL", "GLOBAL", text, nonce),
+    )
+
+
+# 23. A parked broad objective drives discovery through a real autonomy
+# cycle and materializes a synthesized mission (no owner continue).
+def test_parked_broad_objective_materializes_via_cycle(
+    db, tmp_path, monkeypatch,
+) -> None:
+    from jarvis_foundry.executive.autonomy import run_autonomy_cycle
+    import jarvis_foundry.project_discovery as bridge_mod
+
+    mapping = _register(db, _make_repo(tmp_path / "repo", "Owner/Pi2"))
+    _owner_goal(db, BROAD_GOAL)
+    pushed = "2026-09-29T10:00:00Z"
+    result = _read_result("owner/pi2", pushed_at=pushed, head="b" * 40)
+    connector = _connector(pushed_at=pushed)
+    real_bridge = bridge_mod.discover_portfolio_opportunities
+    calls = []
+
+    def faked_bridge(database, *, objective_id, source_id, **kwargs):
+        calls.append(objective_id)
+        return real_bridge(
+            database, objective_id=objective_id, source_id=source_id,
+            reader=_reader_for(result), connector=connector, now=NOW,
+            executive_objective_id=kwargs.get("executive_objective_id"))
+
+    monkeypatch.setattr(
+        bridge_mod, "discover_portfolio_opportunities", faked_bridge)
+    cycle = run_autonomy_cycle(
+        db, cycle_id="discovery-cycle-1",
+        resource_id=mapping["resource_id"])
+    assert calls, "starved broad objective must trigger discovery"
+    assert cycle.status == "MISSION_MATERIALIZED", cycle.reason
+    assert cycle.objective_id, "cycle lineage must name the parked objective"
+    mission_id = cycle.materialization["mission_id"]
+    assert mission_id
+    from jarvis_foundry.mission.contracts import latest_contract
+    plan = latest_contract(db, mission_id, step_id="discovery-plan")
+    execute = latest_contract(db, mission_id, step_id="discovery-execute")
+    assert plan is not None and execute is not None
+    assert execute.resource_id == mapping["resource_id"]
+
+
+# 24. An executable objective never diverts into discovery.
+def test_executable_objective_never_triggers_discovery(
+    db, tmp_path, monkeypatch,
+) -> None:
+    from jarvis_foundry.executive.autonomy import run_autonomy_cycle
+    import jarvis_foundry.project_discovery as bridge_mod
+
+    _register(db, _make_repo(tmp_path / "repo", "Owner/Pi3"))
+    _owner_goal(
+        db, "Ship the observable outcome. success: receipt file exists; "
+        "verify: independent check passes")
+    calls = []
+
+    def faked_bridge(database, *, objective_id, source_id, **kwargs):
+        calls.append(objective_id)
+        return {"objective_id": objective_id, "lane": "test",
+                "repos": [], "generated_at": NOW.isoformat()}
+
+    monkeypatch.setattr(
+        bridge_mod, "discover_portfolio_opportunities", faked_bridge)
+    run_autonomy_cycle(db, cycle_id="discovery-cycle-2")
+    assert calls == []
+    with db.connect(readonly=True) as conn:
+        assert conn.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = ?",
+            ("portfolio.discovery_completed",)).fetchone()[0] == 0

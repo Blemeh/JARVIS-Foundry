@@ -430,6 +430,7 @@ def feed_portfolio(
     opportunities: list[Opportunity],
     *,
     resource_id: str | None = None,
+    executive_objective_id: str | None = None,
 ) -> dict[str, Any]:
     """G8: feed accepted opportunities into the EXISTING pipeline.
 
@@ -496,7 +497,9 @@ def feed_portfolio(
                     "duplicate_key": opp.duplicate_key,
                     "why_now": opp.why_now,
                 },
-                metadata={"repository": opp.repository},
+                metadata={"repository": opp.repository,
+                          **({"executive_objective_id": executive_objective_id}
+                             if executive_objective_id else {})},
             )
         except Exception as error:  # noqa: BLE001 — recorded honestly below
             fed.append({"duplicate_key": opp.duplicate_key,
@@ -875,6 +878,7 @@ def discover_portfolio_opportunities(
     connector: Any | None = None,
     now: datetime | None = None,
     max_repos: int = _DISCOVERY_MAX_REPOS,
+    executive_objective_id: str | None = None,
 ) -> dict[str, Any]:
     """Bounded read-only discovery over eligible projects; feed what is real.
 
@@ -883,6 +887,9 @@ def discover_portfolio_opportunities(
     concludes fed, rejected-with-evidence, or skipped-with-reason — never
     fabricated. Runs are durable (``portfolio.discovery_completed``) and
     idempotent (same evidence fingerprint reuses the same record).
+    ``executive_objective_id`` binds fed items to one executive objective
+    so the canonical objective-scoped selection can consume them; without
+    it items compete only in the global pool.
     """
     from .events import Event
 
@@ -974,7 +981,8 @@ def discover_portfolio_opportunities(
             try:
                 feed = feed_portfolio(
                     db, mission_id, accepted,
-                    resource_id=entry["resource_id"])
+                    resource_id=entry["resource_id"],
+                    executive_objective_id=executive_objective_id)
                 fed = feed["fed"]
             except Exception as error:  # noqa: BLE001 — recorded, not raised
                 feed_error = str(error)[:200]
