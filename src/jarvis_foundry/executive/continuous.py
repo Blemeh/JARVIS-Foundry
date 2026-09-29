@@ -1253,6 +1253,28 @@ def run_continuous_cycle(
                             readiness_refresh.append(refresh_git_resource_readiness(db, resource, source_id="continuous-cycle"))
                         except Exception:
                             continue
+                    # A generation-blocked step binds a resource the ranking
+                    # above may never name (eligible objectives with refused
+                    # steps, parked WAITING objectives).  Re-inspect those
+                    # step-bound resources too (at most two from this pass, and
+                    # none once two observations are already queued), so a
+                    # stale baseline cannot freeze current truth merely
+                    # because no ranked row references it.  Mission-pinned
+                    # baselines are untouched by the refresh itself.
+                    try:
+                        blocked_resources = _generation_blocked_step_resources(db, executive_state)
+                    except Exception:
+                        blocked_resources = ()
+                    for resource in blocked_resources:
+                        if len(seen_resources) >= 2:
+                            break
+                        if resource in seen_resources:
+                            continue
+                        seen_resources.add(resource)
+                        try:
+                            readiness_refresh.append(refresh_git_resource_readiness(db, resource, source_id="continuous-cycle"))
+                        except Exception:
+                            continue
             except Exception:
                 pass
         continuation = record_next_action_continuation(
@@ -1302,6 +1324,45 @@ def run_continuous_cycle(
         except Exception:
             pass
         return {"cycle_id": cycle_id, "status": "BLOCKED", "reason": f"{type(e).__name__}: {e}", "triggered_wakes": triggered, "parked_objectives": parked, "discovery": discovery_report, "next_action_consumed": consumed_next_action, "next_action_continuation": continuation, "research_bridged": research_bridged, "research_wake_consumed": consumed_research, "research_wake_continuation": research_continuation}
+
+def _generation_blocked_step_resources(db, executive_state) -> tuple[str, ...]:
+    """Resources bound to generation-refused steps that never got missions.
+
+    A mission_generation_blocked receipt names an objective step the
+    portfolio path refused.  When that step binds a registered resource but
+    holds no mission, the resource's current observation may be the stale
+    evidence gating recovery, so the refresh pass should re-inspect it even
+    when no ranking row references it.  Pure read; bounded to recent events.
+    """
+    try:
+        from ..executive.autonomy import _active_plan_from_state as _active_plan
+    except Exception:
+        return ()
+    try:
+        blocked = db.events(event_types=("executive.mission_generation_blocked",))
+    except Exception:
+        return ()
+    found: list[str] = []
+    for event in blocked[-200:]:
+        payload = event.payload or {}
+        oid = str(payload.get("objective_id") or "")
+        step_id = str(payload.get("step_id") or "")
+        if not oid or not step_id:
+            continue
+        try:
+            plan = _active_plan(executive_state, oid)
+        except Exception:
+            continue
+        if plan is None:
+            continue
+        step = next((row for row in plan.steps if row.step_id == step_id), None)
+        if step is None or step.mission_id:
+            continue
+        resource = str(step.resource_id or "")
+        if resource and resource not in found:
+            found.append(resource)
+    return tuple(found)
+
 
 def schedule_wait_until(db, objective_id: str, *, not_before: str, reason="", controller="supervisor"):
     wid = f"wake:{objective_id}:until:{_hash(not_before)}"
@@ -1423,6 +1484,30 @@ def auto_wake_for_blocked(
                     w=WakeCondition(wake_id=wid, objective_id=oid, kind="WAIT_FOR_RESOURCE", reason="wait for resource", created_at=__import__("jarvis_foundry.clock", fromlist=["isoformat"]).isoformat(), resource_id=obj.resource_id)
                     try: create_wake(db, w, controller=controller); created.append(oid)
                     except Exception: pass
+            elif any(b.startswith("plan_step_blocked:") for b in row.blockers):
+                # A plan whose actionable steps are all BLOCKED waits for
+                # executable scope, not for a provider or capability: park it
+                # on the same resumable signal the continuation uses so both
+                # paths converge on one wake instead of duplicating.
+                # Blocker shape is plan_step_blocked:{step_id}[:suffix], so
+                # strip one known suffix before taking the remainder as the id.
+                step_id = ""
+                for b in row.blockers:
+                    if b.startswith("plan_step_blocked:"):
+                        rest = str(b).partition("plan_step_blocked:")[2]
+                        suffix = ":missing-executable-contract"
+                        if rest.endswith(suffix):
+                            rest = rest[: -len(suffix)]
+                        step_id = rest
+                        break
+                try:
+                    schedule_wait_for_signal(
+                        db, oid, signal=f"executive-scope:{oid}:{step_id}",
+                        reason="plan steps blocked; await executable scope evidence",
+                        controller=controller,
+                    )
+                    created.append(oid)
+                except Exception: pass
     except Exception: pass
     return created
 

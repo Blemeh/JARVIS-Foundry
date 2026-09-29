@@ -28,6 +28,81 @@ _ACTIVE_OBJECTIVE = frozenset({"ACTIVE", "BLOCKED", "WAITING", "PLANNING", "REGR
 _MISSION_GENERATION_OBJECTIVE = frozenset({"ACTIVE", "PLANNING", "REGRESSED"})
 _TERMINAL_STEP = frozenset({"COMPLETED", "FAILED", "CANCELLED"})
 _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS = frozenset({"durable outcome evidence"})
+# Durable marker recorded on a plan step the mission-generation contract gate
+# refused.  It converts a silent per-cycle refusal into plan truth so ranking,
+# continuation, and later generation attempts all observe the same blocker.
+CONTRACT_SCOPE_MARKER = "contract:missing-explicit-scope"
+# Byte-identical refusal reason shared by planning admission and mission
+# generation.  Tests and ledger greps match on the "no explicit executable"
+# substring; keep it stable.
+CONTRACT_REFUSAL_REASON = (
+    "owner GOAL has no explicit executable success criteria, "
+    "recipe, normalized intent, or plan-step output contract"
+)
+
+
+def explicit_success_criteria_of(objective: ObjectiveRecord) -> tuple[str, ...]:
+    """Owner success criteria excluding the generic executive output phrases."""
+    return tuple(
+        str(value).strip()
+        for value in objective.success_criteria
+        if str(value).strip()
+        and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
+    )
+
+
+def _validated_intent_block(
+    objective: ObjectiveRecord, step: PlanStep, *, resource_id: str | None = None,
+) -> Mapping[str, Any] | None:
+    """Return the objective's normalized mission intent, if it validates.
+
+    Matches the portfolio bridge's validation so invalid metadata cannot
+    make a contractless owner goal look executable.
+    """
+    intent_block = objective.metadata.get("intent")
+    if not isinstance(intent_block, Mapping):
+        return None
+    from ..mission.intent import MissionIntent
+
+    try:
+        MissionIntent.from_mapping(
+            intent_block,
+            intent_id=f"owner-goal:{objective.objective_id}:{step.step_id}",
+            resource_id=str(
+                step.resource_id or objective.resource_id or resource_id or ""
+            ),
+            objective=step.description,
+            source="executive-autonomy",
+        )
+    except (TypeError, ValueError):
+        return None
+    return intent_block
+
+
+def step_has_executable_contract(objective: ObjectiveRecord, step: PlanStep, *, resource_id: str | None = None) -> tuple[bool, str]:
+    """Shared executable-contract precondition for planning and materialization.
+
+    Planning admission (run_autonomy_cycle fallback) and mission generation
+    (generate_missions_for_objective) must agree on what "executable" means:
+    an owner-derived step needs explicit, non-generic success criteria, a
+    recipe, a normalized intent, or an explicit plan-step output contract.
+    Returns (True, "") when the step may materialize, else (False, missing).
+    """
+    directive_id = str(objective.provenance.get("directive_id") or "")
+    if not directive_id:
+        return True, ""
+    intent_block = _validated_intent_block(objective, step, resource_id=resource_id)
+    has_intent = intent_block is not None
+    has_recipe = bool(str(objective.metadata.get("recipe_id") or "").strip())
+    explicit_success_criteria = explicit_success_criteria_of(objective)
+    explicit_step_contract = any(
+        str(value).strip()
+        and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
+        for value in step.output_contract
+    )
+    if explicit_success_criteria or has_recipe or has_intent or explicit_step_contract:
+        return True, ""
+    return False, CONTRACT_REFUSAL_REASON
 _DECOMPOSITION_ACTIONS = frozenset({
     "build", "create", "implement", "migrate", "integrate", "configure",
     "repair", "replace", "test", "verify", "validate", "deploy", "release",
@@ -800,6 +875,136 @@ def create_objective(
     return record
 
 
+def _superseded_by(database: FoundryDatabase, directive_id: str) -> str | None:
+    """Return the successor directive when an owner directive was superseded.
+
+    Revocation and supersession are distinct owner semantics: a REVOKED
+    directive simply ends, while a SUPERSEDED directive transfers authority
+    to its successor.  The ledger records the latter as
+    owner_directive.superseded with a superseded_by field.
+    """
+    if not directive_id or directive_id == "unknown":
+        return None
+    for event in database.events(event_types=("owner_directive.superseded",)):
+        payload = event.payload or {}
+        if str(payload.get("directive_id") or "") == directive_id:
+            successor = str(payload.get("superseded_by") or "").strip()
+            if successor:
+                return successor
+    return None
+
+
+def supersede_objective_authority(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    directive_id: str,
+    superseded_by: str,
+    controller: str = SUPERVISOR_CONTROLLER,
+    cancel_descendants: bool = True,
+    transition_id: str | None = None,
+) -> ObjectiveRecord | None:
+    """Suspend an objective whose owner directive was superseded, not revoked.
+
+    Authority transfers to owner-goal:{superseded_by}; the suspension reason
+    names the successor so lineage never reads as a revocation and no
+    circular self-reference is recorded.
+    """
+    if controller != SUPERVISOR_CONTROLLER:
+        raise PermissionError("objective authority transition is Supervisor-owned")
+    transition = transition_id or superseded_by
+    state = rebuild_executive_state(database)
+    objective = state.objectives.get(objective_id)
+    if objective is None:
+        return None
+    successor_objective_id = f"owner-goal:{superseded_by}"
+    reason = (
+        f"owner GOAL directive was superseded by {superseded_by}; "
+        f"autonomous authority transfers to {successor_objective_id}"
+    )
+    immutable_terminal = objective.status in {"COMPLETED", "FAILED", "CANCELLED"}
+    if not immutable_terminal:
+        if objective.status != "SUSPENDED":
+            now = isoformat()
+            successor_event_id = ""
+            for event in database.events(event_types=("owner_directive.recorded",)):
+                if str((event.payload or {}).get("directive_id") or "") == superseded_by:
+                    successor_event_id = str(event.event_id)
+                    break
+            try:
+                _append(
+                    database,
+                    "executive.objective_status_changed",
+                    {
+                        "objective_id": objective.objective_id,
+                        "status": "SUSPENDED",
+                        "reason": reason,
+                        "evidence_refs": list(filter(None, (
+                            successor_event_id,
+                            f"owner-directive:{superseded_by}",
+                        ))),
+                        "updated_at": now,
+                        "version": objective.version + 1,
+                    },
+                    key=(
+                        "executive.objective_status_changed:"
+                        f"{objective.objective_id}:"
+                        f"{objective.version + 1}:SUSPENDED"
+                    ),
+                    source_id="v13-owner-authority",
+                    correlation_id=objective.objective_id,
+                )
+            except EventConflict:
+                concurrent = rebuild_executive_state(database).objectives.get(
+                    objective.objective_id
+                )
+                if concurrent is None or concurrent.status != "SUSPENDED":
+                    raise
+            objective = rebuild_executive_state(database).objectives[
+                objective.objective_id
+            ]
+    _append(
+        database,
+        "executive.objective_authority_superseded",
+        {
+            "objective_id": objective.objective_id,
+            "directive_id": directive_id,
+            "superseded_by": superseded_by,
+            "successor_objective_id": successor_objective_id,
+            "reason": reason,
+            "transition_id": transition,
+        },
+        key=(
+            "executive.objective_authority_superseded:"
+            f"{objective.objective_id}:{_hash(transition)}"
+        ),
+        correlation_id=objective.objective_id,
+    )
+    if cancel_descendants:
+        for mission_id in objective.mission_ids:
+            mission = database.row("missions", "mission_id", mission_id)
+            if (
+                mission is None
+                or str(mission.get("state") or "") in {
+                    "COMPLETE", "FAILED", "BLOCKED", "CANCELLED",
+                }
+            ):
+                continue
+            try:
+                _append(database, "mission.state_changed", {
+                    "mission_id": mission_id,
+                    "state": "CANCELLED",
+                    "next_action": "owner authority superseded",
+                    "reason": reason,
+                }, key=(
+                    f"mission.state_changed:{mission_id}:CANCELLED:"
+                    f"executive-authority-superseded:{_hash(transition)}"
+                ))
+            except ValueError:
+                pass
+    return rebuild_executive_state(database).objectives.get(objective_id)
+
+
 def withdraw_objective_authority(
     database: FoundryDatabase,
     objective_id: str,
@@ -1005,12 +1210,23 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
                if objective.objective_id.startswith("owner-goal:")
                and str(objective.provenance.get("directive_id") or "") not in active_directive_ids]
     for objective in revoked:
+        old_directive_id = str(
+            objective.provenance.get("directive_id") or "unknown",
+        )
+        successor = _superseded_by(database, old_directive_id)
+        if successor is not None:
+            supersede_objective_authority(
+                database,
+                objective.objective_id,
+                directive_id=old_directive_id,
+                superseded_by=successor,
+                controller=controller,
+            )
+            continue
         withdraw_objective_authority(
             database,
             objective.objective_id,
-            directive_id=str(
-                objective.provenance.get("directive_id") or "unknown",
-            ),
+            directive_id=old_directive_id,
             reason=(
                 "owner GOAL directive was revoked; autonomous authority "
                 "is withdrawn"
@@ -1479,6 +1695,36 @@ def plan_ready_steps(database: FoundryDatabase, objective_id: str, *, resource_i
     return ready
 
 
+def _record_contract_conformance(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+    plan: PlanRecord,
+    *,
+    source_id: str = "v8-executive-autonomy",
+    controller: str = SUPERVISOR_CONTROLLER,
+) -> None:
+    """Refuse every contractless step of a plan without requesting missions.
+
+    Used for objectives parked outside the mission-generation statuses so a
+    stale READY step cannot survive merely because generation never inspects
+    it.  All effects are idempotent (keyed receipt + conditional coercion).
+    """
+    directive_id = str(objective.provenance.get("directive_id") or "")
+    if not directive_id:
+        return
+    for step in plan.steps:
+        # Coercion corrects false READY claims only.  FAILED/CANCELLED steps
+        # stay owned by the verifier-recovery and terminal paths; BLOCKED
+        # steps already carry their marker.
+        if step.status != "READY":
+            continue
+        contract_ok, _ = step_has_executable_contract(objective, step)
+        if contract_ok:
+            continue
+        _refuse_contractless_step(
+            database, objective, plan, step, source_id=source_id, controller=controller)
+
+
 def generate_missions_for_objective(
     database: FoundryDatabase,
     objective_id: str,
@@ -1512,6 +1758,14 @@ def generate_missions_for_objective(
         )
         return []
     if objective.status not in _MISSION_GENERATION_OBJECTIVE:
+        # Objectives parked in WAITING/BLOCKED still deserve truthful plan
+        # conformance (durable refusal + coercion) without mission requests.
+        if objective.status in _ACTIVE_OBJECTIVE:
+            parked_plan = active_plan(database, objective_id)
+            if parked_plan is not None:
+                _record_contract_conformance(
+                    database, objective, parked_plan, source_id=source_id,
+                    controller=controller)
         return []
     plan = active_plan(database, objective_id)
     if plan is None:
@@ -1525,64 +1779,26 @@ def generate_missions_for_objective(
     if max_missions > 0 and len(objective.mission_ids) >= max_missions:
         _append(database, "executive.mission_generation_blocked", {"objective_id": objective_id, "reason": "objective mission budget exhausted", "max_missions": max_missions}, key=f"executive.mission_generation_blocked:budget:{objective_id}", source_id=source_id, correlation_id=objective_id)
         return requests
+    for step in plan.steps:
+        if (
+            step.status == "BLOCKED"
+            and CONTRACT_SCOPE_MARKER in tuple(step.evidence_refs)
+        ):
+            _refuse_contractless_step(
+                database, objective, plan, step, source_id=source_id,
+                controller=controller)
     for step in plan_ready_steps(database, objective_id):
         if len(requests) >= max(0, int(max_new)):
             break
         directive_id = str(objective.provenance.get("directive_id") or "")
-        intent_block = objective.metadata.get("intent")
-        has_intent = False
-        if isinstance(intent_block, Mapping):
-            from ..mission.intent import MissionIntent
-
-            try:
-                MissionIntent.from_mapping(
-                    intent_block,
-                    intent_id=f"owner-goal:{objective_id}:{step.step_id}",
-                    resource_id=str(
-                        step.resource_id or objective.resource_id or resource_id or ""
-                    ),
-                    objective=step.description,
-                    source="executive-autonomy",
-                )
-                has_intent = True
-            except (TypeError, ValueError):
-                # Match the portfolio bridge's validation so invalid metadata
-                # cannot make a contractless owner goal look executable.
-                intent_block = None
-        has_recipe = bool(str(objective.metadata.get("recipe_id") or "").strip())
-        explicit_success_criteria = tuple(
-            str(value).strip()
-            for value in objective.success_criteria
-            if str(value).strip()
-            and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
-        )
-        explicit_step_contract = any(
-            str(value).strip()
-            and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
-            for value in step.output_contract
-        )
-        if directive_id and not (
-            explicit_success_criteria or has_recipe or has_intent
-            or explicit_step_contract
-        ):
-            _append(
-                database,
-                "executive.mission_generation_blocked",
-                {
-                    "objective_id": objective_id,
-                    "step_id": step.step_id,
-                    "reason": (
-                        "owner GOAL has no explicit executable success criteria, "
-                        "recipe, normalized intent, or plan-step output contract"
-                    ),
-                },
-                key=(
-                    f"executive.mission_generation_blocked:contract:"
-                    f"{objective_id}:{plan.plan_id}:{step.step_id}"
-                ),
-                source_id=source_id,
-                correlation_id=objective_id,
-            )
+        intent_block = _validated_intent_block(
+            objective, step, resource_id=resource_id)
+        contract_ok, contract_missing = step_has_executable_contract(
+            objective, step, resource_id=resource_id)
+        if directive_id and not contract_ok:
+            _refuse_contractless_step(
+                database, objective, plan, step, source_id=source_id,
+                controller=controller)
             continue
         legacy_item_id = f"owner-goal:{directive_id}" if directive_id else ""
         step_item_id = f"executive-step:{objective_id}:{step.step_id}"
@@ -1635,7 +1851,7 @@ def generate_missions_for_objective(
             "goal_id": objective.provenance.get("directive_id"),
             "success_criteria": list(
                 step.output_contract if len(plan.steps) > 1
-                else explicit_success_criteria or step.output_contract
+                else explicit_success_criteria_of(objective) or step.output_contract
             ),
             "constraints": list(objective.constraints),
             "time_horizon": objective.deadline,
@@ -1666,6 +1882,94 @@ def generate_missions_for_objective(
         _append(database, "executive.mission_requested", request, key=f"executive.mission_requested:{item_id}", source_id=source_id, correlation_id=objective_id)
         requests.append(request)
     return requests
+
+
+def _refuse_contractless_step(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+    plan: PlanRecord,
+    step: PlanStep,
+    *,
+    source_id: str = "v8-executive-autonomy",
+    controller: str = SUPERVISOR_CONTROLLER,
+) -> None:
+    """Record one idempotent refusal and durably coerce the step.
+
+    The blocked receipt is emitted once (idempotency-keyed); the step is
+    flipped to BLOCKED with the contract marker so ranking, continuation,
+    and later generation attempts observe durable plan truth instead of
+    re-deciding an executable READY step every cycle.
+    """
+    try:
+        _append(
+            database,
+            "executive.mission_generation_blocked",
+            {
+                "objective_id": objective.objective_id,
+                "step_id": step.step_id,
+                "reason": CONTRACT_REFUSAL_REASON,
+            },
+            key=(
+                f"executive.mission_generation_blocked:contract:"
+                f"{objective.objective_id}:{plan.plan_id}:{step.step_id}"
+            ),
+            source_id=source_id,
+            correlation_id=objective.objective_id,
+        )
+    except EventConflict:
+        pass
+    _coerce_step_contract_blocked(
+        database, objective.objective_id, plan.plan_id, step.step_id,
+        controller=controller, source_id=source_id,
+    )
+
+
+def _coerce_step_contract_blocked(
+    database: FoundryDatabase,
+    objective_id: str,
+    plan_id: str,
+    step_id: str,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    source_id: str = "v8-executive-autonomy",
+) -> bool:
+    """Durably record a generation-refused step as BLOCKED.
+
+    A mission-generation refusal must change plan truth instead of recurring
+    silently: the step keeps its scope, gains BLOCKED status plus the
+    contract marker, and later cycles observe the blocker through ranking
+    and continuation instead of re-asserting CONTINUE.  Returns True when a
+    new plan version was recorded; False when already coerced (idempotent).
+    """
+    _gate(database, controller)
+    state = rebuild_executive_state(database)
+    plan = state.plans.get(plan_id)
+    if plan is None or plan.objective_id != objective_id:
+        plan = _active_plan_from_state(state, objective_id)
+    if plan is None:
+        return False
+    target = next((step for step in plan.steps if step.step_id == step_id), None)
+    if target is None or target.status == "COMPLETED":
+        return False
+    if target.status == "BLOCKED" and CONTRACT_SCOPE_MARKER in tuple(target.evidence_refs):
+        return False
+    changed = replace(
+        target,
+        status="BLOCKED",
+        evidence_refs=tuple(dict.fromkeys((*target.evidence_refs, CONTRACT_SCOPE_MARKER))),
+    )
+    updated = PlanRecord(
+        plan_id=plan.plan_id, objective_id=plan.objective_id,
+        steps=tuple(changed if row.step_id == step_id else row for row in plan.steps),
+        critical_path=plan.critical_path, status=plan.status, version=plan.version + 1,
+    )
+    _append(
+        database, "executive.plan_updated", updated.to_payload(),
+        key=f"executive.plan_updated:{plan.plan_id}:{updated.version}",
+        source_id=source_id, correlation_id=objective_id,
+    )
+    evaluate_objective_progress(database, objective_id, controller=controller)
+    return True
 
 
 def bind_mission_to_step(database: FoundryDatabase, objective_id: str, step_id: str, mission_id: str, *, controller: str = SUPERVISOR_CONTROLLER) -> PlanStep:
@@ -2245,6 +2549,18 @@ def _objective_blockers(
     if plan is not None:
         for step in plan.steps:
             blockers.extend(_capability_blockers(database, step))
+        # A plan whose every actionable step is BLOCKED is not executable,
+        # even when no single capability reports a fault.  Without this the
+        # objective keeps ranking eligible on a plan that can never
+        # materialize.  Terminal steps (COMPLETED/FAILED/CANCELLED) are owned
+        # by the retry/terminal paths below, not by this rule.
+        actionable = [step for step in plan.steps if step.status not in _TERMINAL_STEP]
+        if actionable and all(step.status == "BLOCKED" for step in actionable):
+            first = actionable[0]
+            if CONTRACT_SCOPE_MARKER in tuple(first.evidence_refs):
+                blockers.append(f"plan_step_blocked:{first.step_id}:missing-executable-contract")
+            else:
+                blockers.append(f"plan_step_blocked:{first.step_id}")
     if objective.resource_id is None and objective.required_capabilities:
         blockers.append("resource_unconfigured")
     if objective.status == "WAITING":
@@ -2300,13 +2616,17 @@ def _active_owner_goal_directive_ids(database: FoundryDatabase) -> set[str]:
 
 
 def _revoked_owner_objective_ids(database: FoundryDatabase) -> set[str]:
-    return {
-        str(event.payload.get("objective_id") or "")
-        for event in database.events(
-            event_types=("executive.objective_authority_revoked",),
-        )
-        if str(event.payload.get("objective_id") or "")
-    }
+    withdrawn: set[str] = set()
+    for event in database.events(
+        event_types=(
+            "executive.objective_authority_revoked",
+            "executive.objective_authority_superseded",
+        ),
+    ):
+        objective_id = str(event.payload.get("objective_id") or "")
+        if objective_id:
+            withdrawn.add(objective_id)
+    return withdrawn
 
 
 def _owner_goal_authority_active(
@@ -2729,56 +3049,108 @@ def decide_continuation(
                             f"{conditions}"
                         )
                     else:
-                        truth = (
-                            _mission_truth(database, blocked_step.mission_id)
-                            if blocked_step.mission_id else {}
-                        )
-                        verdict = truth.get("verdict") or {}
-                        blocker = str(
-                            verdict.get("blocking_dependency")
-                            or truth.get("reason")
-                            or "blocked mission has no recorded resumable condition"
-                        )
-                        action = "ESCALATE"
-                        reason = (
-                            f"step {blocked_step.step_id} is blocked on "
-                            f"{blocker}; no durable wake owns this condition"
-                        )
-                        escalation = record_escalation(
-                            database,
-                            objective_id=objective_id,
-                            decision="blocked goal lacks a resumable condition",
-                            why=reason,
-                            evidence_refs=tuple(dict.fromkeys((
-                                *blocked_step.evidence_refs, *evidence_refs,
-                            ))),
-                            options=(
-                                "owner resolves or identifies the exact dependency",
-                                "owner authorizes a bounded alternative strategy",
-                                "owner revokes or closes the goal with evidence",
-                            ),
-                            recommendation=(
-                                "keep the owner goal blocked and wait for an "
-                                "explicit condition or owner decision"
-                            ),
-                            delay_consequence=(
-                                "the owner goal remains unresolved; no duplicate "
-                                "mission or effect is admitted"
-                            ),
-                            controller=controller,
-                        )
-                        escalation_id = escalation.escalation_id
-                        owner_wake_id = _owner_resolution_wake(
-                            database, objective_id, reason=reason,
-                            controller=controller,
-                        )
-                        wake_on = (owner_wake_id,)
+                        if (
+                            blocked_step.mission_id is None
+                            and CONTRACT_SCOPE_MARKER in tuple(blocked_step.evidence_refs)
+                        ):
+                            # A scope-blocked step (missing executable contract,
+                            # never attempted) is not owner-escalation material:
+                            # the owner goal already permits truthful WAIT and
+                            # forbids asking except for genuine blockers.  Park
+                            # it on an explicit resumable signal instead of
+                            # nagging the owner or repeating CONTINUE.
+                            from .continuous import schedule_wait_for_signal
+
+                            signal = f"executive-scope:{objective_id}:{blocked_step.step_id}"
+                            wake = schedule_wait_for_signal(
+                                database, objective_id, signal=signal,
+                                reason=(
+                                    f"step {blocked_step.step_id} awaits executable "
+                                    "scope: a discovery candidate with explicit "
+                                    "criteria, a contract-bearing replan, or owner "
+                                    "scope"
+                                ),
+                                controller=controller,
+                            )
+                            action = "WAIT"
+                            wake_on = (str(wake.get("wake_id") or ""),)
+                            reason = str(wake.get("reason") or reason)
+                        else:
+                            truth = (
+                                _mission_truth(database, blocked_step.mission_id)
+                                if blocked_step.mission_id else {}
+                            )
+                            verdict = truth.get("verdict") or {}
+                            blocker = str(
+                                verdict.get("blocking_dependency")
+                                or truth.get("reason")
+                                or "blocked mission has no recorded resumable condition"
+                            )
+                            action = "ESCALATE"
+                            reason = (
+                                f"step {blocked_step.step_id} is blocked on "
+                                f"{blocker}; no durable wake owns this condition"
+                            )
+                            escalation = record_escalation(
+                                database,
+                                objective_id=objective_id,
+                                decision="blocked goal lacks a resumable condition",
+                                why=reason,
+                                evidence_refs=tuple(dict.fromkeys((
+                                    *blocked_step.evidence_refs, *evidence_refs,
+                                ))),
+                                options=(
+                                    "owner resolves or identifies the exact dependency",
+                                    "owner authorizes a bounded alternative strategy",
+                                    "owner revokes or closes the goal with evidence",
+                                ),
+                                recommendation=(
+                                    "keep the owner goal blocked and wait for an "
+                                    "explicit condition or owner decision"
+                                ),
+                                delay_consequence=(
+                                    "the owner goal remains unresolved; no duplicate "
+                                    "mission or effect is admitted"
+                                ),
+                                controller=controller,
+                            )
+                            escalation_id = escalation.escalation_id
+                            owner_wake_id = _owner_resolution_wake(
+                                database, objective_id, reason=reason,
+                                controller=controller,
+                            )
+                            wake_on = (owner_wake_id,)
             else:
                 ready = plan_ready_steps(database, objective_id)
-                if ready:
+                # CONTINUE requires executable steps, not merely
+                # dependency-ready ones: an owner-derived step without an
+                # executable contract can never materialize, so it must not
+                # drive CONTINUE even before generation coerces it.
+                directive_present = bool(str(objective.provenance.get("directive_id") or ""))
+                contract_gated = [
+                    step for step in ready
+                    if directive_present
+                    and not step_has_executable_contract(objective, step)[0]
+                ]
+                executable = [step for step in ready
+                              if step.step_id not in {gated.step_id for gated in contract_gated}]
+                if executable:
                     action = "CONTINUE"
-                    next_step_id = ready[0].step_id
+                    next_step_id = executable[0].step_id
                     reason = f"continue with dependency-ready step {next_step_id}"
+                elif contract_gated:
+                    # Explicit durable WAIT: the step is dependency-ready but
+                    # scope-blocked.  No wake is fabricated here; the blocked
+                    # handling and the signal-wake machinery own resumption.
+                    # The stable payload dedups across cycles (no event spam).
+                    action = "WAIT"
+                    next_step_id = contract_gated[0].step_id
+                    reason = (
+                        f"step {next_step_id} is dependency-ready but blocked: "
+                        f"{CONTRACT_REFUSAL_REASON}; resume on executable scope "
+                        "evidence (discovery candidate, contract-bearing "
+                        "replan, or owner scope)"
+                    )
                 elif any(
                     step.status in {"RUNNING", "IN_PROGRESS"}
                     for step in plan.steps
@@ -3300,14 +3672,37 @@ def run_autonomy_cycle(
             database, objective, capability=capability,
         )
         if not steps:
-            steps = (PlanStep(
+            fallback = PlanStep(
                 step_id="execute", objective_id=objective.objective_id, description=objective.objective,
                 required_capabilities=objective.required_capabilities or (capability,), resource_id=objective.resource_id or resource_id,
                 output_contract=objective.success_criteria or ("durable outcome evidence",),
                 verification_contract=objective.success_criteria or ("independent verification agrees with direct inspection",),
                 max_retries=int(_number(objective.budget.get("max_retries"), 1)),
-            ),)
-        plans.append(build_plan(database, objective.objective_id, steps, controller=controller))
+            )
+            # Admission truth: a synthesized step that cannot satisfy the
+            # shared executable-contract precondition must not claim READY.
+            # It is admitted BLOCKED with the contract marker so generation
+            # records the exact refusal once and continuation waits durably.
+            contract_ok, _ = step_has_executable_contract(objective, fallback)
+            if not contract_ok and str(objective.provenance.get("directive_id") or ""):
+                fallback = replace(
+                    fallback, status="BLOCKED",
+                    evidence_refs=(CONTRACT_SCOPE_MARKER,),
+                )
+            steps = (fallback,)
+        new_plan = build_plan(database, objective.objective_id, steps, controller=controller)
+        plans.append(new_plan)
+        # Record the refusal where the decision is made: a fallback step
+        # admitted BLOCKED must leave the exact blocked receipt even when
+        # ranking never selects the objective for generation.
+        if (
+            len(steps) == 1
+            and steps[0].status == "BLOCKED"
+            and CONTRACT_SCOPE_MARKER in tuple(steps[0].evidence_refs)
+        ):
+            _refuse_contractless_step(
+                database, objective, new_plan, steps[0],
+                source_id="v8-executive-autonomy", controller=controller)
     # A newly decomposed objective waits for the campaign authority to admit
     # its durable plan on the next Supervisor pass.  Its first child must not
     # escape as an ordinary one-step mission in this cycle.
