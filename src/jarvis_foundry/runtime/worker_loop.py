@@ -419,6 +419,43 @@ def _maybe_portfolio_select(
         capability=config.capability,
         source_id=f"worker-loop:{instance_id}",
     )
+    if decision.kind == "WAIT" and decision.reason == (
+            "no positive-value work is currently executable"):
+        # Portfolio starvation: no registered or derived item competes, so a
+        # valid broad owner goal can never reach execution. Run ONE bounded
+        # autonomous discovery pass (read-only, idempotent, fail-closed) and,
+        # only if it fed real candidates, re-run selection once under a fresh
+        # loop id. STOP / veto / capacity WAITs never reach this branch: they
+        # carry different reasons by construction.
+        try:
+            from ..executive.goals import active_goals
+            from ..project_discovery import discover_portfolio_opportunities
+            broad = [goal for goal in active_goals(database)
+                     if not goal.related_resources]
+            if broad:
+                # Attribution only: which standing goal authorized the run.
+                # WHAT gets done is decided by value scoring over fed items.
+                fed_report = discover_portfolio_opportunities(
+                    database, objective_id=broad[0].goal_id,
+                    source_id=f"worker-loop:{instance_id}")
+                # Only genuinely registered items justify a reselect:
+                # duplicate_of and portfolio_error entries fed nothing new.
+                fed_total = sum(
+                    1 for repo in fed_report.get("repos", [])
+                    for entry in (repo.get("fed") or [])
+                    if entry.get("portfolio_item_id")
+                    and not entry.get("portfolio_error"))
+                if fed_total:
+                    decision = select_next_work(
+                        database,
+                        loop_id=(f"portfolio:{loop_id}:discovery-fed:"
+                                 f"{uuid.uuid4().hex[:8]}"),
+                        resource_id=config.resource_id,
+                        capability=config.capability,
+                        source_id=f"worker-loop:{instance_id}",
+                    )
+        except Exception:  # noqa: BLE001 — discovery never breaks selection
+            pass
     if decision.kind != "SELECT" or decision.entity_id is None:
         reason = str(decision.reason or "portfolio waiting")
         episode_key = hashlib.sha256(reason.strip().encode("utf-8")).hexdigest()[:20]

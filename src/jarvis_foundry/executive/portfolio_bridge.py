@@ -550,6 +550,313 @@ def _owner_goal_recovery_prompt(
     return "\n".join(lines)
 
 
+_DISCOVERY_OPPORTUNITY_LANE = "live-github-research-activation"
+
+# Executable-contract synthesis templates for autonomous discovery items.
+# Each template turns a typed opportunity (problem + evidence + exact
+# resource binding) into a bounded investigate-then-fix mission. Research is
+# structurally first: the plan step must record findings BEFORE the execute
+# step chooses an implementation, so research evidence always influences the
+# decision. No template => fail closed (never a generic build mission).
+_DISCOVERY_CONTRACT_TEMPLATES = {
+    "MISSING_TEST": {
+        "target": ".github/workflows/ci.yml",
+        "forbidden": ("src/", "tests/", "docs/", "releases/",
+                      ".jarvis/", "var/"),
+        "risk_class": "C1",
+        "rollback": {"method": "delete_file", "reversible": True},
+        "plan_focus": (
+            "Determine the repository's canonical test command (pyproject, "
+            "tox/pytest config, existing workflow archaeology via git log), "
+            "the Python version(s) in use, and the cheapest runner that can "
+            "execute it. Record: exact command, expected duration, files "
+            "read (with hashes), and any uncertainty that changes the "
+            "implementation choice."),
+        "execute_focus": (
+            "Create a minimal default-branch CI workflow that runs the "
+            "investigated test command on push and pull requests. Workflow "
+            "file only: do not modify source, tests, or docs to satisfy CI. "
+            "Validate YAML parses, then run the workflow's exact test "
+            "command locally and record exit code plus output hash."),
+        "acceptance": (
+            ".github/workflows/ci.yml exists on the worktree",
+            "workflow YAML parses and triggers on the default branch",
+            "the workflow's test command passes locally with recorded evidence",
+            "no file outside .github/workflows/ was modified",
+        ),
+        "artifacts": (".github/workflows/ci.yml",),
+    },
+    "CI_FAILURE": {
+        "target": ".github/workflows",
+        "forbidden": ("src/", "docs/", "releases/", ".jarvis/", "var/"),
+        "risk_class": "C2",
+        "rollback": {"method": "git_checkout", "reversible": True},
+        "plan_focus": (
+            "Fetch the failing workflow run's logs and configuration with "
+            "available read tools. Identify the failing step, the exact "
+            "error, and whether the root cause lies in workflow definition, "
+            "test code, or product source. Record logs hashes, the causal "
+            "chain, and the minimal fix shape. If logs are unreachable, "
+            "record the blocker honestly and stop."),
+        "execute_focus": (
+            "Apply the minimal fix inside the allowed scope (workflow "
+            "definition and tests). If the proven root cause lies in product "
+            "source outside the allowed scope, STOP: record the scoped "
+            "follow-up proposal with evidence instead of widening scope. "
+            "Re-run the affected checks locally and record exit codes."),
+        "acceptance": (
+            "failing step identified with log evidence recorded",
+            "minimal fix applied inside the allowed scope, or scoped "
+            "follow-up recorded when the cause lies outside it",
+            "affected checks re-run locally with recorded evidence",
+            "no file outside the allowed scope was modified",
+        ),
+        "artifacts": (),
+    },
+    "MAINTENANCE": {
+        "target": ".jarvis/discovery/",
+        "forbidden": ("src/", "tests/", "docs/", "releases/",
+                      ".github/", "var/"),
+        "risk_class": "C1",
+        "rollback": {"method": "delete_file", "reversible": True},
+        "plan_focus": (
+            "Verify current repository state against the stale-repo claim: "
+            "recent pushes, open issues/PRs, releases, and any profile or "
+            "registration change. Record what is actually stale versus what "
+            "resumed on its own."),
+        "execute_focus": (
+            "Write a decision record recommending resume, archive, or "
+            "deliberate keep, with evidence for each alternative and the "
+            "cheapest next check. No code changes: this is a bounded "
+            "assessment, not an implementation."),
+        "acceptance": (
+            "repository state re-verified against the stale claim",
+            "resume/archive/keep recommendation recorded with evidence",
+            "no code or configuration file was modified",
+        ),
+        "artifacts": (),
+    },
+}
+
+
+def _is_discovery_opportunity(item: Mapping[str, Any]) -> bool:
+    provenance = item.get("provenance")
+    if not isinstance(provenance, Mapping):
+        return False
+    if str(provenance.get("source_lane") or "") != _DISCOVERY_OPPORTUNITY_LANE:
+        return False
+    return bool(str(provenance.get("opportunity_kind") or "").strip()
+                and str(provenance.get("problem_statement") or "").strip())
+
+
+def _discovery_block_reason(item: Mapping[str, Any]) -> str:
+    provenance = item.get("provenance")
+    lane = provenance.get("source_lane") if isinstance(provenance, Mapping) \
+        else None
+    kind = provenance.get("opportunity_kind") if isinstance(
+        provenance, Mapping) else None
+    return (f"discovery opportunity cannot be safely scoped: lane={lane} "
+            f"kind={kind} resource={item.get('resource_id')}")
+
+
+def _discovery_scope_block(
+    database: FoundryDatabase, item: Mapping[str, Any],
+) -> str | None:
+    """Fail-closed pre-check shared by the synthesis path.
+
+    Returns the exact blocked reason when the opportunity cannot be safely
+    scoped or bound, else None. Checked BEFORE any mission row is created so
+    a refusal leaves no dangling shell behind.
+    """
+    provenance = item.get("provenance")
+    kind = provenance.get("opportunity_kind") if isinstance(
+        provenance, Mapping) else None
+    if _DISCOVERY_CONTRACT_TEMPLATES.get(str(kind or "")) is None:
+        return _discovery_block_reason(item)
+    bound_resource = str(item.get("resource_id") or "")
+    try:
+        bound_row = database.row("resources", "resource_id", bound_resource)
+    except Exception:  # noqa: BLE001 — registry unreadable, fail closed
+        bound_row = None
+    if not bound_resource or bound_row is None:
+        repository = provenance.get("repository") if isinstance(
+            provenance, Mapping) else None
+        return (f"discovery opportunity resource binding {bound_resource!r} "
+                f"for {repository} is not a registered resource")
+    return None
+
+
+def _materialize_discovery_opportunity(
+    database: FoundryDatabase,
+    *,
+    decision_id: str,
+    item: Mapping[str, Any],
+    item_id: str,
+    kind: str,
+    mission_id: str,
+    caller_resource_id: str,
+    capability: str,
+    source_id: str,
+    declared_capabilities: list[str],
+    declared_objective_id: str,
+) -> dict[str, Any]:
+    """Synthesize the executable contract for one discovery opportunity."""
+    blocked = _discovery_scope_block(database, item)
+    if blocked is not None:
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": blocked}
+    provenance = dict(item.get("provenance") or {})
+    opp_kind = str(provenance.get("opportunity_kind") or "")
+    problem = str(provenance.get("problem_statement") or "")
+    repository = str(provenance.get("repository") or "")
+    template = _DISCOVERY_CONTRACT_TEMPLATES[opp_kind]
+    bound_resource = str(item.get("resource_id") or "")
+    # The investigate step writes exactly one record under .jarvis/discovery/
+    # (tolerated exhaust, worker-mission precedent), so its forbidden set is
+    # the template scope minus that artifact home — never unbounded.
+    plan_forbidden = tuple(
+        path for path in template["forbidden"] if path != ".jarvis/")
+    suffix = hashlib.sha256(
+        f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
+    investigation_artifact = (
+        f".jarvis/discovery/investigation-{suffix}.md")
+    common_provenance = {
+        "decision_id": decision_id,
+        "portfolio_item_id": item_id,
+        "portfolio_class": kind,
+        "opportunity_kind": opp_kind,
+        "repository": repository,
+        "problem_statement": problem,
+        "why_now": provenance.get("why_now"),
+        "duplicate_key": provenance.get("duplicate_key"),
+        "bound_resource_id": bound_resource,
+        "caller_resource_id": caller_resource_id,
+    }
+    plan = MissionStepContract(
+        mission_id=mission_id,
+        step_id="discovery-plan",
+        version=1,
+        resource_id=bound_resource,
+        capability=capability,
+        target_relative_path=investigation_artifact,
+        instructions=(
+            f"Discovery opportunity {opp_kind} on {repository}. Problem: "
+            f"{problem}\nINVESTIGATE FIRST — record findings in "
+            f"{investigation_artifact} before choosing any implementation: "
+            f"{template['plan_focus']} State remaining uncertainties "
+            f"explicitly; they determine whether the execute step may "
+            f"proceed or must stop with a scoped follow-up."
+        ),
+        expected_effects=(f"{investigation_artifact} exists",),
+        rollback={"method": "delete_file", "reversible": True},
+        risk_class="C1",
+        verification_criteria=(
+            f"{investigation_artifact} exists",
+            "record states evidence, findings, and uncertainties",
+        ),
+        expected_artifacts=(investigation_artifact,),
+        forbidden_paths=plan_forbidden,
+        required_capabilities=declared_capabilities,
+        recorded_by="supervisor",
+        source="portfolio-discovery",
+        provenance={**common_provenance, "step_role": "investigate"},
+    )
+    execute_target = str(template["target"])
+    if opp_kind == "MAINTENANCE":
+        execute_target = f"{execute_target}decision-{suffix}.md"
+    execute = MissionStepContract(
+        mission_id=mission_id,
+        step_id="discovery-execute",
+        version=1,
+        resource_id=bound_resource,
+        capability=capability,
+        target_relative_path=execute_target,
+        instructions=(
+            f"Discovery opportunity {opp_kind} on {repository}. Problem: "
+            f"{problem}\nRead {investigation_artifact} first and follow its "
+            f"conclusion: {template['execute_focus']} Do not commit or push; "
+            f"capabilities for remote effects are not granted to this step. "
+            f"Leave a complete outcome record with commands, exit codes, "
+            f"and content hashes so the next Executive decision can own the "
+            f"result."
+        ),
+        expected_effects=tuple(template["acceptance"][:1]),
+        rollback=dict(template["rollback"]),
+        risk_class=str(template["risk_class"]),
+        verification_criteria=tuple(template["acceptance"]),
+        expected_artifacts=tuple(template["artifacts"]) + (
+            investigation_artifact,),
+        forbidden_paths=tuple(template["forbidden"]),
+        required_capabilities=declared_capabilities,
+        recorded_by="supervisor",
+        source="portfolio-discovery",
+        provenance={**common_provenance, "step_role": "implement"},
+    )
+    _bind_resolution_capabilities(
+        database, bound_resource, declared_capabilities,
+        source_id=source_id, objective_id=declared_objective_id,
+    )
+    # The item is now owned by this mission: stamp consumption BEFORE any
+    # contract exists, through the EXISTING item lifecycle, so reselection
+    # can never materialize the same opportunity twice. The stamps are
+    # strict — a stamp failure blocks (the item stays OPEN and retryable)
+    # instead of dispatching an unstamped duplicate risk. No automatic
+    # reopen exists: the mission_id linkage below is what an explicit
+    # recovery decision uses to reopen via set_work_status.
+    from ..evolution.executive_portfolio import (
+        set_work_status,
+        update_work_item,
+    )
+    try:
+        update_work_item(database, item_id, {"mission_id": mission_id},
+                         source_id=source_id)
+        set_work_status(database, item_id, "CONSUMED",
+                        reason=f"materialized:{mission_id}",
+                        source_id=source_id)
+    except Exception as error:  # noqa: BLE001 — stay OPEN and retryable
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": (
+                    f"discovery consumption stamp failed for {item_id}: "
+                    f"{error}"[:200])}
+    try:
+        record_step_contract(database, plan)
+        record_step_contract(database, execute)
+    except Exception as error:  # noqa: BLE001 — reopen, never strand
+        # The mission shell exists but holds no contract. Reopen the item
+        # so a NEW decision can retry cleanly; a stuck CONSUMED with a
+        # contract-less mission would be unrecoverable by selection.
+        try:
+            set_work_status(database, item_id, "OPEN",
+                            reason=f"contracts failed for {mission_id}: "
+                            f"{error}"[:160],
+                            source_id=source_id)
+        except Exception:  # noqa: BLE001 — best effort after failure
+            pass
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": (
+                    f"discovery contract recording failed for {item_id}: "
+                    f"{error}"[:200])}
+    database.append(Event.create(
+        "portfolio.selection_materialized",
+        {
+            "decision_id": decision_id,
+            "item_id": item_id,
+            "kind": kind,
+            "mission_id": mission_id,
+            "contract_ids": [plan.contract_id, execute.contract_id],
+            "opportunity_kind": opp_kind,
+            "repository": repository,
+            "bound_resource_id": bound_resource,
+            "caller_resource_id": caller_resource_id,
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+    ))
+    return {"materialized": True, "mission_id": mission_id,
+            "blocked_reason": None}
+
+
 def materialize_portfolio_selection(
     database: FoundryDatabase,
     *,
@@ -586,6 +893,21 @@ def materialize_portfolio_selection(
     if blocked:
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": blocked}
+
+    # Discovery refusals happen BEFORE any mission row exists: a blocked
+    # opportunity must not leave a dangling PLANNED shell behind.
+    if kind in ("MAINTENANCE", "REPAIR") and _is_discovery_opportunity(item):
+        scope_block = _discovery_scope_block(database, item)
+        if scope_block is not None:
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": scope_block}
+        # The mission, its contracts, and its correlation bind the
+        # opportunity's EXACT registered resource — never the caller's.
+        # Contract validation rejects resource mismatch, so a multi-repo
+        # estate would otherwise crash after creating a dangling shell.
+        # The original caller is preserved for provenance below.
+        caller_resource_before_override = resource_id
+        resource_id = str(item.get("resource_id") or "")
 
     if kind == "IMPROVEMENT":
         metadata = dict(item.get("metadata") or {})
@@ -659,7 +981,12 @@ def materialize_portfolio_selection(
             "blocked_reason": result.get("blocked_reason"),
         }
 
-    if kind in ("ACTIVE_MISSION", "REPAIR"):
+    # Discovery-fed lane items synthesize FRESH missions below; they must
+    # never enter the existing-mission repair track (they carry no
+    # mission_id by construction — feed registers opportunities, not
+    # repairs — so the repair branch would refuse them as unrepairable).
+    if kind in ("ACTIVE_MISSION", "REPAIR") \
+            and not _is_discovery_opportunity(item):
         mission_id = str(item.get("mission_id") or "")
         if not mission_id:
             return {"materialized": False, "mission_id": None,
@@ -859,8 +1186,11 @@ def materialize_portfolio_selection(
         ))
         return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
 
+    lane_fresh_mission = (
+        kind == "REPAIR" and _is_discovery_opportunity(item))
     if kind not in ("MAINTENANCE", "RESEARCH", "UNKNOWN", "IMPROVEMENT",
-                    "INCIDENT", "NEW_MISSION", "OWNER_GOAL"):
+                    "INCIDENT", "NEW_MISSION", "OWNER_GOAL") \
+            and not lane_fresh_mission:
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": f"unsupported portfolio class {kind!r}"}
 
@@ -1250,6 +1580,23 @@ def materialize_portfolio_selection(
         ))
         return {"materialized": True, "mission_id": mission_id,
                 "blocked_reason": None}
+
+    # Autonomous discovery opportunities carry an exact resource binding and a
+    # typed problem statement. They materialize as REAL investigate-then-fix
+    # missions under the canonical MissionLoop — never as report stubs.
+    # Kinds without a synthesis template fail closed with an exact reason.
+    if kind in ("MAINTENANCE", "REPAIR") and _is_discovery_opportunity(item):
+        # NOTE: the item below was already chosen by value/readiness/risk
+        # scoring; this branch only synthesizes HOW it executes.
+        return _materialize_discovery_opportunity(
+            database, decision_id=decision_id, item=item, item_id=item_id,
+            kind=kind, mission_id=mission_id,
+            caller_resource_id=caller_resource_before_override,
+            capability=capability,
+            source_id=source_id,
+            declared_capabilities=declared_capabilities,
+            declared_objective_id=declared_objective_id,
+        )
 
     # Unique artifact per decision: a shared name plus deterministic
     # content would collapse every mission's evidence delta to empty

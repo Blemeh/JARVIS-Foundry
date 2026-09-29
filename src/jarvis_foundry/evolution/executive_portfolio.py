@@ -689,7 +689,8 @@ def update_work_item(
     _require(item_id in rebuild_portfolio_state(database).work_items,
              f"unknown portfolio item: {item_id}")
     allowed = {
-        "objective", "goal_ids", "project_id", "resource_id", "expected_value",
+        "objective", "goal_ids", "project_id", "resource_id", "mission_id",
+        "expected_value",
         "urgency", "information_gain", "confidence", "effort", "cost_usd",
         "risk", "reversibility", "opportunity_cost", "dependencies", "due_at",
         "expires_at", "owner_only", "requires_workers", "requires_verifier",
