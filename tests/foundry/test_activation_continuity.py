@@ -275,3 +275,51 @@ def test_supervisor_exec_matched_via_arguments_identity(
     previous = existing_task_arguments("JARVIS-Foundry-Supervisor")
     assert previous is not None and "--helper-flag" not in previous
     assert "--command-center-port 8767" in previous
+
+
+# 17. Retrying activation of the CURRENT release succeeds without
+#     touching pointers (no false previous_runtime mismatch).
+def test_retry_current_release_is_idempotent(tmp_path) -> None:
+    import json
+
+    from jarvis_foundry.deployment.release import set_current
+
+    root = tmp_path / "JARVIS"
+    for sha in ("a" * 40, "b" * 40):
+        directory = root / "releases" / sha
+        python_dir = directory / ".venv" / "Scripts"
+        python_dir.mkdir(parents=True)
+        (python_dir / "python.exe").write_text("fake", encoding="utf-8")
+        (directory / "RELEASE.json").write_text(json.dumps({
+            "release_id": f"rel-{sha[:8]}",
+            "source_sha": sha,
+            "git_commit": sha,
+            "git_tree": "1" * 40,
+            "python_version": "3.13.0",
+            "package_version": "0.1.0",
+            "schema_compatibility": {
+                "package_schema": 41, "opens_min": 41, "opens_max": 41},
+            "provenance": {"builder": "tests",
+                           "source_repo": str(tmp_path / "source"),
+                           "git_commit": sha, "git_tree": "1" * 40},
+            "previous_runtime": None,
+            "created_at": "2026-08-19T00:00:00Z",
+        }), encoding="utf-8")
+    (root / "CURRENT").write_text("a" * 40, encoding="utf-8")
+    (root / "PREVIOUS").write_text("b" * 40, encoding="utf-8")
+    # Point b at a as its built predecessor, then activate normally.
+    manifest = json.loads(
+        (root / "releases" / ("b" * 40) / "RELEASE.json").read_text(
+            encoding="utf-8"))
+    manifest["previous_runtime"] = {
+        "source_sha": "a" * 40, "release_id": "rel-aaaaaaaa",
+        "git_commit": "a" * 40, "git_tree": "1" * 40, "schema": 41}
+    (root / "releases" / ("b" * 40) / "RELEASE.json").write_text(
+        json.dumps(manifest), encoding="utf-8")
+    pointed = set_current("b" * 40, root=root)
+    assert pointed == {"current": "b" * 40, "previous": "a" * 40}
+    # Retry of the now-CURRENT release is a safe no-op.
+    retry = set_current("b" * 40, root=root)
+    assert retry == {"current": "b" * 40, "previous": "a" * 40}
+    assert (root / "CURRENT").read_text(encoding="utf-8").strip() == "b" * 40
+    assert (root / "PREVIOUS").read_text(encoding="utf-8").strip() == "a" * 40

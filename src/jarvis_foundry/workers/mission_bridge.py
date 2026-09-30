@@ -873,3 +873,131 @@ class HybridWorkerRoleAdapter:
             cost_usd=durable_cost,
             started_at=started, finished_at=isoformat(utc_now()),
         )
+
+
+WORKER_AVAILABILITY_RESUMED_EVENT = "mission.worker_availability_resumed"
+
+
+def worker_blocked_mission_ids(database: FoundryDatabase) -> tuple[str, ...]:
+    """BLOCKED missions whose worker block is still current.
+
+    A mission qualifies only when its latest worker route decision
+    selected no worker (no eligible worker at dispatch time). Missions
+    blocked for any other reason are never listed, so worker recovery
+    cannot reopen unrelated blocks.
+    """
+    with database.connect() as connection:
+        blocked = connection.execute(
+            "SELECT mission_id FROM missions WHERE state = 'BLOCKED'"
+        ).fetchall()
+    return tuple(
+        str(row["mission_id"])
+        for row in blocked
+        if _latest_empty_route_decision(
+            database, str(row["mission_id"])) is not None)
+
+
+def resume_worker_blocked_missions(
+    database: FoundryDatabase,
+    *,
+    eligible_frameworks: dict[str, bool],
+    source_id: str,
+) -> tuple[str, ...]:
+    """Reopen worker-blocked missions whose blocker is now gone.
+
+    A mission BLOCKED on an empty worker route decision (no eligible
+    worker at dispatch time) becomes dispatchable again once the shared
+    eligibility authority reports an eligible framework. The resume is a
+    new delivery epoch with full lineage (blocked decision -> current
+    eligibility), exactly once per blocking decision: BLOCKED ->
+    ACTION_SELECTION, preserving next_action and contracts. Missions
+    blocked for any other reason are untouched; with no eligible
+    framework the function is a silent no-op (truthful WAIT preserved).
+    """
+    eligible = sorted(
+        framework for framework, ok in (eligible_frameworks or {}).items()
+        if ok)
+    if not eligible:
+        return ()
+    resumed: list[str] = []
+    with database.connect() as connection:
+        blocked = connection.execute(
+            "SELECT mission_id FROM missions WHERE state = 'BLOCKED'"
+        ).fetchall()
+    for row in blocked:
+        mission_id = str(row["mission_id"])
+        decision = _latest_empty_route_decision(database, mission_id)
+        if decision is None:
+            continue
+        run_id = str(decision.get("run_id") or "")
+        resume_key = (
+            f"{WORKER_AVAILABILITY_RESUMED_EVENT}:{mission_id}:{run_id}")
+        if _idempotency_seen(database, resume_key):
+            continue
+        mission = database.row("missions", "mission_id", mission_id)
+        next_action = (mission or {}).get("next_action")
+        database.append(Event.create(
+            WORKER_AVAILABILITY_RESUMED_EVENT,
+            {"mission_id": mission_id,
+             "blocked_run_id": run_id,
+             "blocked_reason": str(decision.get("reason") or ""),
+             "eligible_frameworks": eligible,
+             "next_action": next_action},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=resume_key,
+        ))
+        database.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": mission_id, "state": "ACTION_SELECTION",
+             "run_id": f"worker-recovery-{mission_id}-{run_id}",
+             "next_action": next_action,
+             "reason": "worker availability recovered; "
+                       "re-entering action selection"},
+            source_type="supervisor", source_id=source_id,
+            idempotency_key=(
+                f"mission.state_changed:{mission_id}:ACTION_SELECTION:"
+                f"worker-recovery:{run_id}"),
+        ))
+        resumed.append(mission_id)
+    return tuple(resumed)
+
+
+def _latest_empty_route_decision(
+    database: FoundryDatabase, mission_id: str,
+) -> dict[str, Any] | None:
+    """Latest worker.route_decided with no selected worker, if still current.
+
+    Returns None when the mission has any later non-empty route decision
+    (a subsequent dispatch attempt already superseded the block).
+    """
+    with database.connect() as connection:
+        rows = connection.execute(
+            "SELECT payload_json FROM events "
+            "WHERE event_type = 'worker.route_decided' "
+            "ORDER BY rowid DESC"
+        ).fetchall()
+    import json as _json
+
+    for row in rows:
+        try:
+            payload = _json.loads(row["payload_json"] or "{}")
+        except (TypeError, ValueError):
+            continue
+        if str(payload.get("mission_id") or "") != mission_id:
+            continue
+        # The latest decision for this mission rules: an empty selection
+        # means the worker block is still current; a later non-empty one
+        # means a subsequent dispatch already superseded it.
+        if str(payload.get("selected_worker") or "") != "":
+            return None
+        return dict(payload)
+    return None
+
+
+def _idempotency_seen(database: FoundryDatabase, key: str) -> bool:
+    with database.connect() as connection:
+        row = connection.execute(
+            "SELECT 1 FROM events WHERE idempotency_key = ? LIMIT 1",
+            (key,),
+        ).fetchone()
+    return row is not None

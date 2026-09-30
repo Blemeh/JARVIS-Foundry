@@ -1088,7 +1088,12 @@ def set_current(
     previous = read_current(root)
     rollback_runtime_retirement = _rollback_runtime_retirement_plan(
         root, target_source_sha=source_sha)
-    if previous == source_sha and database is None:
+    if previous == source_sha:
+        # Idempotent retry: this release is already the live authority.
+        # Return success without touching pointers so a repeated
+        # activation (e.g. after an operator rerun, or task retarget
+        # healing) never fails with a false previous_runtime mismatch.
+        # The caller still reconciles the scheduled task afterwards.
         _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
         return {"current": source_sha, "previous": read_previous(root)}
     candidate_previous = candidate["manifest"].get("previous_runtime")

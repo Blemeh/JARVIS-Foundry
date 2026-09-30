@@ -385,6 +385,45 @@ def _prepare_hermes_home(
         temporary.replace(config_path)
 
 
+def worker_framework_eligibility(config: Any) -> dict[str, bool]:
+    """Evidence-driven worker eligibility shared by stack and recovery.
+
+    A framework is eligible only when its adapter is enabled in runtime
+    config AND positive recorded evidence marks it READY (the lab harness
+    aside, which marks its scripted adapter READY by construction).
+    Anything else is NOT_READY so the router default baseline can never
+    leak into the live path. Single authority for mission dispatch
+    (build_worker_stack below) and worker-availability recovery.
+    """
+    from ..workers.contracts import VALID_WORKERS
+
+    lab = bool(getattr(config, "lab_scripted_hermes", False))
+    if lab:
+        enabled = ["hermes"]
+    else:
+        enabled = []
+        hermes = getattr(config, "hermes", None) or {}
+        openhands = getattr(config, "openhands", None) or {}
+        if hermes.get("enabled", False):
+            enabled.append("hermes")
+        if openhands.get("enabled", False):
+            enabled.append("openhands")
+    readiness = getattr(config, "readiness", None) or {}
+    result: dict[str, bool] = {}
+    for framework in VALID_WORKERS:
+        if framework not in enabled:
+            result[framework] = False
+            continue
+        if lab and framework == "hermes":
+            result[framework] = True
+            continue
+        spec = dict(readiness.get(framework) or {})
+        result[framework] = (
+            str(spec.get("state") or NOT_READY) == READY
+            and bool(spec.get("evidence")))
+    return result
+
+
 def build_worker_stack(
     database: FoundryDatabase,
     paths: FoundryPaths,
@@ -496,12 +535,17 @@ def build_worker_stack(
 
     # Readiness is evidence-driven: only frameworks with positive recorded
     # containment evidence become READY; everything else stays NOT_READY.
+    # The decision is worker_framework_eligibility above (single authority
+    # shared with worker-availability recovery); only audit notes differ.
+    eligibility = worker_framework_eligibility(config)
+    readiness_specs = {
+        framework: dict(config.readiness.get(framework) or {})
+        for framework in enabled}
     for framework in enabled:
         if config.lab_scripted_hermes and framework == "hermes":
             continue
-        spec = dict(config.readiness.get(framework) or {})
-        state = str(spec.get("state") or NOT_READY)
-        if state != READY or not spec.get("evidence"):
+        spec = readiness_specs.get(framework, {})
+        if not eligibility.get(framework, False):
             router.mark_ready(
                 framework, state=NOT_READY,
                 note="no positive containment evidence in runtime config",

@@ -1785,6 +1785,29 @@ def run_cycle(
             preferred_mission_ids = campaign_dispatchable_mission_ids
             if initiative_mission_id is not None:
                 preferred_mission_ids += (initiative_mission_id,)
+            # Worker-availability recovery: a mission BLOCKED on an empty
+            # worker route decision re-enters action selection once the
+            # shared eligibility authority reports an eligible framework.
+            # Exactly once per blocking decision, with full lineage; a
+            # no-op while workers stay unavailable (truthful WAIT).
+            try:
+                from ._stack import worker_framework_eligibility
+                from ..workers.mission_bridge import (
+                    resume_worker_blocked_missions,
+                )
+                resume_worker_blocked_missions(
+                    database,
+                    eligible_frameworks=worker_framework_eligibility(config),
+                    source_id=f"worker-loop:{instance_id}",
+                )
+            except Exception as error:  # noqa: BLE001 - recovery never wedges selection
+                database.append(Event.create(
+                    "worker_loop.recovery_failed",
+                    {"loop_id": loop_id, "instance_id": instance_id,
+                     "reason": f"worker-availability recovery: {type(error).__name__}"[:300]},
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=f"worker_loop.recovery_failed:{loop_id}:worker-availability",
+                ))
             mission_id = _select_contract(
                 database,
                 excluded_mission_ids=campaign_blocked_mission_ids,
