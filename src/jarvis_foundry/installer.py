@@ -13,9 +13,11 @@ from __future__ import annotations
 import getpass
 import json
 import os
+import shlex
 import subprocess
 import sys
 import uuid
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -152,6 +154,110 @@ def _current_user_id() -> str:
 
 class InstallerError(RuntimeError):
     pass
+
+
+def _local_name(tag: str) -> str:
+    """Strip an XML namespace prefix from a tag name."""
+    return tag.rsplit("}", 1)[-1].rsplit(":", 1)[-1]
+
+
+def existing_task_arguments(task_name: str) -> str | None:
+    """Return the Supervisor action's arguments of an installed task.
+
+    Used by release activation to preserve durable execution coordinates
+    (worker-loop spawn, worker config, command-center port) across
+    promotions. Selects the ``<Exec>`` whose ``<Command>`` enters through
+    the supervisor launcher; falls back to the first ``<Exec>`` with an
+    ``<Arguments>`` node. Returns None when the task does not exist or its
+    arguments cannot be determined — callers must fail closed to
+    explicit flags/defaults, never guess.
+    """
+    result = _run_schtasks("/query", "/tn", task_name, "/xml")
+    if result.returncode != 0:
+        return None
+    try:
+        root = ET.fromstring(result.stdout)
+    except ET.ParseError:
+        return None
+    fallback: str | None = None
+    for exec_node in root.iter():
+        if _local_name(exec_node.tag) != "Exec":
+            continue
+        command_text: str = ""
+        arguments_text: str | None = None
+        for child in exec_node:
+            name = _local_name(child.tag)
+            if name == "Command":
+                command_text = child.text or ""
+            elif name == "Arguments" and arguments_text is None:
+                arguments_text = child.text or ""
+        if not (arguments_text or "").strip():
+            continue
+        if fallback is None:
+            fallback = arguments_text.strip()
+        # The installer puts wscript.exe in <Command> with the launcher
+        # identity in <Arguments>, so match against both: a hand-modified
+        # multi-Exec task must not inherit a helper action's coordinates.
+        haystack = f"{command_text} {arguments_text}".lower()
+        if "jarvis-supervisor-headless" in haystack \
+                or "headless_launcher" in haystack:
+            return arguments_text.strip()
+    return fallback
+
+
+def _split_task_tokens(previous: str) -> tuple[str, ...]:
+    """Split task arguments fail-closed: unparseable input -> no tokens."""
+    try:
+        return tuple(shlex.split(previous))
+    except ValueError:
+        return ()
+
+
+def inherit_task_arguments(
+    current_arguments: str | None,
+    *,
+    spawn_worker_loop: bool | None,
+    worker_config: str | None,
+    command_center_port: int | None,
+) -> tuple[bool, str | None, int | None]:
+    """Resolve activation worker-loop coordinates with inheritance.
+
+    Explicit caller values always win. When a value is None (flag absent),
+    the existing installed task's arguments are preserved so a plain
+    ``release activate --sha ...`` cannot silently convert an autonomous
+    engine into heartbeat-only. No existing task -> fail-closed defaults
+    (no spawn, no config override, no port override).
+
+    All three coordinates are read from shell-like tokens (never raw
+    substring search), so ``--no-spawn-worker-loop`` or flag-like text
+    inside quoted paths cannot be misread.
+    """
+    tokens = _split_task_tokens(current_arguments or "")
+    spawn = spawn_worker_loop
+    if spawn is None:
+        spawn = "--spawn-worker-loop" in tokens
+    config = worker_config
+    port = command_center_port
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        name, equals, inline = token.partition("=")
+        value: str | None = inline if equals else None
+        if value is None and index + 1 < len(tokens):
+            value = tokens[index + 1]
+        if config is None and name == "--worker-loop-config" \
+                and value is not None:
+            config = value
+            index += 0 if equals else 1
+        elif port is None and name == "--command-center-port" \
+                and value is not None:
+            try:
+                port = int(value)
+            except ValueError:
+                port = None
+            index += 0 if equals else 1
+        index += 1
+    return spawn, config, port
 
 
 def _run_schtasks(*args: str) -> subprocess.CompletedProcess[str]:

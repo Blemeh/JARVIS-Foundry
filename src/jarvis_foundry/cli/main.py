@@ -85,10 +85,21 @@ def _parser() -> argparse.ArgumentParser:
     rel_activate.add_argument("--sha", required=True)
     rel_activate.add_argument("--install-root", type=Path, default=None)
     rel_activate.add_argument("--worker-config", type=Path, default=None)
-    rel_activate.add_argument("--spawn-worker-loop", action="store_true")
     rel_activate.add_argument(
-        "--command-center-port", type=int, default=8767,
-        help="localhost Command Center port for the production Supervisor (default: 8767)",
+        "--spawn-worker-loop", dest="spawn_worker_loop", action="store_true",
+        default=None,
+        help="enable Supervisor-spawned worker execution (absent: preserve "
+             "the installed task's existing setting)",
+    )
+    rel_activate.add_argument(
+        "--no-spawn-worker-loop", dest="spawn_worker_loop",
+        action="store_false",
+        help="explicitly disable Supervisor-spawned worker execution",
+    )
+    rel_activate.add_argument(
+        "--command-center-port", type=int, default=None,
+        help="localhost Command Center port for the production Supervisor "
+             "(default: 8767; absent: preserve the installed task's setting)",
     )
     rollback = release_sub.add_parser("rollback")
     rollback.add_argument("--install-root", type=Path, default=None)
@@ -641,23 +652,44 @@ def _release_command(args, paths: FoundryPaths) -> int:
         return 0
     if args.release_command == "activate":
         os.environ.setdefault("JARVIS_INSTALL_ROOT", str(resolve_install_root(root)))
+        from ..deployment.layout import headless_task_command
+        from ..deployment.release import validate_release
+        from ..installer import (
+            existing_task_arguments,
+            inherit_task_arguments,
+        )
+        # Activation continuity: resolve durable execution coordinates
+        # BEFORE swapping release pointers, so an inheritance-parse failure
+        # aborts with CURRENT/PREVIOUS untouched (release-package validation
+        # still happens after the swap, as before — this ordering only
+        # protects the new inheritance step). Absent flags inherit the
+        # task's settings; a plain `release activate --sha ...` must never
+        # silently convert an autonomous engine into heartbeat-only.
+        previous_arguments = existing_task_arguments(V1_TASK_NAME)
+        requested_config = getattr(args, "worker_config", None)
+        spawn, inherited_config, command_center_port = inherit_task_arguments(
+            previous_arguments,
+            spawn_worker_loop=getattr(args, "spawn_worker_loop", None),
+            worker_config=(str(Path(requested_config).resolve())
+                           if requested_config else None),
+            command_center_port=getattr(args, "command_center_port", None),
+        )
+        worker_config = str(Path(inherited_config).resolve()) \
+            if inherited_config else ""
+        if command_center_port is None:
+            command_center_port = 8767
         pointers = set_current(
             args.sha, root=root,
             database=FoundryDatabase(paths.database),
             reason="CLI release activation",
         )
-        from ..deployment.layout import headless_task_command
-        from ..deployment.release import validate_release
         identity = validate_release(args.sha, root=root, require_schema_match=False)
         task_command, task_prefix = headless_task_command(root)
-        spawn = bool(getattr(args, "spawn_worker_loop", False))
-        worker_config = getattr(args, "worker_config", None)
-        command_center_port = getattr(args, "command_center_port", None)
         extra = ""
         if spawn:
             extra += " --spawn-worker-loop"
         if worker_config:
-            extra += f' --worker-loop-config "{Path(worker_config).resolve()}"'
+            extra += f' --worker-loop-config "{worker_config}"'
         if command_center_port is not None:
             extra += f" --command-center-port {int(command_center_port)}"
         installer = Installer(
@@ -671,7 +703,7 @@ def _release_command(args, paths: FoundryPaths) -> int:
             profile={
                 "start_record": str(paths.database),
                 "spawn_worker_loop": "true" if spawn else "false",
-                "worker_config_path": str(Path(worker_config).resolve()) if worker_config else "",
+                "worker_config_path": worker_config,
                 "command_center_port": (
                     int(command_center_port) if command_center_port is not None else ""
                 ),
