@@ -186,3 +186,62 @@ def test_standalone_task_refused_while_supervisor_owns(tmp_path: Path) -> None:
         database, foundry_home=tmp_path, hermes_home=tmp_path)
     with pytest.raises(InstallerError):
         installer.set_enabled(True)
+
+
+# 9. Trigger vocabulary: mission/portfolio/initiative/discovery re-arm,
+#    churn types do not.
+def test_trigger_vocabulary(tmp_path: Path) -> None:
+    supervisor, calls = _supervisor(tmp_path, _config(tmp_path))
+    supervisor._maybe_spawn_worker_loop()
+    assert len(calls) == 1
+    baseline = supervisor._last_worker_spawn_seq
+    assert baseline is not None
+    # Churn-only events must not re-arm.
+    supervisor.database.append(Event.create(
+        "worker_loop.cycle_started",
+        {"loop_id": "x"},
+        source_type="test", source_id="spawn-test",
+        idempotency_key="spawn-test:churn-1",
+    ))
+    assert supervisor._worker_spawn_triggered_since(baseline) is False
+    # Actionable events re-arm.
+    triggers = [
+        ("mission.created",
+         {"mission_id": "mission-t", "objective": "o",
+          "resource_id": "resource-1", "state": "PLANNED",
+          "acceptance_criteria": ["x"]}),
+        ("portfolio.discovery_completed",
+         {"objective_id": "obj-t", "repository": "r", "opportunities": []}),
+        ("owner_directive.recorded",
+         {"directive_id": "dir-t", "command_type": "GOAL",
+          "exact_text": "improve projects"}),
+        ("discovery.candidate_approved", {"candidate_id": "k-t"}),
+    ]
+    for event_type, payload in triggers:
+        supervisor.database.append(Event.create(
+            event_type, payload,
+            source_type="test", source_id="spawn-test",
+            idempotency_key=f"spawn-test:{event_type}",
+        ))
+        assert supervisor._worker_spawn_triggered_since(baseline) is True, \
+            event_type
+        baseline = supervisor.database.connect().__enter__().execute(
+            "SELECT MAX(sequence) FROM events").fetchone()[0]
+
+
+# 10. Post-spawn events are not absorbed into the baseline.
+def test_baseline_predates_spawn(tmp_path: Path) -> None:
+    supervisor, calls = _supervisor(tmp_path, _config(tmp_path))
+    supervisor._maybe_spawn_worker_loop()
+    baseline = supervisor._last_worker_spawn_seq
+    assert baseline is not None
+    supervisor.database.append(Event.create(
+        "mission.created",
+        {"mission_id": "mission-late", "objective": "o",
+         "resource_id": "resource-1", "state": "PLANNED",
+         "acceptance_criteria": ["x"]},
+        source_type="test", source_id="spawn-test",
+        idempotency_key="spawn-test:mission-late",
+    ))
+    # The late event postdates the pre-spawn baseline: next gate re-arms.
+    assert supervisor._worker_spawn_triggered_since(baseline) is True

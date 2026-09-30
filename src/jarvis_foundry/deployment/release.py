@@ -1094,6 +1094,16 @@ def set_current(
         # activation (e.g. after an operator rerun, or task retarget
         # healing) never fails with a false previous_runtime mismatch.
         # The caller still reconciles the scheduled task afterwards.
+        # When a database is supplied, verify its live slot agrees and
+        # heal it if it diverged (DB restore/recreation can split file
+        # pointers from DB authority); never bless a split authority.
+        if database is not None:
+            active = _database_active_release(database)
+            if active.get("source_sha") != source_sha:
+                record_active_release(
+                    source_sha, root=root, database=database,
+                    reason=reason,
+                )
         _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
         return {"current": source_sha, "previous": read_previous(root)}
     candidate_previous = candidate["manifest"].get("previous_runtime")

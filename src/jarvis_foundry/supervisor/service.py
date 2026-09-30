@@ -51,14 +51,23 @@ WORKER_SPAWN_IDLE_COOLDOWN_SECONDS = 300.0
 
 #: Ledger event vocabulary that may make worker execution newly worthwhile.
 #: Anything else (heartbeats, cycle starts, idle episodes, trust reports)
-#: never justifies a spawn by itself.
+#: never justifies a spawn by itself. Recovery resumes are covered by the
+#: mission.% prefix; pure file-config flips emit no event and rely on the
+#: cooldown backstop (bounded stall, no deadlock).
 WORKER_SPAWN_TRIGGER_PREFIXES = (
     "mission.",
     "portfolio.",
     "campaign.",
     "owner_directive.",
+    "owner.command_recorded",
     "command_center.",
+    "scheduler.item_fired",
+    "delegation.intent_admitted",
+    "initiative.",
+    "discovery.",
     "executive.mission_requested",
+    "executive.decision_materialized",
+    "executive.next_selection_requested",
     "executive.objective_created",
     "executive.objective_updated",
     "executive.objective_status_changed",
@@ -815,29 +824,23 @@ class Supervisor:
 
     def _worker_spawn_triggered_since(self, sequence: int) -> bool:
         """Whether actionable ledger events postdate a spawn sequence."""
-        likes = [prefix for prefix in WORKER_SPAWN_TRIGGER_PREFIXES
-                 if prefix.endswith(".")]
-        equals = [prefix for prefix in WORKER_SPAWN_TRIGGER_PREFIXES
-                  if not prefix.endswith(".")]
-        clauses = ([f"event_type LIKE ?" for _ in likes]
-                   + [f"event_type = ?" for _ in equals])
-        params = [prefix + "%" for prefix in likes] + equals
-        with self.database.connect(readonly=True) as connection:
-            row = connection.execute(
-                f"SELECT MAX(sequence) FROM events WHERE sequence > ? "
-                f"AND ({' OR '.join(clauses)})",
-                (sequence, *params),
-            ).fetchone()
-        return row is not None and row[0] is not None
-
-    def _worker_recovery_candidates(self) -> tuple[str, ...]:
-        """BLOCKED missions whose worker block is still current."""
-        from ..workers.mission_bridge import worker_blocked_mission_ids
-
         try:
-            return worker_blocked_mission_ids(self.database)
-        except Exception:  # noqa: BLE001 - recovery hint never wedges spawn
-            return ()
+            likes = [prefix for prefix in WORKER_SPAWN_TRIGGER_PREFIXES
+                     if prefix.endswith(".")]
+            equals = [prefix for prefix in WORKER_SPAWN_TRIGGER_PREFIXES
+                      if not prefix.endswith(".")]
+            clauses = ([f"event_type LIKE ?" for _ in likes]
+                       + [f"event_type = ?" for _ in equals])
+            params = [prefix + "%" for prefix in likes] + equals
+            with self.database.connect(readonly=True) as connection:
+                row = connection.execute(
+                    f"SELECT MAX(sequence) FROM events WHERE sequence > ? "
+                    f"AND ({' OR '.join(clauses)})",
+                    (sequence, *params),
+                ).fetchone()
+        except Exception:  # noqa: BLE001 - gate fails closed, backstop covers
+            return False
+        return row is not None and row[0] is not None
 
     def _maybe_spawn_worker_loop(self) -> None:
         """Optional fail-closed companion: spawn ``worker_loop --once``.
@@ -851,10 +854,11 @@ class Supervisor:
         Idle backoff: heartbeats run every ~12s while an idle --once child
         exits in ~1-2s, so an unconditional spawn churns ~5 processes/min
         with zero work. A spawn is skipped only when all hold: a previous
-        spawn exists, the cooldown has not elapsed, no actionable ledger
-        change postdates it, and no resume-candidate mission awaits.
-        Anything actionable — or cooldown expiry as the liveness backstop —
-        spawns immediately.
+        spawn exists, the cooldown has not elapsed, and no actionable
+        ledger change postdates the pre-spawn baseline. Anything
+        actionable — or cooldown expiry as the liveness backstop —
+        spawns immediately. Recovery resumes emit mission.* events, so a
+        resumed mission re-arms the spawn on the next heartbeat.
         """
         if not self.spawn_worker_loop:
             return
@@ -876,22 +880,21 @@ class Supervisor:
         if status.alive:
             return
         # Idle backoff gate: spawn immediately on first boot (no spawn
-        # memory), on cooldown expiry (liveness backstop), on any
-        # actionable ledger change, or when a worker-blocked mission
-        # awaits recovery. Otherwise the previous idle tick already proved
-        # there is nothing to do; skip and let heartbeats carry on.
-        from ..runtime._stack import worker_framework_eligibility
-
-        eligible = worker_framework_eligibility(config)
+        # memory), on cooldown expiry (liveness backstop), or on any
+        # actionable ledger change. Otherwise the previous idle tick
+        # already proved there is nothing to do; skip and let heartbeats
+        # carry on. Recovery resumes emit mission.* events, so a resumed
+        # mission re-arms the spawn on the next heartbeat; an instantly
+        # crashing child therefore costs one spawn per cooldown, not one
+        # per heartbeat.
         now = time.monotonic()
-        if self._last_worker_spawn_at is not None and self._last_worker_spawn_seq is not None:
-            if any(eligible.values()) and self._worker_recovery_candidates():
-                pass
-            elif (now - self._last_worker_spawn_at
-                    < WORKER_SPAWN_IDLE_COOLDOWN_SECONDS
-                    and not self._worker_spawn_triggered_since(
-                        self._last_worker_spawn_seq)):
-                return
+        if (self._last_worker_spawn_at is not None
+                and self._last_worker_spawn_seq is not None
+                and now - self._last_worker_spawn_at
+                < WORKER_SPAWN_IDLE_COOLDOWN_SECONDS
+                and not self._worker_spawn_triggered_since(
+                    self._last_worker_spawn_seq)):
+            return
         home = Path(self.database.path).resolve().parent
         from ..platform.windows_subprocess import background_python_executable
         command = [
@@ -900,6 +903,16 @@ class Supervisor:
         ]
         if self.worker_loop_config is not None:
             command.extend(["--config", str(self.worker_loop_config)])
+        # Baseline BEFORE spawning (fail-open): concurrent actionable
+        # events admitted here re-arm the next spawn rather than being
+        # absorbed into the new baseline and lost.
+        try:
+            with self.database.connect(readonly=True) as connection:
+                row = connection.execute(
+                    "SELECT MAX(sequence) FROM events").fetchone()
+            spawn_baseline = int(row[0]) if row and row[0] is not None else 0
+        except Exception:  # noqa: BLE001 - baseline failure never blocks work
+            spawn_baseline = 0
         try:
             self.workers.spawn(
                 WORKER_LOOP_RUN_ID, command, cwd=home,
@@ -911,10 +924,7 @@ class Supervisor:
                 phase="launch", error=error)
             return
         self._last_worker_spawn_at = time.monotonic()
-        with self.database.connect(readonly=True) as connection:
-            row = connection.execute(
-                "SELECT MAX(sequence) FROM events").fetchone()
-        self._last_worker_spawn_seq = int(row[0]) if row and row[0] is not None else 0
+        self._last_worker_spawn_seq = spawn_baseline
 
     def _record_worker_loop_activation_blocked(
         self, *, phase: str, error: BaseException,

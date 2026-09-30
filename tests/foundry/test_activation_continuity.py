@@ -323,3 +323,52 @@ def test_retry_current_release_is_idempotent(tmp_path) -> None:
     assert retry == {"current": "b" * 40, "previous": "a" * 40}
     assert (root / "CURRENT").read_text(encoding="utf-8").strip() == "b" * 40
     assert (root / "PREVIOUS").read_text(encoding="utf-8").strip() == "a" * 40
+
+
+# 18. Idempotent retry heals a diverged DB live slot instead of
+#     blessing split authority (DB restore/recreation case).
+def test_retry_heals_diverged_db_slot(tmp_path) -> None:
+    import json
+
+    from jarvis_foundry.database import FoundryDatabase
+    from jarvis_foundry.deployment.release import (
+        _database_active_release,
+        set_current,
+    )
+
+    root = tmp_path / "JARVIS2"
+    for sha in ("c" * 40, "d" * 40):
+        directory = root / "releases" / sha
+        python_dir = directory / ".venv" / "Scripts"
+        python_dir.mkdir(parents=True)
+        (python_dir / "python.exe").write_text("fake", encoding="utf-8")
+        (directory / "RELEASE.json").write_text(json.dumps({
+            "release_id": f"rel-{sha[:8]}",
+            "source_sha": sha,
+            "git_commit": sha,
+            "git_tree": "1" * 40,
+            "python_version": "3.13.0",
+            "package_version": "0.1.0",
+            "schema_compatibility": {
+                "package_schema": 41, "opens_min": 41, "opens_max": 41},
+            "provenance": {"builder": "tests",
+                           "source_repo": str(tmp_path / "source"),
+                           "git_commit": sha, "git_tree": "1" * 40},
+            "previous_runtime": None,
+            "created_at": "2026-08-19T00:00:00Z",
+        }), encoding="utf-8")
+    (root / "CURRENT").write_text("d" * 40, encoding="utf-8")
+    home = tmp_path / "home2"
+    home.mkdir(parents=True)
+    database = FoundryDatabase(home / "foundry.db")
+    database.initialize(target=41)
+    # Pointers say d, DB slot is empty (restored DB): retry heals the slot.
+    result = set_current("d" * 40, root=root, database=database,
+                         reason="test retry heal")
+    assert result["current"] == "d" * 40
+    assert _database_active_release(database)["source_sha"] == "d" * 40
+    # Second retry with converged authority is a clean no-op.
+    again = set_current("d" * 40, root=root, database=database,
+                        reason="test retry converged")
+    assert again["current"] == "d" * 40
+    assert _database_active_release(database)["source_sha"] == "d" * 40

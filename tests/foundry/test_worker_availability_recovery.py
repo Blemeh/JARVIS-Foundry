@@ -246,3 +246,31 @@ def test_eligibility_requires_evidence(tmp_path: Path) -> None:
         readiness={"hermes": {"state": "READY",
                               "evidence": ["probe"]}})) == {
         "hermes": False, "openhands": False}
+
+
+# 23. Resume commits both writes atomically: the single-event append
+#     path must never be used (a crash between two separate appends
+#     would burn the exactly-once key while the mission stays BLOCKED).
+def test_resume_uses_atomic_batch(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    _block_on_no_worker(database)
+    calls: list = []
+    original_append = database.append
+
+    def guarded_append(event):
+        calls.append(event.event_type)
+        return original_append(event)
+
+    database.append = guarded_append  # type: ignore[method-assign]
+    try:
+        resumed = resume_worker_blocked_missions(
+            database, eligible_frameworks={"hermes": True},
+            source_id="recovery-test")
+    finally:
+        database.append = original_append  # type: ignore[method-assign]
+    assert resumed == ("mission-1",)
+    assert calls == [], calls
+    assert database.event_count(
+        event_type=WORKER_AVAILABILITY_RESUMED_EVENT) == 1
+    row = database.row("missions", "mission_id", "mission-1")
+    assert row is not None and row["state"] == "ACTION_SELECTION"

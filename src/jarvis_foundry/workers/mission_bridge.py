@@ -936,7 +936,12 @@ def resume_worker_blocked_missions(
             continue
         mission = database.row("missions", "mission_id", mission_id)
         next_action = (mission or {}).get("next_action")
-        database.append(Event.create(
+        # Atomic dual-append: the resume marker and the state transition
+        # commit in ONE transaction. A crash between them would burn the
+        # exactly-once key while the mission stays BLOCKED (unresumable
+        # stall + perpetual bypass churn), so two separate appends are
+        # never acceptable here.
+        database.append_events([Event.create(
             WORKER_AVAILABILITY_RESUMED_EVENT,
             {"mission_id": mission_id,
              "blocked_run_id": run_id,
@@ -945,8 +950,7 @@ def resume_worker_blocked_missions(
              "next_action": next_action},
             source_type="supervisor", source_id=source_id,
             idempotency_key=resume_key,
-        ))
-        database.append(Event.create(
+        ), Event.create(
             "mission.state_changed",
             {"mission_id": mission_id, "state": "ACTION_SELECTION",
              "run_id": f"worker-recovery-{mission_id}-{run_id}",
@@ -957,7 +961,7 @@ def resume_worker_blocked_missions(
             idempotency_key=(
                 f"mission.state_changed:{mission_id}:ACTION_SELECTION:"
                 f"worker-recovery:{run_id}"),
-        ))
+        )])
         resumed.append(mission_id)
     return tuple(resumed)
 
@@ -971,27 +975,27 @@ def _latest_empty_route_decision(
     (a subsequent dispatch attempt already superseded the block).
     """
     with database.connect() as connection:
-        rows = connection.execute(
+        row = connection.execute(
             "SELECT payload_json FROM events "
             "WHERE event_type = 'worker.route_decided' "
-            "ORDER BY rowid DESC"
-        ).fetchall()
+            "AND json_extract(payload_json, '$.mission_id') = ? "
+            "ORDER BY rowid DESC LIMIT 1",
+            (mission_id,),
+        ).fetchone()
     import json as _json
 
-    for row in rows:
-        try:
-            payload = _json.loads(row["payload_json"] or "{}")
-        except (TypeError, ValueError):
-            continue
-        if str(payload.get("mission_id") or "") != mission_id:
-            continue
-        # The latest decision for this mission rules: an empty selection
-        # means the worker block is still current; a later non-empty one
-        # means a subsequent dispatch already superseded it.
-        if str(payload.get("selected_worker") or "") != "":
-            return None
-        return dict(payload)
-    return None
+    if row is None:
+        return None
+    try:
+        payload = _json.loads(row["payload_json"] or "{}")
+    except (TypeError, ValueError):
+        return None
+    # The latest decision for this mission rules: an empty selection
+    # means the worker block is still current; a non-empty one means a
+    # subsequent dispatch already superseded it.
+    if str(payload.get("selected_worker") or "") != "":
+        return None
+    return dict(payload)
 
 
 def _idempotency_seen(database: FoundryDatabase, key: str) -> bool:
