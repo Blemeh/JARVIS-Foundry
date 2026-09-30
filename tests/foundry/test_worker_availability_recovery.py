@@ -274,3 +274,81 @@ def test_resume_uses_atomic_batch(tmp_path: Path) -> None:
         event_type=WORKER_AVAILABILITY_RESUMED_EVENT) == 1
     row = database.row("missions", "mission_id", "mission-1")
     assert row is not None and row["state"] == "ACTION_SELECTION"
+
+
+# 24. The Hermes adapter prompt carries the contract's mandatory
+#     deliverables (live 2026-09-30: three runs failed verification on
+#     an artifact the model was never told to write).
+def test_adapter_prompt_lists_expected_artifacts() -> None:
+    from jarvis_foundry.workers.adapters.hermes import HermesWorkerAdapter
+    from jarvis_foundry.workers.contracts import WorkerStepContract
+
+    contract = WorkerStepContract(
+        run_id="run-x", mission_id="mission-x", step_id="discovery-execute",
+        attempt=1, role="builder", objective="fix CI",
+        instructions="fix the workflow",
+        working_root=None, allowed_paths=(), forbidden_paths=(),
+        provider="opencode_go", model="muse-spark-1.3-contributor",
+        duration_seconds=60, budget_usd=0.0, task_signals=(),
+        expected_artifacts=(".jarvis/discovery/investigation-abc.md",),
+        verification_criteria=("workflow parses",),
+        required_tests=("pytest -q",),
+        package_id="p", package_hash="h", attempt_id="a",
+    )
+    block = HermesWorkerAdapter.contract_requirements_block(contract)
+    assert ".jarvis/discovery/investigation-abc.md" in block
+    assert "MANDATORY" in block
+    assert "workflow parses" in block
+    assert "pytest -q" in block
+
+    empty = WorkerStepContract(
+        run_id="run-y", mission_id="mission-y", step_id="s",
+        attempt=1, role="builder", objective="o",
+        instructions="do it",
+        working_root=None, allowed_paths=(), forbidden_paths=(),
+        provider="opencode_go", model="muse-spark-1.3-contributor",
+        duration_seconds=60, budget_usd=0.0, task_signals=(),
+        expected_artifacts=(), verification_criteria=(),
+        required_tests=(),
+        package_id="p", package_hash="h", attempt_id="a",
+    )
+    assert HermesWorkerAdapter.contract_requirements_block(empty) == ""
+
+
+# 25. Out-of-scope artifact entries are never rendered as CREATE
+#     directives (review 2026-09-30: absolute/escape entries must be
+#     report-don't-write lines, never write instructions).
+def test_adapter_block_scopes_artifact_paths() -> None:
+    from jarvis_foundry.workers.adapters.hermes import HermesWorkerAdapter
+    from jarvis_foundry.workers.contracts import WorkerStepContract
+
+    def _contract(*artifacts: str) -> WorkerStepContract:
+        return WorkerStepContract(
+            run_id="run-s", mission_id="mission-s", step_id="s",
+            attempt=1, role="builder", objective="o",
+            instructions="do it",
+            working_root=None, allowed_paths=(), forbidden_paths=(),
+            provider="opencode_go", model="muse-spark-1.3-contributor",
+            duration_seconds=60, budget_usd=0.0, task_signals=(),
+            expected_artifacts=tuple(artifacts),
+            verification_criteria=(), required_tests=(),
+            package_id="p", package_hash="h", attempt_id="a",
+        )
+
+    block = HermesWorkerAdapter.contract_requirements_block(
+        _contract(".jarvis/discovery/ok.md", "/tmp/stale.md",
+                 "C:/abs/win.md", "../escape.md",
+                 ".. /win-strip.md", ".. ./win-strip2.md",
+                 "~/evil.md", "~user/evil.md",
+                 "$HOME/evil.md", "%USERPROFILE%/evil.md"))
+    assert "- .jarvis/discovery/ok.md" in block
+    assert "MANDATORY DELIVERABLES" in block
+    assert "OUT-OF-SCOPE" in block
+    # Absolute/escape entries appear ONLY in the report section, never
+    # adjacent to a CREATE directive.
+    create_idx = block.index("CREATE it inside")
+    for bad in ("/tmp/stale.md", "C:/abs/win.md", "../escape.md",
+                ".. /win-strip.md", ".. ./win-strip2.md",
+                "~/evil.md", "~user/evil.md",
+                "$HOME/evil.md", "%USERPROFILE%/evil.md"):
+        assert block.index(bad) > create_idx

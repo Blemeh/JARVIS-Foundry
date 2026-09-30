@@ -98,6 +98,82 @@ class HermesWorkerAdapter:
     )
     _VERDICT_VALUES = {"PASS", "FAIL", "BLOCKED", "NOT_TESTED"}
 
+    @staticmethod
+    def contract_requirements_block(contract: WorkerStepContract) -> str:
+        """Mandatory deliverables block prepended to the worker prompt.
+
+        Live finding 2026-09-30: the adapter forwarded only
+        ``contract.instructions`` to the model, silently dropping
+        ``expected_artifacts``. Three real provider runs then failed
+        verification on a file the worker was never told to write
+        (evidence_mismatch). Expected artifacts are MANDATORY
+        deliverables — verification FAILs unless every listed file
+        exists. Writing them from the session's own genuine work is
+        delivery, not fabrication.
+
+        Scope guard (review 2026-09-30): artifact entries are rendered
+        ONLY when relative and contained in the working root. Absolute
+        entries or ``..`` escapes are surfaced as report-don't-write
+        lines — the prompt must never instruct a --yolo session to
+        create files outside its working root. Prepended (not appended)
+        per the repo's survive-truncation convention.
+        """
+        from pathlib import PurePosixPath, PureWindowsPath
+
+        def _in_scope(entry: str) -> bool:
+            text = entry.strip().replace("\\", "/")
+            if not text or text.startswith("/"):
+                return False
+            if text.startswith(("~", "$", "%")):
+                # Home-dir (~, $HOME) and Windows-env (%USERPROFILE%)
+                # expansion resolve outside the working root in any shell
+                # writer (git-bash tilde expansion on this host).
+                return False
+            posix = PurePosixPath(text)
+            if posix.is_absolute() or PureWindowsPath(text).is_absolute():
+                return False
+            for part in posix.parts:
+                # Win32 strips trailing dots/spaces per component, so
+                # ".. " / ".. ." normalize to ".." — compare rstripped.
+                cleaned = part.rstrip(" .")
+                if cleaned in ("..", ".", ""):
+                    return False
+            if len(text) > 1 and text[1] == ":":
+                return False
+            return True
+
+        lines = []
+        if contract.expected_artifacts:
+            scoped = [e for e in contract.expected_artifacts if _in_scope(e)]
+            unscoped = [e for e in contract.expected_artifacts
+                        if not _in_scope(e)]
+            if scoped:
+                lines.append(
+                    "MANDATORY DELIVERABLES (verification FAILs unless every "
+                    "listed file exists in the working root when you exit):")
+                lines.extend(f"- {rel}" for rel in scoped)
+                lines.append(
+                    "If a listed file does not exist, CREATE it inside the "
+                    "working root with genuine content from your own work "
+                    "this session — that is delivery, not fabrication. "
+                    "Report a listed path you believe is stale or wrong in "
+                    "your result instead of silently skipping it, but still "
+                    "write every in-scope file above.")
+            if unscoped:
+                lines.append(
+                    "OUT-OF-SCOPE paths (do NOT create these; report them in "
+                    "your result and continue with the in-scope work):")
+                lines.extend(f"- {rel}" for rel in unscoped)
+        if contract.verification_criteria:
+            lines.append("Acceptance criteria the verifier will check:")
+            lines.extend(f"- {criterion}" for criterion in contract.verification_criteria)
+        if contract.required_tests:
+            lines.append("Required tests to run before you exit:")
+            lines.extend(f"- {test}" for test in contract.required_tests)
+        if not lines:
+            return ""
+        return "\n".join(lines)
+
     def __init__(
         self,
         *,
@@ -248,7 +324,12 @@ class HermesWorkerAdapter:
         }
         command = [
             self.python_exe, "-m", "hermes_cli.main", "-z",
-            contract.instructions or contract.objective or contract.run_id,
+            "\n\n".join(
+                part for part in (
+                    self.contract_requirements_block(contract),
+                    contract.instructions or contract.objective or contract.run_id,
+                ) if part
+            ),
             "--provider", self.CLI_PROVIDER_IDS.get(contract.provider, contract.provider),
             "--model", contract.model,
             "--in", str(contract.working_root),
