@@ -1806,7 +1806,9 @@ def run_cycle(
                     {"loop_id": loop_id, "instance_id": instance_id,
                      "reason": f"worker-availability recovery: {type(error).__name__}"[:300]},
                     source_type="supervisor", source_id=instance_id,
-                    idempotency_key=f"worker_loop.recovery_failed:{loop_id}:worker-availability",
+                    idempotency_key=(
+                        f"worker_loop.recovery_failed:{loop_id}:"
+                        f"worker-availability:{type(error).__name__}"),
                 ))
             mission_id = _select_contract(
                 database,

@@ -926,12 +926,13 @@ def resume_worker_blocked_missions(
         ).fetchall()
     for row in blocked:
         mission_id = str(row["mission_id"])
-        decision = _latest_empty_route_decision(database, mission_id)
-        if decision is None:
+        found = _latest_empty_route_decision(database, mission_id)
+        if found is None:
             continue
+        decision, decision_seq = found
         run_id = str(decision.get("run_id") or "")
         resume_key = (
-            f"{WORKER_AVAILABILITY_RESUMED_EVENT}:{mission_id}:{run_id}")
+            f"{WORKER_AVAILABILITY_RESUMED_EVENT}:{mission_id}:{decision_seq}")
         if _idempotency_seen(database, resume_key):
             continue
         mission = database.row("missions", "mission_id", mission_id)
@@ -960,7 +961,7 @@ def resume_worker_blocked_missions(
             source_type="supervisor", source_id=source_id,
             idempotency_key=(
                 f"mission.state_changed:{mission_id}:ACTION_SELECTION:"
-                f"worker-recovery:{run_id}"),
+                f"worker-recovery:{decision_seq}"),
         )])
         resumed.append(mission_id)
     return tuple(resumed)
@@ -968,15 +969,18 @@ def resume_worker_blocked_missions(
 
 def _latest_empty_route_decision(
     database: FoundryDatabase, mission_id: str,
-) -> dict[str, Any] | None:
+) -> tuple[dict[str, Any], int] | None:
     """Latest worker.route_decided with no selected worker, if still current.
 
-    Returns None when the mission has any later non-empty route decision
-    (a subsequent dispatch attempt already superseded the block).
+    Returns the decision payload plus its ledger sequence (the stable
+    identity for idempotency keys — run_id may be absent on foreign or
+    legacy decisions). Returns None when there is no decision, or when
+    the latest decision selected a worker (a subsequent dispatch already
+    superseded the block).
     """
     with database.connect() as connection:
         row = connection.execute(
-            "SELECT payload_json FROM events "
+            "SELECT sequence, payload_json FROM events "
             "WHERE event_type = 'worker.route_decided' "
             "AND json_extract(payload_json, '$.mission_id') = ? "
             "ORDER BY rowid DESC LIMIT 1",
@@ -990,12 +994,9 @@ def _latest_empty_route_decision(
         payload = _json.loads(row["payload_json"] or "{}")
     except (TypeError, ValueError):
         return None
-    # The latest decision for this mission rules: an empty selection
-    # means the worker block is still current; a non-empty one means a
-    # subsequent dispatch already superseded it.
     if str(payload.get("selected_worker") or "") != "":
         return None
-    return dict(payload)
+    return dict(payload), int(row["sequence"])
 
 
 def _idempotency_seen(database: FoundryDatabase, key: str) -> bool:
