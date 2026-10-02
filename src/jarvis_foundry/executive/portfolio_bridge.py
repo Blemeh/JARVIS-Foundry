@@ -553,63 +553,46 @@ def _owner_goal_recovery_prompt(
 _DISCOVERY_OPPORTUNITY_LANE = "live-github-research-activation"
 
 
-def _required_artifact_free_forbidden(
-    forbidden: tuple[str, ...], required: tuple[str, ...],
-) -> tuple[str, ...]:
-    """Narrow a template's forbidden set until it contradicts nothing required.
+def _within_scope_path(candidate: str, base: str) -> bool:
+    """True when `candidate` is `base` or lives under it (posix segments)."""
+    from pathlib import PurePosixPath
 
-    A contract whose own mandatory deliverable sits inside its forbidden set is
-    UNSATISFIABLE: writing the deliverable trips containment, and not writing it
-    trips the expected-artifact check.  There is no worker behaviour that
-    satisfies both.
+    candidate_parts = PurePosixPath(
+        candidate.replace("\\", "/")).parts
+    base_parts = PurePosixPath(
+        base.replace("\\", "/").rstrip("/")).parts
+    if not base_parts or base_parts == (".",):
+        return False
+    return candidate_parts[: len(base_parts)] == base_parts
 
-    The narrowing is deliberately exact and minimal.  A forbidden entry is
-    dropped ONLY when this step's required artifacts cannot be produced without
-    it, and it is replaced by the artifact's own parent directory so unrelated
-    siblings stay forbidden.  `.jarvis/` therefore narrows to
-    `.jarvis/discovery/` rather than disappearing, and traversal (`..`) can
-    never widen the escape because ``_relative_target`` already rejects it at
-    contract validation.
 
-    Ordering the narrowing deterministically keeps replay identical: the
-    artifacts are inspected in sorted order, so the same template always
-    produces the same forbidden tuple.
+def _unsatisfiable_deliverables(
+    expected: tuple[str, ...], forbidden: tuple[str, ...],
+) -> list[str]:
+    """Mandatory deliverables that cannot be written without tripping
+    containment.
+
+    A contract that REQUIRES an artifact inside its own FORBIDDEN set is
+    unsatisfiable: writing it fails containment, not writing it fails the
+    expected-artifact check.  There is no worker behaviour that satisfies
+    both, so synthesis must refuse rather than emit the contract.  Returns
+    the offending deliverables (empty means satisfiable).
     """
-    if not required:
-        return forbidden
-    # Normalize to posix segments and reject anything that could escape.
-    normalized_required: list[tuple[str, ...]] = []
-    for artifact in required:
-        text = str(artifact).replace("\\", "/").strip()
-        if not text or text.startswith("/") or ":" in text.split("/", 1)[0]:
-            # An absolute / drive-qualified deliverable can never be scoped
-            # inside a relative forbidden tree; leave the set untouched rather
-            # than silently opening containment.
-            return forbidden
-        parts = tuple(p for p in text.split("/") if p not in ("", "."))
-        if not parts or ".." in parts:
-            return forbidden
-        normalized_required.append(parts)
+    return [
+        artifact for artifact in expected
+        if any(_within_scope_path(artifact, entry) for entry in forbidden)
+    ]
 
-    result = tuple(forbidden)
-    for parts in sorted(normalized_required):
-        for index, entry in enumerate(result):
-            entry_parts = tuple(
-                p for p in entry.replace("\\", "/").split("/")
-                if p not in ("", ".")
-            )
-            if not entry_parts:
-                continue
-            if parts[: len(entry_parts)] != entry_parts:
-                continue
-            # The artifact IS inside this forbidden entry.  Narrow to the
-            # artifact's own parent so the deliverable is writable while every
-            # sibling remains forbidden.
-            narrowed = "/".join(parts[:-1]) or entry_parts[0]
-            if narrowed == "/".join(entry_parts):
-                continue  # already exactly the parent; nothing to narrow
-            result = result[:index] + (narrowed,) + result[index + 1:]
-    return result
+
+def _discovery_investigation_artifact(decision_id: str, item_id: str) -> str:
+    """Deterministic per-decision investigation record path.
+
+    Factored pure so the pre-materialization satisfiability check and the
+    synthesis site compute the identical path without duplicating the scheme.
+    """
+    suffix = hashlib.sha256(
+        f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
+    return f".jarvis/discovery/investigation-{suffix}.md"
 
 # Executable-contract synthesis templates for autonomous discovery items.
 # Each template turns a typed opportunity (problem + evidence + exact
@@ -718,6 +701,43 @@ def _discovery_block_reason(item: Mapping[str, Any]) -> str:
             f"kind={kind} resource={item.get('resource_id')}")
 
 
+def _discovery_contract_satisfiability_block(
+    item: Mapping[str, Any], *, decision_id: str, item_id: str,
+) -> str | None:
+    """Fail-closed pre-check: the contracts synthesis WILL build must be
+    workable.
+
+    Mirrors the synthesis site exactly — same template, same deterministic
+    investigation path, same per-step forbidden sets — and refuses with an
+    exact reason when any step mandates a deliverable inside its own
+    forbidden set.  Checked BEFORE any mission row exists so a refusal
+    leaves no dangling shell behind.
+    """
+    provenance = item.get("provenance")
+    kind = provenance.get("opportunity_kind") if isinstance(
+        provenance, Mapping) else None
+    template = _DISCOVERY_CONTRACT_TEMPLATES.get(str(kind or ""))
+    if template is None:
+        return None  # unknown kinds are refused by _discovery_scope_block
+    investigation_artifact = _discovery_investigation_artifact(
+        decision_id, item_id)
+    plan_forbidden = tuple(
+        path for path in template["forbidden"] if path != ".jarvis/")
+    plan_offenders = _unsatisfiable_deliverables(
+        (investigation_artifact,), plan_forbidden)
+    if plan_offenders:
+        return (
+            "discovery contract unsatisfiable: plan step mandates "
+            f"{plan_offenders} inside its forbidden paths")
+    execute_offenders = _unsatisfiable_deliverables(
+        tuple(template["artifacts"]), tuple(template["forbidden"]))
+    if execute_offenders:
+        return (
+            "discovery contract unsatisfiable: execute step mandates "
+            f"{execute_offenders} inside its forbidden paths")
+    return None
+
+
 def _discovery_scope_block(
     database: FoundryDatabase, item: Mapping[str, Any],
 ) -> str | None:
@@ -802,6 +822,15 @@ def _bind_declared_discovery_mission(
     target = next((s for s in plan.steps if s.step_id == step_id), None)
     if target is None:
         return {**result, "reason": "declared step is not on the active plan"}
+    if target.mission_id and str(target.mission_id) != mission_id:
+        # Keep-first: the step already owns a mission.  A second declaring
+        # item must not silently orphan the first mission from
+        # observe_mission_outcome / _verifier_recovery_plan by overwriting
+        # the linkage.  The new mission stands on its own as portfolio work;
+        # it simply gains no Executive lineage.
+        return {**result, "reason": (
+            f"step already bound to {target.mission_id}; "
+            "keeping the first binding")}
     try:
         bound = _bind_step(
             database, objective_id, step_id, mission_id,
@@ -824,9 +853,10 @@ def _bind_declared_discovery_mission(
     # the one mission, so replays and restarts produce no duplicates.
     #
     # The event TYPE carries a dotted suffix (`.materialized`) because the
-    # ledger requires every type to contain a dot, while the wake resolves by
-    # PREFIX (`event_type LIKE 'signal%'`): the type still starts with the
-    # exact `executive-scope:{oid}:{step}` string the wake waits on.
+    # ledger requires every type to contain a dot, while the parked wake
+    # resolves by SQL prefix (`event_type LIKE 'signal%'` in is_wake_due):
+    # the type still starts with the exact `executive-scope:{oid}:{step}`
+    # string the wake waits on.
     try:
         from ..events import Event
 
@@ -881,10 +911,8 @@ def _materialize_discovery_opportunity(
     # the template scope minus that artifact home — never unbounded.
     plan_forbidden = tuple(
         path for path in template["forbidden"] if path != ".jarvis/")
-    suffix = hashlib.sha256(
-        f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
-    investigation_artifact = (
-        f".jarvis/discovery/investigation-{suffix}.md")
+    investigation_artifact = _discovery_investigation_artifact(
+        decision_id, item_id)
     common_provenance = {
         "decision_id": decision_id,
         "portfolio_item_id": item_id,
@@ -928,7 +956,9 @@ def _materialize_discovery_opportunity(
     )
     execute_target = str(template["target"])
     if opp_kind == "MAINTENANCE":
-        execute_target = f"{execute_target}decision-{suffix}.md"
+        decision_suffix = investigation_artifact.rsplit(
+            "investigation-", 1)[-1].removesuffix(".md")
+        execute_target = f"{execute_target}decision-{decision_suffix}.md"
     execute = MissionStepContract(
         mission_id=mission_id,
         step_id="discovery-execute",
@@ -961,11 +991,11 @@ def _materialize_discovery_opportunity(
         #
         # This step must only PRODUCE its own template artifacts. Every
         # unrelated forbidden path stays forbidden; the artifact home is not
-        # opened up.
+        # opened up.  Satisfiability of this exact pair is enforced BEFORE
+        # the mission shell exists (_discovery_contract_satisfiability_block),
+        # so reaching here with an offender is an internal inconsistency.
         expected_artifacts=tuple(template["artifacts"]),
-        forbidden_paths=_required_artifact_free_forbidden(
-            tuple(template["forbidden"]), tuple(template["artifacts"]),
-        ),
+        forbidden_paths=tuple(template["forbidden"]),
         required_capabilities=declared_capabilities,
         recorded_by="supervisor",
         source="portfolio-discovery",
@@ -1092,6 +1122,19 @@ def materialize_portfolio_selection(
         if scope_block is not None:
             return {"materialized": False, "mission_id": None,
                     "blocked_reason": scope_block}
+        # Satisfiability is refused here too, before the shell exists: a
+        # contract that mandates a deliverable inside its own forbidden set
+        # can never be worked (live 2026-09-30, mission-ecdb7918c2d4).  The
+        # check mirrors exactly what synthesis will build — same template,
+        # same deterministic artifact path, same forbidden sets — so a
+        # refusal here means synthesis could not have produced a workable
+        # contract either.
+        contract_block = _discovery_contract_satisfiability_block(
+            item, decision_id=str(decision.get("decision_id") or ""),
+            item_id=str(item.get("item_id") or ""))
+        if contract_block is not None:
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": contract_block}
         # The mission, its contracts, and its correlation bind the
         # opportunity's EXACT registered resource — never the caller's.
         # Contract validation rejects resource mismatch, so a multi-repo
