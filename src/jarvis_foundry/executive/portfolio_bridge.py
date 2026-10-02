@@ -552,6 +552,65 @@ def _owner_goal_recovery_prompt(
 
 _DISCOVERY_OPPORTUNITY_LANE = "live-github-research-activation"
 
+
+def _required_artifact_free_forbidden(
+    forbidden: tuple[str, ...], required: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Narrow a template's forbidden set until it contradicts nothing required.
+
+    A contract whose own mandatory deliverable sits inside its forbidden set is
+    UNSATISFIABLE: writing the deliverable trips containment, and not writing it
+    trips the expected-artifact check.  There is no worker behaviour that
+    satisfies both.
+
+    The narrowing is deliberately exact and minimal.  A forbidden entry is
+    dropped ONLY when this step's required artifacts cannot be produced without
+    it, and it is replaced by the artifact's own parent directory so unrelated
+    siblings stay forbidden.  `.jarvis/` therefore narrows to
+    `.jarvis/discovery/` rather than disappearing, and traversal (`..`) can
+    never widen the escape because ``_relative_target`` already rejects it at
+    contract validation.
+
+    Ordering the narrowing deterministically keeps replay identical: the
+    artifacts are inspected in sorted order, so the same template always
+    produces the same forbidden tuple.
+    """
+    if not required:
+        return forbidden
+    # Normalize to posix segments and reject anything that could escape.
+    normalized_required: list[tuple[str, ...]] = []
+    for artifact in required:
+        text = str(artifact).replace("\\", "/").strip()
+        if not text or text.startswith("/") or ":" in text.split("/", 1)[0]:
+            # An absolute / drive-qualified deliverable can never be scoped
+            # inside a relative forbidden tree; leave the set untouched rather
+            # than silently opening containment.
+            return forbidden
+        parts = tuple(p for p in text.split("/") if p not in ("", "."))
+        if not parts or ".." in parts:
+            return forbidden
+        normalized_required.append(parts)
+
+    result = tuple(forbidden)
+    for parts in sorted(normalized_required):
+        for index, entry in enumerate(result):
+            entry_parts = tuple(
+                p for p in entry.replace("\\", "/").split("/")
+                if p not in ("", ".")
+            )
+            if not entry_parts:
+                continue
+            if parts[: len(entry_parts)] != entry_parts:
+                continue
+            # The artifact IS inside this forbidden entry.  Narrow to the
+            # artifact's own parent so the deliverable is writable while every
+            # sibling remains forbidden.
+            narrowed = "/".join(parts[:-1]) or entry_parts[0]
+            if narrowed == "/".join(entry_parts):
+                continue  # already exactly the parent; nothing to narrow
+            result = result[:index] + (narrowed,) + result[index + 1:]
+    return result
+
 # Executable-contract synthesis templates for autonomous discovery items.
 # Each template turns a typed opportunity (problem + evidence + exact
 # resource binding) into a bounded investigate-then-fix mission. Research is
@@ -686,6 +745,112 @@ def _discovery_scope_block(
     return None
 
 
+def _bind_declared_discovery_mission(
+    database: FoundryDatabase,
+    *,
+    declared_objective_id: str,
+    mission_id: str,
+    item_metadata: Mapping[str, Any],
+    evidence_refs: Sequence[str] = (),
+    source_id: str = "v7-portfolio-bridge",
+) -> dict[str, Any]:
+    """Bind a discovery mission to the Executive step that declared it.
+
+    A discovery item whose metadata carries ``executive_objective_id`` and
+    ``executive_step_id`` was authored BY the Executive plan for a real,
+    executable scope the Executive could not address directly.  The materialized
+    mission is that step's work — but the step's ``mission_id`` linkage is the
+    only thing that lets failure reconciliation (``observe_mission_outcome``)
+    and verifier-guided REPLAN (``_verifier_recovery_plan``) see it.  Without
+    this binding, a mission that exhausts its repairs leaves its owning
+    objective's plan step with no mission linkage at all, and recovery can
+    never engage: exactly what stranded
+    ``owner-goal:owner-c4dbe49e2dd7b49e11583655`` after mission-ecdb7918c2d4
+    (plan step ``execute`` BLOCKED, ``mission_id: None``).
+
+    Binding is deliberately narrow:
+
+    * Only the step the item DECLARED is bound.  Nothing without an explicit
+      ``executive_step_id`` is ever linked — undeclared items stay pure
+      portfolio work with no Executive lineage claims.
+    * The step's dependency truth is untouched: status, evidence_refs and
+      attempted_strategies change only through the existing step transitions.
+    * The mission's new executable scope is genuine changed evidence for a
+      scope-blocked step, so it emits the ``executive-scope`` signal event the
+      waiting step's ``WAIT_FOR_SIGNAL`` wake is actually waiting on.  One
+      binding produces exactly one signal event (idempotent on the mission),
+      so no wake-generation loop is possible.
+    """
+    result: dict[str, Any] = {"bound": False}
+    objective_id = str(declared_objective_id or "").strip()
+    from .autonomy import (
+        active_plan as _active_plan,
+        bind_mission_to_step as _bind_step,
+    )
+
+    if not objective_id:
+        return result
+    step_id = str(item_metadata.get("executive_step_id") or "").strip()
+    if not step_id:
+        return result
+    try:
+        plan = _active_plan(database, objective_id)
+    except Exception:  # noqa: BLE001 — fail closed, never bind partially
+        return {**result, "reason": "no readable active plan"}
+    if plan is None:
+        return {**result, "reason": "no active plan for declared objective"}
+    target = next((s for s in plan.steps if s.step_id == step_id), None)
+    if target is None:
+        return {**result, "reason": "declared step is not on the active plan"}
+    try:
+        bound = _bind_step(
+            database, objective_id, step_id, mission_id,
+            controller="supervisor",
+        )
+    except Exception as error:  # noqa: BLE001 — never strand the mission
+        return {**result, "reason": f"bind failed: {type(error).__name__}"}
+    result = {
+        "bound": True,
+        "objective_id": objective_id,
+        "step_id": step_id,
+        "mission_id": mission_id,
+        "step_status": bound.status,
+        "previous_evidence_refs": list(target.evidence_refs or ()),
+    }
+    # Genuine changed evidence: this step either had no executable scope or a
+    # scope that produced failure.  A fresh materialized mission carrying its
+    # declared scope IS the recovery condition — emit the exact signal the
+    # scope-parked wake resolves on.  The idempotency key ties the signal to
+    # the one mission, so replays and restarts produce no duplicates.
+    #
+    # The event TYPE carries a dotted suffix (`.materialized`) because the
+    # ledger requires every type to contain a dot, while the wake resolves by
+    # PREFIX (`event_type LIKE 'signal%'`): the type still starts with the
+    # exact `executive-scope:{oid}:{step}` string the wake waits on.
+    try:
+        from ..events import Event
+
+        signal = f"executive-scope:{objective_id}:{step_id}"
+        database.append(Event.create(
+            f"{signal}.materialized",
+            {
+                "objective_id": objective_id,
+                "step_id": step_id,
+                "mission_id": mission_id,
+                "kind": "executable_scope_materialized",
+                "signal": signal,
+                "evidence_refs": list(evidence_refs or []),
+            },
+            source_type="supervisor",
+            source_id=source_id or "v7-portfolio-bridge",
+            idempotency_key=f"executive-scope-signal:{mission_id}",
+        ))
+        result["signal_event"] = signal
+    except Exception as error:  # noqa: BLE001 — binding stands without the signal
+        result["signal_error"] = f"{type(error).__name__}"
+    return result
+
+
 def _materialize_discovery_opportunity(
     database: FoundryDatabase,
     *,
@@ -784,13 +949,28 @@ def _materialize_discovery_opportunity(
         rollback=dict(template["rollback"]),
         risk_class=str(template["risk_class"]),
         verification_criteria=tuple(template["acceptance"]),
-        expected_artifacts=tuple(template["artifacts"]) + (
-            investigation_artifact,),
-        forbidden_paths=tuple(template["forbidden"]),
+        # The investigation record is the PLAN step's deliverable, not this
+        # step's.  This step READS it (see instructions).  Listing it again
+        # here made the execute contract unsatisfiable: the artifact lives
+        # under .jarvis/, which this step's own forbidden_paths covers, so
+        # writing it failed containment while not writing it failed the
+        # expected-artifact check.  Live incident 2026-09-30:
+        # mission-ecdb7918c2d4, 3/3 verifier FAIL on
+        # "expected artifacts missing:
+        # .jarvis/discovery/investigation-579a0fa1ce.md".
+        #
+        # This step must only PRODUCE its own template artifacts. Every
+        # unrelated forbidden path stays forbidden; the artifact home is not
+        # opened up.
+        expected_artifacts=tuple(template["artifacts"]),
+        forbidden_paths=_required_artifact_free_forbidden(
+            tuple(template["forbidden"]), tuple(template["artifacts"]),
+        ),
         required_capabilities=declared_capabilities,
         recorded_by="supervisor",
         source="portfolio-discovery",
-        provenance={**common_provenance, "step_role": "implement"},
+        provenance={**common_provenance, "step_role": "implement",
+                    "reads_artifact": investigation_artifact},
     )
     _bind_resolution_capabilities(
         database, bound_resource, declared_capabilities,
@@ -853,7 +1033,18 @@ def _materialize_discovery_opportunity(
         source_id=source_id,
         idempotency_key=f"portfolio.selection_materialized:{decision_id}",
     ))
+    executed_binding = _bind_declared_discovery_mission(
+        database,
+        declared_objective_id=declared_objective_id,
+        mission_id=mission_id,
+        item_metadata=dict(item.get("metadata") or {}),
+        evidence_refs=tuple(
+            str(value) for value in (item.get("evidence_refs") or ())
+            if isinstance(value, str) and value.strip()),
+        source_id=source_id,
+    )
     return {"materialized": True, "mission_id": mission_id,
+            "objective_binding": executed_binding,
             "blocked_reason": None}
 
 

@@ -447,6 +447,38 @@ def latest_contracts_by_step(
     return result
 
 
+def contract_plan_order(
+    database: FoundryDatabase, mission_id: str,
+) -> tuple[str, ...]:
+    """Return step_ids in the AUTHORITATIVE persisted plan order.
+
+    The recording order in the ledger is the plan: the Supervisor records the
+    investigate step before the implement step because that is the dependency
+    it intends the mission to run.  Position is the step's FIRST recorded row,
+    so a later version of an earlier step (which appends a new row) keeps its
+    original plan position instead of drifting to the end.
+
+    This is deliberately NOT derived from ``step_id``.  Alphabetical ordering
+    is a naming coincidence, not an authority: ``discovery-execute`` sorts
+    before ``discovery-plan``, which ran the implement step before the
+    investigation it is instructed to read.  Live incident 2026-09-30,
+    mission-ecdb7918c2d4: 4 worker runs on ``discovery-execute``, 0 on
+    ``discovery-plan``.
+
+    Ordering by first-recorded position also preserves legacy missions: any
+    mission whose steps were recorded in its intended order (including
+    ``step-a``/``step-b`` and the ``01-``/``02-`` prefixed contracts) replays
+    in exactly that order, because their recorded order already matched.
+    """
+    positions: dict[str, int] = {}
+    for index, row in enumerate(contract_rows(database, mission_id)):
+        step_id = str(row["step_id"])
+        # setdefault keeps the FIRST recorded position for a step whose later
+        # versions append additional rows.
+        positions.setdefault(step_id, index)
+    return tuple(sorted(positions, key=lambda step_id: positions[step_id]))
+
+
 def next_executable_contract(
     database: FoundryDatabase, mission_id: str,
 ) -> MissionStepContract | None:
@@ -456,12 +488,26 @@ def next_executable_contract(
     ``latest_contract(mission_id)`` still fail-closes when a caller asks for
     a single unbound contract; this selector is the production owner for
     sequential dispatch.
+
+    Ordering is the authoritative persisted plan order (see
+    ``contract_plan_order``), never ``step_id`` text.  That gives the
+    prerequisite semantics the product intends: the first un-passed step in
+    plan order is dispatched, so a step whose predecessor has not been
+    accepted yet cannot be reached — including after restart, after a replay,
+    and after a predecessor's contract version bump.
     """
     from .verification import accepted_verifications, latest_verdict_for_step
     accepted = accepted_verifications(database, mission_id=mission_id)
 
+    by_step = latest_contracts_by_step(database, mission_id)
     remaining: list[MissionStepContract] = []
-    for step_id, contract in latest_contracts_by_step(database, mission_id).items():
+    for step_id in contract_plan_order(database, mission_id):
+        contract = by_step.get(step_id)
+        if contract is None:
+            # The plan names a step whose latest version failed hash
+            # verification.  It is not dispatchable; skipping it keeps a
+            # corrupt row from blocking unrelated later steps.
+            continue
         verdict = latest_verdict_for_step(database, mission_id, step_id)
         if (
             verdict is not None
@@ -470,8 +516,12 @@ def next_executable_contract(
         ):
             continue
         remaining.append(contract)
-    remaining.sort(key=lambda item: (item.step_id, item.version))
-    return remaining[0] if remaining else None
+    if not remaining:
+        return None
+    # ``remaining`` is already in authoritative plan order — the loop above
+    # walked contract_plan_order().  No further sort: sorting here by step_id
+    # is precisely the defect being repaired.
+    return remaining[0]
 
 
 def dispatchable_contract_missions(database: FoundryDatabase) -> tuple[str, ...]:
