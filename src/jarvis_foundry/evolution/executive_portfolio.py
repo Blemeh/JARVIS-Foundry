@@ -726,10 +726,20 @@ def set_work_status(
              f"unknown portfolio item: {item_id}")
     payload = {"item_id": item_id, "status": status, "reason": reason,
                "controller": controller}
+    # Exactly-once belongs to ONE logical transition, not to a status value
+    # for all time.  Keying by {item_id}:{status} burned the first CONSUMED /
+    # BLOCKED forever, so a bounded recovery that legitimately re-enters the
+    # same status collided with its own first cycle (live 2026-09-29 ->
+    # 2026-10-02, pw-dupkey-...-f2757e1b6f92) and the guarded consumption
+    # stamp could never run again — recovery was materialization-unreachable.
+    # The reason names the transition (it carries the mission/candidate/cycle
+    # that caused it), so a repeat of the SAME transition stays a no-op while
+    # a genuinely new one records.
     event = Event.create(
         "portfolio.work_status_changed", payload,
         source_type=source_type, source_id=source_id,
-        idempotency_key=f"portfolio.work_status_changed:{item_id}:{status}",
+        idempotency_key=(f"portfolio.work_status_changed:{item_id}:{status}:"
+                         f"{hashlib.sha256(reason.encode('utf-8')).hexdigest()[:16]}"),
     )
     return str(database.append(event)[0])
 
@@ -968,7 +978,18 @@ def _capacity_check(
     reasons: list[str] = []
     if item.status not in ("OPEN", "PLANNED", "ELIGIBLE"):
         reasons.append(f"status:{item.status}")
-    if item.blocked_reason:
+    # A work item's status is the authoritative blocked-ness.  The narrative
+    # reason of the transition that set it is audit information, NOT a live
+    # block: `set_work_status` stamps `blocked_reason = payload["reason"]` for
+    # EVERY status change, including the ones that return an item to OPEN.
+    # Gating on the narrative disqualified the item by the very reopen that
+    # made it executable again (live 2026-10-02 21:00Z: the bounded recovery
+    # reopened pw-dupkey-...-f2757e1b6f92 to OPEN and selection then WAITed
+    # with "blocked:recovery reopen for cand-...: terminal lineage failed"
+    # — the reopen made recovery unreachable while reading truthfully).
+    # A blocked item is still rejected: it fails the status gate above, and
+    # the reason it is blocked remains visible on the rejected record.
+    if item.blocked_reason and item.status in ("BLOCKED", "CANCELLED"):
         reasons.append(f"blocked:{item.blocked_reason}")
     if item.owner_only:
         reasons.append("owner_only_fact")
