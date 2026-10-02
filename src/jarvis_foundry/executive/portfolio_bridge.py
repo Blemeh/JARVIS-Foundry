@@ -804,6 +804,7 @@ def _bind_declared_discovery_mission(
     result: dict[str, Any] = {"bound": False}
     objective_id = str(declared_objective_id or "").strip()
     from .autonomy import (
+        CONTRACT_SCOPE_MARKER,
         active_plan as _active_plan,
         bind_mission_to_step as _bind_step,
     )
@@ -811,8 +812,31 @@ def _bind_declared_discovery_mission(
     if not objective_id:
         return result
     step_id = str(item_metadata.get("executive_step_id") or "").strip()
+    step_source = "declared"
     if not step_id:
-        return result
+        # The feed declares the objective but no step.  Fall back to the
+        # uniquely scope-blocked step: a step carrying the missing-contract
+        # marker IS the declared scope by construction (the Executive
+        # parked it awaiting exactly this kind of executable scope).
+        # Zero or several such steps → refuse rather than guess.
+        try:
+            scope_plan = _active_plan(database, objective_id)
+        except Exception:  # noqa: BLE001 — fail closed
+            return {**result, "reason": "no readable active plan"}
+        if scope_plan is None:
+            return {**result,
+                    "reason": "no active plan for declared objective"}
+        marked = [
+            s for s in scope_plan.steps
+            if CONTRACT_SCOPE_MARKER in tuple(s.evidence_refs or ())
+            and s.status == "BLOCKED"
+        ]
+        if len(marked) != 1:
+            return {**result, "reason": (
+                "no unique scope-blocked step to bind: "
+                f"found {len(marked)}")}
+        step_id = marked[0].step_id
+        step_source = "scope-marker"
     try:
         plan = _active_plan(database, objective_id)
     except Exception:  # noqa: BLE001 — fail closed, never bind partially
@@ -842,6 +866,7 @@ def _bind_declared_discovery_mission(
         "bound": True,
         "objective_id": objective_id,
         "step_id": step_id,
+        "step_source": step_source,
         "mission_id": mission_id,
         "step_status": bound.status,
         "previous_evidence_refs": list(target.evidence_refs or ()),

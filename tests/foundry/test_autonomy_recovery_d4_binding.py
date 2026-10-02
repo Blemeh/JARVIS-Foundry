@@ -43,9 +43,34 @@ def _goal_with_step(database, *, objective_id: str = "owner-goal:test-d4",
     )
     build_plan(database, objective.objective_id, [
         {"step_id": step_id, "description": objective.objective,
-         "resource_id": "resource-1"},
+         "resource_id": "resource-1",
+         "required_capabilities": ("write_registered_worktree_files",),
+         "output_contract": ("durable outcome evidence",)},
     ])
     return objective
+
+
+def _park_step_on_missing_scope(database, objective_id: str) -> None:
+    """Record the parked truth the production admission path produces for
+    a contractless owner step: BLOCKED + scope marker (see autonomy.py
+    plan admission; coherence tests cover the coercion itself)."""
+    from jarvis_foundry.executive.autonomy import (
+        CONTRACT_SCOPE_MARKER,
+        active_plan as _active_plan,
+    )
+
+    plan = _active_plan(database, objective_id)
+    assert plan is not None
+    assert plan.steps[0].status == "READY"
+    _park = [dict(step.to_payload() if hasattr(step, "to_payload") else {})
+             for step in plan.steps]
+    _park[0]["status"] = "BLOCKED"
+    _park[0]["evidence_refs"] = [CONTRACT_SCOPE_MARKER]
+    build_plan(database, objective_id, _park)
+    parked = _active_plan(database, objective_id)
+    step = next(s for s in parked.steps if s.step_id == "execute")
+    assert step.status == "BLOCKED"
+    assert CONTRACT_SCOPE_MARKER in tuple(step.evidence_refs or ())
 
 
 def _register_discovery_item(database, *, item_id: str, kind: str = "CI_FAILURE",
@@ -322,3 +347,82 @@ def test_unsatisfiable_template_refused_before_any_shell(tmp_path: Path) -> None
         assert "unsatisfiable" in str(result.get("blocked_reason") or "")
     finally:
         del bridge._DISCOVERY_CONTRACT_TEMPLATES["SCRATCH_UNSAT"]
+
+
+def test_scope_marker_fallback_binds_without_declared_step(tmp_path: Path) -> None:
+    """The feed declares the objective but no step (the live shape):
+    the uniquely scope-parked step is bound and the wake signal emitted."""
+    database, _repo = mission_database(tmp_path)
+    objective = _goal_with_step(database)
+    _park_step_on_missing_scope(database, objective.objective_id)
+    selected_item = _register_discovery_item(
+        database, item_id="pw-d4-fallback",
+        objective_id=objective.objective_id, step_id=None)
+    result = materialize_portfolio_selection(
+        database,
+        decision=_select("pw-d4-fallback", selected_item,
+                         decision_id="portfolio-executive:test-d4-fallback"),
+        resource_id="resource-1",
+        capability="write_registered_worktree_files",
+        source_id="test",
+    )
+    assert result["materialized"] is True
+    binding = result.get("objective_binding") or {}
+    assert binding.get("bound") is True
+    assert binding.get("step_source") == "scope-marker"
+    assert binding["step_id"] == "execute"
+
+    plan = active_plan(database, objective.objective_id)
+    step = next(s for s in plan.steps if s.step_id == "execute")
+    assert step.mission_id == result["mission_id"]
+    signal = f"executive-scope:{objective.objective_id}:execute"
+    events = database.events(event_types=(f"{signal}.materialized",))
+    assert len(events) == 1
+
+
+def test_ambiguous_scope_markers_refuse_rather_than_guess(tmp_path: Path) -> None:
+    """Two scope-parked steps: no bind, mission stands alone."""
+    from jarvis_foundry.executive.autonomy import build_plan as _build
+
+    database, _repo = mission_database(tmp_path)
+    objective = create_objective(
+        database,
+        "Improve the registered software project",
+        objective_id="owner-goal:test-d4-amb",
+        provenance={"directive_id": "owner-test-d4-amb"},
+    )
+    _build(database, objective.objective_id, [
+        {"step_id": "execute-a", "description": objective.objective,
+         "resource_id": "resource-1"},
+        {"step_id": "execute-b", "description": objective.objective,
+         "resource_id": "resource-1"},
+    ])
+    from jarvis_foundry.executive.autonomy import (
+        CONTRACT_SCOPE_MARKER as _MARKER,
+        active_plan as _aplan,
+        build_plan as _bplan,
+    )
+
+    both = _aplan(database, objective.objective_id)
+    parked = []
+    for step in both.steps:
+        payload = dict(step.to_payload())
+        payload["status"] = "BLOCKED"
+        payload["evidence_refs"] = [_MARKER]
+        parked.append(payload)
+    _bplan(database, objective.objective_id, parked)
+    selected_item = _register_discovery_item(
+        database, item_id="pw-d4-amb",
+        objective_id=objective.objective_id, step_id=None)
+    result = materialize_portfolio_selection(
+        database,
+        decision=_select("pw-d4-amb", selected_item,
+                         decision_id="portfolio-executive:test-d4-amb"),
+        resource_id="resource-1",
+        capability="write_registered_worktree_files",
+        source_id="test",
+    )
+    assert result["materialized"] is True
+    binding = result.get("objective_binding") or {}
+    assert binding.get("bound") is False
+    assert "no unique scope-blocked step" in str(binding.get("reason") or "")
