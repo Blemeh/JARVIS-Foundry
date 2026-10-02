@@ -690,6 +690,7 @@ def update_work_item(
              f"unknown portfolio item: {item_id}")
     allowed = {
         "objective", "goal_ids", "project_id", "resource_id", "mission_id",
+        "candidate_id",
         "expected_value",
         "urgency", "information_gain", "confidence", "effort", "cost_usd",
         "risk", "reversibility", "opportunity_cost", "dependencies", "due_at",

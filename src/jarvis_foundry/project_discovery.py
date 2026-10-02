@@ -424,6 +424,109 @@ def canonical_min_candidate_score() -> float:
     return float(DEFAULT_MIN_SCORE)
 
 
+# Item statuses that can never run again: the mission that owned them is
+# terminal.  Reopening one is recovery, not duplication — but only inside
+# the same bounded recovery budget the duplicate release enforces.
+_TERMINAL_ITEM_STATUSES = frozenset({"BLOCKED", "CANCELLED"})
+
+
+def _reopen_terminal_item_for_recovery(
+    db: FoundryDatabase,
+    *,
+    item_id: str,
+    candidate_id: str,
+    opportunity: Opportunity,
+    resource_id: str | None,
+    executive_objective_id: str | None,
+) -> dict[str, Any] | None:
+    """Reopen a terminal portfolio item for one bounded recovery attempt.
+
+    The deterministic item id (``pw-{duplicate_key}``) collides when a
+    re-derived opportunity is fed after its lineage failed terminally.
+    Strict re-registration would strand the accepted opportunity exactly
+    where the duplicate release opened the door.  This reopens instead —
+    but narrowly:
+
+    * The existing item must be TERMINAL (BLOCKED/CANCELLED).  A live
+      (OPEN/CONSUMED/PLANNED/ELIGIBLE) item keeps the honest conflict:
+      something else may still work it.
+    * The recovery budget must still allow it: exactly one terminally
+      failed mission lineage for the canonical objective and no recovery
+      attempted yet — the same ``_RECOVERY_ATTEMPTS`` bound the duplicate
+      release enforces, re-derived here from ledger truth so the two
+      gates can never disagree.
+    * The reopen re-links the NEW candidate, refreshes evidence and
+      provenance, preserves the declaring executive binding, and returns
+      the item to OPEN.  The stale mission linkage is left for the
+      materializer to re-stamp (its existing consumption path).
+
+    Returns a recovery receipt, or None when reopen is refused (the
+    original conflict error then stands).
+    """
+    from .discovery_candidates import (
+        _RECOVERY_ATTEMPTS,
+        _TERMINAL_FAILED_STATES,
+        canonicalize_statement,
+    )
+    from .evolution.executive_portfolio import (
+        rebuild_portfolio_state,
+        set_work_status,
+        update_work_item,
+    )
+
+    try:
+        existing = rebuild_portfolio_state(db).work_items.get(item_id)
+    except Exception:  # noqa: BLE001 — fail closed, keep the conflict
+        return None
+    if existing is None:
+        return None
+    if str(existing.status or "").upper() not in _TERMINAL_ITEM_STATUSES:
+        return None
+    canonical = canonicalize_statement(opportunity.objective())
+    failed = 0
+    with db.connect() as connection:
+        for row in connection.execute(
+                "SELECT objective, state FROM missions").fetchall():
+            if canonicalize_statement(row[0]) != canonical:
+                continue
+            if str(row[1] or "").upper() in _TERMINAL_FAILED_STATES:
+                failed += 1
+    if not 1 <= failed <= _RECOVERY_ATTEMPTS:
+        return None
+    metadata = dict(existing.metadata or {})
+    metadata["repository"] = opportunity.repository
+    if executive_objective_id:
+        metadata["executive_objective_id"] = executive_objective_id
+    try:
+        update_work_item(
+            db,
+            item_id,
+            {"candidate_id": candidate_id,
+             "resource_id": resource_id,
+             "evidence_refs": list(opportunity.evidence_refs),
+             "provenance": {
+                 "source_lane": "live-github-research-activation",
+                 "repository": opportunity.repository,
+                 "opportunity_kind": opportunity.kind,
+                 "problem_statement": opportunity.problem_statement,
+                 "duplicate_key": opportunity.duplicate_key,
+                 "why_now": opportunity.why_now,
+             },
+             "metadata": metadata},
+            source_id="portfolio-discovery-v1",
+        )
+        set_work_status(db, item_id, "OPEN",
+                        reason=f"recovery reopen for {candidate_id}: "
+                               "terminal lineage failed, budget allows one "
+                               "re-derivation",
+                        source_id="portfolio-discovery-v1")
+    except Exception:  # noqa: BLE001 — reopen failed, keep the conflict
+        return None
+    return {"item_id": item_id, "candidate_id": candidate_id,
+            "previous_status": existing.status,
+            "failed_lineages": failed}
+
+
 def feed_portfolio(
     db: FoundryDatabase,
     mission_id: str,
@@ -502,6 +605,22 @@ def feed_portfolio(
                              if executive_objective_id else {})},
             )
         except Exception as error:  # noqa: BLE001 — recorded honestly below
+            reopened = _reopen_terminal_item_for_recovery(
+                db,
+                item_id=item_id,
+                candidate_id=candidate_id,
+                opportunity=opp,
+                resource_id=resource_id,
+                executive_objective_id=executive_objective_id,
+            )
+            if reopened is not None:
+                fed.append({"duplicate_key": opp.duplicate_key,
+                            "candidate_id": candidate_id,
+                            "score": score,
+                            "portfolio_item_id": item_id,
+                            "portfolio_class": _PORTFOLIO_CLASS[opp.kind],
+                            "recovered": reopened})
+                continue
             fed.append({"duplicate_key": opp.duplicate_key,
                         "candidate_id": candidate_id,
                         "score": score,
