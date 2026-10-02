@@ -987,8 +987,12 @@ def _capacity_check(
     # reopened pw-dupkey-...-f2757e1b6f92 to OPEN and selection then WAITed
     # with "blocked:recovery reopen for cand-...: terminal lineage failed"
     # — the reopen made recovery unreachable while reading truthfully).
-    # A blocked item is still rejected: it fails the status gate above, and
-    # the reason it is blocked remains visible on the rejected record.
+    #
+    # Registered items reach this function only after `_all_work_items` has
+    # filtered them to OPEN/PLANNED/ELIGIBLE, so the status clause below is
+    # unreachable for them and the removed gate is NOT compensated here.  The
+    # real enforcement of blocked-ness is that filter; the bounded retirement
+    # of derived repair items lives in `_mission_items`.
     if item.blocked_reason and item.status in ("BLOCKED", "CANCELLED"):
         reasons.append(f"blocked:{item.blocked_reason}")
     if item.owner_only:
@@ -1348,6 +1352,33 @@ def _owner_goal_items(
     return items
 
 
+def _retired_repair_missions(database: FoundryDatabase) -> set[str]:
+    """Mission ids whose repair work has already been retired.
+
+    ``portfolio.repair_retired`` is the durable signal that a REPAIR item for
+    a terminal mission was attempted and could not be materialized (no
+    remaining executable step contract).  Without honouring it here, the
+    derived ``repair:{mission_id}`` item is re-admitted to the ranked pool on
+    every cycle forever: it re-selects, materializes nothing, and appends a
+    fresh ``portfolio.repair_retired`` each cycle because that event is keyed
+    by ``{decision_id}:{mission_id}`` and decision_id changes per cycle.
+
+    That unbounded loop was previously masked by the D5 narrative gate,
+    which rejected the item for carrying a blocked_reason — a gate that also
+    made the bounded recovery reopen unreachable.  The bounded truth lives
+    here: a retired mission's repair is not re-offered.
+    """
+    retired: set[str] = set()
+    with database.connect(readonly=True) as connection:
+        for row in connection.execute(
+                "SELECT json_extract(payload_json, '$.mission_id') AS m "
+                "FROM events WHERE event_type = 'portfolio.repair_retired'"
+        ).fetchall():
+            if row["m"]:
+                retired.add(str(row["m"]))
+    return retired
+
+
 def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
     items: list[WorkItem] = []
     with database.connect() as connection:
@@ -1355,6 +1386,7 @@ def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
             "SELECT mission_id, objective, resource_id, state, next_action "
             "FROM missions ORDER BY rowid"
         ).fetchall()
+    retired = _retired_repair_missions(database)
     for row in rows:
         state = str(row["state"] or "")
         mission_id = str(row["mission_id"] or "")
@@ -1369,6 +1401,11 @@ def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
                 metadata={"mission_state": state},
             ))
         elif state in {"FAILED", "BLOCKED"}:
+            if mission_id in retired:
+                # Durable bounded retirement (see _retired_repair_missions):
+                # this repair was already attempted and could not be
+                # materialized, so it must not be re-offered every cycle.
+                continue
             items.append(WorkItem(
                 item_id=f"repair:{mission_id}", kind="REPAIR",
                 objective=f"Repair mission {mission_id}: {objective}", status="OPEN",

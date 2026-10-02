@@ -121,6 +121,20 @@ def _item(database):
     return rebuild_portfolio_state(database).work_items[ITEM_ID]
 
 
+def _pool_item_ids(database, item_id: str) -> list[str]:
+    """Item ids the selector actually considers, via the real pool builder."""
+    from jarvis_foundry.evolution.executive_portfolio import _all_work_items
+
+    state = rebuild_portfolio_state(database)
+    return [
+        item.item_id for item in _all_work_items(
+            database, state, resource_id=None,
+            capability="write_registered_worktree_files",
+            candidate_limit=20, goals=[], now=None, objective_id=None)
+        if item.item_id == item_id
+    ]
+
+
 def _reopened(database, *, objective_id: str | None = None) -> None:
     """Reproduce the exact live sequence: dead mission → bounded reopen."""
     from jarvis_foundry.project_discovery import (
@@ -220,12 +234,13 @@ def test_reopen_narrative_stays_in_the_record(tmp_path: Path) -> None:
 
 
 def test_genuinely_blocked_item_stays_ineligible(tmp_path: Path) -> None:
-    """The gate keeps its meaning: a real block still rejects the item.
+    """A genuinely BLOCKED item is never admitted to the ranked pool.
 
-    An item that is genuinely BLOCKED stays BLOCKED — the repair keys off the
-    transition STATUS, so the terminal status itself keeps it out of the
-    ranked pool (``_all_work_items`` only admits OPEN/PLANNED/ELIGIBLE) and
-    the narrative is irrelevant to that outcome.
+    The enforcing gate is ``_all_work_items`` (which admits only
+    OPEN/PLANNED/ELIGIBLE registered items), NOT the ``_capacity_check``
+    clause changed by the D5 repair — that clause is unreachable for
+    registered items.  Asserted here so the invariant is pinned to its real
+    enforcement point rather than misattributed to the repaired line.
     """
     database, _repo = _database(tmp_path), None
     _register(database)
@@ -237,6 +252,8 @@ def test_genuinely_blocked_item_stays_ineligible(tmp_path: Path) -> None:
                                 source_id="test")
     assert decision.kind == "WAIT"
     assert _item(database).status == "BLOCKED"
+    assert not _pool_item_ids(database, ITEM_ID), (
+        "a BLOCKED item must not be admitted to the ranked pool")
 
 
 def test_terminal_status_alone_still_rejects(tmp_path: Path) -> None:
@@ -250,6 +267,7 @@ def test_terminal_status_alone_still_rejects(tmp_path: Path) -> None:
     decision = select_next_work(database, loop_id="probe:cancelled",
                                 source_id="test")
     assert decision.kind == "WAIT"
+    assert not _pool_item_ids(database, ITEM_ID)
 
 
 def test_open_status_with_narrative_is_admitted(tmp_path: Path) -> None:
@@ -303,3 +321,59 @@ def test_status_transitions_are_idempotent_per_cycle_not_forever(
         "a second, genuinely new CONSUMED transition must not collide with "
         "the first cycle's key")
     assert _item(database).status == "CONSUMED"
+
+
+def test_terminal_mission_repair_item_is_bounded(tmp_path: Path) -> None:
+    """P1-4: a derived REPAIR item must NOT re-select on every cycle.
+
+    ``_mission_items`` derives ``repair:{mission_id}`` (kind=REPAIR,
+    status=OPEN) for every terminal mission, forever.  The pre-D5 narrative
+    gate was the only thing rejecting it: its blocked_reason was non-empty,
+    so it never entered the ranked pool.
+
+    D5 removed that gate, so with both repairs applied the item is SELECTed
+    on every single cycle, materializes nothing (the mission has no
+    executable step contract left), and appends a fresh
+    ``portfolio.repair_retired`` each time because that event is keyed by
+    ``{decision_id}:{mission_id}`` and decision_id changes per cycle.  The
+    ledger grows without bound and ``repair_budget_exhausted`` never fires,
+    because ``repair_attempts`` is never incremented anywhere.
+
+    A repair item whose owning mission is terminal must retire itself from
+    the pool once its materialization has been attempted and retired, rather
+    than being re-admitted forever.
+    """
+    from jarvis_foundry.evolution.executive_portfolio import (
+        _all_work_items,
+    )
+
+    database, _repo = _database(tmp_path), None
+    _failed_mission(database, mission_id="mission-terminal")
+
+    def repair_ids() -> list[str]:
+        state = rebuild_portfolio_state(database)
+        return [
+            item.item_id for item in _all_work_items(
+                database, state, resource_id=None,
+                capability="write_registered_worktree_files",
+                candidate_limit=20, goals=[],
+                now=None, objective_id=None)
+            if item.kind == "REPAIR"
+        ]
+
+    assert repair_ids() == ["repair:mission-terminal"], repair_ids()
+
+    # A portfolio.repair_retired event for this mission must stop it being
+    # re-admitted, exactly once, durably.
+    from jarvis_foundry.events import Event
+    database.append(Event.create(
+        "portfolio.repair_retired",
+        {"decision_id": "probe:dec-1", "item_id": "repair:mission-terminal",
+         "kind": "REPAIR", "mission_id": "mission-terminal",
+         "reason": "no remaining executable step contract"},
+        source_type="supervisor", source_id="test",
+        idempotency_key="portfolio.repair_retired:probe:dec-1:mission-terminal"))
+
+    assert repair_ids() == [], (
+        "a retired repair item must not be re-admitted to the ranked pool; "
+        f"got {repair_ids()}")
