@@ -3653,6 +3653,36 @@ def _run_discovery_starvation_fallback(
     resource bindings) may materialize here. Returns (portfolio_payload,
     materialization) on a lane SELECT, else (None, None). Never raises:
     discovery must not break the autonomy cycle.
+
+    FIRST BROKEN EDGE REPAIR (2026-10-03).  Admission used to be gated on
+    ``fed_any`` -- "did THIS pass register something new?" -- computed purely
+    from the discovery report and evaluated BEFORE the canonical selector ran.
+    That made the lane unable to consume an opportunity it already owned:
+
+      * re-deriving an already-registered opportunity raises the honest
+        idempotency conflict in ``register_work_item``;
+      * ``_reopen_terminal_item_for_recovery`` then correctly refuses, because
+        the item is OPEN rather than terminal;
+      * so the feed entry carries ``portfolio_error`` and no
+        ``portfolio_item_id``, ``fed_any`` is False, and the lane returned
+        ``(None, None)`` without ever calling ``select_next_work``.
+
+    Live 2026-10-02 22:5xZ (ledger 345448-345450) the same pass DID reopen a
+    terminal item, ``fed_any`` was True, and the item was then rejected by
+    ``_capacity_check`` on its own recovery narrative -- fixed in e63083d.
+    Today the item is OPEN, so the lane cannot even reach the selector. The
+    gate therefore tested the wrong predicate: it asked whether discovery
+    mutated state this pass instead of whether an admissible item exists in
+    the lane scope. Consumption of an existing OPEN item is the missing
+    behaviour; re-registration and reopening stay exactly as they were.
+
+    Admission is now decided solely by the canonical selector: one SELECT of a
+    discovery opportunity carrying an exact resource binding. Every existing
+    guard is preserved -- the discovery pass stays bounded and idempotent, the
+    reopen stays refused unless its recovery budget allows, the reselection
+    stays scoped to ``fallback_oid``, and materialization stays idempotent per
+    decision (``created_from``) and per cycle (``loop_id``). A consumed item
+    leaves OPEN, so a later cycle finds nothing to select and WAITs.
     """
     from ..evolution.executive_portfolio import (
         claim_selection,
@@ -3675,16 +3705,18 @@ def _run_discovery_starvation_fallback(
         if parked is not None:
             parked_directive = str(
                 (parked.provenance or {}).get("directive_id") or "")
-        fed_report = discover_portfolio_opportunities(
-            database, objective_id=parked_directive or fallback_oid,
-            source_id=source_id, executive_objective_id=fallback_oid)
-        fed_any = any(
-            entry.get("portfolio_item_id")
-            and not entry.get("portfolio_error")
-            for repo in fed_report.get("repos", [])
-            for entry in (repo.get("fed") or []))
-        if not fed_any:
-            return None, None
+        fed_report: dict[str, Any] = {}
+        try:
+            fed_report = discover_portfolio_opportunities(
+                database, objective_id=parked_directive or fallback_oid,
+                source_id=source_id, executive_objective_id=fallback_oid)
+        except Exception:  # noqa: BLE001 — a failed feed must not skip a
+            #                          consumable item the lane already owns
+            fed_report = {}
+        # Admission is the canonical selector's verdict, not this pass's
+        # mutations.  A refusal to re-register or to reopen an item that is
+        # already OPEN is the CORRECT idempotent outcome and must not hide an
+        # opportunity that is already registered and consumable.
         scoped = select_next_work(
             database,
             loop_id=f"executive:{cycle_id}:discovery-fed",
@@ -3712,6 +3744,30 @@ def _run_discovery_starvation_fallback(
         result = materialize_portfolio_selection(
             database, decision=payload, resource_id=lane_resource,
             capability=capability, source_id=source_id)
+        if not bool(dict(result or {}).get("materialized")):
+            # Nothing was created.  Record why next to the lane decision so a
+            # durable refusal is auditable instead of a silent no-op, and keep
+            # the cycle's own accounting honest.
+            database.append(Event.create(
+                "executive.discovery_lane_not_materialized",
+                {
+                    "cycle_id": cycle_id,
+                    "objective_id": fallback_oid,
+                    "item_id": str(lane_item.get("item_id") or ""),
+                    "resource_id": lane_resource,
+                    "decision_id": str(payload.get("decision_id") or ""),
+                    "blocked_reason": str(
+                        dict(result or {}).get("blocked_reason") or ""),
+                    "fed_this_pass": any(
+                        entry.get("portfolio_item_id")
+                        and not entry.get("portfolio_error")
+                        for repo in fed_report.get("repos", [])
+                        for entry in (repo.get("fed") or [])),
+                },
+                source_type="supervisor", source_id=source_id,
+                idempotency_key=(
+                    f"executive.discovery_lane_not_materialized:{cycle_id}"),
+            ))
         try:
             claim_selection(database, lane_decision, controller=controller,
                             source_id=source_id)
