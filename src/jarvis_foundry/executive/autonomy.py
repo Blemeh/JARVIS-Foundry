@@ -3702,20 +3702,31 @@ def _run_discovery_starvation_fallback(
     receipt is recorded but the item is NOT retired and the budget is NOT
     spent: STOP/veto is a temporary owner state, and charging it to the budget
     would permanently kill an opportunity and leave "STOP active" recorded as
-    the item's blocked reason long after the STOP is lifted.
+    the item's blocked reason long after the STOP is lifted.  Owner control
+    active at cycle start never reaches this lane at all (the cycle-entry gate
+    and the selector both refuse first); this path only covers a STOP that
+    wins the SELECT-then-materialize race, and while that race persists the
+    item is deliberately re-SELECTed each cycle rather than charged for it.
 
     The retirement reason carries the refusal ordinal because
     ``set_work_status`` keys its event by ``{item}:{status}:{reason}`` and an
     identical payload DEDUPES silently rather than raising, so a constant
     reason would make every later retirement a no-op that leaves the item OPEN
-    while this lane believes it retired it.  The ordinal is derived from the
-    item's durable receipts, so a replayed cycle produces the same ordinal and
-    the retirement stays a true no-op.
+    while this lane believes it retired it.  The ordinal is read from the
+    item's durable receipts before the current one is appended, so it is stable
+    and the first refusal is "(1)".  A replay that re-enters this lane can
+    still append at most one further transition; production replay does not
+    re-enter it at all, because ``run_autonomy_cycle`` returns the recorded
+    cycle for a repeated ``cycle_id``.
 
     A refusal is a judgement about this item's lineage, never about the work.
-    Work that is still wanted is admitted by the ordinary path: a materially
-    different problem statement yields a different ``duplicate_key`` and
-    therefore a different item id, which carries its own budget.
+    Work that is still wanted is admitted by the ordinary path, and only
+    genuinely so: ``make_duplicate_key`` hashes a fixed subject literal
+    ("ci-red" / "no-ci-on-default" / "stale-repo"), NOT the problem statement,
+    so re-expressing the same need for the same repository and opportunity
+    kind mints the SAME item id and SHARES its budget.  A different registered
+    repository, or a different ``opportunity_kind``, is what opens a new
+    lineage.
     """
     from ..evolution.executive_portfolio import (
         claim_selection,
@@ -3819,10 +3830,23 @@ def _run_discovery_starvation_fallback(
         lane_item_id = str(lane_item.get("item_id") or "")
         owner_control_blocked = bool(
             dict(result or {}).get("owner_control_blocked"))
-        refusal_attempt = 1 + sum(
-            1 for event in database.events(
-                event_types=("executive.discovery_lane_not_materialized",))
-            if str(event.payload.get("item_id") or "") == lane_item_id)
+        # Read the ordinal BEFORE appending the current receipt, so the first
+        # refusal is "(1)".  Counted in SQL rather than by materializing every
+        # receipt event: this runs once per refused cycle and the ledger grows
+        # without bound, so an in-Python scan is the wrong shape.
+        refusal_attempt = 1
+        if lane_item_id:
+            try:
+                with database.connect(readonly=True) as connection:
+                    refusal_attempt += int(connection.execute(
+                        "SELECT COUNT(*) FROM events WHERE event_type = ? "
+                        "AND payload_json LIKE ?",
+                        ("executive.discovery_lane_not_materialized",
+                         f'%"item_id":"{lane_item_id}"%'),
+                    ).fetchone()[0])
+            except Exception:  # noqa: BLE001 — an unreadable count must not
+                #                          suppress the retirement itself
+                refusal_attempt = 1
         try:
             database.append(Event.create(
                 "executive.discovery_lane_not_materialized",
@@ -3848,14 +3872,14 @@ def _run_discovery_starvation_fallback(
         except EventConflict:  # replayed cycle: the receipt already stands
             pass
         if owner_control_blocked:
-            # STOP/veto is a temporary owner state, not a judgement about this
-            # work, and it must never be charged to the bounded refusal budget:
-            # a STOP held across the window between SELECT and materialize
-            # would otherwise permanently kill the opportunity and leave the
-            # ledger recording "STOP active" as the item's blocked reason long
-            # after the STOP is lifted.  The receipt above is still recorded, so
-            # the refusal is auditable.  Owner control costs at most one SELECT
-            # per STOP window, exactly as it does before this lane runs.
+            # Owner control must never be charged to the bounded refusal
+            # budget: a STOP held across the window between SELECT and
+            # materialize would otherwise permanently kill the opportunity and
+            # leave the ledger recording "STOP active" as the item's blocked
+            # reason long after the STOP is lifted.  The receipt above is
+            # still recorded, so the refusal is auditable.  The item is
+            # deliberately left OPEN and re-selected on the next cycle, which
+            # is exactly what it would do if this lane did not exist.
             return payload, result
         if lane_item_id:
             try:

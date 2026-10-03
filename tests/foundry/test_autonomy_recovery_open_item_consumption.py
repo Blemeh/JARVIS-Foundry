@@ -352,13 +352,15 @@ def test_lane_refusal_spends_the_recovery_attempt_so_the_reopen_cannot_rearm(
             event_types=("executive.discovery_lane_not_materialized",))]
     assert len(receipts) == _LANE_REFUSAL_BUDGET, (
         f"one durable refusal receipt per refusal, got {len(receipts)}")
-    opens = [
+    reopens = [
         event for event in database.events(
             event_types=("portfolio.work_status_changed",))
         if event.payload.get("item_id") == ITEM_ID
         and event.payload.get("status") == "OPEN"]
-    assert len(opens) <= _LANE_REFUSAL_BUDGET, (
-        f"the reopen must stop re-arming once the budget is spent: {opens}")
+    assert len(reopens) == _LANE_REFUSAL_BUDGET - 1, (
+        "the reopen must re-arm the item between refusals but stop once the "
+        f"budget is spent: {len(reopens)} re-arms for "
+        f"{_LANE_REFUSAL_BUDGET} refusals")
 
 
 def test_retirement_is_never_a_silent_noop(tmp_path: Path, monkeypatch) -> None:
@@ -506,17 +508,12 @@ def test_owner_stop_does_not_spend_the_refusal_budget(
     the owner's highest safety control becoming a one-way, unrecoverable kill
     with no owner-visible reversal.
     """
-    import jarvis_foundry.executive.autonomy as autonomy_module
     import jarvis_foundry.executive.portfolio_bridge as bridge
 
     # (1) The materializer must classify an owner-control refusal as
     # non-terminal rather than as a work judgement.
     database = _database(tmp_path)
     _open_item(database)
-    monkeypatch.setattr(
-        bridge, "_stop_or_veto",
-        lambda db: "STOP active: owner emergency stop")
-    monkeypatch.undo()
     monkeypatch.setattr(
         bridge, "_stop_or_veto",
         lambda db: "STOP active: owner emergency stop")
@@ -529,21 +526,18 @@ def test_owner_stop_does_not_spend_the_refusal_budget(
         f"an owner-control refusal must be marked non-terminal: {stop_result}")
 
     # (2) The lane must record it without retiring the item or spending the
-    # bounded refusal budget.
+    # bounded refusal budget.  The lane imports the materializer from the
+    # bridge module on every call, so THAT is the seam to patch.
     database2 = _database(_mkdir(tmp_path / "lane"))
     _open_item(database2)
     _refusing_feed(monkeypatch)
-    real_materialize = bridge.materialize_portfolio_selection
+    stop_result2 = dict(stop_result)
 
-    def _stop_then_refuse(db, **kwargs):
-        return {"materialized": False, "mission_id": None,
-                "blocked_reason": "STOP active: owner emergency stop",
-                "owner_control_blocked": True}
+    def _refuse_as_owner_control(db, **kwargs):
+        return dict(stop_result2)
 
     monkeypatch.setattr(
-        autonomy_module, "materialize_portfolio_selection", _stop_then_refuse,
-        raising=False)
-    assert real_materialize is not None
+        bridge, "materialize_portfolio_selection", _refuse_as_owner_control)
 
     _payload, result = _lane(database2)
     assert result.get("materialized") is False
