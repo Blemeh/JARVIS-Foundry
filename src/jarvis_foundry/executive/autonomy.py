@@ -3688,18 +3688,25 @@ def _run_discovery_starvation_fallback(
 
     * success stamps the item ``CONSUMED``, which ``_all_work_items`` does not
       admit, so a later cycle finds an empty scoped pool and WAITs;
-    * a refusal retires the item through ``set_work_status(..., "BLOCKED")``,
-      also not admitted. Leaving it ``OPEN`` would re-select and re-refuse the
-      same item every cycle -- unbounded, and because only one SELECT happens
-      per cycle it would also starve every other discovery item in this
-      objective's scope. The single route back to OPEN stays
-      ``_reopen_terminal_item_for_recovery``, which still requires a terminal
-      item AND an unspent ``_RECOVERY_ATTEMPTS`` budget, and is owned by
-      discovery, not by this lane.
+    * a refusal records ``executive.discovery_lane_not_materialized`` and
+      retires the item through ``set_work_status(..., "BLOCKED")``, also not
+      admitted.  The receipt additionally SPENDS the single bounded recovery
+      attempt: ``_reopen_terminal_item_for_recovery`` consults it and refuses
+      to re-arm an item the lane has already refused, because a lane refusal
+      happens before or without any mission row and so cannot be counted as a
+      failed lineage by the reopen's own budget test.  Without that, the
+      reopen would re-arm the item and the treadmill would resume.
 
-    A refusal is recorded as ``executive.discovery_lane_not_materialized``
-    with the exact blocked reason and whether discovery itself failed, so the
-    refusal is auditable instead of a silent no-op.
+    The retirement reason carries the refusal ordinal because
+    ``set_work_status`` keys its event by ``{item}:{status}:{reason}`` and an
+    identical payload DEDUPES silently rather than raising, so a constant
+    reason would make every later retirement a no-op that leaves the item OPEN
+    while this lane believes it retired it.
+
+    A materially different contract is still admitted by the ordinary path: a
+    genuinely new duplicate key, or an owner-authorized re-registration, both
+    mint a different item id.  A refusal is never a permanent judgement about
+    the work -- only about this item's lineage.
     """
     from ..evolution.executive_portfolio import (
         claim_selection,
@@ -3780,18 +3787,25 @@ def _run_discovery_starvation_fallback(
         # Every refusal path in the materializer leaves the item OPEN and
         # retryable, so returning here WITHOUT retiring it would re-select and
         # re-refuse the same item on every subsequent cycle: an unbounded
-        # SELECT/claim/lease/release treadmill that also starves every other
-        # discovery item in this objective's scope, because one SELECT per
-        # cycle always lands on the same top-ranked refusal.
+        # SELECT/refusal treadmill that also starves every other discovery
+        # item in this objective's scope, because one SELECT per cycle always
+        # lands on the same top-ranked refusal.
         #
-        # The bound is the existing lifecycle, not a new one: retire the item
-        # through ``set_work_status`` so ``_all_work_items`` stops admitting it
-        # (it admits only OPEN/PLANNED/ELIGIBLE), and leave exactly one route
-        # back -- ``_reopen_terminal_item_for_recovery``, which stays refused
-        # unless the item is terminal AND its recovery budget
-        # (``_RECOVERY_ATTEMPTS``) still allows one re-derivation.  Recovery is
-        # therefore still bounded, and still owned by discovery, never by this
-        # lane.
+        # The bound is the existing lifecycle, not a new counter.  The refusal
+        # is retired through ``set_work_status``, which ``_all_work_items``
+        # does not admit (OPEN/PLANNED/ELIGIBLE only), and the durable receipt
+        # below spends the single bounded recovery attempt so
+        # ``_reopen_terminal_item_for_recovery`` cannot re-arm the item.
+        #
+        # The retirement reason carries the refusal ordinal because
+        # ``set_work_status`` keys its event by ``{item}:{status}:{reason}``
+        # (D6, e63083d) and ``database.append`` DEDUPES an identical payload
+        # SILENTLY rather than raising.  With a constant reason a repeat would
+        # be a no-op that leaves the item OPEN while this lane believes it
+        # retired it -- the exact silent-loop this repair exists to prevent.
+        # The ordinal makes every retirement a genuinely new transition while
+        # keeping a repeat of the SAME transition a no-op, and it is readable
+        # in the record.
         blocked_reason = str(dict(result or {}).get("blocked_reason") or "")
         lane_item_id = str(lane_item.get("item_id") or "")
         try:
@@ -3817,11 +3831,17 @@ def _run_discovery_starvation_fallback(
             ))
         except EventConflict:  # replayed cycle: the receipt already stands
             pass
-        if lane_item_id and blocked_reason:
+        if lane_item_id:
+            attempt = 1 + sum(
+                1 for event in database.events(
+                    event_types=("executive.discovery_lane_not_materialized",))
+                if str(event.payload.get("item_id") or "") == lane_item_id)
             try:
                 set_work_status(
                     database, lane_item_id, "BLOCKED",
-                    reason=f"discovery lane refused: {blocked_reason}"[:200],
+                    reason=(
+                        f"discovery lane refused ({attempt}): "
+                        f"{blocked_reason or 'no reason recorded'}")[:200],
                     source_id=source_id)
             except Exception:  # noqa: BLE001 — retirement is best-effort;
                 #                          the receipt above is the durable

@@ -137,15 +137,49 @@ def _refusing_feed(monkeypatch):
         project_discovery, "discover_portfolio_opportunities", _discover)
 
 
-def _lane(database):
+def _lane(database, cycle_id: str = CYCLE_ID):
     from jarvis_foundry.executive.autonomy import (
         _run_discovery_starvation_fallback,
     )
 
     return _run_discovery_starvation_fallback(
-        database, cycle_id=CYCLE_ID, fallback_oid=OBJECTIVE_ID,
+        database, cycle_id=cycle_id, fallback_oid=OBJECTIVE_ID,
         capability="write_registered_worktree_files", controller="supervisor",
         source_id="test")
+
+
+def _run_cycle(database, cycle_id: str):
+    return _lane(database, cycle_id)
+
+
+def _failed_mission(database, *, mission_id: str) -> None:
+    """A terminally-failed lineage for the canonical objective.
+
+    ``_reopen_terminal_item_for_recovery`` counts terminally-failed missions
+    whose objective canonicalizes to the re-derived one, and admits exactly
+    one re-derivation (``_RECOVERY_ATTEMPTS``).  This is the live shape:
+    ``mission-ecdb7918c2d4`` is BLOCKED for this objective.
+    """
+    from jarvis_foundry.events import Event
+
+    database.append(Event.create(
+        "mission.created",
+        {"mission_id": mission_id, "objective": OBJECTIVE,
+         "resource_id": "resource-1", "state": "PLANNED",
+         "acceptance_criteria": ["green"], "next_action": "execute",
+         "created_from": f"portfolio:{ITEM_ID}"},
+        source_type="supervisor", source_id="test",
+        idempotency_key=f"mission.created:{mission_id}",
+    ))
+    for index, state in enumerate(
+            ["ORIENTING", "ACTION_SELECTION", "READY", "EXECUTING", "BLOCKED"]):
+        database.append(Event.create(
+            "mission.state_changed",
+            {"mission_id": mission_id, "state": state,
+             "next_action": "execute"},
+            source_type="supervisor", source_id="test",
+            idempotency_key=f"mission.state_changed:{mission_id}:{state}:{index}",
+        ))
 
 
 def _item(database):
@@ -207,6 +241,157 @@ def _run_second_cycle(database, monkeypatch):
         fallback_oid=OBJECTIVE_ID,
         capability="write_registered_worktree_files", controller="supervisor",
         source_id="test")
+
+
+def _opportunity():
+    from jarvis_foundry.project_discovery import Opportunity
+
+    return Opportunity(
+        kind="CI_FAILURE", repository="blemeh/jarvis-foundry",
+        problem_statement=PROBLEM,
+        evidence_refs=("github:blemeh/jarvis-foundry@main",),
+        expected_value=0.5, confidence=0.8, effort=0.3, risk=0.2,
+        reversibility=0.9, urgency=0.4, information_gain=0.5,
+        why_now="CI failure still present on the branch",
+        duplicate_key=DUPKEY,
+    )
+
+
+def test_lane_refusal_spends_the_recovery_attempt_so_the_reopen_cannot_rearm(
+        tmp_path: Path, monkeypatch) -> None:
+    """The LIVE shape.  Independent re-review, blocking finding B1.
+
+    The live item has a terminally-failed mission lineage
+    (``mission-ecdb7918c2d4``, state BLOCKED), so
+    ``_reopen_terminal_item_for_recovery`` is ARMED for it.  Its budget test is
+    ``1 <= failed <= _RECOVERY_ATTEMPTS`` over terminally-failed missions with
+    the canonical objective -- and a lane refusal happens BEFORE or without any
+    mission row, so no refusal path can ever advance that budget.  Retirement
+    by ``set_work_status(..., "BLOCKED")`` alone therefore made things WORSE:
+    it armed a reopen that previously refused, and the reopen set the item
+    back to OPEN, so the unbounded SELECT/refusal treadmill returned.
+
+    Worse, ``set_work_status`` keys its event by ``{item}:{status}:{reason}``
+    and ``database.append`` DEDUPES an identical payload SILENTLY, so the
+    second, identical retirement was a no-op that left the item OPEN while the
+    lane believed it had retired it.
+
+    This drives the REAL ``feed_portfolio`` (no stubbed discovery), so
+    ``_reopen_terminal_item_for_recovery`` actually runs.
+    """
+    from jarvis_foundry import project_discovery
+
+    database = _database(tmp_path)
+    # An UNREGISTERED resource binding is the refusal shape the live registry
+    # produces and the materializer fails closed on, so this lane genuinely
+    # refuses instead of materializing.
+    register_work_item(
+        database, item_id=ITEM_ID, kind="REPAIR", objective=OBJECTIVE,
+        candidate_id="cand-40b81c46a1bd", resource_id="resource-ghost",
+        expected_value=0.5, urgency=0.4, information_gain=0.5,
+        confidence=0.8, effort=0.3, risk=0.2, reversibility=0.9,
+        evidence_refs=["github:blemeh/jarvis-foundry@main"],
+        provenance={"source_lane": "live-github-research-activation",
+                    "repository": "blemeh/jarvis-foundry",
+                    "opportunity_kind": "CI_FAILURE",
+                    "problem_statement": PROBLEM, "duplicate_key": DUPKEY,
+                    "why_now": "CI failure still present on the branch"},
+        metadata={"repository": "blemeh/jarvis-foundry",
+                  "executive_objective_id": OBJECTIVE_ID},
+        source_id="test",
+    )
+    # A terminally-failed lineage for this exact objective: the reopen's budget
+    # test is only satisfied when one exists, so this is what ARMS it.
+    _failed_mission(database, mission_id="mission-ecdb7918c2d4")
+
+    def _feed_real(db, *, objective_id, source_id, executive_objective_id,
+                   **_kwargs):
+        from jarvis_foundry.project_discovery import feed_portfolio
+
+        return feed_portfolio(
+            db, f"portfolio-discovery:{source_id}", [_opportunity()],
+            resource_id="resource-ghost",
+            executive_objective_id=executive_objective_id)
+
+    statuses: list[str] = []
+    for index in range(5):
+        monkeypatch.setattr(
+            project_discovery, "discover_portfolio_opportunities", _feed_real)
+        payload, result = _run_cycle(database, f"continuous:reopen-{index}")
+        if payload is None:
+            statuses.append(f"{index}:{_item(database).status}/idle")
+        elif dict(result or {}).get("materialized"):
+            statuses.append(f"{index}:{_item(database).status}/mat")
+        else:
+            statuses.append(f"{index}:{_item(database).status}/ref")
+
+    assert statuses[0] == "0:BLOCKED/ref", statuses
+    assert _item(database).status == "BLOCKED", (
+        "the refused item must stay retired: a lane refusal spends the single "
+        f"recovery attempt, statuses={statuses}")
+    assert statuses.count("0:BLOCKED/ref") == 1 and not [
+        status for status in statuses if status.endswith("/ref")][1:], (
+        f"exactly one refusal across five re-derive passes, got {statuses}")
+    receipts = [
+        event for event in database.events(
+            event_types=("executive.discovery_lane_not_materialized",))]
+    assert len(receipts) == 1, (
+        f"exactly one durable refusal receipt, got {len(receipts)}")
+    assert not [
+        event for event in database.events(
+            event_types=("portfolio.work_status_changed",))
+        if event.payload.get("item_id") == ITEM_ID
+        and event.payload.get("status") == "OPEN"], (
+        "the armed reopen must never put the refused item back to OPEN")
+
+
+def test_retirement_is_never_a_silent_noop(tmp_path: Path, monkeypatch) -> None:
+    """The ordinal makes each retirement a genuinely new transition.
+
+    ``database.append`` dedupes an identical payload silently, so a constant
+    retirement reason would make every later retirement a no-op that leaves
+    the item OPEN.  Reopening the item between refusals forces a second,
+    byte-identical retirement to be attempted; it must actually append.
+    """
+    import jarvis_foundry.executive.portfolio_bridge as bridge
+
+    database = _database(tmp_path)
+    _open_item(database)
+    _refusing_feed(monkeypatch)
+    monkeypatch.setattr(
+        bridge, "_discovery_contract_satisfiability_block",
+        lambda item, **kwargs: "unsatisfiable: deliverable inside forbidden set")
+
+    _payload, first = _lane(database)
+    assert first.get("materialized") is False
+    assert _item(database).status == "BLOCKED"
+    first_changes = len([
+        event for event in database.events(
+            event_types=("portfolio.work_status_changed",))
+        if event.payload.get("item_id") == ITEM_ID
+        and event.payload.get("status") == "BLOCKED"])
+
+    # Force the item back to OPEN by hand so the identical retirement is
+    # attempted a second time -- exactly what the reopen used to do.
+    from jarvis_foundry.evolution.executive_portfolio import set_work_status
+
+    set_work_status(database, ITEM_ID, "OPEN",
+                    reason="forced reopen for the noop probe",
+                    source_id="test")
+    assert _item(database).status == "OPEN"
+
+    _payload, second = _run_second_cycle(database, monkeypatch)
+    assert second.get("materialized") is False
+    second_changes = len([
+        event for event in database.events(
+            event_types=("portfolio.work_status_changed",))
+        if event.payload.get("item_id") == ITEM_ID
+        and event.payload.get("status") == "BLOCKED"])
+    assert second_changes > first_changes, (
+        "a repeated refusal must append a NEW transition, not dedupe away: "
+        f"{first_changes} -> {second_changes}")
+    assert _item(database).status == "BLOCKED", (
+        "the second identical retirement must actually take effect")
 
 
 def test_refused_item_is_retired_so_the_lane_cannot_retry_forever(

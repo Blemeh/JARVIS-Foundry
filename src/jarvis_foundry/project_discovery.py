@@ -430,6 +430,29 @@ def canonical_min_candidate_score() -> float:
 _TERMINAL_ITEM_STATUSES = frozenset({"BLOCKED", "CANCELLED"})
 
 
+def _discovery_lane_refused(db, item_id: str) -> bool:
+    """Whether the Executive discovery lane durably refused this item.
+
+    Reads the append-only lane receipt rather than the item's mutable status
+    or its ``blocked_reason`` text: the receipt is the durable, replay-safe
+    record that the selector admitted the item and the materializer refused
+    it, and it is what makes the bounded recovery attempt observably spent.
+    A missing table or unreadable ledger fails closed to "not refused", so a
+    read problem can never strand a legitimate reopen.
+    """
+    try:
+        with db.connect(readonly=True) as connection:
+            row = connection.execute(
+                "SELECT 1 FROM events WHERE event_type = "
+                "'executive.discovery_lane_not_materialized' "
+                "AND payload_json LIKE ? LIMIT 1",
+                (f'%"item_id":"{item_id}"%',),
+            ).fetchone()
+    except Exception:  # noqa: BLE001 — fail closed, keep the reopen honest
+        return False
+    return row is not None
+
+
 def _reopen_terminal_item_for_recovery(
     db: FoundryDatabase,
     *,
@@ -481,6 +504,23 @@ def _reopen_terminal_item_for_recovery(
     if existing is None:
         return None
     if str(existing.status or "").upper() not in _TERMINAL_ITEM_STATUSES:
+        return None
+    if _discovery_lane_refused(db, item_id):
+        # The Executive's discovery lane already SELECTed this item and the
+        # materializer refused it, durably (``executive.discovery_lane_not_
+        # materialized``).  A lane refusal happens BEFORE or WITHOUT any
+        # mission row, so the failed-lineage count below cannot see it and the
+        # ``_RECOVERY_ATTEMPTS`` budget is never spent by one.  Reopening here
+        # would re-arm an item the product has already refused: the lane would
+        # SELECT it again, refuse it again, and -- because every refusal path
+        # leaves the item OPEN -- do so on every subsequent cycle without end,
+        # starving every other opportunity in the same objective scope.
+        #
+        # The lane's refusal IS the terminal truth for this lineage, and it
+        # spends the single bounded recovery attempt.  A materially different
+        # contract is still admitted by the ordinary path: a genuinely new
+        # duplicate key, or an owner-authorized re-registration, both mint a
+        # different item id.
         return None
     canonical = canonicalize_statement(opportunity.objective())
     failed = 0
