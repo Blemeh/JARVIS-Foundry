@@ -54,6 +54,8 @@ OBJECTIVE = f"CI_FAILURE: {PROBLEM}"
 DUPKEY = "dupkey-blemeh/jarvis-foundry-CI_FAILURE-f2757e1b6f92"
 ITEM_ID = f"pw-{DUPKEY}"
 OBJECTIVE_ID = "owner-goal:owner-c4dbe49e2dd7b49e11583655"
+SIBLING_ID = "pw-dupkey-sibling"
+SIBLING_OBJECTIVE = f"CI_FAILURE: sibling {PROBLEM}"
 CYCLE_ID = "continuous:probe-consume"
 
 
@@ -205,6 +207,159 @@ def _run_second_cycle(database, monkeypatch):
         fallback_oid=OBJECTIVE_ID,
         capability="write_registered_worktree_files", controller="supervisor",
         source_id="test")
+
+
+def test_refused_item_is_retired_so_the_lane_cannot_retry_forever(
+        tmp_path: Path, monkeypatch) -> None:
+    """The unbounded-retry bound.  Independent review, blocking finding 1.
+
+    Removing the ``fed_any`` gate lets the selector admit an item the
+    materializer will refuse -- an unregistered resource binding, an
+    unsatisfiable contract, a contract-store failure.  EVERY such refusal
+    path leaves the item ``OPEN`` and retryable by design.  If the lane
+    returned without retiring it, the next cycle would SELECT it again and
+    refuse again, forever: five cycles cost twenty-five events (SELECT,
+    claim, lease, release, receipt) and produce nothing.
+
+    Worse, only one SELECT happens per cycle, so the permanently-refused
+    top-ranked item would starve every other discovery item in this
+    objective's scope indefinitely.
+
+    The bound is the existing lifecycle: the refusal retires the item through
+    ``set_work_status(..., "BLOCKED")``, which ``_all_work_items`` does not
+    admit, leaving ``_reopen_terminal_item_for_recovery`` as the single bounded
+    route back to OPEN.
+    """
+    import jarvis_foundry.executive.portfolio_bridge as bridge
+
+    database = _database(tmp_path)
+    _open_item(database)
+    _refusing_feed(monkeypatch)
+    monkeypatch.setattr(
+        bridge, "_discovery_contract_satisfiability_block",
+        lambda item, **kwargs: "unsatisfiable: deliverable inside forbidden set")
+
+    first_payload, first_result = _lane(database)
+    assert first_payload is not None, "cycle 1 must reach the selector"
+    assert first_result.get("materialized") is False
+    assert _item(database).status == "BLOCKED", (
+        "a refused item must be retired, or the lane retries it forever: "
+        f"status={_item(database).status!r}")
+
+    second_payload, second_result = _run_second_cycle(database, monkeypatch)
+    assert (second_payload, second_result) == (None, None), (
+        "a retired item must not be re-selected: "
+        f"{(second_payload, second_result)}")
+
+    events = [
+        event for event in database.events(
+            event_types=("executive.discovery_lane_not_materialized",))]
+    assert len(events) == 1, (
+        f"exactly one refusal receipt, not one per cycle: {len(events)}")
+
+
+def test_a_refused_high_value_item_does_not_starve_a_workable_sibling(
+        tmp_path: Path, monkeypatch) -> None:
+    """Scope livelock.  Independent review, blocking finding 1.
+
+    With one SELECT per cycle and a permanently-refused item at the top of the
+    ranking, the un-workable item would be selected every cycle and the
+    genuinely workable one never.  Retiring the refusal restores the pool, so
+    the sibling is reachable.
+    """
+    import jarvis_foundry.executive.portfolio_bridge as bridge
+
+    database = _database(tmp_path)
+    _open_item(database)
+    register_work_item(
+        database, item_id=SIBLING_ID, kind="REPAIR", objective=SIBLING_OBJECTIVE,
+        candidate_id="cand-sibling", resource_id="resource-1",
+        # Strictly worse than ITEM_ID on every scored factor, so while the
+        # refusable item is still OPEN it wins the ranking; retiring it is
+        # what frees the sibling.
+        expected_value=0.05, urgency=0.05, information_gain=0.05,
+        confidence=0.05, effort=0.9, risk=0.9, reversibility=0.05,
+        evidence_refs=["github:blemeh/jarvis-foundry@main"],
+        provenance={"source_lane": "live-github-research-activation",
+                    "repository": "blemeh/jarvis-foundry",
+                    "opportunity_kind": "CI_FAILURE",
+                    "problem_statement": SIBLING_OBJECTIVE,
+                    "duplicate_key": "dupkey-sibling",
+                    "why_now": "still red"},
+        metadata={"repository": "blemeh/jarvis-foundry",
+                  "executive_objective_id": OBJECTIVE_ID},
+        source_id="test",
+    )
+    _refusing_feed(monkeypatch)
+    refusals = {"count": 0}
+    real_block = bridge._discovery_contract_satisfiability_block
+
+    def _block(item, **kwargs):
+        if str(item.get("item_id") or "") == ITEM_ID:
+            refusals["count"] += 1
+            return "unsatisfiable: deliverable inside forbidden set"
+        return real_block(item, **kwargs)
+
+    monkeypatch.setattr(
+        bridge, "_discovery_contract_satisfiability_block", _block)
+
+    _payload, first = _lane(database)
+    assert first.get("materialized") is False, (
+        "cycle 1 must hit the refusable top item, not the sibling: "
+        f"{first}")
+    assert refusals["count"] == 1
+
+    _payload, second = _run_second_cycle(database, monkeypatch)
+    assert second.get("materialized") is True, (
+        "after the refusal is retired the workable sibling must be reachable, "
+        f"got {second}")
+    assert second.get("mission_id")
+
+
+def test_discovery_failure_is_recorded_in_the_refusal_receipt(
+        tmp_path: Path, monkeypatch) -> None:
+    """A crashed discovery pass is distinguishable from a silent empty feed.
+
+    Without this the receipt's ``fed_this_pass=False`` reads identically for
+    "discovery found nothing" and "discovery raised", so a broken discovery
+    lane is indistinguishable from a starved one.
+    """
+    from jarvis_foundry import project_discovery
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("github api unavailable")
+
+    monkeypatch.setattr(
+        project_discovery, "discover_portfolio_opportunities", _boom)
+
+    database = _database(tmp_path)
+    # Unregistered resource binding: the materializer fails closed on it, the
+    # same refusal shape the live registry produces.
+    register_work_item(
+        database, item_id=ITEM_ID, kind="REPAIR", objective=OBJECTIVE,
+        candidate_id="cand-x", resource_id="resource-ghost",
+        expected_value=0.5, urgency=0.4, information_gain=0.5,
+        confidence=0.8, effort=0.3, risk=0.2, reversibility=0.9,
+        evidence_refs=["github:blemeh/jarvis-foundry@main"],
+        provenance={"source_lane": "live-github-research-activation",
+                    "repository": "blemeh/jarvis-foundry",
+                    "opportunity_kind": "CI_FAILURE",
+                    "problem_statement": PROBLEM, "duplicate_key": DUPKEY,
+                    "why_now": "still red"},
+        metadata={"repository": "blemeh/jarvis-foundry",
+                  "executive_objective_id": OBJECTIVE_ID},
+        source_id="test",
+    )
+
+    _payload, result = _lane(database)
+    assert result.get("materialized") is False
+
+    receipts = list(database.events(
+        event_types=("executive.discovery_lane_not_materialized",)))
+    assert len(receipts) == 1
+    assert "RuntimeError" in receipts[0].payload["discovery_error"], (
+        receipts[0].payload)
+    assert receipts[0].payload["fed_this_pass"] is False
 
 
 def test_lane_still_refuses_an_item_without_a_resource_binding(

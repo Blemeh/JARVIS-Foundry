@@ -3681,13 +3681,31 @@ def _run_discovery_starvation_fallback(
     guard is preserved -- the discovery pass stays bounded and idempotent, the
     reopen stays refused unless its recovery budget allows, the reselection
     stays scoped to ``fallback_oid``, and materialization stays idempotent per
-    decision (``created_from``) and per cycle (``loop_id``). A consumed item
-    leaves OPEN, so a later cycle finds nothing to select and WAITs.
+    decision (``created_from``) and per cycle (``loop_id``).
+
+    Both exits are bounded, by the existing lifecycle rather than a new
+    counter:
+
+    * success stamps the item ``CONSUMED``, which ``_all_work_items`` does not
+      admit, so a later cycle finds an empty scoped pool and WAITs;
+    * a refusal retires the item through ``set_work_status(..., "BLOCKED")``,
+      also not admitted. Leaving it ``OPEN`` would re-select and re-refuse the
+      same item every cycle -- unbounded, and because only one SELECT happens
+      per cycle it would also starve every other discovery item in this
+      objective's scope. The single route back to OPEN stays
+      ``_reopen_terminal_item_for_recovery``, which still requires a terminal
+      item AND an unspent ``_RECOVERY_ATTEMPTS`` budget, and is owned by
+      discovery, not by this lane.
+
+    A refusal is recorded as ``executive.discovery_lane_not_materialized``
+    with the exact blocked reason and whether discovery itself failed, so the
+    refusal is auditable instead of a silent no-op.
     """
     from ..evolution.executive_portfolio import (
         claim_selection,
         release_selection_claim,
         select_next_work,
+        set_work_status,
     )
     from ..project_discovery import discover_portfolio_opportunities
     from .portfolio_bridge import (
@@ -3706,12 +3724,14 @@ def _run_discovery_starvation_fallback(
             parked_directive = str(
                 (parked.provenance or {}).get("directive_id") or "")
         fed_report: dict[str, Any] = {}
+        feed_error = ""
         try:
             fed_report = discover_portfolio_opportunities(
                 database, objective_id=parked_directive or fallback_oid,
                 source_id=source_id, executive_objective_id=fallback_oid)
-        except Exception:  # noqa: BLE001 — a failed feed must not skip a
-            #                          consumable item the lane already owns
+        except Exception as error:  # noqa: BLE001 — a failed feed must not
+            #                          skip a consumable item the lane owns
+            feed_error = f"{type(error).__name__}: {error}"[:300]
             fed_report = {}
         # Admission is the canonical selector's verdict, not this pass's
         # mutations.  A refusal to re-register or to reopen an item that is
@@ -3744,39 +3764,68 @@ def _run_discovery_starvation_fallback(
         result = materialize_portfolio_selection(
             database, decision=payload, resource_id=lane_resource,
             capability=capability, source_id=source_id)
-        if not bool(dict(result or {}).get("materialized")):
-            # Nothing was created.  Record why next to the lane decision so a
-            # durable refusal is auditable instead of a silent no-op, and keep
-            # the cycle's own accounting honest.
+        if bool(dict(result or {}).get("materialized")):
+            try:
+                claim_selection(database, lane_decision, controller=controller,
+                                source_id=source_id)
+            finally:
+                try:
+                    release_selection_claim(database, lane_decision.entity_id,
+                                            controller=controller,
+                                            source_id=source_id)
+                except Exception:
+                    pass
+            return payload, result
+        # The selector admitted this item and materialization still refused.
+        # Every refusal path in the materializer leaves the item OPEN and
+        # retryable, so returning here WITHOUT retiring it would re-select and
+        # re-refuse the same item on every subsequent cycle: an unbounded
+        # SELECT/claim/lease/release treadmill that also starves every other
+        # discovery item in this objective's scope, because one SELECT per
+        # cycle always lands on the same top-ranked refusal.
+        #
+        # The bound is the existing lifecycle, not a new one: retire the item
+        # through ``set_work_status`` so ``_all_work_items`` stops admitting it
+        # (it admits only OPEN/PLANNED/ELIGIBLE), and leave exactly one route
+        # back -- ``_reopen_terminal_item_for_recovery``, which stays refused
+        # unless the item is terminal AND its recovery budget
+        # (``_RECOVERY_ATTEMPTS``) still allows one re-derivation.  Recovery is
+        # therefore still bounded, and still owned by discovery, never by this
+        # lane.
+        blocked_reason = str(dict(result or {}).get("blocked_reason") or "")
+        lane_item_id = str(lane_item.get("item_id") or "")
+        try:
             database.append(Event.create(
                 "executive.discovery_lane_not_materialized",
                 {
                     "cycle_id": cycle_id,
                     "objective_id": fallback_oid,
-                    "item_id": str(lane_item.get("item_id") or ""),
+                    "item_id": lane_item_id,
                     "resource_id": lane_resource,
                     "decision_id": str(payload.get("decision_id") or ""),
-                    "blocked_reason": str(
-                        dict(result or {}).get("blocked_reason") or ""),
+                    "blocked_reason": blocked_reason[:400],
                     "fed_this_pass": any(
                         entry.get("portfolio_item_id")
                         and not entry.get("portfolio_error")
                         for repo in fed_report.get("repos", [])
                         for entry in (repo.get("fed") or [])),
+                    "discovery_error": feed_error,
                 },
                 source_type="supervisor", source_id=source_id,
                 idempotency_key=(
                     f"executive.discovery_lane_not_materialized:{cycle_id}"),
             ))
-        try:
-            claim_selection(database, lane_decision, controller=controller,
-                            source_id=source_id)
-        finally:
+        except EventConflict:  # replayed cycle: the receipt already stands
+            pass
+        if lane_item_id and blocked_reason:
             try:
-                release_selection_claim(database, lane_decision.entity_id,
-                                        controller=controller,
-                                        source_id=source_id)
-            except Exception:
+                set_work_status(
+                    database, lane_item_id, "BLOCKED",
+                    reason=f"discovery lane refused: {blocked_reason}"[:200],
+                    source_id=source_id)
+            except Exception:  # noqa: BLE001 — retirement is best-effort;
+                #                          the receipt above is the durable
+                #                          record of the refusal either way
                 pass
         return payload, result
     except Exception:  # noqa: BLE001 — discovery never breaks autonomy
@@ -4053,12 +4102,17 @@ def run_autonomy_cycle(
                         and fallback_result is not None:
                     portfolio_payload = fallback_payload
                     materialization = fallback_result
-                    continuation = decide_continuation(
-                        database, row.objective_id,
-                        controller=controller)
-                    # The cycle did work FOR this objective even though
-                    # ranking never selected it; record that lineage.
-                    selected_oid = row.objective_id
+                    # Lineage is claimed only when the lane actually produced
+                    # work.  A SELECT that the materializer refused created
+                    # nothing, so attributing this cycle to the objective
+                    # would record progress that did not happen.
+                    if bool(dict(fallback_result).get("materialized")):
+                        continuation = decide_continuation(
+                            database, row.objective_id,
+                            controller=controller)
+                        # The cycle did work FOR this objective even though
+                        # ranking never selected it; record that lineage.
+                        selected_oid = row.objective_id
                 break
     # Production readiness refresh.  The refresh pass inside
     # run_continuous_cycle cannot heal production state because the
