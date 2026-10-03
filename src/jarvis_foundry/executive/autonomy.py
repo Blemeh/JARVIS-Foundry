@@ -3690,23 +3690,32 @@ def _run_discovery_starvation_fallback(
       admit, so a later cycle finds an empty scoped pool and WAITs;
     * a refusal records ``executive.discovery_lane_not_materialized`` and
       retires the item through ``set_work_status(..., "BLOCKED")``, also not
-      admitted.  The receipt additionally SPENDS the single bounded recovery
-      attempt: ``_reopen_terminal_item_for_recovery`` consults it and refuses
-      to re-arm an item the lane has already refused, because a lane refusal
-      happens before or without any mission row and so cannot be counted as a
-      failed lineage by the reopen's own budget test.  Without that, the
-      reopen would re-arm the item and the treadmill would resume.
+      admitted.  The receipt is the durable evidence that lets discovery count
+      the refusal against its own bounded budget
+      (``_LANE_REFUSAL_BUDGET`` in ``project_discovery``), so
+      ``_reopen_terminal_item_for_recovery`` cannot re-arm the item forever.
+      That budget is finite, not a permanent veto, so a TRANSIENT refusal heals
+      within it instead of destroying a legitimate opportunity.
+
+    Owner control is explicitly NOT terminal.  When
+    ``materialize_portfolio_selection`` reports ``owner_control_blocked`` the
+    receipt is recorded but the item is NOT retired and the budget is NOT
+    spent: STOP/veto is a temporary owner state, and charging it to the budget
+    would permanently kill an opportunity and leave "STOP active" recorded as
+    the item's blocked reason long after the STOP is lifted.
 
     The retirement reason carries the refusal ordinal because
     ``set_work_status`` keys its event by ``{item}:{status}:{reason}`` and an
     identical payload DEDUPES silently rather than raising, so a constant
     reason would make every later retirement a no-op that leaves the item OPEN
-    while this lane believes it retired it.
+    while this lane believes it retired it.  The ordinal is derived from the
+    item's durable receipts, so a replayed cycle produces the same ordinal and
+    the retirement stays a true no-op.
 
-    A materially different contract is still admitted by the ordinary path: a
-    genuinely new duplicate key, or an owner-authorized re-registration, both
-    mint a different item id.  A refusal is never a permanent judgement about
-    the work -- only about this item's lineage.
+    A refusal is a judgement about this item's lineage, never about the work.
+    Work that is still wanted is admitted by the ordinary path: a materially
+    different problem statement yields a different ``duplicate_key`` and
+    therefore a different item id, which carries its own budget.
     """
     from ..evolution.executive_portfolio import (
         claim_selection,
@@ -3808,6 +3817,12 @@ def _run_discovery_starvation_fallback(
         # in the record.
         blocked_reason = str(dict(result or {}).get("blocked_reason") or "")
         lane_item_id = str(lane_item.get("item_id") or "")
+        owner_control_blocked = bool(
+            dict(result or {}).get("owner_control_blocked"))
+        refusal_attempt = 1 + sum(
+            1 for event in database.events(
+                event_types=("executive.discovery_lane_not_materialized",))
+            if str(event.payload.get("item_id") or "") == lane_item_id)
         try:
             database.append(Event.create(
                 "executive.discovery_lane_not_materialized",
@@ -3818,6 +3833,7 @@ def _run_discovery_starvation_fallback(
                     "resource_id": lane_resource,
                     "decision_id": str(payload.get("decision_id") or ""),
                     "blocked_reason": blocked_reason[:400],
+                    "owner_control_blocked": owner_control_blocked,
                     "fed_this_pass": any(
                         entry.get("portfolio_item_id")
                         and not entry.get("portfolio_error")
@@ -3831,16 +3847,22 @@ def _run_discovery_starvation_fallback(
             ))
         except EventConflict:  # replayed cycle: the receipt already stands
             pass
+        if owner_control_blocked:
+            # STOP/veto is a temporary owner state, not a judgement about this
+            # work, and it must never be charged to the bounded refusal budget:
+            # a STOP held across the window between SELECT and materialize
+            # would otherwise permanently kill the opportunity and leave the
+            # ledger recording "STOP active" as the item's blocked reason long
+            # after the STOP is lifted.  The receipt above is still recorded, so
+            # the refusal is auditable.  Owner control costs at most one SELECT
+            # per STOP window, exactly as it does before this lane runs.
+            return payload, result
         if lane_item_id:
-            attempt = 1 + sum(
-                1 for event in database.events(
-                    event_types=("executive.discovery_lane_not_materialized",))
-                if str(event.payload.get("item_id") or "") == lane_item_id)
             try:
                 set_work_status(
                     database, lane_item_id, "BLOCKED",
                     reason=(
-                        f"discovery lane refused ({attempt}): "
+                        f"discovery lane refused ({refusal_attempt}): "
                         f"{blocked_reason or 'no reason recorded'}")[:200],
                     source_id=source_id)
             except Exception:  # noqa: BLE001 — retirement is best-effort;

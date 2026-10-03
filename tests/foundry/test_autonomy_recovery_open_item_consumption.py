@@ -39,6 +39,10 @@ from pathlib import Path
 
 import pytest
 
+from jarvis_foundry.control.registration import (
+    inspect_git_resource,
+    registration_event,
+)
 from jarvis_foundry.evolution.executive_portfolio import (
     rebuild_portfolio_state,
     register_work_item,
@@ -57,6 +61,11 @@ OBJECTIVE_ID = "owner-goal:owner-c4dbe49e2dd7b49e11583655"
 SIBLING_ID = "pw-dupkey-sibling"
 SIBLING_OBJECTIVE = f"CI_FAILURE: sibling {PROBLEM}"
 CYCLE_ID = "continuous:probe-consume"
+
+
+def _mkdir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _database(tmp_path: Path):
@@ -327,22 +336,29 @@ def test_lane_refusal_spends_the_recovery_attempt_so_the_reopen_cannot_rearm(
 
     assert statuses[0] == "0:BLOCKED/ref", statuses
     assert _item(database).status == "BLOCKED", (
-        "the refused item must stay retired: a lane refusal spends the single "
-        f"recovery attempt, statuses={statuses}")
-    assert statuses.count("0:BLOCKED/ref") == 1 and not [
-        status for status in statuses if status.endswith("/ref")][1:], (
-        f"exactly one refusal across five re-derive passes, got {statuses}")
+        "the refused item must stay retired: lane refusals spend this module's "
+        f"own bounded budget, statuses={statuses}")
+    from jarvis_foundry.project_discovery import _LANE_REFUSAL_BUDGET
+
+    refused = [status for status in statuses if status.endswith("/ref")]
+    assert len(refused) == _LANE_REFUSAL_BUDGET, (
+        f"exactly the bounded number of refusals, then terminal: {statuses}")
+    assert statuses[_LANE_REFUSAL_BUDGET:] and all(
+        status.endswith("/idle") for status in statuses[_LANE_REFUSAL_BUDGET:]), (
+        f"every pass after the budget is exhausted must find nothing to "
+        f"select: {statuses}")
     receipts = [
         event for event in database.events(
             event_types=("executive.discovery_lane_not_materialized",))]
-    assert len(receipts) == 1, (
-        f"exactly one durable refusal receipt, got {len(receipts)}")
-    assert not [
+    assert len(receipts) == _LANE_REFUSAL_BUDGET, (
+        f"one durable refusal receipt per refusal, got {len(receipts)}")
+    opens = [
         event for event in database.events(
             event_types=("portfolio.work_status_changed",))
         if event.payload.get("item_id") == ITEM_ID
-        and event.payload.get("status") == "OPEN"], (
-        "the armed reopen must never put the refused item back to OPEN")
+        and event.payload.get("status") == "OPEN"]
+    assert len(opens) <= _LANE_REFUSAL_BUDGET, (
+        f"the reopen must stop re-arming once the budget is spent: {opens}")
 
 
 def test_retirement_is_never_a_silent_noop(tmp_path: Path, monkeypatch) -> None:
@@ -392,6 +408,154 @@ def test_retirement_is_never_a_silent_noop(tmp_path: Path, monkeypatch) -> None:
         f"{first_changes} -> {second_changes}")
     assert _item(database).status == "BLOCKED", (
         "the second identical retirement must actually take effect")
+
+
+def bridge_materialize_decision(database):
+    """A real SELECT payload for ITEM_ID, as the lane receives it."""
+    from jarvis_foundry.evolution.executive_portfolio import select_next_work
+
+    decision = select_next_work(
+        database, loop_id="probe:owner-control",
+        source_id="test", objective_id=OBJECTIVE_ID)
+    assert decision.kind == "SELECT", decision.to_payload()
+    return decision.to_payload()
+
+
+def test_a_transient_refusal_heals_within_the_bounded_budget(
+        tmp_path: Path, monkeypatch) -> None:
+    """A refusal must not permanently kill legitimate work.  Review B1.
+
+    ``make_duplicate_key`` is a pure function of ``(repository, kind,
+    subject)`` with a fixed subject vocabulary, so re-deriving the SAME
+    opportunity always mints the SAME item id and there is no owner
+    re-registration seam.  A permanent veto on the first lane refusal
+    therefore kills the opportunity for good -- and keeps the item's durable
+    ``blocked_reason`` asserting a cause that no longer holds.
+
+    The bound is a BUDGET (``_LANE_REFUSAL_BUDGET``), not a veto: a refusal
+    whose cause is healed must succeed on a later pass, and only an exhausted
+    budget is terminal.
+    """
+    database = _database(tmp_path)
+    # An unregistered resource binding: the materializer fails closed on it,
+    # so this lane genuinely refuses.
+    register_work_item(
+        database, item_id=ITEM_ID, kind="REPAIR", objective=OBJECTIVE,
+        candidate_id="cand-x", resource_id="resource-ghost",
+        expected_value=0.5, urgency=0.4, information_gain=0.5,
+        confidence=0.8, effort=0.3, risk=0.2, reversibility=0.9,
+        evidence_refs=["github:blemeh/jarvis-foundry@main"],
+        provenance={"source_lane": "live-github-research-activation",
+                    "repository": "blemeh/jarvis-foundry",
+                    "opportunity_kind": "CI_FAILURE",
+                    "problem_statement": PROBLEM, "duplicate_key": DUPKEY,
+                    "why_now": "still red"},
+        metadata={"repository": "blemeh/jarvis-foundry",
+                  "executive_objective_id": OBJECTIVE_ID},
+        source_id="test",
+    )
+    _refusing_feed(monkeypatch)
+    # A terminally-failed lineage so the bounded reopen is eligible at all.
+    _failed_mission(database, mission_id="mission-transient")
+
+    _payload, first = _lane(database)
+    assert first.get("materialized") is False, first
+    assert _item(database).status == "BLOCKED"
+    assert "is not a registered resource" in str(_item(database).blocked_reason)
+
+    # The cause heals: the binding becomes a registered resource.
+    database.append(registration_event(inspect_git_resource(
+        make_repository(_mkdir(tmp_path / "healed")),
+        resource_id="resource-ghost")))
+
+    # Drive the REAL feed so the bounded reopen actually runs and re-links the
+    # now-registered binding.
+    from jarvis_foundry import project_discovery
+
+    def _feed_real(db, *, objective_id, source_id, executive_objective_id,
+                   **_kwargs):
+        from jarvis_foundry.project_discovery import feed_portfolio
+
+        return feed_portfolio(
+            db, f"portfolio-discovery:{source_id}", [_opportunity()],
+            resource_id="resource-ghost",
+            executive_objective_id=executive_objective_id)
+
+    monkeypatch.setattr(
+        project_discovery, "discover_portfolio_opportunities", _feed_real)
+
+    payload, second = _run_cycle(database, "continuous:heal-1")
+    assert payload is not None, (
+        "a healed transient refusal must be retried inside the bounded budget")
+    assert second.get("materialized") is True, (
+        "the retry must succeed once the cause is healed: "
+        f"{second.get('blocked_reason')}")
+    assert _item(database).status == "CONSUMED"
+
+
+def test_owner_stop_does_not_spend_the_refusal_budget(
+        tmp_path: Path, monkeypatch) -> None:
+    """Owner control must never be terminal.  Review B2.
+
+    ``_stop_or_veto`` is the first thing ``materialize_portfolio_selection``
+    does.  When owner control is active at cycle start the selector WAITs and
+    the lane never runs, but a STOP that lands BETWEEN the SELECT and the
+    materialize reaches the lane as a refusal.  Treating that as a work
+    judgement would permanently kill the opportunity and leave "STOP active"
+    recorded as the item's blocked reason long after the STOP is lifted --
+    the owner's highest safety control becoming a one-way, unrecoverable kill
+    with no owner-visible reversal.
+    """
+    import jarvis_foundry.executive.autonomy as autonomy_module
+    import jarvis_foundry.executive.portfolio_bridge as bridge
+
+    # (1) The materializer must classify an owner-control refusal as
+    # non-terminal rather than as a work judgement.
+    database = _database(tmp_path)
+    _open_item(database)
+    monkeypatch.setattr(
+        bridge, "_stop_or_veto",
+        lambda db: "STOP active: owner emergency stop")
+    monkeypatch.undo()
+    monkeypatch.setattr(
+        bridge, "_stop_or_veto",
+        lambda db: "STOP active: owner emergency stop")
+    decision = bridge_materialize_decision(database)
+    stop_result = bridge.materialize_portfolio_selection(
+        database, decision=decision, resource_id="resource-1",
+        capability="write_registered_worktree_files", source_id="test")
+    assert stop_result.get("materialized") is False
+    assert stop_result.get("owner_control_blocked") is True, (
+        f"an owner-control refusal must be marked non-terminal: {stop_result}")
+
+    # (2) The lane must record it without retiring the item or spending the
+    # bounded refusal budget.
+    database2 = _database(_mkdir(tmp_path / "lane"))
+    _open_item(database2)
+    _refusing_feed(monkeypatch)
+    real_materialize = bridge.materialize_portfolio_selection
+
+    def _stop_then_refuse(db, **kwargs):
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": "STOP active: owner emergency stop",
+                "owner_control_blocked": True}
+
+    monkeypatch.setattr(
+        autonomy_module, "materialize_portfolio_selection", _stop_then_refuse,
+        raising=False)
+    assert real_materialize is not None
+
+    _payload, result = _lane(database2)
+    assert result.get("materialized") is False
+    assert result.get("owner_control_blocked") is True
+    assert _item(database2).status == "OPEN", (
+        "owner control must not retire the item")
+    assert "STOP" not in str(_item(database2).blocked_reason or ""), (
+        "STOP must never be recorded as the item's blocked reason")
+    receipts = list(database2.events(
+        event_types=("executive.discovery_lane_not_materialized",)))
+    assert len(receipts) == 1, "the refusal is still auditable"
+    assert receipts[0].payload["owner_control_blocked"] is True
 
 
 def test_refused_item_is_retired_so_the_lane_cannot_retry_forever(

@@ -1137,8 +1137,14 @@ def materialize_portfolio_selection(
 
     blocked = _stop_or_veto(database)
     if blocked:
+        # ``owner_control_blocked`` marks this refusal as NOT a judgement about
+        # the work: STOP/veto is a temporary owner state, and a caller that
+        # spends a bounded recovery budget on a refusal must never charge it to
+        # owner control.  The selector already WAITs first when owner control is
+        # active at cycle start, so this only covers the window between a SELECT
+        # and this call.
         return {"materialized": False, "mission_id": None,
-                "blocked_reason": blocked}
+                "blocked_reason": blocked, "owner_control_blocked": True}
 
     # Discovery refusals happen BEFORE any mission row exists: a blocked
     # opportunity must not leave a dangling PLANNED shell behind.

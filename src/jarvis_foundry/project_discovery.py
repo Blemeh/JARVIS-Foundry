@@ -430,27 +430,45 @@ def canonical_min_candidate_score() -> float:
 _TERMINAL_ITEM_STATUSES = frozenset({"BLOCKED", "CANCELLED"})
 
 
-def _discovery_lane_refused(db, item_id: str) -> bool:
-    """Whether the Executive discovery lane durably refused this item.
+#: How many Executive-lane refusals a single opportunity lineage may spend.
+#:
+#: A lane refusal means the selector ADMITTED the item and the materializer
+#: still would not build it.  Most such refusals are deterministic (an
+#: unregistered resource binding, an unsatisfiable contract), so one is
+#: normally enough.  The budget is 2 rather than 1 because a refusal can also
+#: be transient -- a ledger write failure, a contract-store fault -- and a
+#: single transient refusal must not permanently kill a legitimate
+#: opportunity.  It is finite because the treadmill is real: every refusal
+#: path leaves the item OPEN and retryable, and one SELECT per cycle would
+#: otherwise re-select and re-refuse forever while starving every other
+#: opportunity in the same objective scope.
+_LANE_REFUSAL_BUDGET = 2
 
-    Reads the append-only lane receipt rather than the item's mutable status
-    or its ``blocked_reason`` text: the receipt is the durable, replay-safe
-    record that the selector admitted the item and the materializer refused
-    it, and it is what makes the bounded recovery attempt observably spent.
-    A missing table or unreadable ledger fails closed to "not refused", so a
-    read problem can never strand a legitimate reopen.
+_LIKE_ESCAPE = str.maketrans({"%": r"\%", "_": r"\_", "[": r"\[", "]": r"\]"})
+
+
+def _discovery_lane_refusals(db, item_id: str) -> int:
+    """Count the Executive discovery lane's durable refusals for this item.
+
+    Reads the append-only lane receipt rather than the item's mutable status or
+    its ``blocked_reason`` text: the receipt is the durable, replay-safe record
+    that the selector admitted the item and the materializer refused it.
+    Discovery still OWNS the decision -- it counts its own budget -- and the
+    executive receipt is only the evidence it consumes.
+
+    An unreadable ledger counts as zero, i.e. fails closed to "nothing spent",
+    so a read problem can never permanently strand a legitimate reopen.
     """
     try:
         with db.connect(readonly=True) as connection:
-            row = connection.execute(
-                "SELECT 1 FROM events WHERE event_type = "
+            return int(connection.execute(
+                "SELECT COUNT(*) FROM events WHERE event_type = "
                 "'executive.discovery_lane_not_materialized' "
-                "AND payload_json LIKE ? LIMIT 1",
-                (f'%"item_id":"{item_id}"%',),
-            ).fetchone()
+                "AND payload_json LIKE ? ESCAPE '\\'",
+                (f'%"item_id":"{item_id.translate(_LIKE_ESCAPE)}"%',),
+            ).fetchone()[0])
     except Exception:  # noqa: BLE001 — fail closed, keep the reopen honest
-        return False
-    return row is not None
+        return 0
 
 
 def _reopen_terminal_item_for_recovery(
@@ -505,21 +523,28 @@ def _reopen_terminal_item_for_recovery(
         return None
     if str(existing.status or "").upper() not in _TERMINAL_ITEM_STATUSES:
         return None
-    if _discovery_lane_refused(db, item_id):
+    lane_refusals = _discovery_lane_refusals(db, item_id)
+    if lane_refusals >= _LANE_REFUSAL_BUDGET:
         # The Executive's discovery lane already SELECTed this item and the
-        # materializer refused it, durably (``executive.discovery_lane_not_
-        # materialized``).  A lane refusal happens BEFORE or WITHOUT any
-        # mission row, so the failed-lineage count below cannot see it and the
-        # ``_RECOVERY_ATTEMPTS`` budget is never spent by one.  Reopening here
-        # would re-arm an item the product has already refused: the lane would
-        # SELECT it again, refuse it again, and -- because every refusal path
-        # leaves the item OPEN -- do so on every subsequent cycle without end,
-        # starving every other opportunity in the same objective scope.
+        # materializer refused it, durably
+        # (``executive.discovery_lane_not_materialized``).  A lane refusal
+        # happens BEFORE or WITHOUT any mission row, so the failed-lineage
+        # count below cannot see it and the ``_RECOVERY_ATTEMPTS`` budget is
+        # never spent by one.  Reopening here would re-arm an item the product
+        # has already refused: the lane would SELECT it again, refuse it again,
+        # and -- because every refusal path leaves the item OPEN -- do so on
+        # every subsequent cycle without end, starving every other opportunity
+        # in the same objective scope.
         #
         # The lane's refusal IS the terminal truth for this lineage, and it
-        # spends the single bounded recovery attempt.  A materially different
-        # contract is still admitted by the ordinary path: a genuinely new
-        # duplicate key, or an owner-authorized re-registration, both mint a
+        # spends this module's own bounded refusal budget.  It is a budget and
+        # not a permanent veto: a transient refusal (a ledger write failure, a
+        # contract-store fault) heals within the budget, so one bad moment
+        # cannot destroy a legitimate opportunity.  It is also not a judgement
+        # about the work -- only about this item's lineage under this
+        # opportunity's deterministic ``duplicate_key``.  Work that is still
+        # wanted is admitted by the ordinary path: a materially different
+        # problem statement yields a different duplicate key and therefore a
         # different item id.
         return None
     canonical = canonicalize_statement(opportunity.objective())
@@ -564,7 +589,8 @@ def _reopen_terminal_item_for_recovery(
         return None
     return {"item_id": item_id, "candidate_id": candidate_id,
             "previous_status": existing.status,
-            "failed_lineages": failed}
+            "failed_lineages": failed,
+            "lane_refusals": lane_refusals}
 
 
 def feed_portfolio(
