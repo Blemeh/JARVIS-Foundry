@@ -146,6 +146,13 @@ class BeforeState:
     changed_files: tuple[str, ...]
     file_hashes: dict[str, str] = field(default_factory=dict)
     captured_at: str = field(default_factory=isoformat)
+    # Every path git reported dirty at capture, before any accounting
+    # filter, plus the bytes recorded for each.  Scope containment uses
+    # these to attribute observed changes to THIS run: a path already dirty
+    # at capture and byte-identical now was not mutated by the worker and
+    # must not be condemned (see ``EvidenceReconciler.reconcile``).
+    raw_changed_files: tuple[str, ...] = field(default_factory=tuple)
+    raw_file_hashes: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,19 +207,39 @@ class EvidenceReconciler:
             rel for rel in changed
             if not _is_control_file(rel)
             and not _is_expected_owner_goal_receipt(rel, expected_receipts))
-        hashes: dict[str, str] = {}
-        for rel in meaningful:
+        # Record the bytes of EVERY dirty path, not only the meaningful
+        # ones: scope containment proves a capture-listed path unchanged
+        # before exempting it, so a receipt or cache that is already dirty
+        # must carry its capture bytes too.  ``file_hashes`` keeps its
+        # existing meaning (the claim-accounting baseline); the raw map is
+        # used only by containment attribution, and it additionally
+        # requires a REAL regular file -- a symlink has no stable bytes of
+        # its own (reading one yields the target's), so a swapped-in link
+        # must never be able to prove itself "unchanged" and waive the
+        # resolved-path containment check.
+        claim_hashes: dict[str, str] = {}
+        raw_hashes: dict[str, str] = {}
+        for rel in changed:
             path = root / rel
-            if path.is_file():
-                try:
-                    hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
-                except OSError:
-                    continue
+            if not path.is_file():
+                continue
+            try:
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError:
+                continue
+            claim_hashes[rel] = digest
+            if not path.is_symlink():
+                raw_hashes[rel] = digest
         return BeforeState(
             head=git_head(root),
             diff_hash=git_diff_hash(root),
             changed_files=meaningful,
-            file_hashes=hashes,
+            file_hashes={
+                rel: claim_hashes[rel] for rel in meaningful
+                if rel in claim_hashes
+            },
+            raw_changed_files=changed,
+            raw_file_hashes=raw_hashes,
         )
 
     def reconcile(
@@ -261,8 +288,22 @@ class EvidenceReconciler:
                 f"worker did not complete (status={envelope.worker_status}, "
                 f"exit_state={envelope.exit_state})")
 
-        # Scope: every observed change must stay inside allowed paths and
-        # never inside forbidden paths.
+        # Scope: every attributable observed change must stay inside allowed
+        # paths and never inside forbidden paths.
+        #
+        # Containment is judged on THIS run's own delta, exactly like claim
+        # reconciliation below.  A registered worktree legitimately carries
+        # untracked files from earlier missions (control receipts,
+        # prescribed exhaust, prior unverified output).  When a pre-existing
+        # path sits under a forbidden prefix it used to fail EVERY later run
+        # on that resource -- with an EMPTY mismatch list, which the mission
+        # bridge classifies as ``evidence_mismatch`` -- so a wholly correct
+        # mission burned its entire repair budget (live 2026-10-04,
+        # mission-4646c7023b05: ``docs/evidence/windows-ci-fix-20260930.md``,
+        # produced by the previous day's mission, condemned three correct
+        # attempts).  A capture-listed path is exempt ONLY when its recorded
+        # bytes are proven byte-identical now; anything unreadable,
+        # unhashable, or changed remains attributable and still condemns.
         allowed_roots = [
             self._resolve_scope_path(root, path)
             for path in (contract.allowed_paths or (root,))
@@ -271,7 +312,17 @@ class EvidenceReconciler:
             self._resolve_scope_path(root, path)
             for path in contract.forbidden_paths
         ]
-        for rel in observed_changed:
+        scope_population = observed_changed
+        baseline = tuple(dict.fromkeys(
+            (*before.raw_changed_files, *(delta_baseline or ()))))
+        if baseline:
+            baseline_set = set(baseline)
+            scope_population = tuple(
+                rel for rel in observed_changed
+                if rel not in baseline_set
+                or not self._unchanged_since_capture(
+                    root / rel, before.raw_file_hashes.get(rel)))
+        for rel in scope_population:
             path = (root / rel).resolve()
             if not any(self._is_within(path, base) for base in allowed_roots):
                 containment.append(f"{rel} escapes allowed scope")
@@ -452,6 +503,25 @@ class EvidenceReconciler:
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    def _unchanged_since_capture(path: Path, recorded: str | None) -> bool:
+        """True only when the capture recorded bytes and they still match.
+
+        ``recorded is None`` (never captured, or captured as a non-regular
+        file) fails closed, and so does a path that is no longer a regular
+        file: content equality through a symlink proves nothing about the
+        path the containment check would resolve.
+        """
+        if recorded is None:
+            return False
+        if path.is_symlink() or not path.is_file():
+            return False
+        try:
+            current = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return False
+        return current == recorded
 
     @staticmethod
     def _resolve_scope_path(root: Path, path: Path) -> Path:

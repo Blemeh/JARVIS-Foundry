@@ -816,8 +816,20 @@ class HybridWorkerRoleAdapter:
                 else FAILED)
             error_class = (
                 "evidence_mismatch" if not report.agree else None)
-            error_detail = (
-                "; ".join(report.mismatches) if not report.agree else None)
+            # The live 2026-10-04 failure reached here with an EMPTY
+            # detail: containment (or an unrecorded mutation) falsified the
+            # run while ``report.mismatches`` stayed empty, so the recorded
+            # signature gave an operator nothing to trace.  Every reason the
+            # report gives for disagreement belongs in the detail, bounded
+            # so one bad run cannot bloat the ledger.
+            disagreement = "; ".join(
+                part for part in (
+                    *report.mismatches,
+                    *report.containment_violations,
+                    *report.unrecorded_mutations,
+                ) if part
+            )[:800]
+            error_detail = disagreement if not report.agree else None
             if (selected_worker == "openhands"
                     and self.router.requires_fallback(
                         "claimed_success_contradicted_by_evidence")):
