@@ -427,7 +427,14 @@ def canonical_min_candidate_score() -> float:
 # Item statuses that can never run again: the mission that owned them is
 # terminal.  Reopening one is recovery, not duplication — but only inside
 # the same bounded recovery budget the duplicate release enforces.
-_TERMINAL_ITEM_STATUSES = frozenset({"BLOCKED", "CANCELLED"})
+#
+# ``FAILED`` is included because that is what the product actually records:
+# ``executive/autonomy.py`` replays terminal mission truth onto the owning
+# item, and the live CI item carries ``FAILED`` (2026-10-04T00:05:14Z,
+# "mission mission-4646c7023b05 terminal: FAILED").  A gate that only knew
+# BLOCKED/CANCELLED refused that item while the duplicate-coverage release
+# admitted its objective — the two gates disagreeing on the same ledger.
+_TERMINAL_ITEM_STATUSES = frozenset({"FAILED", "BLOCKED", "CANCELLED"})
 
 
 #: How many Executive-lane refusals a single opportunity lineage may spend.
@@ -488,14 +495,15 @@ def _reopen_terminal_item_for_recovery(
     where the duplicate release opened the door.  This reopens instead —
     but narrowly:
 
-    * The existing item must be TERMINAL (BLOCKED/CANCELLED).  A live
-      (OPEN/CONSUMED/PLANNED/ELIGIBLE) item keeps the honest conflict:
-      something else may still work it.
-    * The recovery budget must still allow it: exactly one terminally
-      failed mission lineage for the canonical objective and no recovery
-      attempted yet — the same ``_RECOVERY_ATTEMPTS`` bound the duplicate
-      release enforces, re-derived here from ledger truth so the two
-      gates can never disagree.
+    * The existing item must be TERMINAL (FAILED/BLOCKED/CANCELLED).  A
+      live (OPEN/CONSUMED/PLANNED/ELIGIBLE) item keeps the honest
+      conflict: something else may still work it.
+    * The recovery window must still be open for the canonical objective:
+      the one-recovery bound, plus the single release-scoped window that
+      opens when the live release has moved past every terminal failure.
+      The SAME shared rule the duplicate release enforces
+      (``recovery_window_state``), derived from ledger truth on every
+      call, so the two gates can never disagree.
     * The reopen re-links the NEW candidate, refreshes evidence and
       provenance, preserves the declaring executive binding, and returns
       the item to OPEN.  The stale mission linkage is left for the
@@ -505,9 +513,8 @@ def _reopen_terminal_item_for_recovery(
     original conflict error then stands).
     """
     from .discovery_candidates import (
-        _RECOVERY_ATTEMPTS,
-        _TERMINAL_FAILED_STATES,
         canonicalize_statement,
+        recovery_window_state,
     )
     from .evolution.executive_portfolio import (
         rebuild_portfolio_state,
@@ -528,8 +535,8 @@ def _reopen_terminal_item_for_recovery(
         # The Executive's discovery lane already SELECTed this item and the
         # materializer refused it, durably
         # (``executive.discovery_lane_not_materialized``).  A lane refusal
-        # happens BEFORE or WITHOUT any mission row, so the failed-lineage
-        # count below cannot see it and the ``_RECOVERY_ATTEMPTS`` budget is
+        # happens BEFORE or WITHOUT any mission row, so the recovery-window
+        # scan below cannot see it and the one-recovery budget is
         # never spent by one.  Reopening here would re-arm an item the product
         # has already refused: the lane would SELECT it again, refuse it again,
         # and -- because every refusal path leaves the item OPEN -- do so on
@@ -548,15 +555,13 @@ def _reopen_terminal_item_for_recovery(
         # different item id.
         return None
     canonical = canonicalize_statement(opportunity.objective())
-    failed = 0
+    # The reopen gate and the duplicate-coverage release must never
+    # disagree about the objective's remaining recovery budget, so they
+    # share ONE rule derived from ledger truth (the one-recovery bound
+    # plus the single release-scoped window).
     with db.connect() as connection:
-        for row in connection.execute(
-                "SELECT objective, state FROM missions").fetchall():
-            if canonicalize_statement(row[0]) != canonical:
-                continue
-            if str(row[1] or "").upper() in _TERMINAL_FAILED_STATES:
-                failed += 1
-    if not 1 <= failed <= _RECOVERY_ATTEMPTS:
+        window = recovery_window_state(connection, canonical)
+    if not window.open:
         return None
     metadata = dict(existing.metadata or {})
     metadata["repository"] = opportunity.repository
@@ -589,7 +594,9 @@ def _reopen_terminal_item_for_recovery(
         return None
     return {"item_id": item_id, "candidate_id": candidate_id,
             "previous_status": existing.status,
-            "failed_lineages": failed,
+            "failed_lineages": window.failed,
+            "failed_since_release": window.failed_since_release,
+            "release_floor": window.release_floor,
             "lane_refusals": lane_refusals}
 
 
