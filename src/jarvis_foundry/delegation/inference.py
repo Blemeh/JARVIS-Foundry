@@ -162,6 +162,26 @@ def _tokens(text: str) -> set[str]:
     return set(_TOKEN.findall(text.lower()))
 
 
+#: Stopwords excluded from constraint-conflict overlap. A shared generic word
+#: ("a", "the", "for", …) is not evidence that a request violates a constraint;
+#: treating it as a material conflict parks every owner directive in ASKING.
+_CONFLICT_STOPWORDS = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from",
+    "in", "into", "is", "make", "me", "my", "of", "on", "or", "the", "this",
+    "to", "with", "you",
+})
+
+
+def _conflict_tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in _tokens(text)
+        if token not in _GENERIC_ACTION
+        and token not in _CONFLICT_STOPWORDS
+        and len(token) > 1
+    }
+
+
 def _mode_inference(
     text: str,
     metadata: Mapping[str, Any],
@@ -394,6 +414,23 @@ def _mode_guarded_success(
     return tuple(dict.fromkeys(result))[:16]
 
 
+#: Ambiguity option display limit (contracts.MaterialAmbiguity options).
+_OPTION_LIMIT = 512
+
+
+def _clip_option(value: Any) -> str:
+    """Clip an ambiguity option to the contract limit.
+
+    Options are short owner-facing choices; the full source text already
+    lives in evidence. An overlong option poisoned the intent ledger row and
+    made the whole delegation projection unparseable.
+    """
+    text = str(value or "").strip()
+    if len(text) > _OPTION_LIMIT:
+        return (text[:_OPTION_LIMIT - 1].rstrip() + "…")[:_OPTION_LIMIT]
+    return text
+
+
 def _goal_clause(text: str) -> str:
     normalized = " ".join(text.strip().split())
     lowered = normalized.lower()
@@ -419,6 +456,7 @@ def _method_assessment(
     tokens = _tokens(text)
     bad = sorted(tokens & _BAD_METHOD)
     truth = sorted(tokens & _TRUTH_GOAL)
+    conflict_content = _conflict_tokens(text)
     conflicting_constraints = [
         constraint
         for constraint in context.active_constraints
@@ -426,7 +464,7 @@ def _method_assessment(
             cue in constraint.lower()
             for cue in ("do not ", "don't ", "never ", "no ")
         )
-        and bool(tokens & _tokens(constraint))
+        and len(conflict_content & _conflict_tokens(constraint)) >= 2
     ]
     if not (bad and truth) and not conflicting_constraints:
         return None
@@ -568,7 +606,7 @@ def infer_delegation_intent(
             ambiguity_id=f"ambiguity:{directive_id}:referent",
             code="REFERENT_AMBIGUOUS",
             question="Which current item should I apply this instruction to?",
-            options=tuple(candidate.text for candidate in context.candidates[:4]),
+            options=tuple(_clip_option(candidate.text) for candidate in context.candidates[:4]),
             evidence=tuple(
                 f"{candidate.context_id}:{candidate.confidence}"
                 for candidate in context.candidates[:4]
@@ -579,7 +617,7 @@ def infer_delegation_intent(
             ambiguity_id=f"ambiguity:{directive_id}:referent",
             code="REFERENT_UNKNOWN",
             question="What should I apply this instruction to?",
-            options=tuple(candidate.text for candidate in context.candidates[:4]),
+            options=tuple(_clip_option(candidate.text) for candidate in context.candidates[:4]),
             evidence=("NO_CONFIDENT_CONTEXTUAL_REFERENT",),
         ))
     if mode_result.ambiguous:
@@ -611,7 +649,7 @@ def infer_delegation_intent(
                 "approach instead?"
             ),
             options=(
-                method_assessment.recommended_method,
+                _clip_option(method_assessment.recommended_method),
                 "Keep the requested method within current owner controls",
             ),
             evidence=method_assessment.evidence,

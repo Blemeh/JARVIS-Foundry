@@ -274,6 +274,48 @@ describe("RealJarvisRuntimeAdapter", () => {
     });
   });
 
+  it("submits the primary Handle action as a durable GOAL", async () => {
+    let ownerBody: Record<string, unknown> | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/control-session")) {
+        return new Response(JSON.stringify({ status: "READY" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.endsWith("/owner-command")) {
+        ownerBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response(JSON.stringify({
+          status: "APPLIED",
+          command_type: "GOAL",
+          directive_id: "d-goal-1",
+          event_id: "e-goal-1",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.endsWith("/command-center")) {
+        return new Response(JSON.stringify(snapshot), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    }));
+    const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
+    const result = await client.submitOwnerGoal("make me a data analyst saas", "HANDLE");
+    expect(result.accepted).toBe(true);
+    expect(result.directiveId).toBe("d-goal-1");
+    expect(ownerBody).toEqual({
+      command_type: "GOAL",
+      exact_text: "make me a data analyst saas",
+      target: "GLOBAL",
+      metadata: {
+        mode: "HANDLE",
+        request_id: expect.stringMatching(/.+/),
+      },
+    });
+  });
+
   it("resumes only one explicit owner hold", async () => {
     let ownerBody: Record<string, unknown> | null = null;
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo, init?: RequestInit) => {

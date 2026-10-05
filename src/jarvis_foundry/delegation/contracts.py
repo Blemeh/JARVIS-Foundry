@@ -88,11 +88,18 @@ def _string_tuple(
     *,
     limit: int,
     item_length: int = 1024,
+    clip: bool = False,
 ) -> tuple[str, ...]:
-    rows = tuple(
-        _required(value, field, max_length=item_length)
-        for value in (values or ())
-    )
+    def _one(value: Any) -> str:
+        if clip:
+            text = str(value or "").strip()
+            if len(text) > item_length:
+                return (text[:item_length - 1].rstrip() + "…")[:item_length]
+            if not text:
+                raise ValueError(f"{field} is required")
+            return text
+        return _required(value, field, max_length=item_length)
+    rows = tuple(_one(value) for value in (values or ()))
     if len(rows) > limit:
         raise ValueError(f"{field} exceeds {limit} items")
     return tuple(dict.fromkeys(rows))
@@ -190,8 +197,12 @@ class MaterialAmbiguity:
             ),
             code=_required(value.get("code"), "code", max_length=96).upper(),
             question=_required(value.get("question"), "question", max_length=1024),
+            # Clip (don't reject) overlong options on read: legacy ledger rows
+            # embedded full constraint text, and the projection must stay total
+            # over recorded history. New writes are clipped at construction.
             options=_string_tuple(
                 value.get("options"), "options", limit=8, item_length=512,
+                clip=True,
             ),
             material=bool(value.get("material", True)),
             evidence=_string_tuple(

@@ -89,5 +89,9 @@ def deliver_open_attention_toasts(
     for item in items or []:
         if not isinstance(item, dict):
             continue
-        results.append(toast_result_payload(router.emit(item)))
+        try:
+            results.append(toast_result_payload(router.emit(item)))
+        except Exception as error:  # fail closed: toast delivery never breaks the request
+            attention_id = str(item.get("queue_id") or item.get("attention_id") or item.get("dedupe_key") or "")
+            results.append({"status": "ERROR", "attention_id": attention_id, "delivered": False, "detail": f"toast failed closed: {error}"})
     return results
