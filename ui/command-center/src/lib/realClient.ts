@@ -62,13 +62,27 @@ import type {
 } from "./snapshotTypes";
 
 const DEFAULT_API = "/api";
-const SNAPSHOT_FETCH_TIMEOUT_MS = 120_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
-  if (typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
-    return fetch(url, { ...init, signal: AbortSignal.timeout(SNAPSHOT_FETCH_TIMEOUT_MS) });
-  }
-  return fetch(url, init);
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Request timed out after 15 seconds. Retrying automatically."));
+    }, REQUEST_TIMEOUT_MS);
+  });
+  return Promise.race([fetch(url, { ...init, signal: controller.signal }), timeout])
+    .finally(() => clearTimeout(timer));
+}
+
+function readJson(response: Response): Promise<unknown> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Response timed out while loading data.")), REQUEST_TIMEOUT_MS);
+  });
+  return Promise.race([response.json(), timeout]).finally(() => clearTimeout(timer));
 }
 
 function unavailable<T>(feature: string): Promise<T> {
@@ -104,7 +118,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     let source: DataSource = "LIVE";
     if (!this.lastFetchedAt || this.lastError) source = "DISCONNECTED";
     else if (degraded) source = "DEGRADED";
-    const stale = this.lastFetchedAt
+    const stale = this.lastError ? true : this.lastFetchedAt
       ? Date.now() - new Date(this.lastFetchedAt).getTime() > this.pollMs * 2
       : true;
     return {
@@ -124,7 +138,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
           headers: { Accept: "application/json" },
         });
         if (!response.ok) throw new Error(`snapshot HTTP ${response.status}`);
-        const payload = (await response.json()) as Partial<FoundrySnapshot>;
+        const payload = (await readJson(response)) as Partial<FoundrySnapshot>;
         if (!payload || typeof payload !== "object" || !payload.health || !payload.source_of_truth) {
           throw new Error("snapshot is missing canonical health or source-of-truth metadata");
         }
@@ -185,7 +199,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
           { headers: { Accept: "application/json" } },
         );
         if (!response.ok) throw new Error(`timeline HTTP ${response.status}`);
-        const page = (await response.json()) as Partial<FoundryTimelinePage>;
+        const page = (await readJson(response)) as Partial<FoundryTimelinePage>;
         if (
           page.schema !== "v13.command-center-event-page.v1"
           || !Array.isArray(page.events)
@@ -258,9 +272,9 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
           ...(metadata ? { metadata } : {}),
         }),
       });
-      const payload = (await response.json()) as OwnerCommandResponse;
+      const payload = (await readJson(response)) as OwnerCommandResponse;
       if (response.ok) {
-        await this.refreshSnapshot();
+        await this.refreshSnapshot().catch(() => undefined);
         return payload;
       }
       if (response.status === 401 && attempt === 0) {
@@ -326,23 +340,17 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   async getForensicRecord(kind: string, id: string): Promise<ForensicRecord | null> {
-    try {
-      const response = await fetchWithTimeout(
-        `${this.apiBase}/record/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`,
-        { headers: { Accept: "application/json" } },
-      );
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error(`forensic record HTTP ${response.status}`);
-      const payload = (await response.json()) as Partial<ForensicRecord>;
-      if (payload.status !== "FOUND" || payload.kind !== kind || !payload.record) {
-        throw new Error("forensic record contract is invalid");
-      }
-      return payload as ForensicRecord;
-    } catch (error) {
-      this.lastError = error instanceof Error ? error.message : String(error);
-      this._source = "DISCONNECTED";
-      throw error;
+    const response = await fetchWithTimeout(
+      `${this.apiBase}/record/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`forensic record HTTP ${response.status}`);
+    const payload = (await readJson(response)) as Partial<ForensicRecord>;
+    if (payload.status !== "FOUND" || payload.kind !== kind || !payload.record) {
+      throw new Error("forensic record contract is invalid");
     }
+    return payload as ForensicRecord;
   }
 
   async getMission(id: string): Promise<Mission | null> {
@@ -423,25 +431,16 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   async getAutonomy(filter: AutonomyCandidateFilter = "all"): Promise<AutonomyProjection> {
-    try {
-      const query = new URLSearchParams({ filter, limit: "50", timeline_limit: "100" });
-      const response = await fetchWithTimeout(`${this.apiBase}/autonomy?${query.toString()}`, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw new Error(`autonomy projection HTTP ${response.status}`);
-      const payload = (await response.json()) as Partial<AutonomyProjection>;
-      if (payload.schema !== "v11.command-center-autonomy.v1" || !payload.executive || !payload.funnel) {
-        throw new Error("autonomy projection contract is invalid");
-      }
-      this.lastFetchedAt = new Date().toISOString();
-      this.lastError = null;
-      this._source = "LIVE";
-      return payload as AutonomyProjection;
-    } catch (error) {
-      this.lastError = error instanceof Error ? error.message : String(error);
-      this._source = "DISCONNECTED";
-      throw error;
+    const query = new URLSearchParams({ filter, limit: "50", timeline_limit: "100" });
+    const response = await fetchWithTimeout(`${this.apiBase}/autonomy?${query.toString()}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error(`autonomy projection HTTP ${response.status}`);
+    const payload = (await readJson(response)) as Partial<AutonomyProjection>;
+    if (payload.schema !== "v11.command-center-autonomy.v1" || !payload.executive || !payload.funnel) {
+      throw new Error("autonomy projection contract is invalid");
     }
+    return payload as AutonomyProjection;
   }
 
   async getMemoryNode(id: string): Promise<MemoryNode | null> {
@@ -564,7 +563,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   }
 
   subscribeEvents(): MockEventStream {
-    void this.snapshotOrFetch();
+    void this.snapshotOrFetch().catch(() => undefined);
     return this.stream;
   }
 
@@ -654,7 +653,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),
       });
-      const payload = (await response.json()) as Record<string, unknown>;
+      const payload = (await readJson(response)) as Record<string, unknown>;
       if (response.ok) return payload;
       if (response.status === 401 && attempt === 0) {
         this.controlSessionReady = false;
@@ -668,7 +667,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
   async submitVoiceText(text: string, languageHint?: string): Promise<VoiceTextResult> {
     try {
       const payload = await this.ownerPost("/voice-text", { text, language_hint: languageHint ?? "en" });
-      await this.refreshSnapshot();
+      await this.refreshSnapshot().catch(() => undefined);
       return {
         status: String(payload.status ?? "UNKNOWN"),
         transcript: String(payload.transcript ?? text),
@@ -708,7 +707,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    const payload = (await response.json()) as Record<string, unknown>;
+    const payload = (await readJson(response)) as Record<string, unknown>;
     return {
       locale: payload.locale === "sq" ? "sq" : "en",
       notificationRouting: (
@@ -733,7 +732,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    const payload = (await response.json()) as Record<string, unknown>;
+    const payload = (await readJson(response)) as Record<string, unknown>;
     return {
       status: String(payload.status ?? "NOT_RUN"),
       mode: payload.mode == null ? undefined : String(payload.mode),

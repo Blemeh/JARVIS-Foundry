@@ -23,6 +23,7 @@ import { useRouteQuery } from "../hooks/useRouteQuery";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { useLocale } from "../i18n/LocaleContext";
+import "../styles/owner-summary.css";
 
 type CapabilityRow = { spec: Record<string, unknown>; metadata: Record<string, unknown> | null; readiness: Record<string, unknown> };
 type GroupName = "Web" | "Browser" | "Code" | "GitHub" | "Files" | "Documents" | "Data" | "System" | "Desktop" | "MCP" | "Providers" | "Self-acquired";
@@ -61,7 +62,7 @@ function trustState(row: CapabilityRow): string {
 
 function displayedState(row: CapabilityRow): string {
   const trust = trustState(row);
-  if (trust === "PROBATION" || trust === "DISABLED") return trust;
+  if (["PROBATION", "DISABLED", "SUSPENDED"].includes(trust)) return trust;
   return string(row.readiness.state);
 }
 
@@ -104,8 +105,9 @@ function CapabilitiesContent(data: OverviewData) {
         <p>{surfaceStatus === "UNAVAILABLE" ? "The connected source does not publish the additive Capability Fabric projection. No fixture capabilities are substituted." : surfaceStatus === "EMPTY" ? "The canonical catalog is available and currently empty." : "Registration is not readiness. Every state below comes from observed Fabric evidence."}</p>
       </div>
 
+      {!groups.some((group) => group.rows.length) ? <p className="owner-empty">{surfaceStatus === "UNAVAILABLE" ? "Capabilities are unavailable from this source. Try reconnecting." : "No capabilities are published yet."}</p> : null}
       <div className="rm-capability-groups">
-        {groups.map(({ name, icon: Icon, rows: groupRows }) => (
+        {groups.filter((group) => group.rows.length > 0).map(({ name, icon: Icon, rows: groupRows }) => (
           <section key={name} className={`rm-capability-group ${groupRows.length ? "has-rows" : ""}`} aria-labelledby={`capability-${name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
             <header><Icon size={17} aria-hidden="true" /><h2 id={`capability-${name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>{name}</h2><span>{groupRows.length || "—"}</span></header>
             {groupRows.length ? <div>{groupRows.map((row) => {
@@ -113,7 +115,7 @@ function CapabilitiesContent(data: OverviewData) {
               const readiness = displayedState(row);
               return <button key={id} type="button" className="rm-capability-row" onClick={() => setSelected(row)}>
                 <span className={`rm-readiness rm-readiness--${readiness.toLowerCase()}`} />
-                <span><strong>{id}</strong><small>{string(row.spec.action_kind)} · {string(row.spec.kind)}</small></span>
+                <span><strong>{string(row.spec.label ?? row.spec.name, id.replaceAll(/[._-]/g, " "))}</strong><small>{string(row.readiness.last_outcome, "Select to inspect readiness and limitations")}</small></span>
                 <em>{readiness}</em><ChevronRight size={15} aria-hidden="true" />
               </button>;
             })}</div> : <p>{surfaceStatus === "UNAVAILABLE" ? "NOT YET INTEGRATED" : "No canonical entries"}</p>}

@@ -1,4 +1,4 @@
-import { Activity, Clock, Database, Menu, RefreshCw, ShieldQuestion, WifiOff } from "lucide-react";
+import { Clock, Database, Menu, RefreshCw, ShieldQuestion, WifiOff } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useClock } from "../lib/useClock";
 import { useCommandCenter } from "../context/CommandCenterContext";
@@ -39,7 +39,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     version,
     reconnectStream,
   } = useCommandCenter();
-  const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
+  const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version], { keepPreviousWhileLoading: true });
   const schemaLabel = schemaQuery.data?.schema == null ? "UNKNOWN" : String(schemaQuery.data.schema);
   const basePath = `/${location.pathname.split("/").filter(Boolean)[0] ?? ""}`;
   const pageKey = routeKeys[location.pathname] ?? routeKeys[basePath];
@@ -50,7 +50,15 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
       ? trustSummary.state.toUpperCase()
       : trustSummaryStatus === "error" ? "UNAVAILABLE" : "LOADING";
   const source = sourceModeLabel(sourceMode);
-  const operational = streamConnected && !stopActive && (sourceMode === "LIVE" || sourceMode === "SIMULATED");
+  const runtimeState = schemaQuery.data?.releaseState?.toUpperCase();
+  const ownerStatus = stopActive ? "STOPPED"
+    : !connection.connected || connection.stale ? "OFFLINE"
+    : sourceMode === "DEGRADED" ? "DEGRADED"
+    : runtimeState === "RUNNING" || runtimeState === "ACTIVE" || sourceMode === "SIMULATED" ? "ACTIVE"
+    : runtimeState === "WAITING" ? "WAITING"
+    : runtimeState === "WORKING" ? "WORKING"
+    : "DEGRADED";
+  const operational = ownerStatus === "ACTIVE" || ownerStatus === "WORKING" || ownerStatus === "WAITING";
 
   return (
     <>
@@ -71,7 +79,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           {!streamConnected ? (
             <span className="topbar-disconnect">
               <WifiOff size={13} aria-hidden="true" />
-              <span>{t("top.updatesPaused")}</span>
+              <span>Reconnecting automatically</span>
               <button
                 type="button"
                 className="topbar-stream-reconnect"
@@ -85,9 +93,12 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           ) : null}
           <span className="topbar-source data-source-pill" title={connection.error ?? `Data source: ${source}`}>
             <Database size={13} aria-hidden="true" />
-            <span>{t("top.dataSource")}: {source}</span>
+            <span>JARVIS {ownerStatus}</span>
           </span>
-          <span className="topbar-schema" title="Active schema version">{t("top.schema")} {schemaLabel}</span>
+          <details className="topbar-inspect">
+            <summary>Connection details</summary>
+            <div>Data source {source}<br />Schema {schemaLabel}<br />Runtime {runtimeState ?? "Unavailable"}<br />{connection.error ?? (connection.stale ? "Last known state is stale. Reconnecting automatically." : "Current snapshot received.")}</div>
+          </details>
           <button
             type="button"
             className={`topbar-trust trust-pill topbar-trust--${trustState.toLowerCase()}`}
@@ -102,9 +113,6 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
           <span className="topbar-clock" aria-label={`Local time ${clock.time}`}>
             <Clock size={13} aria-hidden="true" />
             <span className="t-num topbar-clock-time">{clock.time}</span>
-          </span>
-          <span className="topbar-runtime" aria-label={`Runtime ${stopActive ? "stopped" : operational ? "operational" : "gated"}`}>
-            <Activity size={13} aria-hidden="true" />{stopActive ? t("top.stopped") : operational ? t("top.operational") : t("top.gated")}
           </span>
           <StopControl compact />
         </div>

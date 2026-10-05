@@ -48,10 +48,9 @@ function parseCommandIntent(raw: string): Intent | null {
 }
 
 const delegationModes = [
-  { label: "Tell me", detail: "Explain & advise", value: "TELL_ME" },
-  { label: "Prepare", detail: "Draft, do not act", value: "PREPARE" },
-  { label: "Handle", detail: "Execute in scope", value: "HANDLE" },
-  { label: "Watch", detail: "Monitor & alert", value: "WATCH" },
+  { label: "ASK", detail: "Get a briefing", value: "TELL_ME" },
+  { label: "GOAL", detail: "Set an outcome", value: "HANDLE" },
+  { label: "VETO", detail: "Set a boundary", value: "VETO" },
 ] as const;
 type DelegationMode = (typeof delegationModes)[number]["label"];
 
@@ -63,14 +62,13 @@ function delegationBody(raw: string): string {
 }
 
 const modePlaceholders: Record<DelegationMode, string> = {
-  "Tell me": "Ask JARVIS for a direct briefing…",
-  Prepare: "Describe the outcome to prepare — no external action…",
-  Handle: "Delegate an outcome within current authority…",
-  Watch: "Name what JARVIS should monitor and report…",
+  ASK: "Ask JARVIS for a briefing…",
+  GOAL: "What outcome should JARVIS work toward?",
+  VETO: "What should JARVIS avoid?",
 };
 
 export function CommandBar() {
-  const { client, stopActive, sourceMode, mutationsEnabled } = useCommandCenter();
+  const { client, stopActive, sourceMode, ownerCommandsEnabled } = useCommandCenter();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
@@ -79,7 +77,7 @@ export function CommandBar() {
   const [history, setHistory] = useState<string[]>([]);
   const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<DelegationMode>("Tell me");
+  const [mode, setMode] = useState<DelegationMode>("ASK");
 
   const flat = useMemo(() => {
     if (!results) return [] as { item: SearchResultItem; group: string }[];
@@ -92,8 +90,10 @@ export function CommandBar() {
     const query = delegationBody(value).trim();
     if (!query) return;
     let cancelled = false;
-    void client.search(query).then((next) => { if (!cancelled) setResults(next); });
-    return () => { cancelled = true; };
+    const timer = window.setTimeout(() => {
+      void client.search(query).then((next) => { if (!cancelled) setResults(next); }).catch(() => { if (!cancelled) setResults(null); });
+    }, 250);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [value, client]);
 
   useEffect(() => {
@@ -133,24 +133,26 @@ export function CommandBar() {
     setHistory((current) => [command, ...current.filter((entry) => entry !== command)].slice(0, 6));
     const parsed = parseCommandIntent(body);
     if (parsed) { navigateTo(parsed.to, parsed.label); return; }
-    if (!mutationsEnabled || stopActive) {
+    if (!ownerCommandsEnabled || stopActive) {
       setStatus({ kind: "error", text: `Command held · ${stopActive ? "STOP is active" : `${sourceModeLabel(sourceMode)} source is not writable`}` });
       clearSoon(); return;
     }
     setSending(true);
     try {
       const delegationMode = delegationModes.find((item) => item.label === mode)?.value as OwnerDelegationMode;
-      const result = await client.submitOwnerGoal(command, delegationMode);
+      const result = mode === "VETO"
+        ? await client.submitVeto(command)
+        : await client.submitOwnerGoal(command, delegationMode);
       if (result.accepted) {
         setValue(""); setResults(null);
-        setStatus({ kind: "ok", text: `Durable owner goal accepted${result.directiveId ? ` · ${result.directiveId}` : ""}` });
+        setStatus({ kind: "ok", text: `Owner command recorded${result.directiveId ? ` · ${result.directiveId}` : ""}` });
       } else {
         setStatus({ kind: "error", text: result.error ?? "Owner goal rejected" });
       }
     } catch (error) {
       setStatus({ kind: "error", text: error instanceof Error ? error.message : String(error) });
     } finally {
-      setSending(false); clearSoon();
+      setSending(false);
     }
   };
 
@@ -165,8 +167,8 @@ export function CommandBar() {
 
   return (
     <div className="commandbar" role="region" aria-label="Persistent JARVIS command surface">
-      <div className="commandbar-modes" aria-label="Delegation level">
-        <span className="commandbar-modes-label">Delegate</span>
+      <div className="commandbar-modes" aria-label="Command intent">
+        <span className="commandbar-modes-label">Direct JARVIS</span>
         {delegationModes.map((item) => (
           <button
             key={item.label}
@@ -183,10 +185,10 @@ export function CommandBar() {
       </div>
       <form className="commandbar-form" onSubmit={(event) => void submit(event)}>
         <label className="commandbar-mobile-mode">
-          <span>Delegation mode</span>
+          <span>Command intent</span>
           <select
             value={mode}
-            aria-label="Delegation mode"
+            aria-label="Command intent"
             onChange={(event) => selectMode(event.target.value as DelegationMode)}
           >
             {delegationModes.map((item) => <option key={item.label} value={item.label}>{item.label}</option>)}
@@ -197,10 +199,10 @@ export function CommandBar() {
           ref={inputRef}
           className="commandbar-input"
           value={value}
-          onChange={(event) => { const next = event.target.value; setValue(next); setActiveIndex(-1); if (!next.trim()) setResults(null); }}
+          onChange={(event) => { const next = event.target.value; setValue(next); setStatus(null); setActiveIndex(-1); if (!next.trim()) setResults(null); }}
           onKeyDown={onKeyDown}
           placeholder={stopActive ? "STOP active — inspect or resume before directing work" : modePlaceholders[mode]}
-          aria-label={`Direct JARVIS or search — ${mode} mode (${sourceModeLabel(sourceMode)})`}
+          aria-label={`Message JARVIS or search — ${mode} mode (${sourceModeLabel(sourceMode)})`}
           aria-expanded={Boolean(value && (intent || flat.length))}
           aria-controls="command-results"
           role="combobox"

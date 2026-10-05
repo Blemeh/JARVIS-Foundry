@@ -289,6 +289,7 @@ export function Timeline() {
   const eventsQuery = useRouteQuery(
     () => client.listTimeline(),
     [client, version],
+    { keepPreviousWhileLoading: true },
   );
 
   return (

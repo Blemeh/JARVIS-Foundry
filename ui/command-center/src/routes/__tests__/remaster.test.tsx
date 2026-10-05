@@ -16,11 +16,11 @@ function renderRoute(path: string, route: React.ReactNode) {
 }
 
 describe("remastered information architecture", () => {
-  it("keeps unavailable hierarchy levels explicit on Work", async () => {
+  it("hides missing hierarchy stages behind a compact inspection surface", async () => {
     renderRoute("/work", <Work />);
     await waitFor(() => expect(screen.getByRole("heading", { name: "Work" })).toBeInTheDocument());
-    expect(screen.getByLabelText("Work hierarchy contract")).toHaveTextContent("GoalNOT YET INTEGRATED");
-    expect(screen.getByLabelText("Work hierarchy contract")).toHaveTextContent("ProjectNOT YET INTEGRATED");
+    expect(screen.queryByText("NOT YET INTEGRATED")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Work hierarchy contract")).toHaveTextContent("missions");
     expect(screen.getByRole("link", { name: /Hybrid Worker Activation/ })).toHaveAttribute("href", "/missions/M-HYB-014");
   });
 
@@ -37,7 +37,8 @@ describe("remastered information architecture", () => {
     expect(screen.getByText(/Deferred by owner/i)).toBeInTheDocument();
     expect(screen.getByText("DEFERRED_BY_OWNER")).toBeInTheDocument();
     expect(screen.getByText(/No fixture capabilities are substituted/i)).toBeInTheDocument();
-    expect(screen.getAllByText("NOT YET INTEGRATED")).toHaveLength(12);
+    expect(screen.queryByText("NOT YET INTEGRATED")).not.toBeInTheDocument();
+    expect(screen.getByText(/Capabilities are unavailable from this source/i)).toBeInTheDocument();
   });
 
   it("preserves human owner authority without simulated directives", async () => {

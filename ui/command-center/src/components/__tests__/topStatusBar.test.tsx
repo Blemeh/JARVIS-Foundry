@@ -18,7 +18,7 @@ describe("TopStatusBar owner workflow", () => {
     await waitFor(() => {
       expect(trustButton.textContent).toMatch(/NOMINAL|DEGRADED|UNAVAILABLE|LOADING|STOP/i)
     })
-    expect(screen.getByText("DATA SOURCE: SIMULATED", { exact: true })).toBeInTheDocument()
+    expect(screen.getByText("JARVIS ACTIVE", { exact: true })).toBeInTheDocument()
     expect(screen.getByText(/Schema/i)).toBeInTheDocument()
   })
 

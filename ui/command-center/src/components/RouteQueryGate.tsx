@@ -33,8 +33,8 @@ export const RouteQueryGate = <T,>({
 
   const hasData = query.data !== null
   if (
-    query.status === "error" ||
-    shouldShowRouteFetchError(sourceMode, query.error, hasData)
+    !hasData && (query.status === "error" ||
+    shouldShowRouteFetchError(sourceMode, query.error, hasData))
   ) {
     return (
       <div className={shellClass}>
@@ -59,5 +59,11 @@ export const RouteQueryGate = <T,>({
     )
   }
 
-  return <>{children(query.data as T)}</>
+  return <>
+    {(query.error || connection.stale) && <div className={shellClass} role="status">
+      <p>Showing last known state. {query.error ?? connection.error ?? "Live updates are reconnecting."}</p>
+      <button type="button" onClick={query.reload}>Retry</button>
+    </div>}
+    {children(query.data as T)}
+  </>
 }

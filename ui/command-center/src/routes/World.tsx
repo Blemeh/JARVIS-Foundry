@@ -1,3 +1,4 @@
+import "../styles/owner-summary.css";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CircleDot, Database, Globe2, Radar, ScanSearch } from "lucide-react";
@@ -141,15 +142,12 @@ function WorldContent(data: OverviewData) {
       </div>
 
       <section className="rm-world-feed" aria-labelledby="world-feed-title">
-        <div className="rm-section-heading"><h2 id="world-feed-title">Awareness field</h2><span>Source · age · salience · confidence · disposition</span></div>
+        <div className="rm-section-heading"><h2 id="world-feed-title">Current signals</h2><span>Select a signal for source and evidence</span></div>
         {projection.signals.length ? projection.signals.map((signal) => (
           <button key={signal.id} type="button" className="rm-world-signal" onClick={() => setSelected(signal)}>
             <span className="rm-world-signal-mark"><CircleDot size={16} aria-hidden="true" /></span>
-            <span className="rm-world-signal-main"><strong>{signal.summary}</strong><small>{signal.kind} · {signal.source}</small></span>
-            <span><small>Age</small><strong>{ageLabel(signal.at)}</strong></span>
+            <span className="rm-world-signal-main"><strong>{signal.summary.length > 150 ? `${signal.summary.slice(0, 147)}…` : signal.summary}</strong><small>{signal.acted} · {ageLabel(signal.at)}</small></span>
             <span><small>Importance</small><strong>{signal.importance}</strong></span>
-            <span><small>Confidence</small><strong>{signal.confidence}</strong></span>
-            <span><small>Action</small><strong>{signal.acted}</strong></span>
             <ArrowRight size={15} aria-hidden="true" />
           </button>
         )) : <div className="rm-page-empty"><Globe2 size={22} /><h2>No observed world state</h2><p>The canonical world projection is empty; JARVIS has not supplied a durable signal to display.</p></div>}

@@ -68,7 +68,7 @@ function SettingsContent(data: OverviewData) {
         <div><h2>{t("settings.theme")}</h2><p>{t("settings.themeBody")}</p><small>{t("settings.themeNote")}</small></div>
         <div><h2>{t("settings.permissions")}</h2><p>{t("settings.permissionsBody")}</p><small>{t("settings.permissionsNote")}</small></div>
       </section>
-      <div className="rm-settings-links"><Link to="/systems">Runtime systems <ArrowRight size={14} /></Link><Link to="/evidence">Evidence forensics <ArrowRight size={14} /></Link></div>
+      <div className="rm-settings-links"><a href="/api/status?diagnostics=full" target="_blank" rel="noreferrer">Full runtime diagnostics <ArrowRight size={14} /></a><Link to="/systems">Runtime systems <ArrowRight size={14} /></Link><Link to="/evidence">Evidence forensics <ArrowRight size={14} /></Link></div>
     </div>
   );
 }

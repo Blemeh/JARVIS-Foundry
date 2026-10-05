@@ -6,6 +6,7 @@ second operational truth and it never starts a worker, sender, or connector.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import mimetypes
 import os
@@ -1169,7 +1170,17 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     wait_diagnoses: list[dict[str, Any]] = []
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
-    for event in database.events(readonly=True, event_type_prefixes=("executive.",)):
+    # Context-resolution events can dominate the live ledger. This view uses
+    # only the decision/authority types below, so filter before decoding JSON.
+    for event in database.events(readonly=True, event_types=(
+        "executive.activation_recorded",
+        "executive.admission_authority_enabled",
+        "executive.admission_authority_disabled",
+        "executive.prediction_recorded",
+        "executive.calibration_recorded",
+        "executive.wait_diagnosis_recorded",
+        "executive.decision_recorded",
+    )):
         etype = str(event.event_type or "")
         payload = event.payload if isinstance(event.payload, dict) else {}
         if etype == "executive.activation_recorded":
@@ -2905,6 +2916,12 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 controls_configured=bool(self.owner_secret),
                 runtime_home=self.runtime_home,
                 source_repo=self.source_repo)
+            # The owner status poll must not hash an entire release or replay
+            # the ledger. Keep those forensic checks available explicitly.
+            query = parse_qs(urlparse(self.path).query)
+            if query.get("diagnostics", [""])[0] != "full":
+                self._json_response(status, status=200)
+                return
             try:
                 from .deployment.status import production_status
                 deployment_status = production_status(
@@ -3080,8 +3097,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
         else:
-            body = json.dumps(snapshot, ensure_ascii=True).encode()
-            content_type = "application/json; charset=utf-8"
+            self._json_response(snapshot, status=200)
+            return
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -3271,8 +3288,25 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 
     def _json_response(self, value: dict[str, Any], *, status: int) -> None:
         body = json.dumps(value, ensure_ascii=True).encode("utf-8")
+        compressed = False
+        if len(body) >= 64 * 1024:
+            for encoding in self.headers.get("Accept-Encoding", "").split(","):
+                parts = [part.strip().lower() for part in encoding.split(";")]
+                if parts[0] != "gzip":
+                    continue
+                try:
+                    quality = next((float(part[2:]) for part in parts[1:] if part.startswith("q=")), 1.0)
+                except ValueError:
+                    quality = 0.0
+                if quality > 0:
+                    body = gzip.compress(body, compresslevel=1)
+                    compressed = True
+                break
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Vary", "Accept-Encoding")
+        if compressed:
+            self.send_header("Content-Encoding", "gzip")
         self._cors_headers()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()

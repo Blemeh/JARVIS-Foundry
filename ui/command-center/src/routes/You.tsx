@@ -6,6 +6,7 @@ import { useRouteQuery } from "../hooks/useRouteQuery";
 import type { OwnerControlSurface } from "../lib/contracts";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { useLocale } from "../i18n/LocaleContext";
+import "../styles/owner-summary.css";
 
 function field(record: Record<string, unknown>, names: string[]): string {
   for (const name of names) {
@@ -26,7 +27,7 @@ function OwnerRecords({ title, rows, empty }: { title: string; rows: Record<stri
   return <section className="rm-owner-records"><h2>{title}</h2>{rows.length ? <div>{rows.slice(0, 8).map((row, index) => {
     const id = field(row, ["context_id", "directive_id", "event_id", "id"]);
     const sourceEvent = field(row, ["source_event_id", "event_id"]);
-    return <article key={`${id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{field(row, ["text", "exact_text", "objective", "reason", "summary", "command_type"])}</strong><small>{field(row, ["kind", "command_type", "state", "status"])} · {provenance(row)}</small>{sourceEvent !== "Record detail unavailable" ? <Link to={`/timeline?event=${encodeURIComponent(sourceEvent)}`}>Evidence <ArrowRight size={12} /></Link> : null}</div></article>;
+    return <article key={`${id}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><div><strong className="owner-record-summary">{field(row, ["text", "exact_text", "objective", "reason", "summary", "command_type"]).split(/\r?\n/)[0].slice(0, 140)}</strong><details><summary>Record details</summary><p>{field(row, ["text", "exact_text", "objective", "reason", "summary", "command_type"])}</p><small>{field(row, ["kind", "command_type", "state", "status"])} · {provenance(row)}</small>{sourceEvent !== "Record detail unavailable" ? <Link to={`/timeline?event=${encodeURIComponent(sourceEvent)}`}>Evidence <ArrowRight size={12} /></Link> : null}</details></div></article>;
   })}</div> : <p>{empty}</p>}</section>;
 }
 
@@ -56,13 +57,6 @@ function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
 
       {!surface ? <div className="rm-owner-unavailable"><Compass size={20} /><div><strong>{t("you.unavailable")}</strong><p>No simulated goals or preferences are substituted. Connect a canonical runtime projection to inspect durable directives.</p></div></div> : null}
 
-      <div className="rm-owner-grid">
-        <OwnerRecords title={t("you.goals")} rows={contextAvailable ? rows("goals", "priorities", "active_objectives") : surface?.goals ?? []} empty={contextAvailable ? "No current goal, priority, or objective is recorded." : surface ? "No active goal is recorded." : "UNAVAILABLE"} />
-        <OwnerRecords title={t("you.projects")} rows={rows("programs", "projects", "standing_orders")} empty={contextAvailable ? "NOT YET INTEGRATED" : "UNAVAILABLE"} />
-        <OwnerRecords title={t("you.constraints")} rows={contextAvailable ? rows("constraints", "permissions", "preferences") : surface?.constraints ?? []} empty={contextAvailable ? "No source-backed record is available." : surface ? "No standing constraint is recorded." : "UNAVAILABLE"} />
-        <OwnerRecords title={t("you.decisions")} rows={contextAvailable ? rows("decisions", "vetoes") : [...(surface?.vetoes ?? []), ...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty={contextAvailable ? "No current decision or veto is recorded." : "UNAVAILABLE"} />
-      </div>
-
       <section className="rm-owner-waiting" aria-labelledby="owner-waiting-title">
         <div className="rm-section-heading"><h2 id="owner-waiting-title">{t("you.waiting")}</h2><span>{surface ? waiting.length : "—"}</span></div>
         {waiting.length ? waiting.map((item) => <article key={item.queue_id}>
@@ -71,9 +65,16 @@ function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
         </article>) : <p>{surface ? "No consequential owner decision is open." : "Decision queue unavailable."}</p>}
       </section>
 
+      <div className="rm-owner-grid">
+        <OwnerRecords title={t("you.goals")} rows={contextAvailable ? rows("goals", "priorities", "active_objectives") : surface?.goals ?? []} empty={contextAvailable ? "No current goal, priority, or objective is recorded." : surface ? "No active goal is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.projects")} rows={rows("programs", "projects", "standing_orders")} empty={contextAvailable ? "No projects or standing orders are recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.constraints")} rows={contextAvailable ? rows("constraints", "permissions", "preferences") : surface?.constraints ?? []} empty={contextAvailable ? "No source-backed record is available." : surface ? "No standing constraint is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.decisions")} rows={contextAvailable ? rows("decisions", "vetoes") : [...(surface?.vetoes ?? []), ...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty={contextAvailable ? "No current decision or veto is recorded." : "UNAVAILABLE"} />
+      </div>
+
       <div className="rm-owner-seams">
-        <section><SlidersHorizontal size={17} /><div><h2>Preferences</h2><p>{preferences.length ? `${preferences.length} source-backed` : "NOT YET INTEGRATED"}</p><small>{preferences.length ? provenance(preferences[0]) : "No canonical preference event is present."}</small></div></section>
-        <section><KeyRound size={17} /><div><h2>Permissions</h2><p>{permissions.length ? `${permissions.length} source-backed` : "NOT YET INTEGRATED"}</p><small>{permissions.length ? provenance(permissions[0]) : "Capability grants stay in their existing authority systems."}</small></div></section>
+        <section><SlidersHorizontal size={17} /><div><h2>Preferences</h2><p>{preferences.length ? `${preferences.length} recorded` : "No preferences recorded"}</p><small>{preferences.length ? provenance(preferences[0]) : "No canonical preference event is present."}</small></div></section>
+        <section><KeyRound size={17} /><div><h2>Permissions</h2><p>{permissions.length ? `${permissions.length} recorded` : "No permissions recorded"}</p><small>{permissions.length ? provenance(permissions[0]) : "Capability grants stay in their existing authority systems."}</small></div></section>
         <section><Ban size={17} /><div><h2>Decisions and veto history</h2><p>{surface ? `${context?.historyCount ?? surface.directiveHistory.length} durable records` : "UNAVAILABLE"}</p><small>{decisions.length ? `${decisions.length} current decision records; complete history stays forensic.` : "Open the forensic owner ledger for complete history."}</small></div><Link to="/owner">Open ledger <ArrowRight size={14} /></Link></section>
       </div>
     </div>
@@ -82,8 +83,8 @@ function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
 
 export function You() {
   const { client, version, sourceMode, connection } = useCommandCenter();
-  const query = useRouteQuery<OwnerControlSurface | null>(() => client.getOwnerControlSurface ? client.getOwnerControlSurface().catch(() => null) : Promise.resolve(null), [client, version]);
+  const query = useRouteQuery<OwnerControlSurface | null>(() => client.getOwnerControlSurface ? client.getOwnerControlSurface() : Promise.resolve(null), [client, version], { keepPreviousWhileLoading: true });
   if (query.status === "loading") return <div className="shell-content"><LoadingState label="Loading owner context" /></div>;
-  if (query.status === "error") return <div className="shell-content"><ErrorState label="Owner context unavailable" detail={connection.error ?? `Source ${sourceModeLabel(sourceMode)} did not return owner context.`} onRetry={query.reload} /></div>;
-  return <YouContent surface={query.data} />;
+  if (query.status === "error" && !query.data) return <div className="shell-content"><ErrorState label="Owner context unavailable" detail={connection.error ?? `Source ${sourceModeLabel(sourceMode)} did not return owner context.`} onRetry={query.reload} /></div>;
+  return <>{(query.error || connection.stale) ? <div className="shell-content" role="status"><p>Showing last known owner context. {query.error ?? connection.error ?? "Reconnecting to live data."}</p><button type="button" onClick={query.reload}>Retry</button></div> : null}<YouContent surface={query.data} /></>;
 }

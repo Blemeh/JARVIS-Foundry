@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -136,6 +137,87 @@ def test_operational_status_is_bounded_and_separate_from_full_snapshot(
         assert payload["status"] in {"OK", "DEGRADED", "BLOCKED"}
         assert "mission_counts" in payload
         assert "missions" not in payload
+    finally:
+        server.close()
+
+
+def test_executive_view_filters_irrelevant_context_before_event_decode(
+    db: FoundryDatabase, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from jarvis_foundry.command_center import _executive_projection
+
+    db.append(Event.create("executive.decision_recorded", {
+        "decision_id": "decision-repair", "decision": "WAIT", "reason": "waiting for owner",
+    }, source_type="test", source_id="test"))
+    db.append(Event.create("executive.project_context_resolved", {
+        "project_id": "project-noise", "context": "unrelated projection",
+    }, source_type="test", source_id="test"))
+    original = db.events
+    queries = []
+
+    def bounded(**kwargs):
+        queries.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(db, "events", bounded)
+    projection = _executive_projection(db)
+    assert projection["latest_decision"]["decision_id"] == "decision-repair"
+    assert "event_type_prefixes" not in queries[0]
+    assert "executive.project_context_resolved" not in queries[0]["event_types"]
+    assert "executive.calibration_recorded" in queries[0]["event_types"]
+
+
+def test_large_snapshot_compression_preserves_forensic_payload(
+    db: FoundryDatabase, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = {"evidence": [{"id": str(i), "payload": "durable evidence " * 100} for i in range(100)]}
+    server = CommandCenterServer(db)
+    monkeypatch.setattr(server._handler, "_cached_snapshot", lambda self: packet)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}/api/command-center"
+        with urlopen(Request(base, headers={"Accept-Encoding": "gzip"}), timeout=3) as response:
+            encoded = response.read()
+            assert response.headers["Content-Encoding"] == "gzip"
+            assert int(response.headers["Content-Length"]) == len(encoded)
+            assert json.loads(gzip.decompress(encoded)) == packet
+            assert len(encoded) < len(json.dumps(packet)) / 10
+        with urlopen(Request(base, headers={"Accept-Encoding": "gzip;q=0"}), timeout=3) as response:
+            assert response.headers.get("Content-Encoding") is None
+            assert json.loads(response.read()) == packet
+    finally:
+        server.close()
+
+
+def test_status_poll_does_not_run_full_deployment_diagnostics(
+    db: FoundryDatabase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import jarvis_foundry.command_center as command_center
+    from jarvis_foundry.deployment import status as deployment_status
+
+    calls = []
+    monkeypatch.setattr(command_center, "build_operational_status_snapshot", lambda *a, **k: {
+        "status": "OK", "health": {"supervisor_status": "RUNNING", "trust_state": "SUSPENDED"},
+    })
+
+    def diagnostics(**kwargs):
+        calls.append(kwargs)
+        return {"health": {"status": "OK"}, "process_truth": {"status": "PASS"}}
+
+    monkeypatch.setattr(deployment_status, "production_status", diagnostics)
+    server = CommandCenterServer(db, runtime_home=tmp_path)
+    server.start()
+    try:
+        base = f"http://{server.address[0]}:{server.address[1]}"
+        with urlopen(f"{base}/api/status", timeout=3) as response:
+            payload = json.loads(response.read())
+        assert calls == []
+        assert payload["health"]["supervisor_status"] == "RUNNING"
+        assert payload["health"]["trust_state"] == "SUSPENDED"
+        with urlopen(f"{base}/api/status?diagnostics=full", timeout=3) as response:
+            detailed = json.loads(response.read())
+        assert len(calls) == 1
+        assert detailed["process_truth"]["status"] == "PASS"
     finally:
         server.close()
 

@@ -1,311 +1,89 @@
-import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, CircleAlert, FolderKanban, GitBranch, ListChecks } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { ArrowRight, FolderKanban } from "lucide-react";
 import { RouteQueryGate } from "../components/RouteQueryGate";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
-import type {
-  Mission,
-  WorkCampaign,
-  WorkHierarchy,
-  WorkHierarchyLevelState,
-  WorkMissionLink,
-  WorkObjective,
-} from "../lib/contracts";
+import type { Mission, WorkHierarchy, WorkObjective } from "../lib/contracts";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { useLocale } from "../i18n/LocaleContext";
+import "../styles/owner-summary.css";
 
+type WorkData = { missions: Mission[]; hierarchy: WorkHierarchy | null };
 type WorkFilter = "active" | "waiting" | "attention" | "completed" | "all";
-
-type WorkData = {
-  missions: Mission[];
-  hierarchy: WorkHierarchy | null;
-};
-
-function matches(mission: Mission, filter: WorkFilter): boolean {
-  if (filter === "active") return ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(mission.status);
-  if (filter === "waiting") return ["STANDBY", "HALTED"].includes(mission.status);
-  if (filter === "attention") return ["BLOCKED", "INTERVENTION", "HALTED"].includes(mission.status);
-  if (filter === "completed") return mission.status === "COMPLETE";
-  return true;
+const attentionStates = ["BLOCKED", "INTERVENTION", "HALTED", "WAIT_FOR_OWNER", "NEEDS_OWNER"];
+function matches(status: string, filter: WorkFilter) {
+  const value = status.toUpperCase();
+  if (filter === "all") return true;
+  if (filter === "attention") return attentionStates.includes(value);
+  if (filter === "completed") return ["COMPLETE", "COMPLETED", "ACCEPTED", "DONE"].includes(value);
+  if (filter === "waiting") return ["STANDBY", "HALTED", "WAITING", "WAIT"].includes(value) || value.startsWith("WAIT_");
+  return ["ACTIVE", "IN_PROGRESS", "RUNNING", "WORKING", "OPEN", "READY", "PENDING", "STANDBY", "QUEUED", "WAITING", "WAIT"].includes(value) || (value.startsWith("WAIT_") && !attentionStates.includes(value));
 }
-
-function levelLabel(state: WorkHierarchyLevelState | undefined): string {
-  if (state === "AVAILABLE") return "Canonical projection";
-  if (state === "EMPTY") return "No current records";
-  if (state === "NOT_YET_INTEGRATED") return "NOT YET INTEGRATED";
-  return "UNAVAILABLE";
+function conciseWorkTitle(text: string) {
+  const line = text.split(/\r?\n/).find((part) => part.trim())?.trim() || "Untitled work";
+  return line.length > 110 ? `${line.slice(0, 107).trimEnd()}…` : line;
 }
-
-function hierarchyState(
-  hierarchy: WorkHierarchy | null,
-  level: string,
-): WorkHierarchyLevelState {
-  if (hierarchy) return hierarchy.levels[level] ?? "UNAVAILABLE";
-  if (level === "objectives" || level === "missions") return "AVAILABLE";
-  return "NOT_YET_INTEGRATED";
-}
-
-function relationshipText(link: WorkMissionLink | undefined): string {
-  if (!link) return "Hierarchy link unavailable";
-  return [
-    `${link.action_ids.length} action${link.action_ids.length === 1 ? "" : "s"}`,
-    `${link.worker_ids.length} worker${link.worker_ids.length === 1 ? "" : "s"}`,
-    `${link.evidence_refs.length} evidence`,
-    `${link.verdict_ids.length} verdict${link.verdict_ids.length === 1 ? "" : "s"}`,
-  ].join(" · ");
-}
-
-function MissionRows({
-  rows,
-  links,
-}: {
-  rows: Mission[];
-  links: Map<string, WorkMissionLink>;
-}) {
-  return (
-    <div className="rm-mission-rows">
-      {rows.map((mission) => {
-        const link = links.get(mission.id);
-        return (
-          <Link key={mission.id} to={`/missions/${mission.id}`} className={`rm-mission-row rm-mission-row--${mission.status.toLowerCase()}`}>
-            <span className="rm-mission-status"><span />{mission.status.replace("_", " ")}</span>
-            <div><strong>{mission.title}</strong><small>{mission.id} · {mission.owner}</small></div>
-            <div className="rm-mission-phase"><span>{mission.stage || "UNKNOWN"}</span><small>{mission.nextAction || "Next action unknown"}</small></div>
-            <div className="rm-mission-proof" aria-label={`Recorded proof links for ${mission.id}`}>
-              <span>{relationshipText(link)}</span>
-              <small>{link?.source_event_id ? `source ${link.source_event_id}` : "source event unavailable"}</small>
-            </div>
-            <ArrowRight size={16} aria-hidden="true" />
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-function CampaignBlock({
-  campaign,
-  missions,
-  links,
-  params,
-}: {
-  campaign: WorkCampaign;
-  missions: Mission[];
-  links: Map<string, WorkMissionLink>;
-  params: URLSearchParams;
-}) {
-  const next = new URLSearchParams(params);
-  next.set("status", "all");
-  next.set("campaign", campaign.campaign_id);
-  const wait = campaign.wait_kinds.length
-    ? ` · waiting: ${campaign.wait_kinds.join(", ")}`
-    : "";
-  return (
-    <div className="rm-campaign-block" id={`campaign-${campaign.campaign_id}`}>
-      <div className="rm-campaign-head">
-        <div>
-          <Link to={{ pathname: "/work", search: next.toString(), hash: `campaign-${campaign.campaign_id}` }}>
-            {campaign.campaign_id}
-          </Link>
-          <small>{campaign.status}{wait}</small>
-        </div>
-        <span>{campaign.child_count} children · {campaign.pending_count} pending · {campaign.action_ids.length} actions</span>
-      </div>
-      {missions.length ? (
-        <MissionRows rows={missions} links={links} />
-      ) : (
-        <p className="rm-campaign-empty">No mission in this campaign matches the selected status filter.</p>
-      )}
-    </div>
-  );
-}
-
 function WorkContent({ missions, hierarchy }: WorkData) {
   const { sourceMode } = useCommandCenter();
   const { t } = useLocale();
   const [params, setParams] = useSearchParams();
-  const fromUrl = params.get("status") as WorkFilter | null;
-  const [localFilter, setLocalFilter] = useState<WorkFilter>(fromUrl && ["active", "waiting", "attention", "completed", "all"].includes(fromUrl) ? fromUrl : "active");
-  const filter = fromUrl && ["active", "waiting", "attention", "completed", "all"].includes(fromUrl) ? fromUrl : localFilter;
-  const selectedObjective = params.get("objective");
-  const selectedCampaign = params.get("campaign");
-  const filtered = missions.filter((mission) => matches(mission, filter));
-  const missionById = useMemo(() => new Map(missions.map((mission) => [mission.id, mission])), [missions]);
-  const missionLinks = useMemo(
-    () => new Map((hierarchy?.missions ?? []).map((mission) => [mission.mission_id, mission])),
-    [hierarchy],
-  );
-  const campaigns = useMemo(
-    () => new Map((hierarchy?.campaigns ?? []).map((campaign) => [campaign.campaign_id, campaign])),
-    [hierarchy],
-  );
-  const goals = useMemo(
-    () => new Map((hierarchy?.goals ?? []).map((goal) => [goal.goal_id, goal])),
-    [hierarchy],
-  );
-  const projects = useMemo(
-    () => new Map((hierarchy?.projects ?? []).map((project) => [project.project_id, project])),
-    [hierarchy],
-  );
-  const objectives = useMemo(() => {
-    const sourceObjectives = hierarchy?.objectives ?? [];
-    if (sourceObjectives.length) return sourceObjectives;
-    const grouped = new Map<string, Mission[]>();
-    for (const mission of filtered) {
-      const key = mission.objective?.trim() || "Objective not recorded";
-      grouped.set(key, [...(grouped.get(key) ?? []), mission]);
-    }
-    return [...grouped.entries()].map(([label, rows], index): WorkObjective => ({
-      objective_id: `mission-recorded-objective-${index + 1}`,
-      label,
-      status: "UNAVAILABLE",
-      campaign_ids: [],
-      mission_ids: rows.map((mission) => mission.id),
-      plan_ids: [],
-      action_ids: [],
-      progress_evidence: { status: "UNAVAILABLE", evidence_refs: [] },
-    }));
-  }, [filtered, hierarchy]);
-  const visibleObjectives = objectives.filter((objective) => (
-    (!selectedObjective || objective.objective_id === selectedObjective)
-    && (!selectedCampaign || objective.campaign_ids.includes(selectedCampaign))
-  ));
-  const assignedMissionIds = new Set((hierarchy?.missions ?? [])
-    .filter((mission) => mission.objective_id)
-    .map((mission) => mission.mission_id));
-  const unlinkedMissions = hierarchy
-    ? filtered.filter((mission) => !assignedMissionIds.has(mission.id))
-    : [];
-  const filters: Array<{ key: WorkFilter; label: string }> = [
-    { key: "active", label: t("work.filterActive") }, { key: "waiting", label: t("work.filterWaiting") },
-    { key: "attention", label: t("work.filterAttention") }, { key: "completed", label: t("work.filterCompleted") }, { key: "all", label: t("work.filterAll") },
+  const requested = params.get("status");
+  const filter = requested && ["active", "waiting", "attention", "completed", "all"].includes(requested) ? requested as WorkFilter : null;
+  const objectiveId = params.get("objective");
+  const campaignId = params.get("campaign");
+  const missionMap = new Map(missions.map((mission) => [mission.id, mission]));
+  const objectives: WorkObjective[] = hierarchy?.objectives ?? [];
+  const assigned = new Set(objectives.flatMap((objective) => objective.mission_ids));
+  const links = new Map((hierarchy?.missions ?? []).map((link) => [link.mission_id, link]));
+  function objectiveMatches(objective: WorkObjective, selected: WorkFilter) {
+    const rows = objective.mission_ids.map((id) => missionMap.get(id)).filter((row): row is Mission => Boolean(row));
+    if (selected === "all") return true;
+    if (selected === "waiting") return matches(objective.status, selected) || rows.some((row) => matches(row.status, selected));
+    const needsAttention = matches(objective.status, "attention") || rows.some((row) => matches(row.status, "attention"));
+    const completed = matches(objective.status, "completed") || (objective.status === "UNAVAILABLE" && rows.length > 0 && rows.every((row) => matches(row.status, "completed")));
+    if (selected === "attention") return needsAttention;
+    if (selected === "completed") return !needsAttention && completed;
+    return !needsAttention && !completed && (matches(objective.status, "active") || rows.some((row) => matches(row.status, "active")));
+  }
+  const sections: Array<{ label: string; filter: WorkFilter }> = filter ? [{ label: filter === "all" ? "All work" : filter === "completed" ? "Recently completed" : filter === "attention" ? "Needs you" : filter === "waiting" ? "Waiting" : "Active work", filter }] : [
+    { label: "Active work", filter: "active" }, { label: "Needs you", filter: "attention" }, { label: "Recently completed", filter: "completed" },
   ];
-
-  return (
-    <div className="shell-content rm-page rm-work">
-      <header className="rm-page-head">
-        <div><h1>{t("page.work")}</h1><p>{t("page.workSubtitle")}</p></div>
-        <div className="rm-page-source"><span>{sourceModeLabel(sourceMode)}</span><small>{missions.length} mission records · {hierarchy?.status ?? "UNAVAILABLE"} hierarchy</small></div>
-      </header>
-
-      <div className="rm-hierarchy-map" aria-label="Work hierarchy contract">
-        {[
-          ["goals", "Goal"],
-          ["projects", "Project"],
-          ["objectives", "Objective"],
-          ["campaigns", "Campaign"],
-          ["missions", "Mission"],
-          ["actions", "Action / proof"],
-        ].map(([key, label], index, all) => {
-          const state = hierarchyState(hierarchy, key);
-          return (
-            <span className="rm-hierarchy-step" key={key}>
-              <div className={state === "AVAILABLE" ? "is-available" : ""}><span>{label}</span><strong>{levelLabel(state)}</strong></div>
-              {index < all.length - 1 ? <ArrowRight size={14} /> : null}
-            </span>
-          );
-        })}
-      </div>
-
-      <div className="rm-filter-row" role="group" aria-label="Filter work">
-        {filters.map((item) => (
-          <button key={item.key} type="button" className={filter === item.key ? "is-active" : ""} aria-pressed={filter === item.key} onClick={() => {
-            setLocalFilter(item.key);
-            const next = new URLSearchParams(params); if (item.key === "active") next.delete("status"); else next.set("status", item.key); next.delete("objective"); next.delete("campaign"); setParams(next, { replace: true });
-          }}>{item.label}<span>{missions.filter((mission) => matches(mission, item.key)).length}</span></button>
-        ))}
-      </div>
-
-      {visibleObjectives.length ? (
-        <div className="rm-objective-list">
-          {visibleObjectives.map((objective, objectiveIndex) => {
-            const objectiveMissions = objective.mission_ids
-              .map((missionId) => missionById.get(missionId))
-              .filter((mission): mission is Mission => Boolean(mission && matches(mission, filter)));
-            const objectiveCampaigns = objective.campaign_ids
-              .map((campaignId) => campaigns.get(campaignId))
-              .filter((campaign): campaign is WorkCampaign => Boolean(campaign))
-              .filter((campaign) => !selectedCampaign || campaign.campaign_id === selectedCampaign);
-            const campaignMissionIds = new Set(objectiveCampaigns.flatMap((campaign) => campaign.mission_ids));
-            const directMissions = objectiveMissions.filter((mission) => !campaignMissionIds.has(mission.id));
-            const goal = objective.goal_id ? goals.get(objective.goal_id) : null;
-            const project = objective.project_id ? projects.get(objective.project_id) : null;
-            const next = new URLSearchParams(params);
-            next.set("status", "all");
-            next.set("objective", objective.objective_id);
-            next.delete("campaign");
-            return (
-              <section key={objective.objective_id} className="rm-objective" aria-labelledby={`objective-${objectiveIndex}`}>
-                <div className="rm-objective-head">
-                  <span className="rm-objective-index">O{String(objectiveIndex + 1).padStart(2, "0")}</span>
-                  <div>
-                    <h2 id={`objective-${objectiveIndex}`}>
-                      <Link to={{ pathname: "/work", search: next.toString() }}>{objective.label}</Link>
-                    </h2>
-                    <p>{objective.objective_id} · {objective.status}</p>
-                    <div className="rm-objective-lineage">
-                      <span>Goal: {goal?.label ?? "NOT YET INTEGRATED"}</span>
-                      <span>Project: {project?.label ?? "NOT YET INTEGRATED"}</span>
-                      <span>Progress evidence: {objective.progress_evidence.status}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="rm-objective-work">
-                  {objectiveCampaigns.map((campaign) => (
-                    <CampaignBlock
-                      key={campaign.campaign_id}
-                      campaign={campaign}
-                      missions={campaign.mission_ids
-                        .map((missionId) => missionById.get(missionId))
-                        .filter((mission): mission is Mission => Boolean(mission && matches(mission, filter)))}
-                      links={missionLinks}
-                      params={params}
-                    />
-                  ))}
-                  {directMissions.length ? (
-                    <div className="rm-campaign-block">
-                      <div className="rm-campaign-head"><div><strong>Direct missions</strong><small>No campaign identity recorded</small></div><span>{directMissions.length} mission{directMissions.length === 1 ? "" : "s"}</span></div>
-                      <MissionRows rows={directMissions} links={missionLinks} />
-                    </div>
-                  ) : null}
-                  {!objectiveCampaigns.length && !directMissions.length ? (
-                    <p className="rm-campaign-empty">No mission under this objective matches the selected status filter.</p>
-                  ) : null}
-                </div>
-              </section>
-            );
-          })}
-          {unlinkedMissions.length && !selectedObjective && !selectedCampaign ? (
-            <section className="rm-objective" aria-labelledby="objective-unlinked">
-              <div className="rm-objective-head">
-                <span className="rm-objective-index">UN</span>
-                <div><h2 id="objective-unlinked">Unlinked mission records</h2><p>No explicit Executive objective or campaign identity is published.</p></div>
-              </div>
-              <MissionRows rows={unlinkedMissions} links={missionLinks} />
-            </section>
-          ) : null}
-        </div>
-      ) : (
-        <div className="rm-page-empty"><FolderKanban size={22} /><h2>{t("work.noWork")}</h2><p>{sourceMode === "LIVE" ? "No canonical work matches this filter or hierarchy selection." : "No simulated mission matches this filter."}</p></div>
-      )}
-
-      <aside className="rm-work-footnote">
-        <GitBranch size={17} /><div><strong>{t("work.hierarchy")}</strong><p>Missing programs, projects, or links stay unavailable. Mission detail carries action, worker, evidence, verifier, and repair drill-down.</p></div>
-        <Link to="/missions">Mission forensics <ListChecks size={15} /></Link>
-      </aside>
-      {filtered.some((mission) => ["BLOCKED", "HALTED", "INTERVENTION"].includes(mission.status)) ? <span className="rm-sr-status"><CircleAlert size={14} />This view contains work needing attention.</span> : null}
-    </div>
-  );
+  function missionRows(rows: Mission[]) {
+    return <div className="owner-work-missions">{rows.map((mission) => <Link key={mission.id} to={`/missions/${mission.id}`}><span><strong>{conciseWorkTitle(mission.title)}</strong><small>{mission.status.replaceAll("_", " ")} · {mission.stage || "Stage not reported"}</small></span><ArrowRight size={16} /></Link>)}</div>;
+  }
+  return <div className="shell-content rm-page rm-work owner-summary-page">
+    <header className="rm-page-head"><div><h1>{t("page.work")}</h1><p>What is moving, what needs you, and what finished.</p></div><div className="rm-page-source"><span>{sourceModeLabel(sourceMode)}</span><small>{missions.length} mission records</small></div></header>
+    {sourceMode === "LIVE" && !hierarchy ? <p className="owner-empty" role="status">Work structure is unavailable. Mission records remain available; retry from the connection controls.</p> : null}
+    <div className="rm-filter-row" role="group" aria-label="Filter work">{[{ key: "summary", label: "Summary" }, { key: "active", label: t("work.filterActive") }, { key: "waiting", label: t("work.filterWaiting") }, { key: "attention", label: t("work.filterAttention") }, { key: "completed", label: t("work.filterCompleted") }, { key: "all", label: t("work.filterAll") }].map((item) => <button key={item.key} type="button" aria-pressed={filter === item.key || (!filter && item.key === "summary")} className={filter === item.key || (!filter && item.key === "summary") ? "is-active" : ""} onClick={() => { const next = new URLSearchParams(); if (item.key !== "summary") next.set("status", item.key); setParams(next, { replace: true }); }}>{item.label}</button>)}</div>
+    {sections.map((section) => {
+      const visible = objectives.filter((objective) => (!objectiveId || objective.objective_id === objectiveId) && (!campaignId || objective.campaign_ids.includes(campaignId)) && objectiveMatches(objective, section.filter));
+      const unlinked = !objectiveId && !campaignId ? missions.filter((mission) => !assigned.has(mission.id) && matches(mission.status, section.filter)) : [];
+      return <section className="owner-work-section" key={section.filter} aria-label={section.label}><div className="rm-section-heading"><h2>{section.label}</h2><span>{visible.length + unlinked.length}</span></div>
+        {!visible.length && !unlinked.length ? <p className="owner-empty"><FolderKanban size={17} />{section.filter === "attention" ? "Nothing in this view needs your attention." : section.filter === "completed" ? "No completed work is recorded in this view." : "No work matches this view."}</p> : null}
+        {visible.map((objective) => {
+          const rows = objective.mission_ids.map((id) => missionMap.get(id)).filter((row): row is Mission => Boolean(row));
+          const current = rows.find((mission) => matches(mission.status, "active")) ?? rows.find((mission) => matches(mission.status, "attention")) ?? rows[0];
+          const blocked = rows.find((mission) => matches(mission.status, "attention"));
+          const latest = rows.filter((mission) => matches(mission.status, "completed")).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+          return <article className="owner-work-card" key={objective.objective_id}>
+            <header><h3>{conciseWorkTitle(objective.label)}</h3><span>{objective.status.replaceAll("_", " ")}</span></header>
+            <dl>{current ? <div><dt>Current action</dt><dd>{conciseWorkTitle(current.nextAction || current.title)}</dd></div> : <div><dt>Current action</dt><dd>No current action is published.</dd></div>}{blocked ? <div><dt>Blocker</dt><dd>{conciseWorkTitle(blocked.nextAction || blocked.description || blocked.status)}</dd></div> : null}{latest ? <div><dt>Latest outcome</dt><dd>{conciseWorkTitle(latest.nextAction || latest.title)}</dd></div> : null}</dl>
+            <details open={objectiveId === objective.objective_id || Boolean(campaignId)}><summary>Work details · {rows.length} missions</summary><p className="owner-full-text">{objective.label}</p><dl><div><dt>Objective</dt><dd>{objective.objective_id}</dd></div><div><dt>Progress evidence</dt><dd>{objective.progress_evidence.status}</dd></div>{objective.goal_id ? <div><dt>Goal</dt><dd>{objective.goal_id}</dd></div> : null}{objective.project_id ? <div><dt>Project</dt><dd>{objective.project_id}</dd></div> : null}{objective.plan_ids.length ? <div><dt>Plans</dt><dd>{objective.plan_ids.join(" · ")}</dd></div> : null}</dl>
+              {objective.campaign_ids.map((id) => { const campaign = hierarchy?.campaigns.find((item) => item.campaign_id === id); return campaign ? <p key={id} id={`campaign-${id}`}>Campaign {id} · {campaign.status}{campaign.wait_kinds.length ? ` · ${campaign.wait_kinds.join(", ")}` : ""}</p> : null; })}
+              {missionRows(rows)}{rows.map((mission) => { const link = links.get(mission.id); return link ? <p key={mission.id} className="owner-proof">{mission.id} · {link.action_ids.length} actions · {link.worker_ids.length} workers · {link.verdict_ids.length} verdicts{link.source_event_id ? <> · <Link to={`/activity?event=${encodeURIComponent(link.source_event_id)}`}>Source event</Link></> : null}{link.evidence_refs.map((ref) => <Link key={ref} to={`/evidence/${encodeURIComponent(ref)}`}>Evidence {ref}</Link>)}</p> : null; })}
+              {objective.progress_evidence.evidence_refs.map((ref) => <Link key={ref} to={`/evidence/${encodeURIComponent(ref)}`}>Evidence {ref}</Link>)}<Link to={`/work?status=all&objective=${encodeURIComponent(objective.objective_id)}`}>Open objective</Link>
+            </details>
+          </article>;
+        })}{unlinked.length ? missionRows(unlinked) : null}
+      </section>;
+    })}
+    <details className="owner-inspection"><summary>Inspect work structure and ledger</summary><div aria-label="Work hierarchy contract">{Object.entries(hierarchy?.levels ?? { objectives: "AVAILABLE", missions: "AVAILABLE" }).filter(([, state]) => state === "AVAILABLE").map(([level]) => <span key={level}>{level} → </span>)}</div><p>Only published relationships are shown. Mission detail retains actions, workers, evidence, verdicts, and repairs.</p><Link to="/missions">Mission forensics <ArrowRight size={15} /></Link></details>
+  </div>;
 }
-
 export function Work() {
   const { client, version } = useCommandCenter();
   const query = useRouteQuery(async (): Promise<WorkData> => {
-    const [missions, hierarchy] = await Promise.all([
-      client.listMissions(),
-      client.getWorkHierarchy?.() ?? Promise.resolve(null),
-    ]);
+    const [missions, hierarchy] = await Promise.all([client.listMissions(), client.getWorkHierarchy?.().catch(() => null) ?? Promise.resolve(null)]);
     return { missions, hierarchy };
   }, [client, version], { keepPreviousWhileLoading: true });
   return <RouteQueryGate query={query} loadingLabel="Loading work" errorLabel="Work unavailable" surface="Work hierarchy projection">{(data) => <WorkContent {...data} />}</RouteQueryGate>;
