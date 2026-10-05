@@ -2,6 +2,21 @@ export function formatHash(hash: string, keep = 12): string {
   return hash.length > keep + 4 ? `${hash.slice(0, keep)}...${hash.slice(-4)}` : hash;
 }
 
+/**
+ * Summary-list text must never leak raw JSON envelopes or full raw prompts.
+ * Raw detail stays one click away (drawer / detail route), never inline.
+ */
+export function summarizeListText(value: unknown, fallback: string, max = 160): string {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  const trimmed = value.trim();
+  if (
+    trimmed.startsWith("{") || trimmed.startsWith("[") ||
+    /"control_request_id"|"creation_identity"|"candidate_id"\s*:/.test(trimmed.slice(0, 400))
+  ) return fallback;
+  const singleLine = trimmed.replace(/\s+/g, " ");
+  return singleLine.length > max ? `${singleLine.slice(0, max - 1)}…` : singleLine;
+}
+
 export function formatClock(date: Date): { time: string; date: string; tz: string } {
   const time = new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",

@@ -63,23 +63,23 @@ function delegationBody(raw: string): string {
 }
 
 const modePlaceholders: Record<DelegationMode, string> = {
-  "Tell me": "Ask JARVIS for a direct briefing…",
+  "Tell me": "Ask anything — get a direct briefing…",
   Prepare: "Describe the outcome to prepare — no external action…",
-  Handle: "Delegate an outcome within current authority…",
+  Handle: "Tell JARVIS what you want accomplished…",
   Watch: "Name what JARVIS should monitor and report…",
 };
 
 export function CommandBar() {
   const { client, stopActive, sourceMode, mutationsEnabled } = useCommandCenter();
   const navigate = useNavigate();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [history, setHistory] = useState<string[]>([]);
   const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<DelegationMode>("Tell me");
+  const [mode, setMode] = useState<DelegationMode>("Handle");
 
   const flat = useMemo(() => {
     if (!results) return [] as { item: SearchResultItem; group: string }[];
@@ -154,12 +154,23 @@ export function CommandBar() {
     }
   };
 
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+  const autoGrow = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  };
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") { setResults(null); inputRef.current?.blur(); return; }
-    if (event.key === "ArrowDown" && flat.length > 0) { event.preventDefault(); setActiveIndex((index) => (index + 1) % flat.length); }
+    if (event.key === "ArrowDown" && flat.length > 0 && document.activeElement !== inputRef.current) { event.preventDefault(); setActiveIndex((index) => (index + 1) % flat.length); }
     if (event.key === "ArrowUp" && flat.length > 0) { event.preventDefault(); setActiveIndex((index) => index <= 0 ? flat.length - 1 : index - 1); }
-    if (event.key === "Enter" && activeIndex >= 0 && flat[activeIndex]) {
-      event.preventDefault(); navigateTo(flat[activeIndex].item.to, flat[activeIndex].item.label);
+    if (event.key === "Enter" && !event.shiftKey) {
+      if (activeIndex >= 0 && flat[activeIndex]) {
+        event.preventDefault(); navigateTo(flat[activeIndex].item.to, flat[activeIndex].item.label);
+        return;
+      }
+      if (commandBody.trim()) { event.preventDefault(); void submit(); }
     }
   };
 
@@ -193,13 +204,14 @@ export function CommandBar() {
           </select>
         </label>
         <Sparkles size={16} className="commandbar-icon" aria-hidden="true" />
-        <input
+        <textarea
           ref={inputRef}
-          className="commandbar-input"
+          className="commandbar-input commandbar-textarea"
           value={value}
-          onChange={(event) => { const next = event.target.value; setValue(next); setActiveIndex(-1); if (!next.trim()) setResults(null); }}
+          rows={1}
+          onChange={(event) => { const next = event.target.value; setValue(next); setActiveIndex(-1); if (!next.trim()) setResults(null); autoGrow(); }}
           onKeyDown={onKeyDown}
-          placeholder={stopActive ? "STOP active — inspect or resume before directing work" : modePlaceholders[mode]}
+          placeholder={stopActive ? "Stopped — inspect or resume before directing work" : modePlaceholders[mode]}
           aria-label={`Direct JARVIS or search — ${mode} mode (${sourceModeLabel(sourceMode)})`}
           aria-expanded={Boolean(value && (intent || flat.length))}
           aria-controls="command-results"

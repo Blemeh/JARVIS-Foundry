@@ -88,7 +88,7 @@ describe("disabled control audit (simulated mode)", () => {
     await user.type(input, "Summarize retry risk")
     await user.click(screen.getByRole("button", { name: /Send command/i }))
 
-    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Summarize retry risk", "TELL_ME"))
+    await waitFor(() => expect(submitOwnerGoal).toHaveBeenCalledWith("Summarize retry risk", "HANDLE"))
   })
 
   it("keeps delegation mode separate from authenticated owner text", async () => {

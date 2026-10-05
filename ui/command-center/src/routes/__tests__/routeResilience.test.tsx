@@ -98,7 +98,7 @@ describe("resilient route surfaces", () => {
         </CommandCenterProvider>
       </MemoryRouter>,
     )
-    expect(await screen.findByRole("heading", { name: "Evidence Spine" })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: "Activity" })).toBeInTheDocument()
   })
 
   it("shows not-found for unknown mission ids instead of infinite loading", async () => {

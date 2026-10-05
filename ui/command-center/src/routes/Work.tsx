@@ -46,19 +46,13 @@ function hierarchyState(
   return "NOT_YET_INTEGRATED";
 }
 
-function relationshipText(link: WorkMissionLink | undefined): string {
-  if (!link) return "Hierarchy link unavailable";
-  return [
-    `${link.action_ids.length} action${link.action_ids.length === 1 ? "" : "s"}`,
-    `${link.worker_ids.length} worker${link.worker_ids.length === 1 ? "" : "s"}`,
-    `${link.evidence_refs.length} evidence`,
-    `${link.verdict_ids.length} verdict${link.verdict_ids.length === 1 ? "" : "s"}`,
-  ].join(" · ");
+function statusLabel(status: string): string {
+  const lower = status.toLowerCase().replace(/_/g, " ");
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 function MissionRows({
   rows,
-  links,
 }: {
   rows: Mission[];
   links: Map<string, WorkMissionLink>;
@@ -66,15 +60,17 @@ function MissionRows({
   return (
     <div className="rm-mission-rows">
       {rows.map((mission) => {
-        const link = links.get(mission.id);
+        const needsAttention = ["BLOCKED", "HALTED", "INTERVENTION"].includes(mission.status);
         return (
           <Link key={mission.id} to={`/missions/${mission.id}`} className={`rm-mission-row rm-mission-row--${mission.status.toLowerCase()}`}>
-            <span className="rm-mission-status"><span />{mission.status.replace("_", " ")}</span>
-            <div><strong>{mission.title}</strong><small>{mission.id} · {mission.owner}</small></div>
-            <div className="rm-mission-phase"><span>{mission.stage || "UNKNOWN"}</span><small>{mission.nextAction || "Next action unknown"}</small></div>
-            <div className="rm-mission-proof" aria-label={`Recorded proof links for ${mission.id}`}>
-              <span>{relationshipText(link)}</span>
-              <small>{link?.source_event_id ? `source ${link.source_event_id}` : "source event unavailable"}</small>
+            <span className="rm-mission-status"><span />{statusLabel(mission.status)}</span>
+            <div>
+              <strong>{mission.title}</strong>
+              <small className="tech-id">{mission.id}</small>
+              <small>Now: {mission.stage && mission.stage !== "UNKNOWN" ? mission.stage : "Current step not reported"}</small>
+              <small>Next: {mission.nextAction && mission.nextAction !== "UNKNOWN" ? mission.nextAction : "Next action not recorded"}</small>
+              {mission.completion >= 0 ? <small>{mission.completion}% complete · {mission.agentsActive} active</small> : null}
+              {needsAttention ? <small>Needs you: {mission.nextAction}</small> : null}
             </div>
             <ArrowRight size={16} aria-hidden="true" />
           </Link>
@@ -171,6 +167,10 @@ function WorkContent({ missions, hierarchy }: WorkData) {
     (!selectedObjective || objective.objective_id === selectedObjective)
     && (!selectedCampaign || objective.campaign_ids.includes(selectedCampaign))
   ));
+  const activeCount = missions.filter((m) => matches(m, "active")).length;
+  const attentionList = missions.filter((m) => matches(m, "attention"));
+  const completedList = missions.filter((m) => matches(m, "completed"));
+  const recentCompleted = completedList.slice(0, 3);
   const assignedMissionIds = new Set((hierarchy?.missions ?? [])
     .filter((mission) => mission.objective_id)
     .map((mission) => mission.mission_id));
@@ -208,6 +208,26 @@ function WorkContent({ missions, hierarchy }: WorkData) {
         })}
       </div>
 
+      {filter === "active" && !selectedObjective && !selectedCampaign ? (
+        <div className="work-summary-grid" aria-label="Work summary">
+          <div className="work-summary-card">
+            <h3>Active</h3>
+            <p>{activeCount === 0 ? "No active work. Jarvis is monitoring for new opportunities." : `${activeCount} in progress`}</p>
+            {filtered[0] ? <small>Now: {filtered[0].title}</small> : null}
+          </div>
+          <div className="work-summary-card">
+            <h3>Needs you</h3>
+            <p>{attentionList.length === 0 ? "Nothing needs your decision right now." : `${attentionList.length} waiting on you`}</p>
+            {attentionList[0] ? <small>{attentionList[0].title} — {attentionList[0].nextAction}</small> : null}
+          </div>
+          <div className="work-summary-card">
+            <h3>Recently completed</h3>
+            <p>{recentCompleted.length === 0 ? "No verified completions yet." : recentCompleted[0].title}</p>
+            {recentCompleted[0] ? <small>{recentCompleted[0].nextAction}</small> : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="rm-filter-row" role="group" aria-label="Filter work">
         {filters.map((item) => (
           <button key={item.key} type="button" className={filter === item.key ? "is-active" : ""} aria-pressed={filter === item.key} onClick={() => {
@@ -229,6 +249,10 @@ function WorkContent({ missions, hierarchy }: WorkData) {
               .filter((campaign) => !selectedCampaign || campaign.campaign_id === selectedCampaign);
             const campaignMissionIds = new Set(objectiveCampaigns.flatMap((campaign) => campaign.mission_ids));
             const directMissions = objectiveMissions.filter((mission) => !campaignMissionIds.has(mission.id));
+            const visibleCampaigns = objectiveCampaigns.filter((campaign) =>
+              campaign.mission_ids.some((id) => { const m = missionById.get(id); return m && matches(m, filter); }),
+            );
+            if (!visibleCampaigns.length && !directMissions.length) return null;
             const goal = objective.goal_id ? goals.get(objective.goal_id) : null;
             const project = objective.project_id ? projects.get(objective.project_id) : null;
             const next = new URLSearchParams(params);
@@ -243,16 +267,17 @@ function WorkContent({ missions, hierarchy }: WorkData) {
                     <h2 id={`objective-${objectiveIndex}`}>
                       <Link to={{ pathname: "/work", search: next.toString() }}>{objective.label}</Link>
                     </h2>
-                    <p>{objective.objective_id} · {objective.status}</p>
-                    <div className="rm-objective-lineage">
-                      <span>Goal: {goal?.label ?? "NOT YET INTEGRATED"}</span>
-                      <span>Project: {project?.label ?? "NOT YET INTEGRATED"}</span>
-                      <span>Progress evidence: {objective.progress_evidence.status}</span>
-                    </div>
+                    <p className="tech-id">{objective.objective_id} · {objective.status}</p>
+                    {(goal || project) && (goal?.label || project?.label) ? (
+                      <div className="rm-objective-lineage">
+                        {goal?.label ? <span>Goal: {goal.label}</span> : null}
+                        {project?.label ? <span>Project: {project.label}</span> : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="rm-objective-work">
-                  {objectiveCampaigns.map((campaign) => (
+                  {visibleCampaigns.map((campaign) => (
                     <CampaignBlock
                       key={campaign.campaign_id}
                       campaign={campaign}
@@ -269,9 +294,7 @@ function WorkContent({ missions, hierarchy }: WorkData) {
                       <MissionRows rows={directMissions} links={missionLinks} />
                     </div>
                   ) : null}
-                  {!objectiveCampaigns.length && !directMissions.length ? (
-                    <p className="rm-campaign-empty">No mission under this objective matches the selected status filter.</p>
-                  ) : null}
+                  {!visibleCampaigns.length && !directMissions.length ? null : null}
                 </div>
               </section>
             );

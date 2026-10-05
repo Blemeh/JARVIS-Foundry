@@ -57,10 +57,10 @@ function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
       {!surface ? <div className="rm-owner-unavailable"><Compass size={20} /><div><strong>{t("you.unavailable")}</strong><p>No simulated goals or preferences are substituted. Connect a canonical runtime projection to inspect durable directives.</p></div></div> : null}
 
       <div className="rm-owner-grid">
-        <OwnerRecords title={t("you.goals")} rows={contextAvailable ? rows("goals", "priorities", "active_objectives") : surface?.goals ?? []} empty={contextAvailable ? "No current goal, priority, or objective is recorded." : surface ? "No active goal is recorded." : "UNAVAILABLE"} />
-        <OwnerRecords title={t("you.projects")} rows={rows("programs", "projects", "standing_orders")} empty={contextAvailable ? "NOT YET INTEGRATED" : "UNAVAILABLE"} />
-        <OwnerRecords title={t("you.constraints")} rows={contextAvailable ? rows("constraints", "permissions", "preferences") : surface?.constraints ?? []} empty={contextAvailable ? "No source-backed record is available." : surface ? "No standing constraint is recorded." : "UNAVAILABLE"} />
-        <OwnerRecords title={t("you.decisions")} rows={contextAvailable ? rows("decisions", "vetoes") : [...(surface?.vetoes ?? []), ...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty={contextAvailable ? "No current decision or veto is recorded." : "UNAVAILABLE"} />
+        <OwnerRecords title={t("you.goals")} rows={contextAvailable ? rows("goals", "priorities", "active_objectives") : surface?.goals ?? []} empty={contextAvailable ? "No goals recorded yet." : surface ? "No active goal is recorded." : "Owner context isn’t available from this source."} />
+        <OwnerRecords title={t("you.projects")} rows={rows("programs", "projects", "standing_orders")} empty="No standing instructions yet." />
+        <OwnerRecords title={t("you.constraints")} rows={contextAvailable ? rows("constraints", "permissions", "preferences") : surface?.constraints ?? []} empty={contextAvailable ? "No constraints recorded yet." : surface ? "No standing constraint is recorded." : "Owner context isn’t available from this source."} />
+        <OwnerRecords title={t("you.decisions")} rows={contextAvailable ? rows("decisions", "vetoes") : [...(surface?.vetoes ?? []), ...(surface?.redirects ?? []), ...(surface?.reprioritizations ?? [])]} empty="No vetoes or decisions recorded." />
       </div>
 
       <section className="rm-owner-waiting" aria-labelledby="owner-waiting-title">
@@ -72,9 +72,9 @@ function YouContent({ surface }: { surface: OwnerControlSurface | null }) {
       </section>
 
       <div className="rm-owner-seams">
-        <section><SlidersHorizontal size={17} /><div><h2>Preferences</h2><p>{preferences.length ? `${preferences.length} source-backed` : "NOT YET INTEGRATED"}</p><small>{preferences.length ? provenance(preferences[0]) : "No canonical preference event is present."}</small></div></section>
-        <section><KeyRound size={17} /><div><h2>Permissions</h2><p>{permissions.length ? `${permissions.length} source-backed` : "NOT YET INTEGRATED"}</p><small>{permissions.length ? provenance(permissions[0]) : "Capability grants stay in their existing authority systems."}</small></div></section>
-        <section><Ban size={17} /><div><h2>Decisions and veto history</h2><p>{surface ? `${context?.historyCount ?? surface.directiveHistory.length} durable records` : "UNAVAILABLE"}</p><small>{decisions.length ? `${decisions.length} current decision records; complete history stays forensic.` : "Open the forensic owner ledger for complete history."}</small></div><Link to="/owner">Open ledger <ArrowRight size={14} /></Link></section>
+        <section><SlidersHorizontal size={17} /><div><h2>Preferences</h2><p>{preferences.length ? `${preferences.length} saved` : "No preferences yet"}</p><small>{preferences.length ? provenance(preferences[0]) : "Tell Jarvis how you like things done."}</small></div></section>
+        <section><KeyRound size={17} /><div><h2>Permissions</h2><p>{permissions.length ? `${permissions.length} saved` : "No permissions yet"}</p><small>{permissions.length ? provenance(permissions[0]) : "Capability grants stay in their existing authority systems."}</small></div></section>
+        <section><Ban size={17} /><div><h2>Decisions and veto history</h2><p>{surface ? `${context?.historyCount ?? surface.directiveHistory.length} saved` : "Not available"}</p><small>{decisions.length ? `${decisions.length} current decision records; complete history stays forensic.` : "Open the forensic owner ledger for complete history."}</small></div><Link to="/owner">Open ledger <ArrowRight size={14} /></Link></section>
       </div>
     </div>
   );

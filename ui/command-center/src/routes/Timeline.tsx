@@ -92,13 +92,13 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
     <div className="shell-content">
       <div className="timeline-head">
         <div>
-          <p className="t-label text-muted page-kicker">Evidence Spine</p>
-          <h1 className="t-display">Evidence Spine</h1>
+          <p className="t-label text-muted page-kicker">Activity</p>
+          <h1 className="t-display">Activity</h1>
           <p className="prose page-desc">
-            {sourceMode === "SIMULATED" ? "Simulated ledger sequence for missions, handoffs, verifier gates, recovery, and STOP drills. Detail views are local only and every reference is navigable." : isCanonicalSource(sourceMode) ? "Canonical ledger sequence for missions, handoffs, verifier gates, recovery, and STOP directives. Every reference is navigable." : `Timeline source ${sourceModeLabel(sourceMode)}: canonical events are unavailable and no fixture fallback is shown.`}
+            {sourceMode === "SIMULATED" ? "What Jarvis did, in plain order. Open any entry for technical detail." : isCanonicalSource(sourceMode) ? "What Jarvis did, in plain order. Open any entry for technical detail." : `Timeline source ${sourceModeLabel(sourceMode)}: activity is unavailable and no fallback is shown.`}
           </p>
         </div>
-        <span className="t-mono text-muted timeline-head-hash">LEDGER SOURCE: {sourceModeLabel(sourceMode)} · event identity is recorded by the backend</span>
+        <span className="t-mono text-muted timeline-head-hash tech-id">{sourceModeLabel(sourceMode)}</span>
       </div>
 
       {missionFilter || agentFilter || systemFilter || severityFilter || categoryFilter ? (
@@ -236,7 +236,7 @@ function TimelineContent({ events }: { events: TimelineEvent[] }) {
             </div>
           ))}
           <div className="timeline-end">
-            <span className="t-mono text-dim">--- END OF {sourceModeLabel(sourceMode)} LEDGER ---</span>
+            <span className="text-dim">End of activity</span>
           </div>
         </div>
       )}

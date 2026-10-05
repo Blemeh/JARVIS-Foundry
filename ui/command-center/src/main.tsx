@@ -15,6 +15,7 @@ import "./styles/god-mode.css";
 import "./styles/autonomy.css";
 import "./components/jarvis-core/jarvis-core.css";
 import "./styles/remaster.css";
+import "./styles/product.css";
 import { App } from "./App";
 import { CommandCenterProvider } from "./context/CommandCenterContext";
 import { LocaleProvider } from "./i18n/LocaleContext";

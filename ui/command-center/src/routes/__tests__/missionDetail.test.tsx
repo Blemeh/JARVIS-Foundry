@@ -18,7 +18,7 @@ describe("Mission Detail", () => {
   it("renders a full non-blank mission surface", async () => {
     const { container } = renderRoute("/missions/M-HYB-014");
 
-    await waitFor(() => expect(screen.getByText("Execution Pipeline")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Progress")).toBeInTheDocument());
     expect(screen.getByText("Agent Telemetry Log")).toBeInTheDocument();
     expect(screen.getByText("Verifier Verdicts")).toBeInTheDocument();
     expect(screen.getByText("Active Data Streams")).toBeInTheDocument();

@@ -37,7 +37,7 @@ describe("remastered information architecture", () => {
     expect(screen.getByText(/Deferred by owner/i)).toBeInTheDocument();
     expect(screen.getByText("DEFERRED_BY_OWNER")).toBeInTheDocument();
     expect(screen.getByText(/No fixture capabilities are substituted/i)).toBeInTheDocument();
-    expect(screen.getAllByText("NOT YET INTEGRATED")).toHaveLength(12);
+    expect(screen.getAllByText("No entries in this group")).toHaveLength(12);
   });
 
   it("preserves human owner authority without simulated directives", async () => {

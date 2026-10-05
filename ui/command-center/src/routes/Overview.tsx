@@ -18,6 +18,7 @@ import { RouteQueryGate } from "../components/RouteQueryGate";
 import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import type { Mission } from "../lib/contracts";
+import { summarizeListText as summarize } from "../lib/format";
 import { resolveNucleusState, type JarvisNucleusState } from "../lib/nucleusState";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
@@ -152,9 +153,9 @@ function OverviewContent(data: OverviewData) {
         <div className="rm-focus-copy">
           <div className="rm-focus-state-line">
             <span className={`rm-state-mark rm-state-mark--${state.toLowerCase()}`} />
-            <span>{state.replace("_", " ")}</span>
+            <span>{state.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</span>
             <span className="rm-focus-separator" />
-            <span>{mission?.id ?? currentWork?.candidate?.candidate_id ?? "NO ACTIVE ID"}</span>
+            <span className="tech-id">{mission?.id ?? currentWork?.candidate?.candidate_id ?? "No active work"}</span>
           </div>
           <h1 id="current-focus-heading">{focusTitle}</h1>
           <p className="rm-focus-why"><strong>{t("overview.whyNow")}</strong>{focusWhy}</p>
@@ -222,8 +223,8 @@ function OverviewContent(data: OverviewData) {
         <section className="rm-depth-section" aria-labelledby="completed-title">
           <div className="rm-section-heading"><h2 id="completed-title">{t("overview.recentlyCompleted")}</h2><Link to="/work?status=completed">{t("overview.allWork")} <ArrowRight size={14} /></Link></div>
           <div className="rm-record-list">
-            {completed.slice(0, 3).map((item) => <Link key={item.id} to={`/missions/${item.id}`}><CheckCircle2 size={16} /><span><strong>{item.title}</strong><small>{item.id} · {item.nextAction}</small></span></Link>)}
-            {completed.length === 0 && recentCompletionEvents.map((event) => <Link key={event.id} to={`/activity?event=${event.id}`}><CheckCircle2 size={16} /><span><strong>{event.title}</strong><small>{event.detail}</small></span></Link>)}
+            {completed.slice(0, 3).map((item) => <Link key={item.id} to={`/missions/${item.id}`}><CheckCircle2 size={16} /><span><strong>{summarize(item.title, "Completed work — open for detail")}</strong><small className="tech-id">{item.id}</small><small>{summarize(item.nextAction, "Outcome recorded.")}</small></span></Link>)}
+            {completed.length === 0 && recentCompletionEvents.map((event) => <Link key={event.id} to={`/activity?event=${event.id}`}><CheckCircle2 size={16} /><span><strong>{summarize(event.title, "Recorded activity — open for detail")}</strong><small>{summarize(event.detail, "Open the entry for detail.")}</small></span></Link>)}
             {completed.length === 0 && recentCompletionEvents.length === 0 ? <p className="rm-empty-line">{t("overview.noCompleted")}</p> : null}
           </div>
         </section>
@@ -231,8 +232,8 @@ function OverviewContent(data: OverviewData) {
         <section className="rm-depth-section" aria-labelledby="discovered-title">
           <div className="rm-section-heading"><h2 id="discovered-title">{t("overview.discovered")}</h2><Link to="/world">{t("overview.openWorld")} <ArrowRight size={14} /></Link></div>
           <div className="rm-record-list">
-            {signals.map((signal) => <Link key={signal.signal_id} to="/world"><Lightbulb size={16} /><span><strong>{signal.summary}</strong><small>{signal.salience} · score {signal.score ?? "UNKNOWN"}</small></span></Link>)}
-            {signals.length === 0 && candidates.map((candidate) => <Link key={candidate.candidate_id} to={`/executive?candidate=${candidate.candidate_id}`}><Lightbulb size={16} /><span><strong>{candidate.title}</strong><small>{candidate.state} · {candidate.project ?? "project unknown"}</small></span></Link>)}
+            {signals.map((signal) => <Link key={signal.signal_id} to="/world"><Lightbulb size={16} /><span><strong>{summarize(signal.summary, "Observed signal — open World for detail")}</strong><small>{signal.salience} · score {signal.score ?? "UNKNOWN"}</small></span></Link>)}
+            {signals.length === 0 && candidates.map((candidate) => <Link key={candidate.candidate_id} to={`/executive?candidate=${candidate.candidate_id}`}><Lightbulb size={16} /><span><strong>{summarize(candidate.title, "Discovered candidate — open for detail")}</strong><small>{candidate.state} · {candidate.project ?? "project unknown"}</small></span></Link>)}
             {signals.length === 0 && candidates.length === 0 ? <p className="rm-empty-line">{t("overview.noDiscovered")}</p> : null}
           </div>
         </section>

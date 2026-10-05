@@ -7,6 +7,7 @@ import { useCommandCenter } from "../context/CommandCenterContext";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
+import { summarizeListText } from "../lib/format";
 import { useLocale } from "../i18n/LocaleContext";
 
 type WorldSignal = {
@@ -34,10 +35,14 @@ function valueString(value: unknown, fallback = "UNKNOWN"): string {
 function valueNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
+function summarize(value: unknown, fallback: string): string {
+  return summarizeListText(value, fallback, 140);
+}
+
 function ageLabel(at: string | null): string {
-  if (!at) return "age unknown";
+  if (!at) return "Age unknown";
   const stamp = new Date(at).getTime();
-  if (!Number.isFinite(stamp)) return "age unknown";
+  if (!Number.isFinite(stamp)) return "Age unknown";
   const minutes = Math.max(0, Math.floor((Date.now() - stamp) / 60_000));
   if (minutes < 60) return `${minutes}m old`;
   if (minutes < 2880) return `${Math.floor(minutes / 60)}h old`;
@@ -141,18 +146,15 @@ function WorldContent(data: OverviewData) {
       </div>
 
       <section className="rm-world-feed" aria-labelledby="world-feed-title">
-        <div className="rm-section-heading"><h2 id="world-feed-title">Awareness field</h2><span>Source · age · salience · confidence · disposition</span></div>
+        <div className="rm-section-heading"><h2 id="world-feed-title">Recent observations</h2><span>{projection.signals.length} signals</span></div>
         {projection.signals.length ? projection.signals.map((signal) => (
           <button key={signal.id} type="button" className="rm-world-signal" onClick={() => setSelected(signal)}>
             <span className="rm-world-signal-mark"><CircleDot size={16} aria-hidden="true" /></span>
-            <span className="rm-world-signal-main"><strong>{signal.summary}</strong><small>{signal.kind} · {signal.source}</small></span>
-            <span><small>Age</small><strong>{ageLabel(signal.at)}</strong></span>
-            <span><small>Importance</small><strong>{signal.importance}</strong></span>
-            <span><small>Confidence</small><strong>{signal.confidence}</strong></span>
-            <span><small>Action</small><strong>{signal.acted}</strong></span>
+            <span className="rm-world-signal-main"><strong>{summarize(signal.summary, "Observed signal — open for detail")}</strong><small>{ageLabel(signal.at)} · {signal.importance}</small></span>
+            <span className="rm-world-signal-meta"><small className="tech-id">{signal.id}</small></span>
             <ArrowRight size={15} aria-hidden="true" />
           </button>
-        )) : <div className="rm-page-empty"><Globe2 size={22} /><h2>No observed world state</h2><p>The canonical world projection is empty; JARVIS has not supplied a durable signal to display.</p></div>}
+        )) : <div className="rm-page-empty"><Globe2 size={22} /><h2>Nothing observed yet</h2><p>Jarvis hasn’t recorded anything worth surfacing. New signals will appear here.</p></div>}
       </section>
 
       <aside className="rm-world-boundary"><Database size={17} /><div><strong>Authority boundary</strong><p>World is advisory context. A signal, entity, or prediction cannot create work or authorize effects on its own.</p></div><Link to="/activity">Raw activity <ArrowRight size={14} /></Link></aside>

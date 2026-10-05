@@ -1,12 +1,14 @@
-import { AlertTriangle, Loader2, Inbox } from "lucide-react";
+import { AlertTriangle, Inbox } from "lucide-react";
 import { useLocale } from "../i18n/LocaleContext";
 
 export function LoadingState({ label }: { label?: string }) {
   const { t } = useLocale();
   return (
-    <div className="state-block" role="status" aria-live="polite">
-      <Loader2 size={18} className="spin" aria-hidden="true" />
-      <span className="t-label text-muted">{label ?? t("state.loading")}...</span>
+    <div className="state-block" role="status" aria-live="polite" aria-label={label ?? t("state.loading")}>
+      <div className="skeleton" style={{ width: "42%", height: 22 }} />
+      <div className="skeleton" style={{ width: "100%", height: 64 }} />
+      <div className="skeleton" style={{ width: "100%", height: 64 }} />
+      <span className="t-label text-muted" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{label ?? t("state.loading")}</span>
     </div>
   );
 }

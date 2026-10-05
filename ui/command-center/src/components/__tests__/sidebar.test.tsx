@@ -14,11 +14,11 @@ describe("NavRail", () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole("link", { name: "JARVIS" })).toHaveAttribute("href", "/")
-    expect(screen.getByRole("link", { name: "WORK" })).toHaveAttribute("href", "/work")
-    expect(screen.getByRole("link", { name: "WORLD" })).toHaveAttribute("href", "/world")
-    expect(screen.getByRole("link", { name: "CAPABILITIES" })).toHaveAttribute("href", "/capabilities")
-    expect(screen.getByRole("link", { name: "YOU" })).toHaveAttribute("href", "/you")
+    expect(screen.getByRole("link", { name: "Jarvis" })).toHaveAttribute("href", "/")
+    expect(screen.getByRole("link", { name: "Work" })).toHaveAttribute("href", "/work")
+    expect(screen.getByRole("link", { name: "World" })).toHaveAttribute("href", "/world")
+    expect(screen.getByRole("link", { name: "Capabilities" })).toHaveAttribute("href", "/capabilities")
+    expect(screen.getByRole("link", { name: "You" })).toHaveAttribute("href", "/you")
     expect(screen.getByRole("link", { name: "Timeline" })).toHaveAttribute("href", "/timeline")
   })
 })

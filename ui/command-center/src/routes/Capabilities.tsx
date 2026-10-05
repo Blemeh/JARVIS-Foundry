@@ -87,6 +87,12 @@ function CapabilitiesContent(data: OverviewData) {
   }, [rawRows]);
   const surfaceStatus = data.capabilityFabric?.status ?? "UNAVAILABLE";
   const surfaceAuthority = data.capabilityFabric?.authority ?? "CAPABILITY_FABRIC_CATALOG";
+  const allRows = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
+  const countBy = (pred: (s: string) => boolean) => allRows.filter((r) => pred(displayedState(r).toUpperCase())).length;
+  const available = countBy((s) => s === "READY" || s === "AVAILABLE");
+  const inUse = countBy((s) => s === "ACTIVE" || s === "IN_USE" || s === "PROBATION");
+  const limited = countBy((s) => s === "DEGRADED" || s === "NOT_READY" || s === "LIMITED" || s === "PROBATION");
+  const unavailable = countBy((s) => s === "DISABLED" || s === "UNAVAILABLE" || s === "UNKNOWN");
 
   return (
     <div className="shell-content rm-page rm-capabilities">
@@ -104,6 +110,14 @@ function CapabilitiesContent(data: OverviewData) {
         <p>{surfaceStatus === "UNAVAILABLE" ? "The connected source does not publish the additive Capability Fabric projection. No fixture capabilities are substituted." : surfaceStatus === "EMPTY" ? "The canonical catalog is available and currently empty." : "Registration is not readiness. Every state below comes from observed Fabric evidence."}</p>
       </div>
 
+      {surfaceStatus !== "UNAVAILABLE" ? (
+        <div className="work-summary-grid" aria-label="Capability status summary">
+          <div className="work-summary-card"><h3>Available</h3><p>{available} ready to use</p></div>
+          <div className="work-summary-card"><h3>In use</h3><p>{inUse} currently active</p></div>
+          <div className="work-summary-card"><h3>Limited or unavailable</h3><p>{limited + unavailable} need attention or are off</p></div>
+        </div>
+      ) : null}
+
       <div className="rm-capability-groups">
         {groups.map(({ name, icon: Icon, rows: groupRows }) => (
           <section key={name} className={`rm-capability-group ${groupRows.length ? "has-rows" : ""}`} aria-labelledby={`capability-${name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
@@ -116,7 +130,7 @@ function CapabilitiesContent(data: OverviewData) {
                 <span><strong>{id}</strong><small>{string(row.spec.action_kind)} · {string(row.spec.kind)}</small></span>
                 <em>{readiness}</em><ChevronRight size={15} aria-hidden="true" />
               </button>;
-            })}</div> : <p>{surfaceStatus === "UNAVAILABLE" ? "NOT YET INTEGRATED" : "No canonical entries"}</p>}
+            })}</div> : <p>{surfaceStatus === "UNAVAILABLE" ? "No entries in this group" : "No canonical entries"}</p>}
           </section>
         ))}
       </div>

@@ -239,13 +239,15 @@ export function MissionDetail() {
       <div className="md-pipeline panel panel-corner">
         <h2 className="t-label panel-title text-muted md-pipeline-title">
           <Workflow size={13} aria-hidden="true" />
-          Execution Pipeline
+          Progress
         </h2>
         <div className="md-stages">
           <div className="md-track" aria-hidden="true">
             {lifecycleProgress !== null ? <span className="md-track-fill" style={{ width: `${lifecycleProgress}%` }} /> : null}
           </div>
-          {(lifecycle.length > 0 ? lifecycle : run.pipeline.map((stage) => ({ ...stage, refs: [], eventIds: [] }))).map((stage) => {
+          {(lifecycle.length > 0 ? lifecycle : run.pipeline.map((stage) => ({ ...stage, refs: [], eventIds: [] })))
+            .filter((stage) => stage.state !== "UNKNOWN" && stage.state !== "UNAVAILABLE")
+            .map((stage) => {
             const Icon = stageIcons[stage.key] ?? Check;
             const step = stepByKey[stage.key];
             const compactRefs = stage.refs.slice(0, 2).map((ref) => ({

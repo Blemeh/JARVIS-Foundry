@@ -1,0 +1,458 @@
+/* JARVIS Command Center — Product UX remaster (final visual layer)
+   Loaded last. Calm premium OS over the debug console.
+   Backend semantics untouched. Only presentation. */
+
+:root {
+  --bg: #0b0f14;
+  --raised: #111823;
+  --card: #151e2a;
+  --hover: #1b2635;
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --line-fainter: rgba(255, 255, 255, 0.045);
+  --text-1: #e9eef3;
+  --text-2: #a9b5c0;
+  --text-3: #7e8b97;
+  --accent-calm: #5eead4;
+  --accent-dim: rgba(94, 234, 212, 0.12);
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --font-sans: "Inter Variable", "Geist Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- Base type: sans first, larger, calmer ---------- */
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 450;
+}
+body::before { display: none; }
+html { background: var(--bg); }
+
+/* Page / section scale per spec */
+.rm-page-head h1,
+.shell-content h1.t-display {
+  font-family: var(--font-sans) !important;
+  font-size: 30px !important;
+  line-height: 1.15 !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.02em !important;
+}
+.rm-section-heading h2,
+.rm-depth-section h2,
+.rm-owner-records h2,
+.rm-owner-waiting h2 {
+  font-family: var(--font-sans) !important;
+  font-size: 20px !important;
+  font-weight: 620 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.3 !important;
+}
+.rm-page-head p,
+.page-desc,
+.prose {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  color: var(--text-2) !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* Sentence case for normal UI. Eyebrows stay small caps but quiet. */
+.t-label,
+.rm-section-heading > span,
+.rm-page-source span,
+.rm-focus-state-line,
+.nav-section-label {
+  font-family: var(--font-sans) !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  font-weight: 600 !important;
+}
+.t-label { font-size: 12px !important; color: var(--text-3) !important; }
+.nav-section-label {
+  font-size: 12px !important;
+  color: var(--text-3) !important;
+  margin: 16px 10px 4px !important;
+  font-weight: 600 !important;
+}
+
+/* Monospace ONLY for technical identity */
+.t-mono, .t-num, code, pre, .tech-id,
+.md-crumb-id, .evidence-hash, .commandbar-history {
+  font-family: var(--font-mono) !important;
+}
+.rm-page-head p, .rm-focus-why, .rm-focus-next p, .rm-record-list strong,
+.rm-world-signal-main strong, .rm-capability-row strong, .rm-owner-records strong,
+.nav-rail-link-text, .btn, .chip, .field, .commandbar-input {
+  font-family: var(--font-sans) !important;
+}
+
+/* ---------- Controls: larger targets, sentence case ---------- */
+.btn {
+  height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: var(--radius-control) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  border: 1px solid var(--line-soft) !important;
+  background: var(--raised) !important;
+  color: var(--text-1) !important;
+}
+.btn-primary {
+  background: var(--accent-calm) !important;
+  border-color: transparent !important;
+  color: #06281f !important;
+}
+.btn-danger {
+  color: var(--danger) !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+  background: transparent !important;
+}
+.chip {
+  font-size: 12.5px !important;
+  font-weight: 550 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  border-radius: 999px !important;
+  height: 30px !important;
+  padding: 0 12px !important;
+  background: var(--raised) !important;
+  border: 1px solid var(--line-soft) !important;
+  color: var(--text-2) !important;
+}
+.field {
+  font-size: 14px !important;
+  font-family: var(--font-sans) !important;
+  height: 42px !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--raised) !important;
+  border: 1px solid var(--line-soft) !important;
+}
+.icon-btn { width: 36px !important; height: 36px !important; border-radius: 10px !important; }
+
+/* ---------- Surfaces: layered, subtle contrast, no chamfers ---------- */
+.v4-downlink {
+  clip-path: none !important;
+  border-radius: var(--radius-card) !important;
+  border: 1px solid var(--line-soft) !important;
+  background: var(--card) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32) !important;
+}
+.v4-downlink::before, .v4-downlink::after { display: none !important; }
+.v4-calibration { display: none !important; }
+.panel {
+  background: var(--card) !important;
+  border: 1px solid var(--line-soft) !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: none !important;
+}
+.rm-focus-field,
+.rm-attention,
+.rm-world-radar,
+.rm-capability-group,
+.rm-owner-relationship,
+.rm-work-footnote,
+.rm-world-boundary {
+  border: 1px solid var(--line-soft) !important;
+  border-radius: var(--radius-card) !important;
+  background: var(--card) !important;
+  box-shadow: none !important;
+}
+.rm-focus-field { padding: 32px 36px !important; gap: 40px !important; }
+.rm-focus-field::before, .rm-focus-field::after { display: none !important; }
+
+/* Kill theatrical glow / pulse / radar */
+.jarvis-nucleus__instrument { filter: none !important; }
+.rm-state-mark { box-shadow: none !important; }
+.topbar-state-dot.is-operational { box-shadow: none !important; }
+.sidebar-logo { box-shadow: none !important; }
+.commandbar-send { box-shadow: none !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .jarvis-nucleus__orbit--outer, .jarvis-nucleus__particles,
+  .jarvis-nucleus__orbit--middle, .jarvis-nucleus__orbit--inner {
+    animation-duration: 26s !important;
+  }
+}
+
+/* ---------- Sidebar: compact calm ---------- */
+.nav-rail-shell {
+  background: #0d1219 !important;
+  border-right: 1px solid var(--line-fainter) !important;
+}
+.nav-rail-link {
+  border-left: 2px solid transparent !important;
+  border-radius: 0 10px 10px 0 !important;
+  color: var(--text-3) !important;
+  font-size: 13.5px !important;
+  font-weight: 550 !important;
+  min-height: 42px !important;
+  margin: 1px 8px 1px 0 !important;
+}
+.nav-rail-link-text {
+  font-size: 13.5px !important;
+  font-weight: 550 !important;
+  letter-spacing: 0 !important;
+}
+.nav-rail-link:hover { background: var(--hover) !important; color: var(--text-1) !important; }
+.nav-rail-link--active {
+  background: var(--accent-dim) !important;
+  color: var(--text-1) !important;
+  border-left-color: var(--accent-calm) !important;
+}
+.nav-rail-foot { display: none !important; }
+.nav-rail-a11y-list { display: none !important; }
+
+/* ---------- Top bar: radically simpler ---------- */
+.topbar--god {
+  background: rgba(11, 15, 20, 0.88) !important;
+  border-bottom: 1px solid var(--line-fainter) !important;
+  height: 60px !important;
+}
+.topbar-brand-title { font-size: 14px !important; letter-spacing: 0.04em !important; font-weight: 700 !important; }
+.topbar-brand-sub { font-size: 12.5px !important; color: var(--text-2) !important; }
+.topbar-god-meta { gap: 10px !important; }
+.topbar-source, .topbar-schema, .topbar-runtime, .topbar-disconnect { display: none !important; }
+.topbar-trust { display: none !important; }
+.topbar-clock { font-size: 12.5px !important; }
+.topbar-context { gap: 10px !important; }
+
+/* System popover */
+.topbar-system-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--line-soft); background: var(--raised);
+  color: var(--text-2); font-size: 12.5px; font-weight: 600;
+}
+.topbar-system-btn:hover { color: var(--text-1); border-color: rgba(255,255,255,0.14); }
+.topbar-system-pop {
+  position: absolute; top: calc(100% + 10px); right: 16px; width: 320px;
+  background: var(--card); border: 1px solid var(--line-soft); border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.5); padding: 14px; z-index: 120;
+  display: grid; gap: 10px;
+}
+.topbar-system-pop h3 { margin: 0; font-size: 13px; font-weight: 650; }
+.topbar-system-pop dl { margin: 0; display: grid; gap: 8px; }
+.topbar-system-pop dl > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+.topbar-system-pop dt { color: var(--text-3); }
+.topbar-system-pop dd { margin: 0; color: var(--text-1); font-family: var(--font-mono); font-size: 11.5px; text-align: right; overflow-wrap: anywhere; }
+
+/* ---------- Home hero: obvious Now / Why / Next ---------- */
+.rm-focus-copy h1 {
+  font-size: 32px !important;
+  line-height: 1.15 !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.02em !important;
+  max-width: 22ch !important;
+}
+.rm-focus-why { font-size: 15px !important; line-height: 1.6 !important; color: var(--text-2) !important; }
+.rm-focus-why strong {
+  display: block !important; margin: 0 0 4px !important;
+  font-size: 12px !important; color: var(--text-3) !important; letter-spacing: 0.02em !important;
+}
+.rm-focus-meta { font-size: 12.5px !important; color: var(--text-3) !important; }
+.rm-focus-next { grid-template-columns: 64px 1fr auto !important; }
+.rm-focus-next > span { color: var(--text-3) !important; font-size: 12px !important; }
+.rm-focus-next p { font-size: 15px !important; color: var(--text-1) !important; }
+.rm-focus-glance strong, .rm-focus-glance a { font-size: 13.5px !important; white-space: normal !important; }
+.rm-focus-glance small { font-size: 12px !important; white-space: normal !important; }
+.rm-focus-glance span { font-size: 12px !important; }
+
+/* Lifecycle calm */
+.rm-lifecycle li { border-right: 1px solid var(--line-fainter) !important; }
+.rm-lifecycle .is-active { background: var(--accent-dim) !important; color: var(--text-1) !important; box-shadow: inset 0 2px var(--accent-calm) !important; }
+.rm-lifecycle .is-suspended { background: rgba(248,113,113,0.08) !important; box-shadow: inset 0 0 0 1px rgba(248,113,113,0.35) !important; }
+
+/* ---------- Command bar: first-class, multi-line ---------- */
+.commandbar {
+  background: rgba(17, 24, 35, 0.97) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+  height: auto !important;
+  min-height: 76px !important;
+  padding: 10px !important;
+}
+.commandbar-form {
+  background: #0a0e14 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  height: auto !important;
+  min-height: 54px !important;
+  align-items: flex-start !important;
+  padding: 10px 8px 10px 14px !important;
+}
+.commandbar-input, .commandbar-textarea {
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  min-height: 30px !important;
+  max-height: 140px !important;
+  height: auto !important;
+  resize: none !important;
+  padding: 4px 0 !important;
+}
+.commandbar-mode { border-radius: 10px !important; min-height: 54px !important; }
+.commandbar-mode.is-active {
+  background: var(--accent-dim) !important;
+  color: var(--text-1) !important;
+  box-shadow: inset 0 2px var(--accent-calm) !important;
+  border-color: transparent !important;
+}
+.commandbar-send { width: 44px !important; height: 44px !important; border-radius: 12px !important; align-self: flex-end !important; }
+.commandbar-modes { border-right: 1px solid var(--line-fainter) !important; }
+
+/* ---------- Work: scannable cards, hide empty chrome ---------- */
+.rm-hierarchy-map { display: none !important; }
+.rm-objective-lineage { display: none !important; }
+.rm-mission-row {
+  border: 1px solid var(--line-soft) !important;
+  border-radius: 12px !important;
+  margin-bottom: 10px !important;
+  padding: 14px 16px !important;
+  background: var(--raised) !important;
+  grid-template-columns: 110px minmax(0, 1fr) auto !important;
+  min-height: 0 !important;
+}
+.rm-mission-row:hover { background: var(--hover) !important; }
+.rm-mission-row > div:nth-child(2) strong { font-size: 14.5px !important; font-weight: 620 !important; color: var(--text-1) !important; }
+.rm-mission-row small { font-size: 12px !important; }
+.rm-mission-phase, .rm-mission-proof { display: none !important; }
+.rm-campaign-block { border-top: none !important; }
+.rm-campaign-head {
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12.5px !important;
+  padding: 8px 2px !important;
+}
+.rm-filter-row button {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  min-height: 42px !important;
+  border-radius: 10px 10px 0 0 !important;
+}
+.rm-filter-row button span { font-family: var(--font-sans) !important; font-size: 12px !important; }
+
+/* Work summary sections */
+.work-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.work-summary-card {
+  background: var(--raised); border: 1px solid var(--line-soft); border-radius: 14px;
+  padding: 16px; display: grid; gap: 8px; align-content: start;
+}
+.work-summary-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.work-summary-card p { margin: 0; font-size: 13.5px; color: var(--text-2); line-height: 1.5; }
+.work-summary-card small { color: var(--text-3); font-size: 12px; }
+
+/* ---------- World / Capabilities / You: cards not tables ---------- */
+.rm-world-radar { padding: 18px 22px !important; }
+.rm-world-radar > div > strong { font-size: 26px !important; font-weight: 650 !important; }
+.rm-world-signal {
+  border: 1px solid var(--line-soft) !important;
+  border-radius: 12px !important;
+  margin-bottom: 10px !important;
+  background: var(--raised) !important;
+  grid-template-columns: 28px minmax(0, 1fr) auto !important;
+  padding: 14px 16px !important;
+}
+.rm-world-signal > span:not(.rm-world-signal-mark):not(.rm-world-signal-main) { display: none !important; }
+.rm-world-signal-main strong { font-size: 14px !important; }
+.rm-world-signal small { font-size: 12px !important; text-transform: none !important; letter-spacing: 0 !important; }
+.rm-capability-groups { border: none !important; display: grid !important; gap: 14px !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.rm-capability-group {
+  border: 1px solid var(--line-soft) !important;
+  border-radius: 14px !important;
+  background: var(--raised) !important;
+  overflow: hidden !important;
+}
+.rm-capability-group > p {
+  padding: 20px 14px !important; font-size: 13px !important; letter-spacing: 0 !important; color: var(--text-3) !important;
+}
+.rm-capability-row strong { font-size: 13px !important; }
+.rm-capability-row small { font-size: 12px !important; }
+.rm-capability-row em { font-size: 12px !important; font-style: normal; font-weight: 600; }
+.rm-owner-records article { border: 1px solid var(--line-soft); border-radius: 12px; margin-bottom: 8px; padding: 12px 14px !important; background: var(--raised); }
+.rm-owner-records strong { font-size: 13.5px !important; }
+.rm-owner-records small { font-size: 12px !important; }
+
+/* Eyebrows: sentence case, quiet, slightly larger */
+.rm-focus-why strong,
+.rm-focus-next > span,
+.rm-focus-glance span,
+.rm-focus-glance .is-attention span,
+.rm-lifecycle small,
+.rm-section-heading > span,
+.rm-focus-mode-state,
+.rm-focus-mode-label, .rm-focus-mode-primary span, .rm-focus-mode-next > span,
+.rm-signal-detail dt, .rm-capability-detail dt,
+.rm-page-source span,
+.rm-hierarchy-step > div > span,
+.rm-world-radar > div > span,
+.rm-world-signal small,
+.rm-capability-summary span,
+.rm-settings-seams h2,
+.nav-legacy summary,
+.commandbar-modes-label,
+.command-intent small, .command-result small,
+.topbar-source, .topbar-trust, .topbar-schema, .topbar-runtime, .topbar-disconnect {
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  font-size: 12px !important;
+}
+
+/* Status pills: calm, sentence case, dot-led */
+.rm-mission-status, .status-badge, .badge {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* ---------- Loading skeletons + humane empty states ---------- */
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  min-height: 18px;
+}
+@keyframes skeleton-shimmer { 50% { background-position: -100% 0; } }
+.state-block { gap: 10px !important; padding: 28px 18px !important; }
+.state-block .t-label { font-size: 13.5px !important; text-transform: none !important; letter-spacing: 0 !important; }
+.rm-page-empty { border-radius: 14px !important; padding: 32px 20px !important; }
+.rm-page-empty h2 { font-size: 16px !important; }
+.rm-page-empty p { font-size: 13.5px !important; }
+
+/* Summary lists never sprawl: clamp to two lines, raw detail lives behind the link */
+.rm-record-list > a > span { min-width: 0; }
+.rm-record-list strong, .rm-record-list small {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.rm-world-signal-main strong {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+
+/* ---------- Evidence / Activity readability ---------- */
+.evidence-row, .timeline-event { font-size: 14px !important; }
+.timeline-event .t-mono, .evidence-row .t-mono { font-size: 11.5px !important; color: var(--text-3) !important; }
+.context-row { gap: 8px !important; }
+
+/* ---------- Responsive guards ---------- */
+.shell-main { overflow-x: clip !important; }
+.rm-focus-copy h1, .rm-page-head h1 { overflow-wrap: break-word !important; }
+@media (max-width: 1320px) {
+  .work-summary-grid { grid-template-columns: 1fr 1fr; }
+  .rm-capability-groups { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 980px) {
+  .work-summary-grid { grid-template-columns: 1fr; }
+  .rm-focus-field { padding: 24px 20px !important; }
+  .rm-capability-groups { grid-template-columns: 1fr !important; }
+  .topbar-system-pop { right: 8px; width: min(320px, 90vw); }
+}
