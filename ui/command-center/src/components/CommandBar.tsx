@@ -21,6 +21,12 @@ interface Intent { label: string; to: string }
 function parseCommandIntent(raw: string): Intent | null {
   const s = raw.trim().toLowerCase();
   if (!s) return null;
+  // Navigation shortcuts are short imperative commands ("open work",
+  // "show blocked missions"). A normal multi-sentence owner goal must never
+  // be hijacked because it merely contains a shortcut phrase (e.g. an
+  // outcome report "covering ... blocked missions ..."). Only short inputs
+  // qualify as navigation.
+  if (s.split(/\s+/).length > 12) return null;
   const destinations: Array<[RegExp, string, string]> = [
     [/^(?:open|show|go to)\s+(?:jarvis|home|focus)$/, "Open current focus", "/"],
     [/^(?:open|show|go to)\s+work$/, "Open work", "/work"],

@@ -44,6 +44,24 @@ describe("owner command and health truth", () => {
     expect(state.client.submitOwnerGoal).not.toHaveBeenCalled();
     expect(await screen.findByText(/Owner command recorded.*veto-durable/)).toBeInTheDocument();
   });
+  it("routes GOAL to the durable HANDLE owner mode", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><CommandBar /></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: /GOAL/ }));
+    await user.type(screen.getByRole("combobox", { name: /Message JARVIS/ }), "Achieve inbox zero by Friday");
+    await user.click(screen.getByRole("button", { name: "Send command" }));
+    expect(state.client.submitOwnerGoal).toHaveBeenCalledWith("Achieve inbox zero by Friday", "HANDLE");
+  });
+  it("never hijacks a normal multi-sentence goal as navigation", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><CommandBar /></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: /GOAL/ }));
+    const goal = "Inspect the current JARVIS runtime and produce a verified status report covering Supervisor health, worker-loop health, active goals, blocked missions, and the next intended autonomous action.";
+    await user.type(screen.getByRole("combobox", { name: /Message JARVIS/ }), goal);
+    await user.click(screen.getByRole("button", { name: "Send command" }));
+    expect(state.client.submitOwnerGoal).toHaveBeenCalledWith(goal, "HANDLE");
+    expect(await screen.findByText(/Owner command recorded/)).toBeInTheDocument();
+  });
   it("routes ASK to the existing TELL_ME owner mode", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><CommandBar /></MemoryRouter>);
