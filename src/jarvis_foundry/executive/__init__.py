@@ -17,7 +17,13 @@ from .intelligence import (
     run_executive_intelligence_cycle,
     schedule_next_action_after_outcome,
 )
-from .standing_intent import is_discovery_mandate
+from .standing_intent import (
+    is_discovery_mandate,
+    extract_continuation_semantics,
+    is_standing_directive_text,
+    is_standing_strategic_text,
+    standing_directive_kind,
+)
 from .continuous import (  # V9 Continuous Executive
     WakeCondition,
     create_wake,

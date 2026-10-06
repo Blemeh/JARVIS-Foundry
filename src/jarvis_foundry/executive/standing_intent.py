@@ -137,3 +137,177 @@ def standing_intent_payload(text: str, *, directive_id: str = "") -> dict[str, A
         "drives_discovery": is_discovery_mandate(text),
         "executable_recipe": not is_discovery_mandate(text),
     }
+
+
+# ---------------------------------------------------------------------------
+# Standing strategic goal vs bounded one-shot child.
+#
+# A standing strategic owner goal (e.g. "Turn the demo product into a commercially
+# credible workforce-management product ... learn from the outcome, and
+# continue to the next highest-value improvement. ... Ask me only when there
+# is a genuine owner-only decision or blocker.") authorises an unbounded
+# sequence of bounded child objectives.  A one-shot request (e.g. "Report
+# supervisor heartbeat age. success: one verified line ...") is satisfied by
+# its single child outcome.
+#
+# Classification is derived from durable intent structure -- deliverable
+# scope, continuation semantics, completion criteria, mandate type -- not
+# from a single keyword.  Explicit standing-goal metadata, when present,
+# wins; otherwise the text is parsed for structured continuation semantics.
+# ---------------------------------------------------------------------------
+
+_SUCCESS_CLAUSE_RE = re.compile(
+    r"\bsuccess\s*(?:=|:)\s*(.+?)(?=\s+(?:priority|urgency|deadline|constraints?|depends?[_ -]?on|failure)\s*(?:=|:)|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_STRATEGIC_STATE_PHRASES = (
+    "commercially credible",
+    "workforce-management",
+    "workforce management",
+    "workforce product",
+    "credible product",
+    "confidently demonstrate",
+    "operations team",
+    "toward strategic",
+    "strategic state",
+)
+
+_IMPROVE_MANAGE_VERBS = (
+    "improve",
+    "improving",
+    "manage",
+    "managing",
+    "maintain",
+    "maintaining",
+    "turn ",
+    "credible",
+)
+
+_ITERATIVE_CONTINUATION_PHRASES = (
+    "continue to the next",
+    "continue to next",
+    "next highest-value improvement",
+    "next highest value improvement",
+    "learn from the outcome",
+    "continue to the next highest",
+)
+
+_AUTONOMOUS_SELECTION_PHRASES = (
+    "choose the work yourself",
+    "decide what the highest-value work is",
+    "decide what the highest value work is",
+    "inspect the current product and decide",
+    "choose the work",
+    "decide the highest-value work",
+)
+
+_OWNER_ONLY_GATE_PHRASES = (
+    "ask me only when",
+    "genuine owner-only decision",
+    "genuine owner decision",
+    "genuine owner-only blocker",
+    "genuine owner only",
+    "only when there is a genuine",
+)
+
+
+def _normalised(text: str) -> str:
+    return " ".join(str(text or "").lower().split())
+
+
+def extract_continuation_semantics(text: str) -> dict[str, Any]:
+    """Parse durable continuation semantics from owner directive text.
+
+    Returns a structured signal map (not a boolean): deliverable scope,
+    strategic-target presence, iterative-continuation presence,
+    autonomous-selection presence, and owner-only-gate presence.  Callers
+    combine these with explicit metadata and completion criteria; no single
+    phrase decides standing.
+    """
+    lowered = _normalised(text)
+    success_match = _SUCCESS_CLAUSE_RE.search(str(text or ""))
+    success_clause = ""
+    if success_match:
+        success_clause = re.sub(r"\s+", " ", success_match.group(1)).strip(" ,;:")
+    has_bounded_success = bool(success_clause) and len(success_clause) >= 8
+    bounded_single_deliverable = bool(
+        has_bounded_success
+        and re.search(
+            r"\b(one|single|1)\b.{0,40}\b(line|report|value|number|file|receipt)\b",
+            success_clause,
+            re.IGNORECASE,
+        )
+    )
+    return {
+        "has_strategic_target": any(p in lowered for p in _STRATEGIC_STATE_PHRASES),
+        "has_improve_manage_verb": any(v in lowered for v in _IMPROVE_MANAGE_VERBS),
+        "has_iterative_continuation": any(p in lowered for p in _ITERATIVE_CONTINUATION_PHRASES),
+        "has_autonomous_selection": any(p in lowered for p in _AUTONOMOUS_SELECTION_PHRASES),
+        "has_owner_only_gate": any(p in lowered for p in _OWNER_ONLY_GATE_PHRASES),
+        "has_bounded_success_clause": has_bounded_success,
+        "has_bounded_single_deliverable": bounded_single_deliverable,
+        "success_clause": success_clause,
+    }
+
+
+def is_standing_strategic_text(text: str) -> bool:
+    """Return True when text carries standing strategic continuation semantics.
+
+    Requires structured continuation (iterative continuation plus autonomous
+    selection plus owner-only gate, or strategic target plus iterative
+    continuation) and no bounded single deliverable that would terminate the
+    goal.  This keeps one-shot reports ("Report ... success: one verified
+    line ...") one-shot while recognising strategic improvement mandates
+    ("improve/manage/maintain product toward strategic state ... continue
+    to the next ... learn ... ask only on genuine blocker").
+    """
+    signals = extract_continuation_semantics(text)
+    if signals["has_bounded_single_deliverable"]:
+        return False
+    iterative = signals["has_iterative_continuation"]
+    autonomous = signals["has_autonomous_selection"]
+    gate = signals["has_owner_only_gate"]
+    strategic = signals["has_strategic_target"] or signals["has_improve_manage_verb"]
+    if iterative and autonomous and gate:
+        return True
+    if strategic and iterative:
+        return True
+    return False
+
+
+def standing_directive_kind(
+    text: str,
+    *,
+    metadata: Any | None = None,
+) -> str:
+    """Classify a directive as STANDING vs ONE_SHOT from durable structure.
+
+    Explicit standing-goal metadata wins when present:
+      metadata {"standing_goal": True} or {"continuation": "standing"} or
+      {"mandate_type": "standing"} forces STANDING;
+      {"standing_goal": False} forces ONE_SHOT.
+    Otherwise the text continuation semantics decide.
+    """
+    try:
+        meta = dict(metadata or {})
+    except Exception:
+        meta = {}
+    for key in ("standing_goal", "standing", "is_standing"):
+        if key in meta:
+            try:
+                return "STANDING" if bool(meta[key]) else "ONE_SHOT"
+            except Exception:
+                pass
+    continuation = str(meta.get("continuation") or "").strip().lower()
+    if continuation in {"standing", "standing_goal", "continuous"}:
+        return "STANDING"
+    if continuation in {"one_shot", "oneshot", "single", "bounded"}:
+        return "ONE_SHOT"
+    if str(meta.get("mandate_type") or "").strip().lower() in {"standing", "standing_goal"}:
+        return "STANDING"
+    return "STANDING" if is_standing_strategic_text(text) else "ONE_SHOT"
+
+
+def is_standing_directive_text(text: str, *, metadata: Any | None = None) -> bool:
+    return standing_directive_kind(text, metadata=metadata) == "STANDING"

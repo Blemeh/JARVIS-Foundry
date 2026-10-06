@@ -1402,6 +1402,7 @@ def _admit_misrouted_outcome_delegates(
                 "EXECUTIVE_PLAN_REQUIRED",
                 "EXECUTIVE_REPLAN_REQUIRED",
                 "EXECUTIVE_STEP_REQUIRED",
+                "STANDING_FOLLOWUP_REQUIRED",
             }:
                 continue
             if labels & {"STOP_ACTIVE", "VETO_ACTIVE"}:
@@ -3122,7 +3123,34 @@ def decide_continuation(
         reason = progress.explanation
         if progress.status == "COMPLETED":
             action = "CLOSE"
-            reason = "objective has complete evidence and must not generate more work"
+            # CLOSE scope is explicit: it closes this bounded child objective
+            # (scope CHILD_OBJECTIVE), never the parent standing strategic
+            # goal.  Standing directives remain eligible for a follow-up child
+            # via ensure_all_standing_followups; one-shot goals terminate here.
+            try:
+                _standing_child = bool((objective.provenance or {}).get("standing_followup"))
+                _directive_for_close = str((objective.provenance or {}).get("directive_id") or "")
+                _is_standing_close = _standing_child
+                if not _is_standing_close and _directive_for_close:
+                    from .standing_intent import standing_directive_kind as _kind_for_close
+                    from ..owner_directives import project_owner_directives as _proj_for_close
+                    for _rec in _proj_for_close(database):
+                        if str(getattr(_rec, "directive_id", "")) == _directive_for_close:
+                            _is_standing_close = _kind_for_close(
+                                str(getattr(_rec, "exact_text", "") or ""),
+                                metadata=dict(getattr(_rec, "metadata", {}) or {}),
+                            ) == "STANDING"
+                            break
+            except Exception:
+                _is_standing_close = False
+            if _is_standing_close:
+                reason = (
+                    "child objective has complete evidence and is closed "
+                    "(scope CHILD_OBJECTIVE); standing directive remains active "
+                    "for follow-up work"
+                )
+            else:
+                reason = "objective has complete evidence and must not generate more work"
         elif progress.status == "REGRESSED":
             action = "REASSESS"
             reason = "new evidence reduced measured progress; reassess the plan before more execution"
@@ -4277,6 +4305,16 @@ def run_autonomy_cycle(
         max_proposals=5,
     ))
     sync_owner_goals(database, controller=controller)
+    # Standing continuation: the same standing directive produces the next
+    # bounded child after the previous one completes.  Completed children stay
+    # COMPLETED; CLOSE below is per-child (scope CHILD_OBJECTIVE), never a
+    # closure of the standing strategic goal.  This runs before ranking so a
+    # freshly created follow-up is eligible in this same cycle.
+    try:
+        from .standing_followup import ensure_all_standing_followups as _ensure_standing
+        _ensure_standing(database, controller=controller, capability=capability)
+    except Exception:
+        pass
     state = rebuild_executive_state(database)
     excluded = {str(value) for value in excluded_objective_ids}
     plans: list[PlanRecord] = []

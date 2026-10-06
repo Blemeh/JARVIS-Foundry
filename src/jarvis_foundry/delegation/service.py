@@ -528,6 +528,128 @@ class DelegationService:
                 "EXECUTIVE_OBJECTIVE_REQUIRED",
                 "delegation is waiting for the referenced Executive objective",
             )
+        # Standing continuation: a standing directive binds to its own
+        # directive-scoped children, never to the global objective pool.
+        # This breaks the circular "Executive needs an objective to decide
+        # which objective to create" logic: the standing goal itself is
+        # sufficient authority for the Executive to derive the next child.
+        try:
+            from ..executive.standing_intent import standing_directive_kind as _standing_kind
+            _directive_is_standing = _standing_kind(
+                str(record.exact_text or ""),
+                metadata=dict(record.metadata or {}),
+            ) == "STANDING"
+        except Exception:
+            _directive_is_standing = False
+        if _directive_is_standing and not requested_objective_ids:
+            same_directive_active = [
+                objective
+                for objective in state.objectives.values()
+                if str((objective.provenance or {}).get("directive_id") or "") == record.directive_id
+                and objective.status not in _TERMINAL_OBJECTIVE_STATUSES
+            ]
+            same_directive_completed = [
+                objective
+                for objective in state.objectives.values()
+                if str((objective.provenance or {}).get("directive_id") or "") == record.directive_id
+                and objective.status == "COMPLETED"
+            ]
+            if len(same_directive_active) == 1:
+                objectives = same_directive_active
+            elif len(same_directive_active) > 1:
+                return None, _AdmissionRefusal(
+                    "EXECUTIVE_OBJECTIVE_REQUIRED",
+                    "standing directive has multiple active children; explicit Executive step binding is required",
+                )
+            elif same_directive_completed:
+                # Prior completed child, no active child: the Executive must
+                # derive the next bounded child from standing authority.
+                return None, _AdmissionRefusal(
+                    "STANDING_FOLLOWUP_REQUIRED",
+                    "standing directive awaits Executive follow-up child; no active child exists",
+                )
+            # else: no children at all yet -> fall through to global logic
+            # so the initial admission path is preserved.
+            if len(same_directive_active) == 1:
+                    objective = same_directive_active[0]
+                    # Jump to plan/step binding below with the scoped objective.
+                    explicit_plan_id = (
+                        str(metadata.get("plan_id") or "").strip()
+                        or str(context.get("plan_id") or "").strip()
+                    )
+                    plans = [
+                        plan
+                        for plan in state.plans.values()
+                        if plan.objective_id == objective.objective_id
+                        and plan.status == "ACTIVE"
+                    ]
+                    if explicit_plan_id:
+                        plans = [plan for plan in plans if plan.plan_id == explicit_plan_id]
+                    elif require_newer_plan_than:
+                        plans = [
+                            plan for plan in plans
+                            if plan.plan_id != require_newer_plan_than
+                        ]
+                    from ..executive.autonomy import active_plan as _active_plan_for_standing
+                    _plan_for_standing = max(
+                        plans,
+                        key=lambda value: (value.version, value.updated_at, value.plan_id),
+                        default=None,
+                    )
+                    if _plan_for_standing is None:
+                        return None, _AdmissionRefusal(
+                            (
+                                "EXECUTIVE_REPLAN_REQUIRED"
+                                if require_newer_plan_than
+                                else "EXECUTIVE_PLAN_REQUIRED"
+                            ),
+                            (
+                                "delegation is waiting for an Executive-authored replacement plan"
+                                if require_newer_plan_than
+                                else "delegation is waiting for an Executive-authored active plan"
+                            ),
+                        )
+                    plan = _plan_for_standing
+                    explicit_step_id = (
+                        str(metadata.get("step_id") or "").strip()
+                        or str(context.get("step_id") or "").strip()
+                    )
+                    eligible = [
+                        step
+                        for step in plan.steps
+                        if step.status.upper() not in {
+                            "COMPLETE",
+                            "COMPLETED",
+                            "FAILED",
+                            "CANCELLED",
+                            "SKIPPED",
+                            "SUPERSEDED",
+                        }
+                    ]
+                    if explicit_step_id:
+                        eligible = [
+                            step for step in eligible if step.step_id == explicit_step_id
+                        ]
+                    if len(eligible) != 1:
+                        reason = (
+                            "delegation is waiting for an Executive-authored executable step"
+                            if not eligible
+                            else "delegation requires an explicit Executive step binding"
+                        )
+                        return None, _AdmissionRefusal(
+                            "EXECUTIVE_STEP_REQUIRED",
+                            reason,
+                        )
+                    step = eligible[0]
+                    mission_ids = tuple(
+                        value for value in (step.mission_id,) if value
+                    )
+                    return _ExecutiveBinding(
+                        objective=objective,
+                        plan=plan,
+                        step_ids=(step.step_id,),
+                        mission_ids=mission_ids,
+                    ), _AdmissionRefusal("", "")
         if not requested_objective_ids:
             objectives = [
                 objective
@@ -1684,6 +1806,7 @@ class DelegationService:
                     "EXECUTIVE_PLAN_REQUIRED",
                     "EXECUTIVE_REPLAN_REQUIRED",
                     "EXECUTIVE_STEP_REQUIRED",
+                    "STANDING_FOLLOWUP_REQUIRED",
                 }:
                     ready = replace(
                         existing,
@@ -1692,6 +1815,7 @@ class DelegationService:
                             value
                             for value in existing.rationale_labels
                             if not value.startswith("EXECUTIVE_")
+                            and value != "STANDING_FOLLOWUP_REQUIRED"
                         ),
                         updated_at=isoformat(),
                     )
@@ -2020,6 +2144,7 @@ class DelegationService:
                     "EXECUTIVE_PLAN_REQUIRED",
                     "EXECUTIVE_REPLAN_REQUIRED",
                     "EXECUTIVE_STEP_REQUIRED",
+                    "STANDING_FOLLOWUP_REQUIRED",
                 }:
                     ready = replace(
                         existing,
@@ -2028,6 +2153,7 @@ class DelegationService:
                             value
                             for value in existing.rationale_labels
                             if not value.startswith("EXECUTIVE_")
+                            and value != "STANDING_FOLLOWUP_REQUIRED"
                         ),
                         updated_at=isoformat(),
                     )
