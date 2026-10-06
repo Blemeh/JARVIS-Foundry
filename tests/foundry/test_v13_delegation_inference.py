@@ -296,6 +296,81 @@ def test_context_reads_semantic_owner_context_events(tmp_path: Path) -> None:
     )
 
 
+def test_single_shared_word_is_not_a_constraint_conflict() -> None:
+    from jarvis_foundry.delegation.context import DelegationContext
+    from jarvis_foundry.delegation.inference import _method_assessment
+
+    context = DelegationContext(
+        generated_at="2026-10-05T00:00:00Z",
+        resolution_status="UNKNOWN",
+        selected_context_id=None,
+        candidates=(),
+        active_constraints=(
+            "Authorize only opencode_go included-subscription usage for the "
+            "existing provider scope. No additional billable charges.",
+        ),
+    )
+    assessment = _method_assessment(
+        "Report current connection status only",
+        context=context,
+        metadata={},
+        consequence=ConsequenceClass.LOW,
+    )
+    assert assessment is None
+
+
+def test_two_shared_words_flag_a_constraint_conflict() -> None:
+    from jarvis_foundry.delegation.context import DelegationContext
+    from jarvis_foundry.delegation.inference import _method_assessment
+
+    context = DelegationContext(
+        generated_at="2026-10-05T00:00:00Z",
+        resolution_status="UNKNOWN",
+        selected_context_id=None,
+        candidates=(),
+        active_constraints=(
+            "No additional spend: paid provider usage beyond included "
+            "subscription is not authorized.",
+        ),
+    )
+    assessment = _method_assessment(
+        "Use a different paid provider for inference",
+        context=context,
+        metadata={},
+        consequence=ConsequenceClass.LOW,
+    )
+    assert assessment is not None
+    assert assessment.disposition == "ASK_OWNER"
+
+
+def test_method_mismatch_options_stay_within_contract() -> None:
+    from jarvis_foundry.delegation.context import DelegationContext
+    from jarvis_foundry.delegation.inference import _clip_option, _method_assessment
+
+    long_constraint = (
+        "No additional spend anywhere: paid provider usage beyond included "
+        "subscription is not authorized, " + "and this policy sentence repeats. " * 40
+    )
+    assert len(long_constraint) > 512
+    context = DelegationContext(
+        generated_at="2026-10-05T00:00:00Z",
+        resolution_status="UNKNOWN",
+        selected_context_id=None,
+        candidates=(),
+        active_constraints=(long_constraint,),
+    )
+    assessment = _method_assessment(
+        "Use a different paid provider for inference",
+        context=context,
+        metadata={},
+        consequence=ConsequenceClass.LOW,
+    )
+    assert assessment is not None
+    assert len(assessment.recommended_method) <= 1024
+    assert len(_clip_option(assessment.recommended_method)) <= 512
+    assert _clip_option("short choice") == "short choice"
+
+
 def test_unauthenticated_text_cannot_become_delegation_intent(
     tmp_path: Path,
 ) -> None:

@@ -482,7 +482,7 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
       kind: record.key === "verifier" ? "verifier" : record.key === "repair_retry" ? "repair" : record.key === "evidence" || record.key === "memory" || record.key === "action_artifact" || record.key === "owner_briefing" ? "evidence" : "builder",
       label: record.label,
       detail: record.detail,
-      status: record.state === "COMPLETE" ? "PASS" : record.state === "FAILED" ? "FAIL" : record.state === "ACTIVE" ? "ACTIVE" : "PENDING",
+      status: record.state === "COMPLETE" ? "PASS" : record.state === "FAILED" ? "FAIL" : record.state === "BLOCKED" ? "BLOCKED" : record.state === "ACTIVE" ? "ACTIVE" : record.state === "NOT REQUIRED" ? "NOT REQUIRED" : record.state === "NOT RECORDED" ? "NOT RECORDED" : record.state === "PENDING" ? "PENDING" : "NOT RECORDED",
       refs: record.refs,
     }));
   }
@@ -614,12 +614,20 @@ export class RealJarvisRuntimeAdapter implements JarvisClient {
     try {
       const requestId = globalThis.crypto?.randomUUID?.()
         ?? `command-center-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const result = mode
-        ? await this.ownerCommand("DELEGATE", objective, "GLOBAL", {
-            mode,
+      // The primary outcome action (Handle / no mode) is a durable GOAL:
+      // only GOAL directives project into Executive objectives that the
+      // planner turns into plans and missions. DELEGATE can only bind
+      // already-existing Executive work by architectural law, so free-text
+      // outcomes sent as DELEGATE wait forever with no referent.
+      const result = !mode || mode === "HANDLE"
+        ? await this.ownerCommand("GOAL", objective, "GLOBAL", {
+            ...(mode ? { mode } : {}),
             request_id: requestId,
           })
-        : await this.ownerCommand("GOAL", objective, "GLOBAL");
+        : await this.ownerCommand("DELEGATE", objective, "GLOBAL", {
+            mode,
+            request_id: requestId,
+          });
       return { accepted: result.status === "APPLIED", directiveId: result.directive_id, eventId: result.event_id };
     } catch (error) {
       return { accepted: false, error: error instanceof Error ? error.message : String(error) };

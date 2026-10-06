@@ -155,7 +155,7 @@ export function MissionDetail() {
       {({ mission, run, workers, evidence, lineage, steps, related, effectTruth }) => {
   const stepByKey = Object.fromEntries(steps.map((s) => [s.key, s]));
   const lifecycle = run.lifecycle ?? [];
-  const lifecycleKnown = lifecycle.filter((record) => record.state !== "UNKNOWN" && record.state !== "UNAVAILABLE");
+  const lifecycleKnown = lifecycle.filter((record) => record.state !== "UNKNOWN" && record.state !== "UNAVAILABLE" && record.state !== "NOT REQUIRED");
   const lifecycleComplete = lifecycleKnown.filter((record) => record.state === "COMPLETE").length;
   const lifecycleProgress = lifecycleKnown.length > 0 ? Math.round((lifecycleComplete / lifecycleKnown.length) * 100) : null;
   const blocking = notifications.find((n) => n.refs.some((r) => r.kind === "mission" && r.id === mission.id) && n.state !== "RESOLVED");

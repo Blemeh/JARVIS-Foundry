@@ -1986,6 +1986,46 @@ def _build_snapshot(
                 "ACCEPTED" if str(verdict.get("verdict_id") or "") in accepted_ids
                 else "PENDING"
             )
+        # Canonical lineage invariant: the work-hierarchy join must prove
+        # one authoritative lineage per mission (directive -> objective ->
+        # plan -> mission -> worker runs -> artifacts -> evidence ->
+        # verifier). The top-level snapshot lists stay bounded for list
+        # views, but hierarchy linkage is complete per mission in this
+        # snapshot so an aged-out global window can never attach a
+        # nearest-record or newest-goal guess to another mission.
+        snapshot_mission_ids = [str(m.get("mission_id") or "") for m in missions if m.get("mission_id")]
+        if snapshot_mission_ids:
+            placeholders = ",".join("?" for _ in snapshot_mission_ids)
+            hierarchy_workers = _rows(
+                connection,
+                f"SELECT * FROM agent_runs WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+            hierarchy_evidence = _rows(
+                connection,
+                f"SELECT * FROM evidence_bundles WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+            hierarchy_verdicts = _rows(
+                connection,
+                f"SELECT * FROM verification_verdicts WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+            for verdict in hierarchy_verdicts:
+                verdict["acceptance_status"] = (
+                    "ACCEPTED" if str(verdict.get("verdict_id") or "") in accepted_ids
+                    else "PENDING"
+                )
+            hierarchy_steps = _rows(
+                connection,
+                f"SELECT contract_id, mission_id, step_id, version, capability, last_event_id, updated_at FROM mission_step_contracts WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+        else:
+            hierarchy_workers = []
+            hierarchy_evidence = []
+            hierarchy_verdicts = []
+            hierarchy_steps = []
         resources = _rows(connection, "SELECT * FROM resources ORDER BY updated_at DESC LIMIT 100")
         directives = _rows(connection, "SELECT * FROM directives WHERE active = 1 ORDER BY updated_at DESC")
         leases = _rows(connection, "SELECT * FROM leases ORDER BY heartbeat_at DESC")
@@ -2184,10 +2224,10 @@ def _build_snapshot(
             autonomy=autonomy_projection,
             goals=goals,
             missions=missions,
-            workers=workers,
-            evidence=evidence,
-            verdicts=verdicts,
-            mission_steps=steps,
+            workers=hierarchy_workers if snapshot_mission_ids else workers,
+            evidence=hierarchy_evidence if snapshot_mission_ids else evidence,
+            verdicts=hierarchy_verdicts if snapshot_mission_ids else verdicts,
+            mission_steps=hierarchy_steps if snapshot_mission_ids else steps,
             limit=100,
         )
     except Exception as error:  # noqa: BLE001 - optional read model fails closed

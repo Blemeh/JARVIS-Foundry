@@ -66,6 +66,22 @@ def _strings(
     return tuple(result)
 
 
+#: ReferentCandidate.text contract limit (contracts.ReferentCandidate).
+_CANDIDATE_TEXT_LIMIT = 2048
+
+
+def _clip_candidate_text(value: Any) -> str:
+    """Clip advisory context text to the ReferentCandidate contract limit.
+
+    Overlong ledger/objective text must degrade to a truncated referent, never
+    abort delegation admission for every pending owner directive.
+    """
+    text = str(value or "").strip()
+    if len(text) > _CANDIDATE_TEXT_LIMIT:
+        return (text[:_CANDIDATE_TEXT_LIMIT - 1].rstrip() + "…")[:_CANDIDATE_TEXT_LIMIT]
+    return text
+
+
 def _event_text(payload: Mapping[str, Any]) -> str:
     for key in (
         "reason", "summary", "message", "error", "next_action", "objective",
@@ -269,7 +285,7 @@ def _supplemental_candidates(
         result.append(ReferentCandidate(
             context_id=context_id,
             kind="ACTIVE_OBJECTIVE",
-            text=objective.objective,
+            text=_clip_candidate_text(objective.objective),
             confidence=round(min(1.0, score), 4),
             evidence=tuple(evidence),
             source_refs=tuple(filter(None, (
@@ -339,7 +355,7 @@ def _supplemental_candidates(
         result.append(ReferentCandidate(
             context_id=context_id,
             kind="UNRESOLVED_ITEM",
-            text=text,
+            text=_clip_candidate_text(text),
             confidence=round(min(1.0, score), 4),
             evidence=tuple(evidence),
             source_refs=(f"event:{event.event_id}",),

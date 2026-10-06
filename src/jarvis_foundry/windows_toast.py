@@ -86,7 +86,12 @@ class AttentionToastRouter:
         delivered = False
         detail = "in-app only"
         if self.mode == MODE_IN_APP_TOAST:
-            self.adapter.show(title=title, body=body, attention_id=attention_id)
+            try:
+                self.adapter.show(title=title, body=body, attention_id=attention_id)
+            except ToastUnavailable:
+                # Fail closed to in-app: a missing/broken OS toast backend must
+                # never break the HTTP request delivering owner attention.
+                return ToastResult("DEGRADED", attention_id, False, "windows toast unavailable; in-app only")
             delivered = True
             detail = "windows toast"
         self._emitted[attention_id] = datetime.now(timezone.utc).isoformat()

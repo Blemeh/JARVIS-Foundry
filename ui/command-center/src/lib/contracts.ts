@@ -171,8 +171,18 @@ export interface ForensicRecord {
   record: Record<string, unknown>;
 }
 
-/** Lifecycle truth is deliberately closed over explicit absence. */
-export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "UNKNOWN" | "UNAVAILABLE";
+/** Lifecycle truth is deliberately closed over explicit absence.
+ *
+ * Canonical lineage invariant: one mission page derives ONE authoritative
+ * lineage (owner directive -> objective -> plan -> mission -> worker runs
+ * -> artifacts -> evidence -> verifier -> outcome -> learning -> briefing).
+ * Every displayed identity must be causally related. When a relationship
+ * cannot be proven the stage reports NOT RECORDED (or NOT REQUIRED for
+ * successful terminal missions that never needed repair) instead of
+ * substituting an unrelated record. PENDING is reserved for active
+ * missions where future work is still possible; terminal missions never
+ * report PENDING for impossible future work. */
+export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "BLOCKED" | "NOT REQUIRED" | "NOT RECORDED" | "UNKNOWN" | "UNAVAILABLE";
 
 export interface AutonomyLifecycleRecord {
   key: string;
@@ -695,7 +705,7 @@ export interface RelatedEntities {
 }
 
 export type LineageNodeKind = "builder" | "verifier" | "finding" | "repair" | "evidence" | "pass";
-export type LineageNodeStatus = "PASS" | "FAIL" | "ACTIVE" | "PENDING";
+export type LineageNodeStatus = "PASS" | "FAIL" | "ACTIVE" | "PENDING" | "BLOCKED" | "NOT REQUIRED" | "NOT RECORDED";
 
 export interface LineageNode {
   id: string;

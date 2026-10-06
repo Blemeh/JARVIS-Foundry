@@ -97,6 +97,22 @@ def test_contract_round_trips_with_stable_identity() -> None:
     ) != intent.intent_id
 
 
+def test_overlong_options_clip_instead_of_breaking_projection() -> None:
+    from jarvis_foundry.delegation.contracts import MaterialAmbiguity
+
+    long_option = "Choose an approach that preserves the constraint: " + "x" * 900
+    ambiguity = MaterialAmbiguity.from_mapping({
+        "ambiguity_id": "ambiguity:legacy:method",
+        "code": "METHOD_GOAL_MISMATCH",
+        "question": "Should I use the recommended approach instead?",
+        "options": [long_option, "Keep the requested method"],
+        "evidence": ["active_constraint:policy"],
+    })
+    assert len(ambiguity.options) == 2
+    assert all(len(option) <= 512 for option in ambiguity.options)
+    assert ambiguity.options[1] == "Keep the requested method"
+
+
 def test_projection_is_idempotent_and_restart_durable(tmp_path: Path) -> None:
     database = _database(tmp_path)
     intent = _intent()
