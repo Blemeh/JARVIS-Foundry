@@ -182,6 +182,32 @@ def _conflict_tokens(text: str) -> set[str]:
     }
 
 
+_NEGATION_CUES = ("do not ", "don't ", "never ", "no ")
+
+
+def _regulated_terms(constraint: str) -> set[str]:
+    """Conflict tokens of the constraint's prohibition sentences.
+
+    A shared generic word ("only", "owner", "when") is not evidence that
+    a request violates a constraint; only overlap with what the constraint
+    actually regulates (the prohibition scope after a negation cue) counts
+    as a method conflict.  Without this, any goal sharing two function
+    words with a constraint parks in ASKING with a vacuous question.
+    """
+    terms: set[str] = set()
+    for sentence in re.split(r"[.!?;\n]+", constraint.lower()):
+        if any(cue in sentence for cue in _NEGATION_CUES):
+            terms |= _conflict_tokens(sentence)
+    return terms
+
+
+def _shares_regulated_conflict(goal_tokens: set[str], constraint: str) -> bool:
+    shared = goal_tokens & _conflict_tokens(constraint)
+    if len(shared) < 2:
+        return False
+    return bool(shared & _regulated_terms(constraint))
+
+
 def _mode_inference(
     text: str,
     metadata: Mapping[str, Any],
@@ -460,11 +486,7 @@ def _method_assessment(
     conflicting_constraints = [
         constraint
         for constraint in context.active_constraints
-        if any(
-            cue in constraint.lower()
-            for cue in ("do not ", "don't ", "never ", "no ")
-        )
-        and len(conflict_content & _conflict_tokens(constraint)) >= 2
+        if _shares_regulated_conflict(conflict_content, constraint)
     ]
     if not (bad and truth) and not conflicting_constraints:
         return None

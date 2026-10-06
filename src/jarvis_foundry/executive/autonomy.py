@@ -39,6 +39,12 @@ CONTRACT_REFUSAL_REASON = (
     "owner GOAL has no explicit executable success criteria, "
     "recipe, normalized intent, or plan-step output contract"
 )
+# Provenance marker for an outcome-shaped DELEGATE directive admitted as an
+# owner objective because the UI recorded a goal-intended outcome with
+# DELEGATE semantics.  Same directive, same text, same owner authority; the
+# marker keeps the routing correction auditable and scopes every consumer
+# (authority, withdrawal, hierarchy display) to exactly these objectives.
+ADMITTED_AS_MISROUTED_OUTCOME = "misrouted_outcome_delegate"
 
 
 def explicit_success_criteria_of(objective: ObjectiveRecord) -> tuple[str, ...]:
@@ -1278,9 +1284,10 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
             metadata={"target": record.target, "command_type": record.command_type},
             source_id="v8-owner-goal-admission",
         ))
+    protected_directives = set(active_directive_ids) | _admitted_misrouted_directive_ids(database)
     revoked = [objective for objective in state.objectives.values()
                if objective.objective_id.startswith("owner-goal:")
-               and str(objective.provenance.get("directive_id") or "") not in active_directive_ids]
+               and str(objective.provenance.get("directive_id") or "") not in protected_directives]
     for objective in revoked:
         old_directive_id = str(
             objective.provenance.get("directive_id") or "unknown",
@@ -1308,6 +1315,134 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
     from ..delegation.service import reconcile_owner_delegations
 
     reconcile_owner_delegations(database, controller=controller)
+    created.extend(
+        _admit_misrouted_outcome_delegates(
+            database, controller=controller,
+            known_oids={
+                objective.objective_id for objective in state.objectives.values()
+            } | {objective.objective_id for objective in created},
+        )
+    )
+    return created
+
+
+_OUTCOME_SUBSTANCE_MIN_TOKENS = 6
+_OUTCOME_FILLER_TOKENS = frozenset({
+    "a", "an", "the", "to", "for", "of", "on", "in", "and", "or",
+    "me", "my", "you", "your", "please", "here", "this", "that",
+    "it", "handle", "take", "do", "something", "anything", "now",
+})
+
+
+def _substantive_outcome_tokens(text: str) -> set[str]:
+    import re
+
+    return {
+        token
+        for token in re.findall(r"[a-z0-9]+", str(text or "").lower())
+        if len(token) > 2 and token not in _OUTCOME_FILLER_TOKENS
+    }
+
+
+def _admit_misrouted_outcome_delegates(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    known_oids: set[str] | None = None,
+) -> list[ObjectiveRecord]:
+    """Admit outcome-shaped DELEGATE directives the UI misrecorded as goals.
+
+    Before the Handle action submitted canonical GOAL directives, the UI
+    recorded every mode (including GOAL outcomes) as DELEGATE.  An
+    outcome-shaped DELEGATE the delegation engine already cleared as
+    READY in an acting mode, with substantive content and no genuine
+    ambiguity, carries the same owner outcome authority as a GOAL: admit
+    it as an owner objective under the SAME directive, text, and owner
+    authority so the standard plan/portfolio/mission machinery proceeds.
+    Vague, advisory, watch-only, standing-mandate, or still-ambiguous
+    directives are left to delegation semantics untouched.
+    """
+    from ..delegation.contracts import DelegationIntentStatus, DelegationMode
+    from ..delegation.projection import project_delegation_intents
+    from .standing_intent import is_discovery_mandate
+
+    try:
+        records = list(active_directives_for(
+            database, command_types=frozenset({"DELEGATE"}),
+        ))
+    except Exception:
+        return []
+    if not records:
+        return []
+    try:
+        intents = project_delegation_intents(database).intents
+    except Exception:
+        return []
+    by_directive: dict[str, Any] = {}
+    for intent in intents:
+        by_directive.setdefault(intent.owner_directive_id, intent)
+    known = set(known_oids or ())
+    created: list[ObjectiveRecord] = []
+    for record in records:
+        oid = f"owner-goal:{record.directive_id}"
+        if oid in known:
+            continue
+        text = str(record.exact_text or "")
+        if is_discovery_mandate(text):
+            continue
+        intent = by_directive.get(record.directive_id)
+        if intent is None:
+            continue
+        if intent.status == DelegationIntentStatus.BLOCKED:
+            # Mirror the engine's own admit-retry rule: only intents waiting
+            # on Executive work (never control holds like STOP/VETO) qualify.
+            labels = set(intent.rationale_labels or ())
+            if not labels & {
+                "EXECUTIVE_OBJECTIVE_REQUIRED",
+                "EXECUTIVE_PLAN_REQUIRED",
+                "EXECUTIVE_REPLAN_REQUIRED",
+                "EXECUTIVE_STEP_REQUIRED",
+            }:
+                continue
+            if labels & {"STOP_ACTIVE", "VETO_ACTIVE"}:
+                continue
+        elif intent.status != DelegationIntentStatus.READY:
+            continue
+        if intent.mode not in (DelegationMode.HANDLE, DelegationMode.TAKE_OVER):
+            continue
+        if tuple(intent.ambiguities or ()):
+            continue
+        if len(_substantive_outcome_tokens(text)) < _OUTCOME_SUBSTANCE_MIN_TOKENS:
+            continue
+        metadata = _parse_goal_metadata(record)
+        created.append(create_objective(
+            database,
+            text or "owner goal",
+            objective_id=oid,
+            controller=controller,
+            priority=metadata["priority"], urgency=metadata["urgency"],
+            deadline=metadata["deadline"],
+            constraints=metadata["constraints"],
+            success_criteria=metadata["success_criteria"],
+            failure_criteria=metadata["failure_criteria"],
+            dependencies=metadata["dependencies"],
+            owner_authority=str(getattr(record, "source_id", "owner") or "owner"),
+            provenance={
+                "directive_id": record.directive_id,
+                "event_id": record.event_id,
+                "correlation_id": record.correlation_id,
+                "nonce": record.nonce,
+                "authenticated": bool(record.authenticated),
+                "admitted_as": ADMITTED_AS_MISROUTED_OUTCOME,
+            },
+            metadata={
+                "target": record.target,
+                "command_type": "DELEGATE",
+                "routing_repair": True,
+            },
+            source_id="v8-owner-goal-admission",
+        ))
+        known.add(oid)
     return created
 
 
@@ -2678,13 +2813,56 @@ def _objective_has_failed_step(
 
 
 def _active_owner_goal_directive_ids(database: FoundryDatabase) -> set[str]:
-    return {
+    ids = {
         str(record.directive_id)
         for record in active_directives_for(
             database, command_types=frozenset({"GOAL"}),
         )
         if str(record.directive_id or "")
     }
+    return ids | _admitted_misrouted_directive_ids(database)
+
+
+def _admitted_misrouted_directive_ids(database: FoundryDatabase) -> set[str]:
+    """Active DELEGATE directives already admitted as owner objectives.
+
+    Checked by every owner-goal authority gate so a repaired routing keeps
+    its authority while its directive stays active.  A cheap ledger probe
+    gates the rebuild: without any marked admission the cost is one indexed
+    lookup returning the empty set.
+    """
+    try:
+        with database.connect(readonly=True) as connection:
+            hit = connection.execute(
+                "SELECT 1 FROM events WHERE event_type = 'executive.objective_created' "
+                "AND payload_json LIKE ? LIMIT 1",
+                (f"%{ADMITTED_AS_MISROUTED_OUTCOME}%",),
+            ).fetchone()
+        if hit is None:
+            return set()
+        state = rebuild_executive_state(database)
+    except Exception:
+        return set()
+    marked = {
+        str(objective.provenance.get("directive_id") or "")
+        for objective in state.objectives.values()
+        if objective.objective_id.startswith("owner-goal:")
+        and objective.provenance.get("admitted_as") == ADMITTED_AS_MISROUTED_OUTCOME
+        and str(objective.provenance.get("directive_id") or "")
+    }
+    if not marked:
+        return set()
+    try:
+        active = {
+            str(record.directive_id)
+            for record in active_directives_for(
+                database, command_types=frozenset({"DELEGATE"}),
+            )
+            if str(record.directive_id or "")
+        }
+    except Exception:
+        return set()
+    return marked & active
 
 
 def _revoked_owner_objective_ids(database: FoundryDatabase) -> set[str]:

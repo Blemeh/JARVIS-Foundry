@@ -1479,6 +1479,66 @@ class DelegationService:
             return self._admit_redirect(intent, prior=prior, record=record)
         return self._admit(intent, record=record)
 
+    def _dissolve_stale_method_mismatch(
+        self,
+        existing: DelegationIntent,
+        *,
+        record: OwnerDirectiveRecord,
+    ) -> DelegationIntent | None:
+        """Supersede a stale false method-route interrogation without owner input.
+
+        A parked METHOD_GOAL_MISMATCH whose goal text requests no method can
+        never be answered by the owner (both options are vacuous).  When
+        current inference finds no ambiguity at all, the question was never
+        genuine: record the dissolve on the same intent identity (READY
+        status, dissolved codes in rationale) and let admission proceed.
+        Any remaining ambiguity keeps replaying ASKING untouched.
+        """
+        try:
+            intent, _context = self._inferred(record)
+        except Exception:
+            return None
+        if intent.decision == DelegationDecision.ASK or intent.ambiguities:
+            return None
+        dissolved = sorted({
+            ambiguity.code
+            for ambiguity in existing.ambiguities
+            if ambiguity.code == "METHOD_GOAL_MISMATCH"
+        })
+        if not dissolved:
+            return None
+        cleared = replace(
+            intent,
+            status=DelegationIntentStatus.READY,
+            updated_at=isoformat(),
+            rationale_labels=tuple(dict.fromkeys((
+                *intent.rationale_labels,
+                "STALE_FALSE_AMBIGUITY_DISSOLVED",
+                *(f"DISSOLVED_{code}" for code in dissolved),
+            ))),
+        )
+        self.database.append(Event.create(
+            "delegation.intent_updated",
+            {
+                "intent_id": cleared.intent_id,
+                "intent": cleared.to_payload(),
+                "reason": (
+                    "stale false method-route interrogation dissolved under "
+                    "current inference; no owner clarification was provided "
+                    f"or needed: {', '.join(dissolved)}"
+                ),
+            },
+            source_type="supervisor",
+            source_id="delegation-engine",
+            correlation_id=record.correlation_id,
+            causation_id=record.event_id,
+            idempotency_key=(
+                f"delegation.intent_updated:{cleared.intent_id}:"
+                f"ambiguity-dissolved:{existing.updated_at}"
+            ),
+        ))
+        return cleared
+
     def _process_directive_once(self, directive_id: str) -> DelegationOutcome:
         record = self._directive(directive_id)
         if record.state != "ACTIVE":
@@ -1538,6 +1598,13 @@ class DelegationService:
                         updated_at=isoformat(),
                     )
                     outcome = self._admit(ready, record=record)
+                    return replace(outcome, replayed=True)
+            if existing.status == DelegationIntentStatus.AWAITING_CLARIFICATION:
+                dissolved = self._dissolve_stale_method_mismatch(
+                    existing, record=record,
+                )
+                if dissolved is not None:
+                    outcome = self._admit(dissolved, record=record)
                     return replace(outcome, replayed=True)
             return DelegationOutcome(
                 directive_id=directive_id,
