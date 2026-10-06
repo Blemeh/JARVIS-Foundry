@@ -2010,7 +2010,15 @@ def generate_missions_for_objective(
             continue
         legacy_item_id = f"owner-goal:{directive_id}" if directive_id else ""
         step_item_id = f"executive-step:{objective_id}:{step.step_id}"
-        base_item_id = legacy_item_id or step_item_id
+        # Standing follow-ups share their directive with a completed sibling
+        # whose legacy portfolio item is COMPLETED.  Reusing that legacy ID
+        # would collide and suppress the next child (the exact stall this
+        # repair fixes).  Standing children use their own step-scoped ID.
+        try:
+            _is_standing_child = bool((objective.provenance or {}).get("standing_followup"))
+        except Exception:
+            _is_standing_child = False
+        base_item_id = step_item_id if _is_standing_child else (legacy_item_id or step_item_id)
         suffix = f":retry:{step.retries}" if step.retries else ""
         item_id = f"{base_item_id}{suffix}"
         if item_id in requested_item_ids:
