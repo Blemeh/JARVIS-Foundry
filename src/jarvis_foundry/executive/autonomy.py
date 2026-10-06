@@ -808,9 +808,43 @@ def _parse_goal_metadata(record: Any) -> dict[str, Any]:
         "deadline": deadline,
         "constraints": section("constraints?"),
         "dependencies": section(r"depends?[_ -]?on"),
-        "success_criteria": section("success(?: criteria)?"),
+        "success_criteria": section("success(?: criteria)?") or _deliverable_criteria(text),
         "failure_criteria": section("failure(?: criteria)?"),
     }
+
+
+def _deliverable_criteria(text: str) -> tuple[str, ...]:
+    """Recognize an explicit owner deliverable as success criteria.
+
+    The success-marker section stays the primary surface, but a normal owner
+    goal that states a concrete deliverable with enumerated coverage is
+    explicit success criteria in substance.  Without this, such goals are
+    admitted with a generic contract and parked permanently behind the
+    executable-contract gate with no path forward.  Vague aspirations
+    without a deliverable verb, a verifiable qualifier, or enumerated
+    coverage still yield nothing and stay parked.
+    """
+    import re
+    pattern = r"\b(?:produce|deliver|create|write|generate|provide|report|publish|file)\s+(?:a\s+|an\s+|the\s+)?(.+?)(?:\.|$)"
+    for match in re.finditer(pattern, text, re.I | re.S):
+        deliverable = re.sub(r"\s+", " ", match.group(1)).strip(" ,;:")
+        if len(deliverable) < 12:
+            continue
+        cover = re.search(r"\bcover(?:ing|s)?\s+(.+)$", deliverable, re.I | re.S)
+        if cover:
+            topics = [
+                part.strip(" .,;:")
+                for part in re.split(r",|;|\band\b", cover.group(1))
+                if part.strip(" .,;:")
+            ]
+            topics = [topic for topic in topics if len(topic) >= 3][:8]
+            if len(topics) >= 2:
+                head = deliverable[: cover.start()].strip(" ,;:")
+                prefix = f"{head} covering " if head else "covering "
+                return tuple(f"{prefix}{topic}" for topic in topics)
+        if re.search(r"\bverif\w*", deliverable, re.I):
+            return (deliverable,)
+    return ()
 
 
 def create_objective(
@@ -1124,6 +1158,42 @@ def withdraw_objective_authority(
     return rebuild_executive_state(database).objectives.get(objective_id)
 
 
+def _heal_missing_success_criteria(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+    record: Any,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+) -> ObjectiveRecord | None:
+    """Record success criteria a previous admission failed to extract.
+
+    Objectives admitted before deliverable recognition parsed their
+    directive text carry no explicit criteria, so their fallback plans were
+    admitted scope-blocked with no path forward.  Re-deriving the criteria
+    from the immutable directive text corrects the mis-parse without
+    changing owner intent; the update is a durable auditable event and a
+    no-op once criteria exist.
+    """
+    if objective.status in _TERMINAL_OBJECTIVE:
+        return None
+    if explicit_success_criteria_of(objective):
+        return None
+    criteria = tuple(
+        value for value in _parse_goal_metadata(record).get("success_criteria", ())
+        if str(value).strip()
+        and str(value).strip().casefold() not in _GENERIC_EXECUTIVE_OUTPUT_CONTRACTS
+    )
+    if not criteria:
+        return None
+    return update_objective(
+        database,
+        objective.objective_id,
+        {"success_criteria": criteria},
+        controller=controller,
+        source_id="v8-owner-goal-admission",
+    )
+
+
 def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_CONTROLLER) -> list[ObjectiveRecord]:
     """Admit each authenticated active, resolvable GOAL with full provenance."""
     _gate(database, controller)
@@ -1176,7 +1246,9 @@ def sync_owner_goals(database: FoundryDatabase, *, controller: str = SUPERVISOR_
                 source_id="v8-owner-goal-admission",
             )
             continue
-        if oid in state.objectives:
+        existing = state.objectives.get(oid)
+        if existing is not None:
+            _heal_missing_success_criteria(database, existing, record, controller=controller)
             continue
         metadata = _parse_goal_metadata(record)
         target_resource_id = str(record.target or "").strip()
@@ -3898,6 +3970,75 @@ def _run_discovery_starvation_fallback(
         return None, None
 
 
+def _replan_scope_stalled_steps(
+    database: FoundryDatabase,
+    objective: ObjectiveRecord,
+    plan: PlanRecord,
+    *,
+    capability: str,
+    resource_id: str | None = None,
+    controller: str = SUPERVISOR_CONTROLLER,
+) -> PlanRecord | None:
+    """Re-issue a scope-parked plan once its contract is satisfiable.
+
+    A fallback plan admitted BLOCKED with the scope marker parks its
+    objective with no path forward when the admission parser failed to
+    extract explicit success criteria the owner text stated.  Once the
+    objective carries explicit, non-generic criteria (healed at admission
+    above), the parked refusal is stale: record the contract-bearing
+    replan the continuation names as a recovery route and trigger the
+    scope wake it waited on.  Returns the new plan, else None.  Repeat
+    cycles are no-ops: the rebuilt step is READY without the marker.
+    """
+    actionable = [step for step in plan.steps if step.status not in _TERMINAL_STEP]
+    if not actionable or not all(
+        step.status == "BLOCKED" and CONTRACT_SCOPE_MARKER in tuple(step.evidence_refs)
+        for step in actionable
+    ):
+        return None
+    if not objective.objective_id.startswith("owner-goal:"):
+        return None
+    if not str(objective.provenance.get("directive_id") or ""):
+        return None
+    if not explicit_success_criteria_of(objective):
+        return None
+    first = actionable[0]
+    rebuilt = PlanStep(
+        step_id=first.step_id, objective_id=objective.objective_id,
+        description=first.description or objective.objective,
+        required_capabilities=objective.required_capabilities or (capability,),
+        resource_id=objective.resource_id or resource_id,
+        output_contract=objective.success_criteria,
+        verification_contract=objective.success_criteria,
+        max_retries=int(_number(objective.budget.get("max_retries"), 1)),
+    )
+    contract_ok, _ = step_has_executable_contract(objective, rebuilt)
+    if not contract_ok:
+        return None
+    new_plan = build_plan(database, objective.objective_id, (rebuilt,), controller=controller)
+    from .continuous import rebuild_wake_state, trigger_wake
+
+    for step in actionable:
+        signal = f"executive-scope:{objective.objective_id}:{step.step_id}"
+        for wake_id, wake in rebuild_wake_state(database).items():
+            if (
+                wake.get("objective_id") == objective.objective_id
+                and wake.get("status") == "ACTIVE"
+                and str(wake.get("signal") or "") == signal
+            ):
+                try:
+                    trigger_wake(
+                        database, wake_id, controller=controller,
+                        reason=(
+                            f"contract-bearing replan admitted for step {step.step_id}; "
+                            "executable scope evidence recorded"
+                        ),
+                    )
+                except (EventConflict, ValueError):
+                    pass
+    return new_plan
+
+
 def run_autonomy_cycle(
     database: FoundryDatabase,
     *,
@@ -3965,8 +4106,16 @@ def run_autonomy_cycle(
         if (
             objective.objective_id in excluded
             or objective.status in _TERMINAL_OBJECTIVE
-            or active_plan(database, objective.objective_id) is not None
         ):
+            continue
+        stalled_plan = active_plan(database, objective.objective_id)
+        if stalled_plan is not None:
+            replanned = _replan_scope_stalled_steps(
+                database, objective, stalled_plan, capability=capability,
+                resource_id=resource_id, controller=controller,
+            )
+            if replanned is not None:
+                plans.append(replanned)
             continue
         steps = _warranted_objective_steps(
             database, objective, capability=capability,
