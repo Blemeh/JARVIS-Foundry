@@ -625,6 +625,35 @@ def _worker_lease_matches(lease: dict[str, Any], worker: dict[str, Any]) -> bool
     )
 
 
+def _drop_live_loop_lease(
+    database: FoundryDatabase,
+    stale_leases: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop a time-expired worker-loop lease whose owner process is alive.
+
+    A worker-loop cycle legitimately outlasts its 120s singleton TTL while
+    a multi-minute worker run proceeds, and the loop only releases the
+    lease when the cycle ends.  Treating that expiry as stale degrades the
+    product for the whole run even though the runtime is healthy.  The
+    loop-lease liveness authority (recorded PID plus creation identity)
+    distinguishes a live loop from a dead generation; a dead owner stays
+    stale and keeps degrading truthfully.  Any failure here fails closed
+    to the unfiltered list.
+    """
+    try:
+        from .runtime.worker_loop import LOOP_LEASE_KEY, worker_loop_lease_is_live
+    except Exception:
+        return stale_leases
+    if not any(l.get("lease_key") == LOOP_LEASE_KEY for l in stale_leases):
+        return stale_leases
+    try:
+        if worker_loop_lease_is_live(database):
+            return [l for l in stale_leases if l.get("lease_key") != LOOP_LEASE_KEY]
+    except Exception:
+        pass
+    return stale_leases
+
+
 def _current_failed_workers(
     workers: list[dict[str, Any]],
     leases: list[dict[str, Any]],
@@ -2115,6 +2144,7 @@ def _build_snapshot(
     reprioritizations = [d for d in directives if d.get("command_type") == "REPRIORITIZE"]
     redirects = [d for d in directives if d.get("command_type") == "REDIRECT"]
     stale_leases = [l for l in leases if l.get("expires_at") and str(l["expires_at"]) < generated_at]
+    stale_leases = _drop_live_loop_lease(database, stale_leases)
     blocked = [m for m in missions if m.get("state") == "BLOCKED"]
     crashed_workers = _current_failed_workers(runtime_workers, leases, stale_leases)
     runtime_degraded = supervisor.get("status") == "DEGRADED" or bool(
