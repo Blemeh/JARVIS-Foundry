@@ -281,3 +281,66 @@ def test_hierarchy_synthesizes_goal_for_admitted_delegate(db: FoundryDatabase) -
     )
     assert result["goals"] and result["goals"][0]["directive_id"] == delegate_id
     assert result["objectives"][0]["goal_id"] == f"goal:{delegate_id}"
+
+
+def _goal(db: FoundryDatabase, text: str, nonce: str) -> str:
+    applied = _controls(db).apply(
+        "GOAL", target="GLOBAL", exact_text=text, nonce=nonce,
+        signature=sign_command(SECRET, "GOAL", "GLOBAL", text, nonce),
+    )
+    return applied.directive_id
+
+
+def _plan(db: FoundryDatabase, oid: str) -> None:
+    from jarvis_foundry.executive.autonomy import PlanStep, build_plan
+
+    build_plan(db, oid, [PlanStep(
+        step_id="execute", objective_id=oid, description="Execute the owned outcome.",
+    )])
+
+
+def test_verbatim_objective_reference_binds(db: FoundryDatabase) -> None:
+    goal_id = _goal(db, "Ship the observable outcome. success: receipt file exists.", "wd-e1")
+    sync_owner_goals(db)
+    oid = f"owner-goal:{goal_id}"
+    _plan(db, oid)
+    text = f"Continue {oid} to completion and verify the receipt."
+    delegate_id = _delegate_outcome(db, text, "wd-e2")
+    outcome = DelegationService(db).process_directive(delegate_id)
+    assert outcome.status == "ADMITTED"
+    assert outcome.objective_id == oid
+
+
+def test_nominal_reference_does_not_bind_without_exact_id(db: FoundryDatabase) -> None:
+    _goal(db, "Ship the observable outcome. success: receipt file exists.", "wd-n1")
+    _goal(db, "Second outcome. success: second receipt exists.", "wd-n2")
+    sync_owner_goals(db)
+    delegate_id = _delegate_outcome(db, "Finish the observable outcome work quickly.", "wd-n3")
+    outcome = DelegationService(db).process_directive(delegate_id)
+    assert outcome.status == "WAITING_FOR_EXECUTIVE_PLAN"
+    assert outcome.objective_id is None
+
+
+def test_false_similarity_binding_dissolves_without_reprompt(db: FoundryDatabase, monkeypatch) -> None:
+    from jarvis_foundry.delegation.service import DelegationService as Service
+
+    goal_id = _goal(db, "Ship the observable outcome. success: receipt file exists.", "wd-u1")
+    other_oid = f"owner-goal:{goal_id}"
+    _goal(db, "Second outcome. success: second receipt exists.", "wd-u2")
+    sync_owner_goals(db)
+    _plan(db, other_oid)
+    delegate_id = _delegate_outcome(db, OUTCOME_TEXT, "wd-u3")
+    monkeypatch.setattr(
+        Service,
+        "_exact_referent_objective_ids",
+        staticmethod(lambda intent, record: (other_oid,)),
+    )
+    latched = DelegationService(db).process_directive(delegate_id)
+    assert latched.status == "ADMITTED"
+    assert latched.objective_id == other_oid
+    first_count = _clarification_count(db)
+    monkeypatch.undo()
+    outcome = DelegationService(db).process_directive(delegate_id)
+    assert outcome.status == "WAITING_FOR_EXECUTIVE_PLAN"
+    assert outcome.objective_id is None
+    assert _clarification_count(db) == first_count
