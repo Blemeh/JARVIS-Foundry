@@ -470,6 +470,22 @@ class DelegationService:
             values.extend(str(value).strip() for value in scope_ids if str(value).strip())
         return tuple(dict.fromkeys(values))
 
+    @staticmethod
+    def _exact_referent_objective_ids(
+        intent: DelegationIntent,
+        record: OwnerDirectiveRecord,
+    ) -> tuple[str, ...]:
+        # Similarity-resolved referents are candidates, never proof: binding
+        # an acting delegation to the top text-overlap match attaches one
+        # directive authority to another directive work (observed live).
+        # Acting modes bind only verbatim-named objectives.
+        text = str(record.exact_text or "")
+        return tuple(dict.fromkeys(
+            value
+            for value in DelegationService._referent_objective_ids(intent)
+            if value and value in text
+        ))
+
     def _executive_binding(
         self,
         intent: DelegationIntent,
@@ -493,7 +509,11 @@ class DelegationService:
                     if record.target and record.target != "GLOBAL"
                     else None
                 ),
-                *self._referent_objective_ids(intent),
+                *(
+                    self._exact_referent_objective_ids(intent, record)
+                    if intent.mode in (DelegationMode.HANDLE, DelegationMode.TAKE_OVER)
+                    else self._referent_objective_ids(intent)
+                ),
             )
             if value
         ))
@@ -1539,6 +1559,84 @@ class DelegationService:
         ))
         return cleared
 
+    def _dissolve_false_similarity_binding(
+        self,
+        existing: DelegationIntent,
+        *,
+        record: OwnerDirectiveRecord,
+    ) -> DelegationIntent | None:
+        # An ADMITTED binding to another directive objective, with no exact
+        # referent anywhere in this directive, is a similarity artifact, not
+        # owner intent. Dissolve the binding (keep the intent, clear the
+        # claimed work) so admission re-resolves honestly. Redirect bindings
+        # and same-directive work are never touched.
+        if existing.status != DelegationIntentStatus.ADMITTED:
+            return None
+        if existing.mode not in (DelegationMode.HANDLE, DelegationMode.TAKE_OVER):
+            return None
+        bound = str(existing.resulting_objective_id or "").strip()
+        if not bound:
+            return None
+        labels = set(existing.rationale_labels or ())
+        if "AUTHENTICATED_REDIRECT" in labels:
+            return None
+        text = str(record.exact_text or "")
+        metadata = dict(record.metadata or {})
+        context = dict(metadata.get("context") or {})
+        target = str(record.target or "").strip()
+        exact = {
+            str(metadata.get("objective_id") or "").strip(),
+            str(context.get("objective_id") or "").strip(),
+            target if target and target != "GLOBAL" else "",
+            bound if bound and bound in text else "",
+        }
+        exact.discard("")
+        if bound in exact:
+            return None
+        try:
+            objective = rebuild_executive_state(self.database).objectives.get(bound)
+        except Exception:
+            return None
+        if objective is None:
+            return None
+        if str(objective.provenance.get("directive_id") or "") == record.directive_id:
+            return None
+        cleared = replace(
+            existing,
+            status=DelegationIntentStatus.READY,
+            resulting_objective_id=None,
+            resulting_plan_id=None,
+            resulting_step_ids=(),
+            resulting_mission_ids=(),
+            updated_at=isoformat(),
+            rationale_labels=tuple(dict.fromkeys((
+                *existing.rationale_labels,
+                "FALSE_SIMILARITY_BINDING_DISSOLVED",
+            ))),
+        )
+        self.database.append(Event.create(
+            "delegation.intent_updated",
+            {
+                "intent_id": cleared.intent_id,
+                "intent": cleared.to_payload(),
+                "reason": (
+                    "similarity-resolved binding dissolved: bound objective "
+                    f"{bound} belongs to another directive and this directive "
+                    "names no exact referent; no owner clarification was "
+                    "provided or needed",
+                ),
+            },
+            source_type="supervisor",
+            source_id="delegation-engine",
+            correlation_id=record.correlation_id,
+            causation_id=record.event_id,
+            idempotency_key=(
+                f"delegation.intent_updated:{cleared.intent_id}:"
+                f"similarity-dissolved:{existing.updated_at}"
+            ),
+        ))
+        return cleared
+
     def _process_directive_once(self, directive_id: str) -> DelegationOutcome:
         record = self._directive(directive_id)
         if record.state != "ACTIVE":
@@ -1605,6 +1703,13 @@ class DelegationService:
                 )
                 if dissolved is not None:
                     outcome = self._admit(dissolved, record=record)
+                    return replace(outcome, replayed=True)
+            if existing.status == DelegationIntentStatus.ADMITTED:
+                unbound = self._dissolve_false_similarity_binding(
+                    existing, record=record,
+                )
+                if unbound is not None:
+                    outcome = self._admit(unbound, record=record)
                     return replace(outcome, replayed=True)
             return DelegationOutcome(
                 directive_id=directive_id,
