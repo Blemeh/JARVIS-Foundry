@@ -537,6 +537,34 @@ def _method_assessment(
     )
 
 
+_EFFECT_NEGATION_CUES = (
+    "do not",
+    "don't",
+    "does not",
+    "never",
+    "without",
+    "forbid",
+    "prohibit",
+)
+
+
+def _unnegated_tokens(text: str) -> set[str]:
+    """Tokens occurring outside prohibition sentences.
+
+    A high-consequence word inside an explicit prohibition ("do not modify
+    production systems") describes withheld authority, not a requested
+    effect.  Scoring it as requested consequence interrogates the owner
+    about a boundary they already set.  Only unnegated occurrences count
+    toward the requested effect classification.
+    """
+    kept: set[str] = set()
+    for sentence in re.split(r"[.!?;\n]+", str(text or "").lower()):
+        if any(cue in sentence for cue in _EFFECT_NEGATION_CUES):
+            continue
+        kept |= _tokens(sentence)
+    return kept
+
+
 def _risk(
     text: str,
     *,
@@ -551,10 +579,12 @@ def _risk(
         consequence = ConsequenceClass(explicit_consequence)
         labels.append("EXPLICIT_CONSEQUENCE")
     except ValueError:
-        if tokens & _IRREVERSIBLE:
+        requested_effects = tokens & (_BAD_METHOD | _IRREVERSIBLE | _HIGH_CONSEQUENCE)
+        requested_effects &= _unnegated_tokens(text)
+        if requested_effects & _IRREVERSIBLE:
             consequence = ConsequenceClass.IRREVERSIBLE
             labels.append("IRREVERSIBLE_EFFECT_LANGUAGE")
-        elif tokens & _HIGH_CONSEQUENCE:
+        elif requested_effects & _HIGH_CONSEQUENCE:
             consequence = ConsequenceClass.HIGH
             labels.append("HIGH_CONSEQUENCE_LANGUAGE")
         elif mode == DelegationMode.TAKE_OVER:

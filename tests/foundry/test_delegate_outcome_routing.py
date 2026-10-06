@@ -111,6 +111,66 @@ def test_regulated_overlap_still_conflicts() -> None:
     assert assessment.disposition == "ASK_OWNER"
 
 
+def _infer(db: FoundryDatabase, text: str, constraints: tuple[str, ...] = ()):
+    from jarvis_foundry.delegation import compile_delegation_context, infer_delegation_intent
+
+    from dataclasses import replace
+
+    context = compile_delegation_context(db, text)
+    if constraints:
+        context = replace(context, active_constraints=constraints)
+    return infer_delegation_intent(
+        {
+            "directive_id": "owner-delegation-test",
+            "exact_text": text,
+            "authenticated": True,
+            "owner_id": "local-owner",
+            "source_identity": "owner:local-owner",
+            "metadata": {"mode": "HANDLE", "request_id": "req-test"},
+        },
+        context,
+    )
+
+
+def test_prohibited_production_is_not_requested_consequence(db: FoundryDatabase) -> None:
+    intent = _infer(
+        db,
+        "Inspect the demo product. Do not expose confidential information "
+        "or modify production systems. Report current status.",
+    )
+    assert intent.decision != DelegationDecision.ASK
+    assert intent.ambiguities == ()
+    assert all(a.code != "CONSEQUENTIAL_EFFECT_BOUNDARY" for a in intent.ambiguities)
+
+
+def test_unnegated_production_still_asks(db: FoundryDatabase) -> None:
+    intent = _infer(db, "Delete the cache. Ship the build to production.")
+    assert intent.decision == DelegationDecision.ASK
+    assert any(a.code == "CONSEQUENTIAL_EFFECT_BOUNDARY" for a in intent.ambiguities)
+
+
+def test_hoowen_shape_infers_clean_with_provider_constraint(db: FoundryDatabase) -> None:
+    constraint = (
+        "Owner reaffirmation of the existing provider policy: authorize only "
+        "included-subscription usage for the existing scope. No additional "
+        "billable charges, alternate provider, or paid fallback is authorized. "
+        "Fail closed when this exact route is unavailable."
+    )
+    text = (
+        "Turn the demo workspace into a credible workforce product that I could "
+        "confidently demonstrate to a real operations team. Inspect the current "
+        "product and decide what the highest-value work is. Research when "
+        "necessary, choose the work yourself, implement and independently verify "
+        "it, and continue to the next highest-value improvement. Do not expose "
+        "confidential information or modify production systems. Ask me only when "
+        "there is a genuine owner decision or blocker."
+    )
+    intent = _infer(db, text, constraints=(constraint,))
+    assert intent.decision != DelegationDecision.ASK
+    assert intent.ambiguities == ()
+    assert intent.mode == DelegationMode.HANDLE
+
+
 def test_hoowen_text_is_not_a_discovery_mandate() -> None:
     assert is_discovery_mandate("Keep improving my active projects while I'm away") is True
     assert is_discovery_mandate(
