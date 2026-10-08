@@ -20,6 +20,14 @@ import { useRouteQuery } from "../hooks/useRouteQuery";
 import type { Mission } from "../lib/contracts";
 import { summarizeListText as summarize } from "../lib/format";
 import { resolveNucleusState, type JarvisNucleusState } from "../lib/nucleusState";
+import {
+  currentChildForGoal,
+  goalChildren,
+  ownerActionForMission,
+  rankOwnerGoals,
+  servingGoalLabel,
+  type OwnerStandingGoal,
+} from "../lib/ownerWork";
 import { loadOverviewData, type OverviewData } from "../lib/overviewLoader";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { useLocale } from "../i18n/LocaleContext";
@@ -43,6 +51,59 @@ function activeMission(missions: Mission[]): Mission | null {
   return missions.find((mission) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(mission.status)) ?? null;
 }
 
+function goalRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function ownerGoalDirectiveId(goal: unknown): string {
+  const record = goalRecord(goal);
+  const id = record.directive_id ?? record.directiveId;
+  return typeof id === "string" ? id.trim() : "";
+}
+
+/** Active-goal check mirroring the ownerWork ranker for the UI tier. */
+function isActiveOwnerGoal(goal: unknown): boolean {
+  const record = goalRecord(goal);
+  const active = record.active;
+  if (active !== undefined && active !== null) {
+    return (
+      active === 1 ||
+      active === true ||
+      active === "1" ||
+      active === "true" ||
+      (typeof active === "string" && active.toUpperCase() === "ACTIVE")
+    );
+  }
+  const status = record.status ?? record.state;
+  return typeof status === "string" && status.toUpperCase() === "ACTIVE";
+}
+
+function plainMissionState(status: Mission["status"]): string {
+  switch (status) {
+    case "ACTIVE":
+    case "IN_PROGRESS":
+    case "INTERVENTION":
+      return "Executing";
+    case "COMPLETE":
+      return "Complete";
+    case "BLOCKED":
+    case "HALTED":
+      return "Blocked";
+    case "CANCELLED":
+      return "Cancelled";
+    case "STANDBY":
+      return "Waiting";
+    default:
+      return "Unknown";
+  }
+}
+
+/** Primary-copy text: null for missing/blank/"UNKNOWN" sentinel values. */
+function knownCopy(value: unknown): string | null {
+  const normalized = text(value);
+  return normalized && normalized !== "UNKNOWN" ? normalized : null;
+}
+
 const lifecycle = ["Observe", "Reason", "Prepare", "Act", "Verify"] as const;
 
 function stageIndex(state: JarvisNucleusState, mission: Mission | null): number | null {
@@ -63,27 +124,74 @@ function metricValue(data: OverviewData, key: string): string {
   return metric?.status === "AVAILABLE" && metric.value != null ? String(metric.value) : "—";
 }
 
-function OverviewContent(data: OverviewData) {
+export function OverviewContent(data: OverviewData) {
   const { sourceMode, stopActive, scenario, streamConnected, connection } = useCommandCenter();
   const { t } = useLocale();
   const [focusOpen, setFocusOpen] = useState(false);
   const mission = activeMission(data.missions);
   const currentWork = data.autonomy.current_work;
   const candidateTitle = currentWork?.candidate?.title ?? null;
-  const ownerGoal = data.ownerSurface?.goals[0];
-  const durableGoal = text(ownerGoal?.exact_text) ?? text(ownerGoal?.objective);
-  const focusTitle = candidateTitle ?? mission?.title ?? durableGoal ?? t("overview.noActiveFocus");
-  const focusWhy =
-    data.executive?.latest_decision?.reason ??
-    data.autonomy.executive.wait_reason ??
-    mission?.objective ??
-    durableGoal ??
-    "JARVIS has not reported a durable reason for a current focus.";
+  // Ranked owner goals first: the active goal (e.g. the Hoowen DELEGATE) beats
+  // historical failures. Missions carry the durable created_from directive id
+  // on `owner`, so they pass straight into the selectors — no title matching.
+  const ownerGoals = (data.ownerSurface?.goals ?? []) as OwnerStandingGoal[];
+  const activeOwnerGoal = rankOwnerGoals(ownerGoals, data.missions).find(isActiveOwnerGoal) ?? null;
+  const activeGoalDirectiveId = activeOwnerGoal ? ownerGoalDirectiveId(activeOwnerGoal) : "";
+  const goalMissions = activeGoalDirectiveId ? goalChildren(activeGoalDirectiveId, data.missions) : [];
+  const currentGoalChild = activeGoalDirectiveId
+    ? currentChildForGoal(activeGoalDirectiveId, data.missions)
+    : null;
+  const goalShortLabel = currentGoalChild
+    ? servingGoalLabel(currentGoalChild, ownerGoals)
+    : activeOwnerGoal
+      ? (knownCopy(goalRecord(activeOwnerGoal).label) ??
+        knownCopy(goalRecord(activeOwnerGoal).exact_text) ??
+        knownCopy(goalRecord(activeOwnerGoal).objective))
+      : null;
+  const focusGoalLabel = goalShortLabel && goalShortLabel !== "UNKNOWN" ? goalShortLabel : null;
+  const activeGoalKind = (() => {
+    const raw = goalRecord(activeOwnerGoal).command_type ?? goalRecord(activeOwnerGoal).commandType;
+    return typeof raw === "string" && raw.toUpperCase() === "DELEGATE"
+      ? "Active strategic goal"
+      : "Active owner goal";
+  })();
+  const focusTitle = mission?.title ?? candidateTitle ?? focusGoalLabel ?? t("overview.noActiveFocus");
+  const goalExactText = activeOwnerGoal
+    ? (knownCopy(goalRecord(activeOwnerGoal).exact_text) ??
+      knownCopy(goalRecord(activeOwnerGoal).objective) ??
+      focusGoalLabel)
+    : null;
+  const decisionReason = text(data.executive?.latest_decision?.reason)
+    ?? text(data.autonomy.executive.wait_reason);
+  const focusWhy = goalExactText && decisionReason
+    ? `${goalExactText} — ${decisionReason}`
+    : (goalExactText ?? decisionReason ?? mission?.objective
+      ?? "JARVIS has not reported a durable reason for a current focus.");
+  const executiveNextWake = text(data.autonomy.executive.next_wake);
   const nextAction =
+    knownCopy(currentGoalChild?.nextAction) ??
     text(currentWork?.final_outcome?.next_action) ??
     mission?.nextAction ??
     data.autonomy.executive.wait_reason ??
+    (executiveNextWake ? `Reconsider at ${executiveNextWake}.` : null) ??
     "No next action is recorded.";
+  // Executing mission wins for detail views; otherwise the goal's current
+  // child carries the card so history never stands in for live work.
+  const detailMission = mission ?? currentGoalChild;
+  const goalChildWorkers = currentGoalChild
+    ? data.workers.filter((worker) => worker.status === "ACTIVE" && worker.missionIds?.includes(currentGoalChild.id))
+    : [];
+  const progressLine = currentGoalChild
+    ? [
+        knownCopy(currentGoalChild.objective)
+          ?? (currentGoalChild.title && currentGoalChild.title !== currentGoalChild.id ? currentGoalChild.title : null)
+          ?? "Current work is recorded without a summary.",
+        plainMissionState(currentGoalChild.status),
+        goalChildWorkers.length > 0
+          ? `${goalChildWorkers.length} active worker${goalChildWorkers.length === 1 ? "" : "s"}`
+          : null,
+      ].filter((part): part is string => Boolean(part)).join(" · ")
+    : null;
   const state = resolveNucleusState({
     stopActive,
     sourceMode,
@@ -110,17 +218,34 @@ function OverviewContent(data: OverviewData) {
       : activeStage != null && index < activeStage && data.autonomy.status !== "UNAVAILABLE"
         ? "Recorded"
         : focus ? "Not yet recorded" : "Unknown";
-  const attention = data.ownerAttention[0];
-  const blockedMission = data.missions.find((item) => item.status === "BLOCKED" || item.status === "HALTED");
+  // Genuine owner action only: an OPEN decision-queue record linked by
+  // mission_id to the current child (or a blocked goal sibling). The first
+  // global BLOCKED row — often history — never stands in.
+  const blockedGoalChild = goalMissions.find((item) => item.status === "BLOCKED" || item.status === "HALTED") ?? null;
+  const needsYouCandidates = currentGoalChild
+    ? [currentGoalChild, ...(blockedGoalChild && blockedGoalChild.id !== currentGoalChild.id ? [blockedGoalChild] : [])]
+    : blockedGoalChild ? [blockedGoalChild] : [];
+  let linkedOwnerAction: { mission: Mission; summary: string } | null = null;
+  for (const candidate of needsYouCandidates) {
+    const summary = ownerActionForMission(candidate, data.ownerAttention);
+    if (summary) {
+      linkedOwnerAction = { mission: candidate, summary };
+      break;
+    }
+  }
   const completed = data.missions.filter((item) => item.status === "COMPLETE");
   const recentCompletionEvents = data.timeline.filter((event) => /complet|verified|accepted/i.test(`${event.title} ${event.detail}`)).slice(0, 3);
-  const latestCompletedMission = completed[0];
+  // LATEST is the newest COMPLETE child of the active goal — never borrowed
+  // from outside the goal's subgraph. Without an active goal the legacy
+  // first-completed fallback stays.
+  const latestCompletedMission = goalMissions.find((item) => item.status === "COMPLETE")
+    ?? (activeOwnerGoal ? null : completed[0]);
   const latestCompletionEvent = recentCompletionEvents[0];
-  const missionEvidence = mission ? data.evidence.filter((item) => item.missionRef === mission.id) : [];
+  const missionEvidence = detailMission ? data.evidence.filter((item) => item.missionRef === detailMission.id) : [];
   const activeWorkers = data.workers.filter((worker) =>
-    worker.status === "ACTIVE" && (!mission || worker.missionIds?.includes(mission.id)));
-  const workerCount = mission?.agentsActive ?? activeWorkers.length;
-  const blocker = attention?.summary ?? blockedMission?.nextAction ?? null;
+    worker.status === "ACTIVE" && (!detailMission || worker.missionIds?.includes(detailMission.id)));
+  const workerCount = detailMission?.agentsActive ?? activeWorkers.length;
+  const blocker = linkedOwnerAction?.summary ?? null;
   const signals = data.operationalIntelligence?.signals?.slice(0, 3) ?? [];
   const candidates = data.autonomy.candidates.slice(0, 3);
   const liveConfidence = data.autonomy.candidates[0]?.confidence;
@@ -157,11 +282,23 @@ function OverviewContent(data: OverviewData) {
             <span className="rm-focus-separator" />
             <span className="tech-id">{mission?.id ?? currentWork?.candidate?.candidate_id ?? "No active work"}</span>
           </div>
+          {activeOwnerGoal && focusGoalLabel ? (
+            <p className="rm-focus-goal">
+              <strong>{focusGoalLabel}</strong>
+              <span>{currentGoalChild ? `${activeGoalKind} · ${plainMissionState(currentGoalChild.status)}` : activeGoalKind}</span>
+              {currentGoalChild ? (
+                <Link to={`/missions/${currentGoalChild.id}`}>Open current work <ChevronRight size={15} aria-hidden="true" /></Link>
+              ) : null}
+            </p>
+          ) : null}
           <h1 id="current-focus-heading">{focusTitle}</h1>
           <p className="rm-focus-why"><strong>{t("overview.whyNow")}</strong>{focusWhy}</p>
+          {progressLine ? (
+            <p className="rm-focus-progress"><strong>Progress</strong>{progressLine}</p>
+          ) : null}
           <div className="rm-focus-meta">
             <span><Crosshair size={15} aria-hidden="true" />{lifecycleSuspended ? `Suspended at ${phase ?? "unknown phase"}` : phase ?? "Phase unknown"}</span>
-            <span><Clock3 size={15} aria-hidden="true" />{compactAge(mission?.startedAt)}</span>
+            <span><Clock3 size={15} aria-hidden="true" />{compactAge(detailMission?.startedAt)}</span>
             <span><Eye size={15} aria-hidden="true" />Confidence {liveConfidence == null ? "UNKNOWN" : `${Math.round(liveConfidence * 100)}%`}</span>
           </div>
           <div className="rm-focus-next">
@@ -171,10 +308,10 @@ function OverviewContent(data: OverviewData) {
             </button>
           </div>
           <div className="rm-focus-glance" aria-label="At a glance">
-            <div className={attention || blockedMission ? "is-attention" : ""}>
+            <div className={linkedOwnerAction ? "is-attention" : ""}>
               <span>{t("overview.needsYou")}</span>
-              <strong>{attention?.summary ?? blockedMission?.title ?? "No owner attention reported"}</strong>
-              <small>{attention?.consequence ?? blockedMission?.nextAction ?? (data.ownerSurface ? "JARVIS can continue within current constraints." : "Owner queue unavailable from this source.")}</small>
+              <strong>{linkedOwnerAction?.summary ?? "Nothing needed from you."}</strong>
+              <small>{linkedOwnerAction ? (knownCopy(linkedOwnerAction.mission.nextAction) ?? "Progress remains held until the recorded dependency is resolved.") : (data.ownerSurface ? "JARVIS can continue within current constraints." : "Owner queue unavailable from this source.")}</small>
             </div>
             <div>
               <span>{t("overview.latestVerified")}</span>
@@ -203,13 +340,13 @@ function OverviewContent(data: OverviewData) {
         ))}
       </ol>
 
-      <section className={`rm-attention ${attention || blockedMission ? "rm-attention--open" : ""}`} aria-labelledby="attention-title">
-        <div className="rm-attention-icon">{attention || blockedMission ? <CircleAlert size={19} aria-hidden="true" /> : <CheckCircle2 size={19} aria-hidden="true" />}</div>
+      <section className={`rm-attention ${linkedOwnerAction ? "rm-attention--open" : ""}`} aria-labelledby="attention-title">
+        <div className="rm-attention-icon">{linkedOwnerAction ? <CircleAlert size={19} aria-hidden="true" /> : <CheckCircle2 size={19} aria-hidden="true" />}</div>
         <div>
-          <h2 id="attention-title">{attention ? t("overview.attentionNeeded") : blockedMission ? t("overview.blockedMission") : t("overview.noDecision")}</h2>
-          <p>{attention?.summary ?? attention?.consequence ?? blockedMission?.nextAction ?? (data.ownerSurface ? t("overview.canContinue") : "Owner decision queue is not available from this source.")}</p>
+          <h2 id="attention-title">{linkedOwnerAction ? t("overview.attentionNeeded") : t("overview.noDecision")}</h2>
+          <p>{linkedOwnerAction?.summary ?? (data.ownerSurface ? t("overview.canContinue") : "Owner decision queue is not available from this source.")}</p>
         </div>
-        {attention?.mission_id ? <Link to={`/missions/${attention.mission_id}`}>{t("overview.review")} <ChevronRight size={15} /></Link> : blockedMission ? <Link to={`/missions/${blockedMission.id}`}>{t("overview.inspect")} <ChevronRight size={15} /></Link> : <Link to="/you">{t("overview.ownerContext")} <ChevronRight size={15} /></Link>}
+        {linkedOwnerAction ? <Link to={`/missions/${linkedOwnerAction.mission.id}`}>{t("overview.review")} <ChevronRight size={15} /></Link> : <Link to="/you">{t("overview.ownerContext")} <ChevronRight size={15} /></Link>}
       </section>
 
       <section className="rm-today" aria-labelledby="today-title">
@@ -299,7 +436,7 @@ function OverviewContent(data: OverviewData) {
           <section className="rm-focus-mode-operations" aria-label="Operational focus details">
             <div>
               <span className="rm-focus-mode-label">Mission and workers</span>
-              <strong>{mission?.title ?? "No active mission recorded"}</strong>
+              <strong>{detailMission?.title ?? "No active mission recorded"}</strong>
               <p>
                 {activeWorkers.length > 0
                   ? activeWorkers.map((worker) => `${worker.name} · ${worker.role}`).join(" / ")
@@ -307,19 +444,19 @@ function OverviewContent(data: OverviewData) {
                     ? `${workerCount} active worker${workerCount === 1 ? "" : "s"} reported; identities are not linked in this projection.`
                     : "No active worker is linked to this focus."}
               </p>
-              {mission ? <Link to={`/missions/${mission.id}`}>Open mission <ArrowRight size={14} /></Link> : null}
+              {detailMission ? <Link to={`/missions/${detailMission.id}`}>Open mission <ArrowRight size={14} /></Link> : null}
             </div>
             <div>
               <span className="rm-focus-mode-label">Verification</span>
               <strong>{missionEvidence[0]?.verdict ?? "NO LINKED RECORD"}</strong>
-              <p>{missionEvidence[0] ? `${missionEvidence.length} evidence artifact${missionEvidence.length === 1 ? "" : "s"} linked to ${mission?.id}.` : "No mission-linked verification artifact is present in this projection."}</p>
+              <p>{missionEvidence[0] ? `${missionEvidence.length} evidence artifact${missionEvidence.length === 1 ? "" : "s"} linked to ${detailMission?.id}.` : "No mission-linked verification artifact is present in this projection."}</p>
               {missionEvidence[0] ? <Link to={`/evidence/${missionEvidence[0].id}`}>Inspect evidence <ArrowRight size={14} /></Link> : <Link to="/evidence">Open evidence ledger <ArrowRight size={14} /></Link>}
             </div>
             <div className={blocker ? "is-blocked" : ""}>
               <span className="rm-focus-mode-label">Blocker / owner boundary</span>
               <strong>{blocker ?? "No blocker recorded"}</strong>
-              <p>{attention?.consequence ?? (blockedMission ? "Progress remains held until the recorded dependency is resolved." : "JARVIS can continue within current constraints.")}</p>
-              <Link to={attention?.mission_id ? `/missions/${attention.mission_id}` : blockedMission ? `/missions/${blockedMission.id}` : "/you"}>
+              <p>{linkedOwnerAction ? (knownCopy(linkedOwnerAction.mission.nextAction) ?? "Progress remains held until the recorded dependency is resolved.") : "JARVIS can continue within current constraints."}</p>
+              <Link to={linkedOwnerAction ? `/missions/${linkedOwnerAction.mission.id}` : "/you"}>
                 {blocker ? "Review boundary" : "Open owner context"} <ArrowRight size={14} />
               </Link>
             </div>
