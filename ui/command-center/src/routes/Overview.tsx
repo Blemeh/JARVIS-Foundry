@@ -125,7 +125,9 @@ export function OverviewContent(data: OverviewData) {
   // so ranker-side changes flow through with no UI-tier mirror to diverge.
   const ownerGoals = (data.ownerSurface?.goals ?? []) as OwnerStandingGoal[];
   const rankedGoals = rankOwnerGoals(ownerGoals, data.missions);
-  const activeOwnerGoal = rankedGoals[0] ?? null;
+  const topRankedGoal = rankedGoals[0] ?? null;
+  // rankOwnerGoals sorts active-first but does not filter, so a non-empty all-inactive list still yields a [0]: serve it only when its own active/status markers read active, else fall through to the no-goal path.
+  const activeOwnerGoal = topRankedGoal && (topRankedGoal.active === 1 || topRankedGoal.active === true || topRankedGoal.active === "1" || topRankedGoal.active === "true" || (typeof topRankedGoal.active === "string" && topRankedGoal.active.toUpperCase() === "ACTIVE") || ((topRankedGoal.active === undefined || topRankedGoal.active === null) && typeof topRankedGoal.status === "string" && topRankedGoal.status.toUpperCase() === "ACTIVE")) ? topRankedGoal : null;
   const activeGoalDirectiveId = ownerGoalDirectiveId(activeOwnerGoal);
   const goalMissions = activeGoalDirectiveId ? goalChildren(activeGoalDirectiveId, data.missions) : [];
   const currentGoalChild = activeGoalDirectiveId

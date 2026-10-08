@@ -307,6 +307,32 @@ export function buildNoGoalLinkedActionOverviewData(): OverviewData {
   return data
 }
 
+export function buildAllInactiveGoalsOverviewData(): OverviewData {
+  const data = buildHoowenOverviewData()
+  if (!data.ownerSurface) throw new Error("Hoowen fixture must include ownerSurface")
+  // Non-empty but all inactive: the newest inactive goal must NOT be served as
+  // the active focus (the ranker sorts active-first but does not filter).
+  data.ownerSurface.goals = [
+    {
+      directive_id: "owner-goal-retired-009",
+      active: 0,
+      command_type: "GOAL",
+      updated_at: "2026-10-05T10:00:00Z",
+      label: "Retired inactive goal",
+      exact_text: "Retired inactive goal exact text.",
+    },
+    {
+      directive_id: HOOWEN_DIRECTIVE,
+      active: 0,
+      command_type: "DELEGATE",
+      updated_at: "2026-10-07T09:00:00Z",
+      label: "Hoowen — Retired strategic goal",
+      exact_text: "Retired Hoowen exact text that must never drive WHY.",
+    },
+  ]
+  return data
+}
+
 function renderHoowenHome(data: OverviewData = buildHoowenOverviewData()) {
   return render(
     <MemoryRouter initialEntries={["/"]}>
@@ -402,5 +428,39 @@ describe("Overview owner-goal prioritization", () => {
     // The attention banner names the same linked action.
     const attention = document.querySelector(".rm-attention")
     expect(attention?.textContent).toMatch(/Approve the Hoowen builder retry\./)
+  })
+
+  it("falls back to the no-goal path when every goal is inactive", async () => {
+    renderHoowenHome(buildAllInactiveGoalsOverviewData())
+    // No-goal heading, never the newest inactive goal's label.
+    await screen.findByRole("heading", { name: "No active focus is recorded" })
+    expect(screen.queryByRole("heading", { name: "Hoowen — Retired strategic goal" })).not.toBeInTheDocument()
+    // The inactive goal never renders as an active goal strip.
+    expect(screen.queryByText(/Active (strategic|owner) goal/)).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /Open current work/ })).not.toBeInTheDocument()
+    // WHY is the executive wait reason, never the inactive goal's exact text.
+    expect(screen.queryByText(/Retired Hoowen exact text/)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Waiting on the next supervised window\./).length).toBeGreaterThan(0)
+    // No-goal NEEDS YOU scan still applies: the only open record links to the
+    // historical mission, so its summary surfaces instead of the literal.
+    const glance = screen.getByLabelText("At a glance")
+    expect(within(glance).getByText("Approve the CI pipeline fix.")).toBeInTheDocument()
+    expect(within(glance).queryByText("Nothing needed from you.")).not.toBeInTheDocument()
+    // LATEST uses the legacy no-goal fallback, never the inactive goal's children.
+    expect(within(glance).getByRole("link", { name: /Unrelated portfolio tidy-up/ })).toBeInTheDocument()
+    expect(within(glance).queryByText("Hoowen follow-up 2")).not.toBeInTheDocument()
+  })
+
+  it("shows the literal NEEDS YOU on the all-inactive path when no record is linked", async () => {
+    const data = buildAllInactiveGoalsOverviewData()
+    if (!data.ownerSurface) throw new Error("Hoowen fixture must include ownerSurface")
+    data.ownerSurface.decisionQueue.open = []
+    data.ownerSurface.decisionQueue.open_count = 0
+    data.ownerAttention = []
+    renderHoowenHome(data)
+    await screen.findByRole("heading", { name: "No active focus is recorded" })
+    expect(screen.queryByText(/Active (strategic|owner) goal/)).not.toBeInTheDocument()
+    const glance = screen.getByLabelText("At a glance")
+    expect(within(glance).getByText("Nothing needed from you.")).toBeInTheDocument()
   })
 })
