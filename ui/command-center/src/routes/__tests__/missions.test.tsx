@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import { Missions, MissionsContent } from "../Missions";
+import { Missions, MissionsContent, historicalMissionsRowFlags } from "../Missions";
 import { CommandCenterProvider } from "../../context/CommandCenterContext";
 import type { Mission } from "../../lib/contracts";
 
@@ -186,5 +186,101 @@ describe("Missions owner-priority default sort", () => {
       "Hoowen follow-up 1",
       "Hoowen follow-up 2",
     ]);
+  });
+});
+
+describe("Missions recency-gated lending (fix round 1)", () => {
+  it("(a) hierarchy-only-linked BLOCKED reads historical here (no lineage match, no new probes)", () => {
+    const missions: HoowenTestMission[] = [
+      hoowenTestMission({
+        id: "mission-live-exec",
+        title: "Live executing goal",
+        status: "ACTIVE",
+        updatedAt: "2026-10-08T08:00:00Z",
+        lineage: "directive:live-goal-aaa",
+      }),
+      hoowenTestMission({
+        id: "mission-hier-only-blocked",
+        title: "Hierarchy-only blocked child",
+        status: "BLOCKED",
+        updatedAt: "2026-10-07T10:00:00Z",
+        // No created_from/owner lineage match with the live goal: in the real
+        // graph this row could be hierarchy-linked, but this route passes []
+        // hierarchy by design, so it must read historical here.
+        lineage: "directive:other-goal-bbb",
+      }),
+    ];
+    const flags = historicalMissionsRowFlags(missions);
+    expect(flags.get("mission-live-exec")).toBe(false);
+    expect(flags.get("mission-hier-only-blocked")).toBe(true);
+
+    renderHoowenMissionsList(missions);
+    expect(missionCardTitles()).toEqual(["Live executing goal", "Hierarchy-only blocked child"]);
+    const blockedCard = missionCardForCode("mission-hier-only-blocked");
+    expect(within(blockedCard).getByText("Historical")).toBeInTheDocument();
+    expect(within(missionCardForCode("mission-live-exec")).queryByText("Historical")).toBeNull();
+  });
+
+  it("(b) stale COMPLETE stops shielding same-lineage BLOCKED while Hoowen attention order holds", async () => {
+    const user = userEvent.setup();
+    const missions: HoowenTestMission[] = [
+      ...hoowenSortMissions(),
+      hoowenTestMission({
+        id: "mission-stale-complete",
+        title: "Stale completed ancestor",
+        status: "COMPLETE",
+        // 68 days older than the newest loaded mission (2026-10-08): outside the 7-day window.
+        updatedAt: "2026-08-01T12:00:00Z",
+        lineage: "directive:stale-lineage-001",
+      }),
+      hoowenTestMission({
+        id: "mission-stale-blocked",
+        title: "Stale blocked child",
+        status: "BLOCKED",
+        // Older than the historical CI row (2026-08-19) so it sorts absolutely last among historicals.
+        updatedAt: "2026-08-02T12:00:00Z",
+        // Substring-includes the stale COMPLETE lineage: pre-gate this would
+        // have been shielded into attention; post-gate it must read historical.
+        lineage: "directive:stale-lineage-001:child",
+      }),
+    ];
+    const flags = historicalMissionsRowFlags(missions);
+    // Live Hoowen fixture unchanged: fe81 keeps attention via recent COMPLETE siblings.
+    expect(flags.get("mission-fe81cb0d1e37")).toBe(false);
+    expect(flags.get("mission-stale-blocked")).toBe(true);
+
+    renderHoowenMissionsList(missions);
+    expect(screen.getByText(/Showing 1-6 of 7 missions/i)).toBeInTheDocument();
+    const pageOne = missionCardTitles();
+    // Recent Hoowen attention order is unchanged at the head of the list.
+    expect(pageOne.slice(0, 4)).toEqual([
+      "Unrelated executing probe",
+      "Hoowen follow-up 3",
+      "Hoowen follow-up 2",
+      "Hoowen follow-up 1",
+    ]);
+    // Stale COMPLETE itself never carries the badge and stays ahead of history (band 2 < band 4).
+    expect(within(missionCardForCode("mission-stale-complete")).queryByText("Historical")).toBeNull();
+    expect(pageOne.indexOf("Stale completed ancestor")).toBeLessThan(
+      pageOne.indexOf("Overnight CI verification sweep"),
+    );
+    // Stale BLOCKED is historical, badged, and sorts absolutely last (page 2 under PAGE_SIZE=6).
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getByText(/Showing 7-7 of 7 missions/i)).toBeInTheDocument();
+    expect(missionCardTitles()).toEqual(["Stale blocked child"]);
+    const staleBlockedCard = missionCardForCode("mission-stale-blocked");
+    expect(within(staleBlockedCard).getByText("Historical")).toBeInTheDocument();
+    expect(staleBlockedCard.querySelector(".badge")).not.toBeNull();
+  });
+
+  it("(c) Blocked filter keeps attention before historical under the new default sort", async () => {
+    const user = userEvent.setup();
+    renderHoowenMissionsList(hoowenSortMissions());
+    expect(screen.getByText(/Showing 1-5 of 5 missions/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Blocked/i }));
+    expect(screen.getByText(/Showing 1-2 of 2 missions/i)).toBeInTheDocument();
+    expect(missionCardTitles()).toEqual(["Hoowen follow-up 3", "Overnight CI verification sweep"]);
+    expect(within(missionCardForCode("mission-fe81cb0d1e37")).queryByText("Historical")).toBeNull();
+    expect(within(missionCardForCode("mission-4646c7023b05")).getByText("Historical")).toBeInTheDocument();
   });
 });

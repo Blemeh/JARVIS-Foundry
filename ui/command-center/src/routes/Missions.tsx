@@ -32,22 +32,53 @@ const statusParam: Record<string, Filter> = {
 const EXECUTING_MISSION_STATUSES = new Set(["ACTIVE", "IN_PROGRESS", "INTERVENTION"]);
 
 /**
+ * Recency gate for COMPLETE lineage lending (spec §2 7-day heuristic).
+ *
+ * The window is relative: a COMPLETE row lends only when its timestamp is
+ * within 7 days of the NEWEST loaded mission's timestamp, so the check is
+ * deterministic with no wall clock (no `Date.now()`).
+ */
+export const COMPLETE_LENDING_WINDOW_DAYS = 7;
+const COMPLETE_LENDING_WINDOW_MS = COMPLETE_LENDING_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+/**
  * Historical flags for the Missions list (Task 5 fallback linkage).
  *
  * This route loads only `listMissions`: no owner-surface, decision-queue, or
  * work-hierarchy probes are added here by design, so active-goal ids are
- * unavailable. Sibling rows with live state (executing or COMPLETE) lend
- * their directive lineages as the active-goal set, and the terminal-state +
- * CI-marker rules delegate to Task 1 `isHistoricalMission`. A
- * hierarchy-only link (no `created_from`/owner lineage match) still reads
- * historical here; that limitation is recorded in the task report.
+ * unavailable. Sibling rows lend their directive lineages as the active-goal
+ * set with a recency gate: EXECUTING rows (ACTIVE/IN_PROGRESS/INTERVENTION)
+ * lend unconditionally, while a COMPLETE row lends ONLY when its
+ * `missionUpdatedAt` value (`updated_at`, `startedAt` fallback — same
+ * semantics as the sort) is within COMPLETE_LENDING_WINDOW_DAYS of the
+ * newest loaded mission's `missionUpdatedAt`. A stale COMPLETE (e.g. 30+
+ * days older than newest) therefore stops shielding a same-root BLOCKED,
+ * which then correctly reads historical; without the gate any stale
+ * COMPLETE carrying a short root would shield same-root BLOCKED rows
+ * forever (substring `includes` matching amplifies the stale link). Rows
+ * with an unparsable timestamp never lend as COMPLETE (fail closed).
+ * Terminal-state + CI-marker rules delegate to Task 1
+ * `isHistoricalMission`. A hierarchy-only link (no `created_from`/owner
+ * lineage match) still reads historical here; that limitation is recorded
+ * in the task report.
  */
 export function historicalMissionsRowFlags(missions: readonly Mission[]): Map<string, boolean> {
+  let newestLoadedAt = 0;
+  for (const mission of missions) {
+    const parsed = Date.parse(missionUpdatedAt(mission));
+    if (Number.isFinite(parsed) && parsed > newestLoadedAt) newestLoadedAt = parsed;
+  }
   const liveLineages = new Set<string>();
   for (const mission of missions) {
-    if (EXECUTING_MISSION_STATUSES.has(mission.status) || mission.status === "COMPLETE") {
+    if (EXECUTING_MISSION_STATUSES.has(mission.status)) {
       const lineage = missionDirectiveId(mission);
       if (lineage) liveLineages.add(lineage);
+    } else if (mission.status === "COMPLETE") {
+      const lineage = missionDirectiveId(mission);
+      if (!lineage) continue;
+      const parsed = Date.parse(missionUpdatedAt(mission));
+      if (!Number.isFinite(parsed)) continue;
+      if (newestLoadedAt - parsed <= COMPLETE_LENDING_WINDOW_MS) liveLineages.add(lineage);
     }
   }
   const activeGoalIds = [...liveLineages];
@@ -57,8 +88,11 @@ export function historicalMissionsRowFlags(missions: readonly Mission[]): Map<st
 /**
  * Owner-priority band for the default (sort=priority) order: executing (0) →
  * attention (1) → recent completed (2) → other parked states (3) →
- * historical last (4). Historical rows never change status; the band only
- * orders them last so current work wins.
+ * historical last (4). Band 3 holds non-historical parked rows matched by no
+ * earlier band (e.g. STANDBY, or a linked CANCELLED that escapes history via
+ * lineage) — the brief's shorthand "recent completed → historical" folds this
+ * band in, but the code orders it explicitly between them. Historical rows
+ * never change status; the band only orders them last so current work wins.
  */
 export function missionOwnerBand(mission: Mission, historical: boolean): number {
   if (historical) return 4;
