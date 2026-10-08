@@ -22,6 +22,68 @@ const routeKeys: Record<string, MessageKey> = {
   "/settings": "nav.settings",
 };
 
+export type SystemIndicator = "Healthy" | "Degraded" | "Down";
+export type AutonomyIndicator = "Running" | "Waiting" | "Stopped";
+export type TrustIndicator = "Proven" | "Suspended" | "Unknown";
+
+export const TRUST_SUSPENDED_EXPLANATION =
+  "Suspended — missing live-observation evidence. Permitted work can still run within constraints.";
+const TRUST_PROVEN_EXPLANATION = "Proven — live-observation evidence is current.";
+const TRUST_UNKNOWN_EXPLANATION = "Unknown — trust evidence is unavailable.";
+
+/**
+ * Display-only System indicator (Task 6). Derived from the supervisor status
+ * string plus the degraded flag carried as trust health. Trust suspension
+ * alone never produces Down.
+ */
+export function deriveSystemIndicator(
+  supervisorStatus: string | null | undefined,
+  trustHealth: string | null | undefined,
+): SystemIndicator {
+  const raw = (supervisorStatus ?? "").toUpperCase();
+  if (/(FAIL|CRITICAL|\bDOWN\b|STOPPED|DEAD|OFFLINE)/.test(raw)) return "Down";
+  const health = (trustHealth ?? "").toUpperCase();
+  if (health === "DEGRADED" || health === "CRITICAL" || /DEGRAD/.test(raw)) return "Degraded";
+  if (/(RUNNING|HEALTHY|READY|PASS|OPERATIONAL)/.test(raw) || health === "HEALTHY") return "Healthy";
+  // Unknown or simulated-candidate supervisor state stays honest without
+  // ever reading as system-down.
+  return "Degraded";
+}
+
+/**
+ * Display-only Autonomy indicator (Task 6). Derived from the autonomy
+ * executive state plus the STOP sentinel. STOP semantics are untouched:
+ * only the label changes.
+ */
+export function deriveAutonomyIndicator(
+  executiveState: string | null | undefined,
+  stopActive: boolean,
+): AutonomyIndicator {
+  if (stopActive) return "Stopped";
+  const raw = (executiveState ?? "").toUpperCase();
+  if (raw.includes("STOP")) return "Stopped";
+  if (/(RUN|EXECUT|WORK|OBSERV|PLAN|RESEARCH|VERIF|ACTIVE|DOING|THINK|JUDG)/.test(raw)) return "Running";
+  return "Waiting";
+}
+
+/**
+ * Display-only Trust indicator (Task 6). Read-only over the mapped trust
+ * summary: no change to snapshotMapper.mapTrustSummary or STOP semantics.
+ */
+export function deriveTrustIndicator(
+  trustState: string | null | undefined,
+  stopActive: boolean,
+): { label: TrustIndicator; reason: string } {
+  const raw = (trustState ?? "").toUpperCase();
+  if (stopActive || raw === "SUSPENDED") {
+    return { label: "Suspended", reason: TRUST_SUSPENDED_EXPLANATION };
+  }
+  if (raw === "PROVEN") {
+    return { label: "Proven", reason: TRUST_PROVEN_EXPLANATION };
+  }
+  return { label: "Unknown", reason: TRUST_UNKNOWN_EXPLANATION };
+}
+
 export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const clock = useClock();
   const location = useLocation();
@@ -41,6 +103,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     reconnectStream,
   } = useCommandCenter();
   const schemaQuery = useRouteQuery(() => client.getSystemOverview(), [client, version]);
+  const autonomyQuery = useRouteQuery(() => client.getAutonomy(), [client, version]);
   const schemaLabel = schemaQuery.data?.schema == null ? "UNKNOWN" : String(schemaQuery.data.schema);
   const basePath = `/${location.pathname.split("/").filter(Boolean)[0] ?? ""}`;
   const pageKey = routeKeys[location.pathname] ?? routeKeys[basePath];
@@ -50,6 +113,10 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
     : trustSummaryStatus === "ready" && trustSummary
       ? trustSummary.state.toUpperCase()
       : trustSummaryStatus === "error" ? "UNAVAILABLE" : "LOADING";
+  const systemLabel = deriveSystemIndicator(schemaQuery.data?.releaseState, trustSummary?.health);
+  const autonomyLabel = deriveAutonomyIndicator(autonomyQuery.data?.executive?.state, stopActive);
+  const trustView = deriveTrustIndicator(trustSummary?.state, stopActive);
+  const trustSuspended = trustView.label === "Suspended";
   const source = sourceModeLabel(sourceMode);
   const operational = streamConnected && !stopActive && (sourceMode === "LIVE" || sourceMode === "SIMULATED");
   const activity = stopActive ? "Stopped" : !streamConnected ? "Paused" : operational ? "Working" : "Waiting";
@@ -112,6 +179,12 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
               <div className="topbar-system-pop" role="dialog" aria-label="System details">
                 <h3>System</h3>
                 <dl>
+                  <div className="topbar-system-row"><dt>System</dt><dd>{systemLabel}</dd></div>
+                  <div className="topbar-system-row"><dt>Autonomy</dt><dd>{autonomyLabel}</dd></div>
+                  <div
+                    className="topbar-system-row"
+                    title={trustSuspended ? TRUST_SUSPENDED_EXPLANATION : undefined}
+                  ><dt>Trust</dt><dd>{trustView.reason}</dd></div>
                   <div><dt>Status</dt><dd>{stopActive ? "STOPPED" : operational ? "OPERATIONAL" : "GATED"}</dd></div>
                   <div><dt>Activity</dt><dd>{activity.toUpperCase()}</dd></div>
                   <div><dt>Data source</dt><dd>{t("top.dataSource")}: {source}</dd></div>
@@ -125,6 +198,7 @@ export function TopStatusBar({ onOpenMobileNav }: { onOpenMobileNav: () => void 
                   className={`topbar-trust trust-pill topbar-trust--${trustState.toLowerCase()}`}
                   onClick={openTrustDialog}
                   aria-label={`${t("top.trust")} ${trustState}. Open trust explanation.`}
+                  title={trustSuspended ? TRUST_SUSPENDED_EXPLANATION : undefined}
                 >
                   <ShieldQuestion size={14} aria-hidden="true" />
                   <span>{t("top.trust")} {trustState}</span>

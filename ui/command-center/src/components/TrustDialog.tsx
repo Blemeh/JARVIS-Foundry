@@ -8,7 +8,7 @@ import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 import { formatCoveragePercent } from "../lib/truthFormat";
 
 export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { client, version, sourceMode } = useCommandCenter();
+  const { client, version, sourceMode, stopActive } = useCommandCenter();
   const [trust, setTrust] = useState<TrustSummary | null>(null);
 
   useEffect(() => {
@@ -53,6 +53,11 @@ export function TrustDialog({ open, onClose }: { open: boolean; onClose: () => v
             </div>
           </div>
           <div className="trust-grid">
+            {(stopActive || trust.state === "SUSPENDED") ? (
+              <p className="trust-suspended-note">
+                Suspended — missing live-observation evidence. Permitted work can still run within constraints.
+              </p>
+            ) : null}
             <div className="trust-cell">
               <span className="t-label text-muted">Gate</span>
               <span className="t-mono">{trust.gateStatus}</span>
