@@ -398,7 +398,14 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
     const current = currentChildForGoal(directiveId, missions, hierarchy);
     const latestComplete = children.find((child) => child.status === "COMPLETE") ?? null;
     const isServed = activeGoalDirectiveId !== "" && directiveId === activeGoalDirectiveId;
-    const hasContent = splits.some(({ split }) => split.visibleCampaigns.length > 0 || split.directMissions.length > 0)
+    const hasMatchedSplits = splits.some(({ split }) => split.visibleCampaigns.length > 0 || split.directMissions.length > 0);
+    // Drill-down isolation (explicit navigation intent): flat base showed only
+    // the selected objective, so a drill-down param skips every goal section
+    // with zero matched splits — including its served card, history, and
+    // orphans. The served card's unconditional truth applies to the STATUS
+    // filter only; the card stays one click away on the unfiltered view.
+    if ((selectedObjective || selectedCampaign) && !hasMatchedSplits) continue;
+    const hasContent = hasMatchedSplits
       || orphans.length > 0
       || (isServed && children.length > 0);
     if (!hasContent) continue;

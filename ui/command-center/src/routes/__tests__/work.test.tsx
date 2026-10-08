@@ -368,4 +368,44 @@ describe("Work grouped by owner goal", () => {
     const unlinked = screen.getByRole("region", { name: "Unlinked mission records" });
     expect(within(unlinked).getByText("Overnight CI verification sweep")).toBeInTheDocument();
   });
+
+  it("isolates an objective drill-down to the retired objective only (no Hoowen card/history/children, no unlinked)", () => {
+    const { missions, hierarchy } = buildHoowenWorkData();
+    renderWorkContent(missions, hierarchy, "/work?status=all&objective=obj-retired-1");
+    // Only the retired objective renders (inside its own goal section).
+    expect(screen.getByRole("heading", { name: "Retired objective" })).toBeInTheDocument();
+    expect(screen.getByText("Retired upkeep task")).toBeInTheDocument();
+    // Hoowen goal section skipped entirely: no heading, served card, history,
+    // nested objective, or children leaking as Direct missions.
+    expect(screen.queryByRole("region", { name: HOOWEN_LABEL })).toBeNull();
+    expect(screen.queryByRole("heading", { name: HOOWEN_LABEL })).toBeNull();
+    expect(screen.queryByLabelText("Active goal summary")).toBeNull();
+    expect(screen.queryByLabelText("Child history")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Open current mission" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Hoowen workforce management" })).toBeNull();
+    expect(screen.queryByText("Hoowen follow-up 3")).toBeNull();
+    expect(screen.queryByText("Hoowen follow-up 2")).toBeNull();
+    expect(screen.queryByText("Hoowen follow-up 1")).toBeNull();
+    // Unlinked section follows the same drill-down precedent: hidden.
+    expect(screen.queryByRole("region", { name: "Unlinked mission records" })).toBeNull();
+  });
+
+  it("keeps the Hoowen served section with card intact under its campaign drill-down", () => {
+    const { missions, hierarchy } = buildHoowenWorkData();
+    renderWorkContent(missions, hierarchy, "/work?status=all&campaign=camp-hoowen-1");
+    const hoowen = screen.getByRole("region", { name: HOOWEN_LABEL });
+    // Served card intact on the matched drill-down (unconditional truth holds
+    // for the status filter; drill-down isolation only skips zero-matched goals).
+    const summary = within(hoowen).getByLabelText("Active goal summary");
+    expect(within(summary).getByText("Hoowen follow-up 3")).toBeInTheDocument();
+    expect(within(summary).getByRole("link", { name: "Open current mission" })).toHaveAttribute(
+      "href",
+      "/missions/mission-fe81cb0d1e37",
+    );
+    expect(within(hoowen).getByLabelText("Child history")).toBeInTheDocument();
+    // Zero-matched retired goal skipped; unlinked hidden on drill-down.
+    expect(screen.queryByRole("heading", { name: "Retired goal" })).toBeNull();
+    expect(screen.queryByText("Retired upkeep task")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Unlinked mission records" })).toBeNull();
+  });
 });
