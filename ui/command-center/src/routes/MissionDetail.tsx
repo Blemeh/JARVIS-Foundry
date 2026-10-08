@@ -376,6 +376,11 @@ export function historicalBannerForMission(
   return `${headline} · Not affecting current Hoowen work`;
 }
 
+export interface HaltRequestResult {
+  accepted: boolean;
+  error?: string;
+}
+
 export interface MissionDetailContentProps {
   mission: Mission;
   run: MissionRun;
@@ -391,6 +396,13 @@ export interface MissionDetailContentProps {
   notifications?: Notification[];
   trustSummary?: TrustSummary | null;
   onOpenTrustDialog?: () => void;
+  /**
+   * Halt transport: the existing `client.requestHalt` owner-directive path
+   * (STOP_MISSION in LIVE). SIMULATED never touches it (local-record
+   * semantics). When absent in LIVE, the confirm falls back to an honest
+   * local-record-only copy.
+   */
+  onRequestHalt?: (missionId: string) => Promise<HaltRequestResult>;
 }
 
 /**
@@ -414,10 +426,42 @@ export function MissionDetailContent({
   notifications = [],
   trustSummary = null,
   onOpenTrustDialog,
+  onRequestHalt,
 }: MissionDetailContentProps) {
   const [dialog, setDialog] = useState<"halt" | "gate" | null>(null);
   const [halted, setHalted] = useState(false);
+  const [haltPending, setHaltPending] = useState(false);
+  const [haltAccepted, setHaltAccepted] = useState<boolean | null>(null);
+  const [haltError, setHaltError] = useState<string | null>(null);
   const [gateRequested, setGateRequested] = useState(false);
+
+  /**
+   * SIMULATED keeps local-record semantics (no transport). LIVE submits
+   * STOP_MISSION through the existing client transport and reports the
+   * accepted / rejected outcome honestly; without a transport the LIVE
+   * confirm is recorded locally and labeled as such.
+   */
+  async function confirmHalt(): Promise<void> {
+    if (sourceMode === "SIMULATED" || !onRequestHalt) {
+      setHalted(true);
+      setHaltAccepted(null);
+      setHaltError(null);
+      return;
+    }
+    setHaltPending(true);
+    try {
+      const result = await onRequestHalt(mission.id);
+      setHaltPending(false);
+      setHalted(true);
+      setHaltAccepted(result.accepted);
+      setHaltError(result.accepted ? null : (result.error ?? "Request was not accepted."));
+    } catch (error) {
+      setHaltPending(false);
+      setHalted(true);
+      setHaltAccepted(false);
+      setHaltError(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   const goals = ownerGoalsOf(ownerSurface);
   const decisionQueue = ownerSurface?.decisionQueue ?? null;
@@ -493,7 +537,6 @@ export function MissionDetailContent({
 
       <section className="md-primary" aria-label="Mission summary">
         <h1 className="t-display md-title md-primary-title">{sentenceCaseTitle(mission)}</h1>
-        <span className="t-mono text-muted tech-id">{mission.id}</span>
         <div className="md-head-badges md-primary-status">
           <StatusBadge status={mission.status} pulse={isExecutingMissionStatus(mission.status)} />
           {historical ? <span className="badge badge-muted">Historical</span> : null}
@@ -501,7 +544,7 @@ export function MissionDetailContent({
         <p className="md-primary-serves">
           <span className="t-label text-muted">Serves: </span>
           {servesDirectiveId ? (
-            <Link to="/work?status=all" className="text-link">{servesLabel}</Link>
+            <Link to={`/work?status=all&goal=${encodeURIComponent(servesDirectiveId)}`} className="text-link">{servesLabel}</Link>
           ) : (
             <span>{servesLabel}</span>
           )}
@@ -550,10 +593,10 @@ export function MissionDetailContent({
                 type="button"
                 className="btn"
                 onClick={() => setDialog("halt")}
-                disabled={halted || stopActive || !mutationsEnabled}
+                disabled={halted || haltPending || stopActive || !mutationsEnabled}
                 aria-label={sourceMode === "SIMULATED" ? "Request halt of this mission execution (simulated)" : `Request halt of this mission execution (${sourceModeLabel(sourceMode).toLowerCase()})`}
               >
-                {halted ? "Halt requested" : "Halt Execution"}
+                {haltPending ? "Submitting halt…" : halted ? "Halt requested" : "Halt Execution"}
               </button>
             ) : null}
             {showGate ? (
@@ -838,7 +881,13 @@ export function MissionDetailContent({
           halted ? (
             <>
               <span className="t-mono text-muted" style={{ marginRight: "auto" }}>
-                {sourceMode === "SIMULATED" ? "HALT REQUEST SIMULATED - NO RUNTIME EFFECT" : `HALT REQUEST ${sourceModeLabel(sourceMode)} - CONFIRMATION FOLLOWS RUNTIME EVIDENCE`}
+                {sourceMode === "SIMULATED"
+                  ? "HALT REQUEST SIMULATED - NO RUNTIME EFFECT"
+                  : haltAccepted === true
+                    ? "HALT ACCEPTED — STOP_MISSION SUBMITTED · CONFIRMATION FOLLOWS RUNTIME EVIDENCE"
+                    : haltAccepted === false
+                      ? `HALT NOT ACCEPTED — ${haltError ?? "Request was not accepted."} · RECORDED LOCALLY ONLY`
+                      : "HALT RECORDED LOCALLY ONLY — NO RUNTIME DIRECTIVE SUBMITTED"}
               </span>
               <button type="button" className="btn" onClick={() => setDialog(null)}>
                 Close
@@ -849,9 +898,9 @@ export function MissionDetailContent({
               <button type="button" className="btn" onClick={() => setDialog(null)}>
                 Cancel
               </button>
-              <button type="button" className="btn btn-danger" onClick={() => setHalted(true)}>
+              <button type="button" className="btn btn-danger" onClick={() => void confirmHalt()} disabled={haltPending}>
                 <AlertTriangle size={14} />
-                Request halt
+                {haltPending ? "Submitting…" : "Request halt"}
               </button>
             </>
           )
@@ -863,6 +912,14 @@ export function MissionDetailContent({
           <p className="prose">
             {sourceMode === "SIMULATED" ? "This candidate records the halt request locally. A future runtime adapter will submit it as an authenticated owner directive to the Supervisor." : `Live halt submits STOP_MISSION as an authenticated owner directive. Confirming here records the request; canonical confirmation follows ${sourceModeLabel(sourceMode)} runtime evidence.`}
           </p>
+          {haltPending ? (
+            <p className="t-mono text-muted">Submitting STOP_MISSION…</p>
+          ) : null}
+          {haltAccepted === false ? (
+            <p className="prose" role="alert">
+              The runtime did not accept the halt ({haltError ?? "no reason reported"}); the request is recorded locally only and no STOP was confirmed.
+            </p>
+          ) : null}
         </div>
       </Dialog>
 
@@ -972,6 +1029,7 @@ export function MissionDetail() {
           notifications={notifications}
           trustSummary={trustSummary}
           onOpenTrustDialog={openTrustDialog}
+          onRequestHalt={(missionId) => client.requestHalt(missionId)}
         />
       )}
     </DetailRouteQueryGate>

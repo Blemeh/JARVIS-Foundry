@@ -71,6 +71,13 @@ function hierarchyGoalId(goal: OwnerStandingGoal | null | undefined): string {
   return typeof id === "string" ? id.trim() : "";
 }
 
+/** Goal drill-down match: the `goal` param carries a directive id or a goal id. */
+function objectiveMatchesGoal(objective: WorkObjective, selectedGoal: string, goals: WorkGoal[] | undefined): boolean {
+  if (objective.goal_id === selectedGoal) return true;
+  const goal = (goals ?? []).find((candidate) => candidate.directive_id === selectedGoal);
+  return Boolean(goal && objective.goal_id === goal.goal_id);
+}
+
 function goalHeadingLabel(goal: OwnerStandingGoal): string {
   const label = typeof goal.label === "string" ? goal.label.trim() : "";
   return label && label !== "UNKNOWN" ? label : "Owner goal";
@@ -284,6 +291,10 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
   const filter = fromUrl && ["active", "waiting", "attention", "completed", "all"].includes(fromUrl) ? fromUrl : localFilter;
   const selectedObjective = params.get("objective");
   const selectedCampaign = params.get("campaign");
+  // Goal drill-down (MissionDetail serves link): when `goal` is present,
+  // goal sections not matching it are skipped — the same skip-gate precedent
+  // as objective/campaign. Accepts a directive id or a goal id.
+  const selectedGoal = params.get("goal");
   const filtered = missions.filter((mission) => matches(mission, filter));
   const missionById = useMemo(() => new Map(missions.map((mission) => [mission.id, mission])), [missions]);
   const missionLinks = useMemo(
@@ -324,6 +335,7 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
   const visibleObjectives = objectives.filter((objective) => (
     (!selectedObjective || objective.objective_id === selectedObjective)
     && (!selectedCampaign || objective.campaign_ids.includes(selectedCampaign))
+    && (!selectedGoal || objectiveMatchesGoal(objective, selectedGoal, hierarchy?.goals))
   ));
   const activeCount = missions.filter((m) => matches(m, "active")).length;
   const attentionList = missions.filter((m) => matches(m, "attention"));
@@ -372,6 +384,10 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
     const directiveId = ownerGoalDirectiveId(goal);
     if (!directiveId) continue;
     if (goalSections.some((section) => section.directiveId === directiveId)) continue;
+    // Goal drill-down isolation (same skip-gate precedent as
+    // objective/campaign): a `goal` param skips every section that is
+    // neither that directive nor that goal id.
+    if (selectedGoal && directiveId !== selectedGoal && hierarchyGoalId(goal) !== selectedGoal) continue;
     const children = goalChildrenByDirective.get(directiveId) ?? [];
     const goalId = hierarchyGoalId(goal);
     const childIds = new Set(children.map((child) => child.id));
@@ -404,7 +420,7 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
     // with zero matched splits — including its served card, history, and
     // orphans. The served card's unconditional truth applies to the STATUS
     // filter only; the card stays one click away on the unfiltered view.
-    if ((selectedObjective || selectedCampaign) && !hasMatchedSplits) continue;
+    if ((selectedObjective || selectedCampaign || selectedGoal) && !hasMatchedSplits) continue;
     const hasContent = hasMatchedSplits
       || orphans.length > 0
       || (isServed && children.length > 0);
@@ -463,7 +479,7 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
         })}
       </div>
 
-      {filter === "active" && !selectedObjective && !selectedCampaign ? (
+      {filter === "active" && !selectedObjective && !selectedCampaign && !selectedGoal ? (
         <div className="work-summary-grid" aria-label="Work summary">
           <div className="work-summary-card">
             <h3>Active</h3>
@@ -487,7 +503,7 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
         {filters.map((item) => (
           <button key={item.key} type="button" className={filter === item.key ? "is-active" : ""} aria-pressed={filter === item.key} onClick={() => {
             setLocalFilter(item.key);
-            const next = new URLSearchParams(params); if (item.key === "active") next.delete("status"); else next.set("status", item.key); next.delete("objective"); next.delete("campaign"); setParams(next, { replace: true });
+            const next = new URLSearchParams(params); if (item.key === "active") next.delete("status"); else next.set("status", item.key); next.delete("objective"); next.delete("campaign"); next.delete("goal"); setParams(next, { replace: true });
           }}>{item.label}<span>{missions.filter((mission) => matches(mission, item.key)).length}</span></button>
         ))}
       </div>
@@ -572,7 +588,7 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
               </section>
             );
           })}
-          {goalUnlinked.length && !selectedObjective && !selectedCampaign ? (
+          {goalUnlinked.length && !selectedObjective && !selectedCampaign && !selectedGoal ? (
             <UnlinkedMissions rows={goalUnlinked} links={missionLinks} />
           ) : null}
         </div>
@@ -596,7 +612,7 @@ export function WorkContent({ missions, hierarchy }: WorkData) {
               />
             );
           })}
-          {unlinkedMissions.length && !selectedObjective && !selectedCampaign ? (
+          {unlinkedMissions.length && !selectedObjective && !selectedCampaign && !selectedGoal ? (
             <UnlinkedMissions rows={unlinkedMissions} links={missionLinks} />
           ) : null}
         </div>

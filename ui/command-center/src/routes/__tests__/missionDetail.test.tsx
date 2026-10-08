@@ -274,6 +274,8 @@ describe("Mission Detail primary order (Task 4)", () => {
 
     const servesLink = screen.getByRole("link", { name: HOOWEN_LABEL });
     expect(servesLink.getAttribute("href")).toContain("/work");
+    // The serves link carries the goal identity for the Work drill-down.
+    expect(servesLink.getAttribute("href")).toContain(`goal=${HOOWEN_DIRECTIVE}`);
     expect(screen.getByText("Approve the Hoowen builder retry.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Review the decision/i })).toHaveAttribute("href", "/owner");
     expect(screen.queryByText("Nothing needed from you.")).toBeNull();
@@ -293,6 +295,34 @@ describe("Mission Detail compact tracker (Task 4)", () => {
     expect(stages.find((stage) => stage.label === "Verify")?.state).toBe("FAILED");
   });
 
+  it("encodes FAILED > ACTIVE precedence, mixed COMPLETE→PENDING, and terminal-COMPLETE Outcome", () => {
+    // FAILED dominates ACTIVE inside a combined stage.
+    const failedOverActive = compactMissionTracker(
+      [
+        lifecycleRecord("evidence", "Evidence", "FAILED", "CI rejected the bundle."),
+        lifecycleRecord("verifier", "Verifier", "ACTIVE", "Verifier is evaluating."),
+      ],
+      "BLOCKED",
+    );
+    expect(failedOverActive.find((stage) => stage.label === "Verify")?.state).toBe("FAILED");
+    // Mixed COMPLETE + PENDING is not complete: it reads PENDING.
+    const mixedBuild = compactMissionTracker(
+      [
+        lifecycleRecord("worker", "Worker", "COMPLETE", "Worker finished."),
+        lifecycleRecord("action_artifact", "Action / artifact", "PENDING", "Artifact pending."),
+      ],
+      "ACTIVE",
+    );
+    expect(mixedBuild.find((stage) => stage.label === "Build")?.state).toBe("PENDING");
+    // A terminal COMPLETE mission reports Outcome COMPLETE even when the
+    // briefing record itself carries no state.
+    const terminal = compactMissionTracker(
+      [lifecycleRecord("owner_briefing", "Owner briefing", "UNKNOWN", "UNKNOWN")],
+      "COMPLETE",
+    );
+    expect(terminal.find((stage) => stage.label === "Outcome")?.state).toBe("COMPLETE");
+  });
+
   it("renders the five-step tracker and keeps evidence behind disclosure", () => {
     const { container } = renderContent(historicalProps());
     const tracker = container.querySelector(".md-compact-tracker");
@@ -303,8 +333,10 @@ describe("Mission Detail compact tracker (Task 4)", () => {
     // The wide prose pipeline is gone from primary.
     expect(container.querySelector(".md-stages")).toBeNull();
 
-    const evidenceHeading = screen.getByText("Evidence Bundle");
-    expect(evidenceHeading.closest("details")).not.toBeNull();
+    // Disclosure completeness: every technical section sits behind <details>.
+    for (const label of ["Technical details", "Evidence", "Timeline"]) {
+      expect(container.querySelector(`details[aria-label="${label}"]`)).not.toBeNull();
+    }
     const telemetryHeading = screen.getByText("Agent Telemetry Log");
     expect(telemetryHeading.closest("details")).not.toBeNull();
   });
@@ -368,7 +400,77 @@ describe("Mission Detail historical truth (Task 4)", () => {
     const primary = container.querySelector(".md-primary");
     expect(primary!.textContent).not.toContain("EV-CI-001");
     expect(primary!.textContent).not.toContain("hash-ci-001");
+    // The raw mission id lives in breadcrumb / Technical details only.
+    expect(primary!.textContent).not.toContain(HISTORICAL_ID);
     // IDs stay available in secondary tech-id elements and links.
     expect(container.querySelectorAll(".tech-id").length).toBeGreaterThan(0);
+  });
+});
+
+describe("Mission Detail LIVE halt transport (Task 4 fix round 1)", () => {
+  function liveExecutingProps(
+    overrides: Partial<MissionDetailContentProps> = {},
+  ): MissionDetailContentProps {
+    const mission = {
+      ...historicalMission(),
+      id: "mission-live-02",
+      code: "mission-live-02",
+      status: "ACTIVE" as const,
+      owner: `directive:${HOOWEN_DIRECTIVE}:live-run`,
+    };
+    return historicalProps({ mission, sourceMode: "LIVE", ...overrides });
+  }
+
+  it("submits STOP_MISSION via the client transport in LIVE and renders the accepted confirmation", async () => {
+    const user = (await import("@testing-library/user-event")).default;
+    const calls: string[] = [];
+    renderContent(liveExecutingProps({
+      onRequestHalt: async (missionId: string) => {
+        calls.push(missionId);
+        return { accepted: true };
+      },
+    }));
+    await user.click(screen.getByText("Halt Execution"));
+    await user.click(screen.getByText("Request halt"));
+    await waitFor(() => expect(screen.getByText(/HALT ACCEPTED/i)).toBeInTheDocument());
+    expect(calls).toEqual(["mission-live-02"]);
+    expect(screen.getByText(/STOP_MISSION SUBMITTED/i)).toBeInTheDocument();
+    expect(screen.getByText(/CONFIRMATION FOLLOWS RUNTIME EVIDENCE/i)).toBeInTheDocument();
+  });
+
+  it("renders the rejection reason with a local-record fallback note when the LIVE halt is not accepted", async () => {
+    const user = (await import("@testing-library/user-event")).default;
+    const calls: string[] = [];
+    renderContent(liveExecutingProps({
+      onRequestHalt: async (missionId: string) => {
+        calls.push(missionId);
+        return { accepted: false, error: "supervisor unreachable" };
+      },
+    }));
+    await user.click(screen.getByText("Halt Execution"));
+    await user.click(screen.getByText("Request halt"));
+    await waitFor(() => expect(screen.getByText(/HALT NOT ACCEPTED/i)).toBeInTheDocument());
+    expect(calls).toEqual(["mission-live-02"]);
+    // The reason surfaces in both the dialog body and the footer.
+    expect(screen.getAllByText(/supervisor unreachable/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/recorded locally only/i).length).toBeGreaterThan(0);
+  });
+
+  it("keeps local-record semantics in SIMULATED without touching the halt transport", async () => {
+    const user = (await import("@testing-library/user-event")).default;
+    let called = false;
+    const mission = { ...historicalMission(), id: "mission-sim-02", status: "ACTIVE" as const };
+    renderContent(historicalProps({
+      mission,
+      sourceMode: "SIMULATED",
+      onRequestHalt: async () => {
+        called = true;
+        return { accepted: true };
+      },
+    }));
+    await user.click(screen.getByText("Halt Execution"));
+    await user.click(screen.getByText("Request halt"));
+    expect(screen.getByText(/HALT REQUEST SIMULATED - NO RUNTIME EFFECT/i)).toBeInTheDocument();
+    expect(called).toBe(false);
   });
 });
