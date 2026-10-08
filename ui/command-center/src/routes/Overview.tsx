@@ -51,31 +51,17 @@ function activeMission(missions: Mission[]): Mission | null {
   return missions.find((mission) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(mission.status)) ?? null;
 }
 
-function goalRecord(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
-}
-
-function ownerGoalDirectiveId(goal: unknown): string {
-  const record = goalRecord(goal);
-  const id = record.directive_id ?? record.directiveId;
+function ownerGoalDirectiveId(goal: OwnerStandingGoal | null | undefined): string {
+  if (!goal) return "";
+  const id = goal.directive_id ?? goal.directiveId;
   return typeof id === "string" ? id.trim() : "";
 }
 
-/** Active-goal check mirroring the ownerWork ranker for the UI tier. */
-function isActiveOwnerGoal(goal: unknown): boolean {
-  const record = goalRecord(goal);
-  const active = record.active;
-  if (active !== undefined && active !== null) {
-    return (
-      active === 1 ||
-      active === true ||
-      active === "1" ||
-      active === "true" ||
-      (typeof active === "string" && active.toUpperCase() === "ACTIVE")
-    );
-  }
-  const status = record.status ?? record.state;
-  return typeof status === "string" && status.toUpperCase() === "ACTIVE";
+/** Millis for a `startedAt` value; missing/unparseable sorts oldest. */
+function startedAtTime(value: unknown): number {
+  if (typeof value !== "string" || !value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function plainMissionState(status: Mission["status"]): string {
@@ -134,9 +120,13 @@ export function OverviewContent(data: OverviewData) {
   // Ranked owner goals first: the active goal (e.g. the Hoowen DELEGATE) beats
   // historical failures. Missions carry the durable created_from directive id
   // on `owner`, so they pass straight into the selectors — no title matching.
+  // Active semantics live in the Task 1 ranker (`rankOwnerGoals` sorts active
+  // directives first per spec §2); the UI serves the top-ranked goal directly
+  // so ranker-side changes flow through with no UI-tier mirror to diverge.
   const ownerGoals = (data.ownerSurface?.goals ?? []) as OwnerStandingGoal[];
-  const activeOwnerGoal = rankOwnerGoals(ownerGoals, data.missions).find(isActiveOwnerGoal) ?? null;
-  const activeGoalDirectiveId = activeOwnerGoal ? ownerGoalDirectiveId(activeOwnerGoal) : "";
+  const rankedGoals = rankOwnerGoals(ownerGoals, data.missions);
+  const activeOwnerGoal = rankedGoals[0] ?? null;
+  const activeGoalDirectiveId = ownerGoalDirectiveId(activeOwnerGoal);
   const goalMissions = activeGoalDirectiveId ? goalChildren(activeGoalDirectiveId, data.missions) : [];
   const currentGoalChild = activeGoalDirectiveId
     ? currentChildForGoal(activeGoalDirectiveId, data.missions)
@@ -144,21 +134,24 @@ export function OverviewContent(data: OverviewData) {
   const goalShortLabel = currentGoalChild
     ? servingGoalLabel(currentGoalChild, ownerGoals)
     : activeOwnerGoal
-      ? (knownCopy(goalRecord(activeOwnerGoal).label) ??
-        knownCopy(goalRecord(activeOwnerGoal).exact_text) ??
-        knownCopy(goalRecord(activeOwnerGoal).objective))
+      ? (knownCopy(activeOwnerGoal.label) ??
+        knownCopy(activeOwnerGoal.exact_text) ??
+        knownCopy(activeOwnerGoal.objective))
       : null;
   const focusGoalLabel = goalShortLabel && goalShortLabel !== "UNKNOWN" ? goalShortLabel : null;
+  const activeGoalCommandType = activeOwnerGoal
+    ? (activeOwnerGoal.command_type ?? activeOwnerGoal.commandType)
+    : null;
   const activeGoalKind = (() => {
-    const raw = goalRecord(activeOwnerGoal).command_type ?? goalRecord(activeOwnerGoal).commandType;
+    const raw = activeGoalCommandType;
     return typeof raw === "string" && raw.toUpperCase() === "DELEGATE"
       ? "Active strategic goal"
       : "Active owner goal";
   })();
   const focusTitle = mission?.title ?? candidateTitle ?? focusGoalLabel ?? t("overview.noActiveFocus");
   const goalExactText = activeOwnerGoal
-    ? (knownCopy(goalRecord(activeOwnerGoal).exact_text) ??
-      knownCopy(goalRecord(activeOwnerGoal).objective) ??
+    ? (knownCopy(activeOwnerGoal.exact_text) ??
+      knownCopy(activeOwnerGoal.objective) ??
       focusGoalLabel)
     : null;
   const decisionReason = text(data.executive?.latest_decision?.reason)
@@ -220,11 +213,17 @@ export function OverviewContent(data: OverviewData) {
         : focus ? "Not yet recorded" : "Unknown";
   // Genuine owner action only: an OPEN decision-queue record linked by
   // mission_id to the current child (or a blocked goal sibling). The first
-  // global BLOCKED row — often history — never stands in.
+  // global BLOCKED row — often history — never stands in. With no active
+  // goal the goal join is empty by construction, so fall back to scanning
+  // goal-unlinked BLOCKED/HALTED missions by mission_id join; only linked
+  // open records surface, unlinked BLOCKED titles never do.
   const blockedGoalChild = goalMissions.find((item) => item.status === "BLOCKED" || item.status === "HALTED") ?? null;
+  const noGoalBlockedMissions = activeGoalDirectiveId
+    ? []
+    : data.missions.filter((item) => item.status === "BLOCKED" || item.status === "HALTED");
   const needsYouCandidates = currentGoalChild
     ? [currentGoalChild, ...(blockedGoalChild && blockedGoalChild.id !== currentGoalChild.id ? [blockedGoalChild] : [])]
-    : blockedGoalChild ? [blockedGoalChild] : [];
+    : blockedGoalChild ? [blockedGoalChild] : noGoalBlockedMissions;
   let linkedOwnerAction: { mission: Mission; summary: string } | null = null;
   for (const candidate of needsYouCandidates) {
     const summary = ownerActionForMission(candidate, data.ownerAttention);
@@ -235,11 +234,18 @@ export function OverviewContent(data: OverviewData) {
   }
   const completed = data.missions.filter((item) => item.status === "COMPLETE");
   const recentCompletionEvents = data.timeline.filter((event) => /complet|verified|accepted/i.test(`${event.title} ${event.detail}`)).slice(0, 3);
-  // LATEST is the newest COMPLETE child of the active goal — never borrowed
-  // from outside the goal's subgraph. Without an active goal the legacy
-  // first-completed fallback stays.
-  const latestCompletedMission = goalMissions.find((item) => item.status === "COMPLETE")
-    ?? (activeOwnerGoal ? null : completed[0]);
+  // LATEST is the newest COMPLETE child of the active goal by `startedAt` —
+  // never borrowed from outside the goal's subgraph, never the first row in
+  // selector order. Without an active goal the legacy first-completed
+  // fallback stays.
+  const latestCompletedMission = (() => {
+    let newest: (typeof goalMissions)[number] | null = null;
+    for (const item of goalMissions) {
+      if (item.status !== "COMPLETE") continue;
+      if (!newest || startedAtTime(item.startedAt) > startedAtTime(newest.startedAt)) newest = item;
+    }
+    return newest;
+  })() ?? (activeOwnerGoal ? null : completed[0]);
   const latestCompletionEvent = recentCompletionEvents[0];
   const missionEvidence = detailMission ? data.evidence.filter((item) => item.missionRef === detailMission.id) : [];
   const activeWorkers = data.workers.filter((worker) =>
@@ -392,7 +398,7 @@ export function OverviewContent(data: OverviewData) {
               <div className="rm-focus-mode-state">
                 <span className={`rm-state-mark rm-state-mark--${state.toLowerCase()}`} />
                 <strong>{state.replace("_", " ")}</strong>
-                <span>{mission?.id ?? currentWork?.candidate?.candidate_id ?? "NO ACTIVE ID"}</span>
+                <span className="tech-id">{mission?.id ?? currentWork?.candidate?.candidate_id ?? "NO ACTIVE ID"}</span>
               </div>
               <h2 id="focus-mode-objective">{focusTitle}</h2>
               <div className="rm-focus-mode-reason">
@@ -449,7 +455,7 @@ export function OverviewContent(data: OverviewData) {
             <div>
               <span className="rm-focus-mode-label">Verification</span>
               <strong>{missionEvidence[0]?.verdict ?? "NO LINKED RECORD"}</strong>
-              <p>{missionEvidence[0] ? `${missionEvidence.length} evidence artifact${missionEvidence.length === 1 ? "" : "s"} linked to ${detailMission?.id}.` : "No mission-linked verification artifact is present in this projection."}</p>
+              <p>{missionEvidence[0] ? `${missionEvidence.length} evidence artifact${missionEvidence.length === 1 ? "" : "s"} recorded for this focus.` : "No mission-linked verification artifact is present in this projection."}</p>
               {missionEvidence[0] ? <Link to={`/evidence/${missionEvidence[0].id}`}>Inspect evidence <ArrowRight size={14} /></Link> : <Link to="/evidence">Open evidence ledger <ArrowRight size={14} /></Link>}
             </div>
             <div className={blocker ? "is-blocked" : ""}>

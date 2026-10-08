@@ -56,11 +56,12 @@ function hoowenMission(init: {
   id: string
   status: Mission["status"]
   startedAt: string
+  updatedAt?: string
   owner: string
   title: string
   objective: string
   nextAction: string
-}): Mission {
+}): Mission & { updated_at?: string } {
   return {
     id: init.id,
     code: init.id,
@@ -75,6 +76,7 @@ function hoowenMission(init: {
     startedAt: init.startedAt,
     objective: init.objective,
     owner: init.owner,
+    ...(init.updatedAt ? { updated_at: init.updatedAt } : {}),
   }
 }
 
@@ -217,6 +219,94 @@ export function buildHoowenOverviewData(): OverviewData {
   }
 }
 
+export function buildExecutingMissionOverviewData(): OverviewData {
+  const data = buildHoowenOverviewData()
+  const liveMission = hoowenMission({
+    id: "mission-live-01",
+    status: "ACTIVE",
+    startedAt: "2026-10-06T16:10:00Z",
+    owner: `directive:${HOOWEN_DIRECTIVE}:live-run`,
+    title: "Live builder run",
+    objective: "Live builder run executing the Hoowen plan.",
+    nextAction: "Finish the live builder run.",
+  })
+  data.missions = [...data.missions, liveMission]
+  data.autonomy.current_work = {
+    candidate: { candidate_id: "cand-decoy-1", title: "Candidate decoy title", state: "PROPOSED", event_id: null },
+    objective: { status: "AVAILABLE" },
+    mission: { status: "AVAILABLE" },
+    worktree: { status: "AVAILABLE" },
+    current_step: { status: "AVAILABLE" },
+    worker: { status: "AVAILABLE" },
+    verifier: { status: "AVAILABLE" },
+    final_outcome: {
+      state: "PENDING",
+      mission_state: "ACTIVE",
+      verification: { status: "PENDING", verdict_id: null, acceptance: "UNKNOWN", acceptance_event_id: null, reason: null },
+      repair_attempts: null,
+      actual: null,
+      measurement_status: "UNKNOWN",
+      learned_calibration: null,
+      next_action: null,
+      candidate_id: "cand-decoy-1",
+    },
+  }
+  data.evidence = [
+    {
+      id: "ev-live-1",
+      kind: "artifact",
+      typeLabel: "build log",
+      source: "test",
+      sourceUri: "test://ev-live-1",
+      hash: "hash-live-1",
+      verdict: "EVALUATING",
+      capturedAt: "2026-10-06T16:11:00Z",
+      missionRef: liveMission.id,
+      note: "Live run log.",
+    },
+  ]
+  return data
+}
+
+export function buildOutOfOrderCompletionsOverviewData(): OverviewData {
+  const data = buildHoowenOverviewData()
+  // Older outcome touched more recently: the goal-children join ranks it
+  // first, so a first-COMPLETE pick would wrongly surface it as LATEST.
+  data.missions = [
+    ...data.missions,
+    hoowenMission({
+      id: "mission-older-touch-01",
+      status: "COMPLETE",
+      startedAt: "2026-10-05T12:00:00Z",
+      updatedAt: "2026-10-06T15:40:00Z",
+      owner: `directive:${HOOWEN_DIRECTIVE}:follow-up-1`,
+      title: "Hoowen follow-up 1",
+      objective: "Hoowen follow-up 1 completed earlier.",
+      nextAction: "Start follow-up 2.",
+    }),
+  ]
+  return data
+}
+
+export function buildNoGoalLinkedActionOverviewData(): OverviewData {
+  const data = buildHoowenOverviewData()
+  if (!data.ownerSurface) throw new Error("Hoowen fixture must include ownerSurface")
+  data.ownerSurface.goals = []
+  const linkedRecord: OwnerAttentionRecord = {
+    queue_id: "q-nogoal-1",
+    status: "OPEN",
+    classification: "DECISION_REQUIRED",
+    summary: "Approve the Hoowen builder retry.",
+    consequence: "The Hoowen follow-up stays held until you approve.",
+    mission_id: "mission-fe81cb0d1e37",
+    opened_at: "2026-10-06T16:05:00Z",
+  }
+  data.ownerSurface.decisionQueue.open = [linkedRecord]
+  data.ownerSurface.decisionQueue.open_count = 1
+  data.ownerAttention = [linkedRecord]
+  return data
+}
+
 function renderHoowenHome(data: OverviewData = buildHoowenOverviewData()) {
   return render(
     <MemoryRouter initialEntries={["/"]}>
@@ -231,14 +321,19 @@ describe("Overview owner-goal prioritization", () => {
   it("shows the active Hoowen goal card with truthful blocked progress and next", async () => {
     renderHoowenHome()
     // NOW is the active goal short label while no executing mission exists.
-    await screen.findByRole("heading", { name: HOOWEN_LABEL })
-    // Hoowen card is present even though the current child is BLOCKED.
-    expect(screen.getByText(HOOWEN_LABEL)).toBeInTheDocument()
+    // (getByRole: the label also names the goal strip, so getByText would match twice.)
+    const cardHeading = await screen.findByRole("heading", { name: HOOWEN_LABEL })
+    expect(cardHeading).toBeInTheDocument()
     // WHY carries the serving goal exact text plus the executive wait reason.
     expect(screen.getByText(new RegExp(HOOWEN_EXACT_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeInTheDocument()
-    // PROGRESS names the current blocked child and says Blocked truthfully.
-    expect(screen.getByText(/Hoowen follow-up 3 blocked after builder failure\./)).toBeInTheDocument()
-    expect(screen.getAllByText(/Blocked/).length).toBeGreaterThan(0)
+    // PROGRESS names the current blocked child and says Blocked truthfully,
+    // scoped to the focus field: the goal strip plus the PROGRESS line.
+    const focusField = document.querySelector(".rm-focus-field")
+    expect(focusField).not.toBeNull()
+    const focusScope = within(focusField as HTMLElement)
+    expect(focusScope.getByText("Active strategic goal · Blocked")).toBeInTheDocument()
+    const progress = focusScope.getByText(/Hoowen follow-up 3 blocked after builder failure\./)
+    expect(progress.textContent).toMatch(/Blocked/)
     // NEXT comes from the current child's exact next_action.
     expect(
       screen.getAllByText("Repair the builder failure and re-run verification.").length,
@@ -262,5 +357,50 @@ describe("Overview owner-goal prioritization", () => {
     expect(within(glance).getByText("Nothing needed from you.")).toBeInTheDocument()
     expect(within(glance).queryByText("Overnight CI verification sweep")).not.toBeInTheDocument()
     expect(within(glance).queryByText("Approve the CI pipeline fix.")).not.toBeInTheDocument()
+  })
+
+  it("prefers the executing mission title for NOW with detail keyed to it", async () => {
+    const data = buildExecutingMissionOverviewData()
+    renderHoowenHome(data)
+    // NOW precedence: executing mission title beats candidate title beats goal label.
+    const heading = await screen.findByRole("heading", { name: "Live builder run" })
+    expect(heading.textContent).not.toMatch(/Candidate decoy title|Hoowen — Active strategic goal/)
+    expect(screen.queryByRole("heading", { name: "Candidate decoy title" })).not.toBeInTheDocument()
+    // NEXT follows the executing mission's exact next_action.
+    expect(screen.getAllByText("Finish the live builder run.").length).toBeGreaterThan(0)
+    // Detail and evidence stay keyed to the executing mission; the
+    // verification sentence carries the count but no raw mission id.
+    await userEvent.click(screen.getByRole("button", { name: /Focus mode/i }))
+    const dialog = screen.getByRole("dialog", { name: /Focus mode/i })
+    expect(within(dialog).getByRole("heading", { name: "Live builder run" })).toBeInTheDocument()
+    expect(within(dialog).getByText("1 linked record")).toBeInTheDocument()
+    const verification = within(dialog).getByText(/evidence artifact recorded for this focus/)
+    expect(verification.textContent).not.toMatch(/mission-[0-9a-f]{4,}/)
+  })
+
+  it("picks LATEST by newest startedAt when in-goal completions arrive out of order", async () => {
+    const data = buildOutOfOrderCompletionsOverviewData()
+    renderHoowenHome(data)
+    await screen.findByRole("heading", { name: HOOWEN_LABEL })
+    const glance = screen.getByLabelText("At a glance")
+    const latestLink = within(glance).getByRole("link", { name: /Hoowen follow-up 2/ })
+    expect(latestLink).toHaveAttribute("href", "/missions/mission-62250d335ab6")
+    expect(within(glance).queryByText("Hoowen follow-up 1")).not.toBeInTheDocument()
+  })
+
+  it("surfaces a linked owner action on the no-goal path without borrowing blocked titles", async () => {
+    const data = buildNoGoalLinkedActionOverviewData()
+    renderHoowenHome(data)
+    // NOW falls back to the literal with no goal and no executing work.
+    await screen.findByRole("heading", { name: "No active focus is recorded" })
+    const glance = screen.getByLabelText("At a glance")
+    expect(within(glance).getByText("Approve the Hoowen builder retry.")).toBeInTheDocument()
+    expect(within(glance).queryByText("Nothing needed from you.")).not.toBeInTheDocument()
+    // Ban preserved: unlinked BLOCKED titles never stand in for owner action.
+    expect(within(glance).queryByText("Overnight CI verification sweep")).not.toBeInTheDocument()
+    expect(within(glance).queryByText("Hoowen follow-up 3")).not.toBeInTheDocument()
+    // The attention banner names the same linked action.
+    const attention = document.querySelector(".rm-attention")
+    expect(attention?.textContent).toMatch(/Approve the Hoowen builder retry\./)
   })
 })
