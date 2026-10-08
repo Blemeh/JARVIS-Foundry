@@ -334,12 +334,14 @@ test("renders the complete source-backed product truth across Command Center sur
   await expect(page.getByRole("heading", { name: "Waiting on you" })).toBeVisible()
 
   await page.goto(`/missions/${encodeURIComponent(completedMissionId)}`)
-  const pipeline = page.locator(".md-pipeline")
-  await expect(pipeline.getByRole("heading", { name: "Execution Pipeline" })).toBeVisible()
-  for (const label of ["Owner goal", "Plan", "Mission", "Worker", "Action / artifact", "Evidence", "Verifier", "Repair / retry", "Memory", "Owner briefing"]) {
-    await expect(pipeline.getByText(label, { exact: true })).toBeVisible()
+  const progress = page.locator(".md-compact-progress")
+  await expect(progress.getByRole("heading", { name: "Progress" })).toBeVisible()
+  const tracker = progress.locator(".md-compact-tracker")
+  await expect(tracker).toBeVisible()
+  for (const label of ["Goal", "Plan", "Build", "Verify", "Outcome"]) {
+    await expect(tracker.getByText(label, { exact: true })).toBeVisible()
   }
-  await expect(pipeline.locator(".md-stage").filter({ hasText: "Repair / retry" })).toContainText("COMPLETE")
+  await expect(tracker.locator(".md-compact-stage").filter({ hasText: "Outcome" })).toContainText("Complete")
   await expect(page.getByText("FAILED", { exact: true })).toBeVisible()
   await expect(page.getByText("COMPLETE", { exact: true }).first()).toBeVisible()
   const attemptId = String(providerAttempt!.attempt_id)

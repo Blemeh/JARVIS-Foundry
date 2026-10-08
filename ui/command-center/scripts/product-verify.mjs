@@ -182,7 +182,7 @@ try {
             }
           }
           if (scenario === "STREAM_DISCONNECTED") {
-            await page.locator(".topbar-disconnect").getByText("Updates paused", { exact: true }).waitFor({ state: "visible", timeout: 5_000 })
+            await page.locator(".topbar-stream-reconnect").getByText("Reconnect", { exact: true }).waitFor({ state: "visible", timeout: 5_000 })
           }
           if (consoleErrors.length > 0) {
             pushFailure({ label, kind: "console", detail: consoleErrors.join(" | ") })
