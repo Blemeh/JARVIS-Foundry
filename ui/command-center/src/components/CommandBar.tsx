@@ -47,27 +47,37 @@ function parseCommandIntent(raw: string): Intent | null {
   return null;
 }
 
-const delegationModes = [
-  { label: "Tell me", detail: "Explain & advise", value: "TELL_ME" },
-  { label: "Prepare", detail: "Draft, do not act", value: "PREPARE" },
+type CommandTab = "GOAL" | "ASK" | "VETO";
+
+const commandTabs: { value: CommandTab; detail: string }[] = [
+  { value: "GOAL", detail: "Tell JARVIS what outcome is wanted" },
+  { value: "ASK", detail: "Advice or briefing" },
+  { value: "VETO", detail: "Hold an action" },
+];
+
+const tabPlaceholders: Record<CommandTab, string> = {
+  GOAL: "Tell JARVIS what outcome you want…",
+  ASK: "Ask for advice or a briefing…",
+  VETO: "Name the action to hold…",
+};
+
+// Execution scope refines a GOAL before it is sent. The dock default is
+// Handle; every scope maps to the same submitOwnerGoal transport as before.
+const goalScopes = [
   { label: "Handle", detail: "Execute in scope", value: "HANDLE" },
+  { label: "Prepare", detail: "Draft, do not act", value: "PREPARE" },
   { label: "Watch", detail: "Monitor & alert", value: "WATCH" },
 ] as const;
-type DelegationMode = (typeof delegationModes)[number]["label"];
+type GoalScope = (typeof goalScopes)[number]["label"];
+
+const askScope = { label: "Tell me", detail: "Explain & advise", value: "TELL_ME" } as const;
 
 function delegationBody(raw: string): string {
   const trimmed = raw.trimStart();
-  const currentPrefix = delegationModes.find((item) =>
-    trimmed.toLowerCase().startsWith(`${item.label.toLowerCase()}:`));
-  return currentPrefix ? trimmed.slice(currentPrefix.label.length + 1).trimStart() : trimmed;
+  const currentPrefix = [...goalScopes.map((item) => item.label), askScope.label].find((label) =>
+    trimmed.toLowerCase().startsWith(`${label.toLowerCase()}:`));
+  return currentPrefix ? trimmed.slice(currentPrefix.length + 1).trimStart() : trimmed;
 }
-
-const modePlaceholders: Record<DelegationMode, string> = {
-  "Tell me": "Ask anything — get a direct briefing…",
-  Prepare: "Describe the outcome to prepare — no external action…",
-  Handle: "Tell JARVIS what you want accomplished…",
-  Watch: "Name what JARVIS should monitor and report…",
-};
 
 export function CommandBar() {
   const { client, stopActive, sourceMode, mutationsEnabled } = useCommandCenter();
@@ -79,7 +89,8 @@ export function CommandBar() {
   const [history, setHistory] = useState<string[]>([]);
   const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<DelegationMode>("Handle");
+  const [tab, setTab] = useState<CommandTab>("GOAL");
+  const [scope, setScope] = useState<GoalScope>("Handle");
 
   const flat = useMemo(() => {
     if (!results) return [] as { item: SearchResultItem; group: string }[];
@@ -118,8 +129,8 @@ export function CommandBar() {
     setValue(""); setResults(null); setActiveIndex(-1); navigate(to); clearSoon();
   };
 
-  const selectMode = (nextMode: DelegationMode) => {
-    setMode(nextMode);
+  const selectTab = (nextTab: CommandTab) => {
+    setTab(nextTab);
     setResults(null);
     setActiveIndex(-1);
     window.requestAnimationFrame(() => inputRef.current?.focus());
@@ -139,13 +150,25 @@ export function CommandBar() {
     }
     setSending(true);
     try {
-      const delegationMode = delegationModes.find((item) => item.label === mode)?.value as OwnerDelegationMode;
-      const result = await client.submitOwnerGoal(command, delegationMode);
-      if (result.accepted) {
-        setValue(""); setResults(null);
-        setStatus({ kind: "ok", text: `Durable owner goal accepted${result.directiveId ? ` · ${result.directiveId}` : ""}` });
+      if (tab === "VETO") {
+        const result = await client.submitVeto(command);
+        if (result.accepted) {
+          setValue(""); setResults(null);
+          setStatus({ kind: "ok", text: `Veto recorded${result.directiveId ? ` · ${result.directiveId}` : ""}${result.eventId ? ` · ${result.eventId}` : ""}` });
+        } else {
+          setStatus({ kind: "error", text: result.error ?? "Veto rejected" });
+        }
       } else {
-        setStatus({ kind: "error", text: result.error ?? "Owner goal rejected" });
+        const delegationMode = (tab === "ASK"
+          ? askScope.value
+          : (goalScopes.find((item) => item.label === scope)?.value ?? "HANDLE")) as OwnerDelegationMode;
+        const result = await client.submitOwnerGoal(command, delegationMode);
+        if (result.accepted) {
+          setValue(""); setResults(null);
+          setStatus({ kind: "ok", text: `Durable owner goal accepted${result.directiveId ? ` · ${result.directiveId}` : ""}${result.eventId ? ` · ${result.eventId}` : ""}` });
+        } else {
+          setStatus({ kind: "error", text: result.error ?? "Owner goal rejected" });
+        }
       }
     } catch (error) {
       setStatus({ kind: "error", text: error instanceof Error ? error.message : String(error) });
@@ -175,34 +198,41 @@ export function CommandBar() {
   };
 
   return (
-    <div className="commandbar" role="region" aria-label="Persistent JARVIS command surface">
-      <div className="commandbar-modes" aria-label="Delegation level">
-        <span className="commandbar-modes-label">Delegate</span>
-        {delegationModes.map((item) => (
+    <div className="commandbar command-dock" role="region" aria-label="Persistent JARVIS command surface">
+      <div className="command-dock-tabs" role="tablist" aria-label="Command mode">
+        {commandTabs.map((item) => (
           <button
-            key={item.label}
+            key={item.value}
             type="button"
-            className={`commandbar-mode ${mode === item.label ? "is-active" : ""}`}
-            aria-pressed={mode === item.label}
-            title={`${item.label}: ${item.detail}`}
-            onClick={() => selectMode(item.label)}
+            role="tab"
+            aria-selected={tab === item.value}
+            className={`command-dock-tab ${tab === item.value ? "is-active" : ""} ${item.value === "GOAL" ? "is-primary" : ""}`}
+            title={`${item.value}: ${item.detail}`}
+            onClick={() => selectTab(item.value)}
           >
-            <strong>{item.label}</strong>
-            <small>{item.detail}</small>
+            <strong>{item.value}</strong>
+            <small>{item.value === "GOAL" ? `Primary · ${item.detail}` : item.detail}</small>
           </button>
         ))}
       </div>
+      {tab === "GOAL" ? (
+        <div className="command-dock-scopes" role="group" aria-label="Goal execution scope">
+          {goalScopes.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className={`commandbar-mode ${scope === item.label ? "is-active" : ""}`}
+              aria-pressed={scope === item.label}
+              title={`${item.label}: ${item.detail}`}
+              onClick={() => setScope(item.label)}
+            >
+              <strong>{item.label}</strong>
+              <small>{item.detail}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
       <form className="commandbar-form" onSubmit={(event) => void submit(event)}>
-        <label className="commandbar-mobile-mode">
-          <span>Delegation mode</span>
-          <select
-            value={mode}
-            aria-label="Delegation mode"
-            onChange={(event) => selectMode(event.target.value as DelegationMode)}
-          >
-            {delegationModes.map((item) => <option key={item.label} value={item.label}>{item.label}</option>)}
-          </select>
-        </label>
         <Sparkles size={16} className="commandbar-icon" aria-hidden="true" />
         <textarea
           ref={inputRef}
@@ -211,8 +241,8 @@ export function CommandBar() {
           rows={1}
           onChange={(event) => { const next = event.target.value; setValue(next); setActiveIndex(-1); if (!next.trim()) setResults(null); autoGrow(); }}
           onKeyDown={onKeyDown}
-          placeholder={stopActive ? "Stopped — inspect or resume before directing work" : modePlaceholders[mode]}
-          aria-label={`Direct JARVIS or search — ${mode} mode (${sourceModeLabel(sourceMode)})`}
+          placeholder={stopActive ? "Stopped — inspect or resume before directing work" : tabPlaceholders[tab]}
+          aria-label={`Direct JARVIS or search — ${tab === "VETO" ? "Veto" : tab === "ASK" ? "Ask" : `${scope} goal`} mode (${sourceModeLabel(sourceMode)})`}
           aria-expanded={Boolean(value && (intent || flat.length))}
           aria-controls="command-results"
           role="combobox"
@@ -223,7 +253,9 @@ export function CommandBar() {
           {sending ? <span className="commandbar-sending" /> : <Send size={15} aria-hidden="true" />}
         </button>
       </form>
-      <StopControl compact label="Emergency STOP" />
+      <div className="command-dock-stop">
+        <StopControl compact label="Emergency STOP" />
+      </div>
 
       {status ? (
         <div className={`commandbar-status commandbar-status--${status.kind}`} role="status">

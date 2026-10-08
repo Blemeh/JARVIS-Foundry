@@ -7,17 +7,29 @@ import { sourceModeLabel } from "../lib/sourceMode";
 import { LocaleToggle, useLocale } from "../i18n/LocaleContext";
 import { VoiceTalkButton } from "./VoiceTalkButton";
 
-type CommandKind = "GOAL" | "PAUSE" | "VETO_ACTION";
+type CommandTab = "GOAL" | "ASK" | "VETO";
 type CommandProgress =
   | { phase: "idle" }
-  | { phase: "submitted"; objective: string; result: OwnerGoalResult; kind: CommandKind }
+  | { phase: "submitted"; objective: string; result: OwnerGoalResult; tab: CommandTab }
   | { phase: "error"; objective: string; message: string };
+
+const commandTabs: { value: CommandTab; detail: string }[] = [
+  { value: "GOAL", detail: "Tell JARVIS what outcome is wanted" },
+  { value: "ASK", detail: "Advice or briefing" },
+  { value: "VETO", detail: "Hold an action" },
+];
+
+const tabPlaceholders: Record<CommandTab, string> = {
+  GOAL: "Tell JARVIS what outcome you want…",
+  ASK: "Ask for advice or a briefing…",
+  VETO: "Name the action to hold…",
+};
 
 export function OwnerCommandSurface() {
   const { client, stopActive, sourceMode, mutationsEnabled } = useCommandCenter();
   const { t, locale } = useLocale();
   const [objective, setObjective] = useState("");
-  const [kind, setKind] = useState<CommandKind>("GOAL");
+  const [tab, setTab] = useState<CommandTab>("GOAL");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<CommandProgress>({ phase: "idle" });
 
@@ -29,10 +41,10 @@ export function OwnerCommandSurface() {
     setSubmitting(true);
     try {
       let result: OwnerGoalResult;
-      if (kind === "PAUSE") result = await client.pauseOperations(text);
-      else if (kind === "VETO_ACTION") result = await client.submitVeto(text);
+      if (tab === "ASK") result = await client.submitOwnerGoal(text, "TELL_ME");
+      else if (tab === "VETO") result = await client.submitVeto(text);
       else result = await client.submitOwnerGoal(text);
-      setProgress({ phase: "submitted", objective: text, result, kind });
+      setProgress({ phase: "submitted", objective: text, result, tab });
       if (result.accepted) setObjective("");
     } catch (err) {
       setProgress({
@@ -46,9 +58,9 @@ export function OwnerCommandSurface() {
   };
 
   const disabled = stopActive || submitting || !mutationsEnabled;
-  const acceptedLabel = (submittedKind: CommandKind) => {
-    if (submittedKind === "PAUSE") return t("command.pauseAccepted");
-    if (submittedKind === "VETO_ACTION") return t("command.vetoAccepted");
+  const acceptedLabel = (submittedTab: CommandTab) => {
+    if (submittedTab === "VETO") return t("command.vetoAccepted");
+    if (submittedTab === "ASK") return "Request recorded.";
     return t("command.accepted");
   };
 
@@ -58,23 +70,29 @@ export function OwnerCommandSurface() {
         <h2 className="owner-command-title">{t("command.title")}</h2>
         <LocaleToggle compact />
       </div>
+      <div className="owner-command-tabs" role="tablist" aria-label="Command mode">
+        {commandTabs.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.value}
+            className={`owner-command-tab ${tab === item.value ? "is-active" : ""} ${item.value === "GOAL" ? "is-primary" : ""}`}
+            title={`${item.value}: ${item.detail}`}
+            onClick={() => setTab(item.value)}
+            disabled={disabled}
+          >
+            <strong>{item.value}</strong>
+            <small>{item.value === "GOAL" ? `Primary · ${item.detail}` : item.detail}</small>
+          </button>
+        ))}
+      </div>
       <form className="owner-command-form" onSubmit={(e) => void submit(e)}>
-        <select
-          className="owner-command-kind"
-          value={kind}
-          onChange={(event) => setKind(event.target.value as CommandKind)}
-          disabled={disabled}
-          aria-label={t("command.title")}
-        >
-          <option value="GOAL">{t("command.goal")}</option>
-          <option value="PAUSE">{t("command.pause")}</option>
-          <option value="VETO_ACTION">{t("command.veto")}</option>
-        </select>
         <input
           className="owner-command-input"
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
-          placeholder={t("command.placeholder")}
+          placeholder={tabPlaceholders[tab]}
           aria-label={t("command.objective")}
           lang={locale}
           disabled={disabled}
@@ -93,7 +111,7 @@ export function OwnerCommandSurface() {
           </div>
           <div className="owner-command-line">
             <span className="owner-command-role">{t("command.jarvis")}</span>
-            <p>{progress.result.accepted ? acceptedLabel(progress.kind) : progress.result.error ?? t("command.notAccepted")}</p>
+            <p>{progress.result.accepted ? acceptedLabel(progress.tab) : progress.result.error ?? t("command.notAccepted")}</p>
           </div>
           {progress.result.directiveId ? (
             <p className="owner-command-meta t-mono">
