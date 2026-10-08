@@ -7,11 +7,19 @@ import { useRouteQuery } from "../hooks/useRouteQuery";
 import type {
   Mission,
   WorkCampaign,
+  WorkGoal,
   WorkHierarchy,
   WorkHierarchyLevelState,
   WorkMissionLink,
   WorkObjective,
+  WorkProject,
 } from "../lib/contracts";
+import {
+  currentChildForGoal,
+  goalChildren,
+  rankOwnerGoals,
+  type OwnerStandingGoal,
+} from "../lib/ownerWork";
 import { sourceModeLabel } from "../lib/sourceMode";
 import { useLocale } from "../i18n/LocaleContext";
 
@@ -50,6 +58,70 @@ function statusLabel(status: string): string {
   const lower = status.toLowerCase().replace(/_/g, " ");
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
+
+function ownerGoalDirectiveId(goal: OwnerStandingGoal | null | undefined): string {
+  if (!goal) return "";
+  const id = goal.directive_id ?? goal.directiveId;
+  return typeof id === "string" ? id.trim() : "";
+}
+
+function hierarchyGoalId(goal: OwnerStandingGoal | null | undefined): string {
+  if (!goal) return "";
+  const id = goal.goal_id ?? goal.goalId;
+  return typeof id === "string" ? id.trim() : "";
+}
+
+function goalHeadingLabel(goal: OwnerStandingGoal): string {
+  const label = typeof goal.label === "string" ? goal.label.trim() : "";
+  return label && label !== "UNKNOWN" ? label : "Owner goal";
+}
+
+function goalStatusText(goal: OwnerStandingGoal): string {
+  const status = typeof goal.status === "string" ? goal.status.trim() : "";
+  return status || "UNKNOWN";
+}
+
+type ObjectiveSplit = {
+  visibleCampaigns: WorkCampaign[];
+  directMissions: Mission[];
+};
+
+function splitObjectiveMissions(
+  objective: WorkObjective,
+  missionById: Map<string, Mission>,
+  campaigns: Map<string, WorkCampaign>,
+  filter: WorkFilter,
+  selectedCampaign: string | null,
+): ObjectiveSplit {
+  const objectiveMissions = objective.mission_ids
+    .map((missionId) => missionById.get(missionId))
+    .filter((mission): mission is Mission => Boolean(mission && matches(mission, filter)));
+  const objectiveCampaigns = objective.campaign_ids
+    .map((campaignId) => campaigns.get(campaignId))
+    .filter((campaign): campaign is WorkCampaign => Boolean(campaign))
+    .filter((campaign) => !selectedCampaign || campaign.campaign_id === selectedCampaign);
+  const campaignMissionIds = new Set(objectiveCampaigns.flatMap((campaign) => campaign.mission_ids));
+  const directMissions = objectiveMissions.filter((mission) => !campaignMissionIds.has(mission.id));
+  const visibleCampaigns = objectiveCampaigns.filter((campaign) =>
+    campaign.mission_ids.some((id) => { const m = missionById.get(id); return m && matches(m, filter); }),
+  );
+  return { visibleCampaigns, directMissions };
+}
+
+type GoalSection = {
+  goal: OwnerStandingGoal;
+  directiveId: string;
+  goalId: string;
+  label: string;
+  status: string;
+  isServed: boolean;
+  children: Mission[];
+  current: Mission | null;
+  latestComplete: Mission | null;
+  splits: Array<{ objective: WorkObjective; split: ObjectiveSplit }>;
+  orphans: Mission[];
+  indexBase: number;
+};
 
 function MissionRows({
   rows,
@@ -117,7 +189,93 @@ function CampaignBlock({
   );
 }
 
-function WorkContent({ missions, hierarchy }: WorkData) {
+function ObjectiveBlock({
+  objective,
+  index,
+  split,
+  missionById,
+  goals,
+  projects,
+  missionLinks,
+  params,
+  filter,
+}: {
+  objective: WorkObjective;
+  index: number;
+  split: ObjectiveSplit;
+  missionById: Map<string, Mission>;
+  goals: Map<string, WorkGoal>;
+  projects: Map<string, WorkProject>;
+  missionLinks: Map<string, WorkMissionLink>;
+  params: URLSearchParams;
+  filter: WorkFilter;
+}) {
+  const goal = objective.goal_id ? goals.get(objective.goal_id) : null;
+  const project = objective.project_id ? projects.get(objective.project_id) : null;
+  const next = new URLSearchParams(params);
+  next.set("status", "all");
+  next.set("objective", objective.objective_id);
+  next.delete("campaign");
+  return (
+    <section key={objective.objective_id} className="rm-objective" aria-labelledby={`objective-${index}`}>
+      <div className="rm-objective-head">
+        <span className="rm-objective-index">O{String(index + 1).padStart(2, "0")}</span>
+        <div>
+          <h2 id={`objective-${index}`}>
+            <Link to={{ pathname: "/work", search: next.toString() }}>{objective.label}</Link>
+          </h2>
+          <p className="tech-id">{objective.objective_id} · {objective.status}</p>
+          {(goal || project) && (goal?.label || project?.label) ? (
+            <div className="rm-objective-lineage">
+              {goal?.label ? <span>Goal: {goal.label}</span> : null}
+              {project?.label ? <span>Project: {project.label}</span> : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div className="rm-objective-work">
+        {split.visibleCampaigns.map((campaign) => (
+          <CampaignBlock
+            key={campaign.campaign_id}
+            campaign={campaign}
+            missions={campaign.mission_ids
+              .map((missionId) => missionById.get(missionId))
+              .filter((mission): mission is Mission => Boolean(mission && matches(mission, filter)))}
+            links={missionLinks}
+            params={params}
+          />
+        ))}
+        {split.directMissions.length ? (
+          <div className="rm-campaign-block">
+            <div className="rm-campaign-head"><div><strong>Direct missions</strong><small>No campaign identity recorded</small></div><span>{split.directMissions.length} mission{split.directMissions.length === 1 ? "" : "s"}</span></div>
+            <MissionRows rows={split.directMissions} links={missionLinks} />
+          </div>
+        ) : null}
+        {!split.visibleCampaigns.length && !split.directMissions.length ? null : null}
+      </div>
+    </section>
+  );
+}
+
+function UnlinkedMissions({
+  rows,
+  links,
+}: {
+  rows: Mission[];
+  links: Map<string, WorkMissionLink>;
+}) {
+  return (
+    <section className="rm-objective" aria-labelledby="objective-unlinked">
+      <div className="rm-objective-head">
+        <span className="rm-objective-index">UN</span>
+        <div><h2 id="objective-unlinked">Unlinked mission records</h2><p>No explicit Executive objective or campaign identity is published.</p></div>
+      </div>
+      <MissionRows rows={rows} links={links} />
+    </section>
+  );
+}
+
+export function WorkContent({ missions, hierarchy }: WorkData) {
   const { sourceMode } = useCommandCenter();
   const { t } = useLocale();
   const [params, setParams] = useSearchParams();
@@ -176,6 +334,96 @@ function WorkContent({ missions, hierarchy }: WorkData) {
     .map((mission) => mission.mission_id));
   const unlinkedMissions = hierarchy
     ? filtered.filter((mission) => !assignedMissionIds.has(mission.id))
+    : [];
+  // Owner-goal-first grouping (spec §2, §4, §10, §11): rank hierarchy goals
+  // with the Task 1 ranker and serve the top goal through the same
+  // active-guard + no-goal-fallthrough pattern as Overview (Task 2 precedent).
+  // Missions carry the durable created_from directive id on `owner` (see
+  // snapshotMapper.mapMissions), so the join is exact lineage, never titles.
+  // WorkGoal is projected to the selector shape here (interfaces carry no
+  // implicit index signature); activeness stays on the record's own
+  // active/status markers, read by the guard below — no second mechanism.
+  const standingGoals: OwnerStandingGoal[] = (hierarchy?.goals ?? []).map((goal) => ({
+    directive_id: goal.directive_id,
+    status: goal.status,
+    label: goal.label,
+    goal_id: goal.goal_id,
+  }));
+  const rankedGoals = rankOwnerGoals(standingGoals, missions, hierarchy);
+  const topRankedGoal = rankedGoals[0] ?? null;
+  // rankOwnerGoals sorts active-first but does not filter, so a non-empty all-inactive list still yields a [0]: serve it only when its own active/status markers read active, else fall through to the no-goal path.
+  const activeOwnerGoal = topRankedGoal && (topRankedGoal.active === 1 || topRankedGoal.active === true || topRankedGoal.active === "1" || topRankedGoal.active === "true" || (typeof topRankedGoal.active === "string" && topRankedGoal.active.toUpperCase() === "ACTIVE") || ((topRankedGoal.active === undefined || topRankedGoal.active === null) && typeof topRankedGoal.status === "string" && topRankedGoal.status.toUpperCase() === "ACTIVE")) ? topRankedGoal : null;
+  const activeGoalDirectiveId = ownerGoalDirectiveId(activeOwnerGoal);
+  // Exact-lineage children per ranked goal (unfiltered newest-first lineage;
+  // the status filter scopes the objective/campaign/mission lists below, not
+  // the served goal's own current/result/next/history card).
+  const goalChildrenByDirective = new Map<string, Mission[]>();
+  const allGoalChildIds = new Set<string>();
+  for (const goal of rankedGoals) {
+    const directiveId = ownerGoalDirectiveId(goal);
+    if (!directiveId || goalChildrenByDirective.has(directiveId)) continue;
+    const children = goalChildren(directiveId, missions, hierarchy);
+    goalChildrenByDirective.set(directiveId, children);
+    for (const child of children) allGoalChildIds.add(child.id);
+  }
+  const goalSections: GoalSection[] = [];
+  let goalObjectiveOrdinal = 0;
+  for (const goal of rankedGoals) {
+    const directiveId = ownerGoalDirectiveId(goal);
+    if (!directiveId) continue;
+    if (goalSections.some((section) => section.directiveId === directiveId)) continue;
+    const children = goalChildrenByDirective.get(directiveId) ?? [];
+    const goalId = hierarchyGoalId(goal);
+    const childIds = new Set(children.map((child) => child.id));
+    const matchedObjectives = objectives.filter((objective) =>
+      ((goalId && objective.goal_id === goalId) || objective.mission_ids.some((id) => childIds.has(id)))
+      && (!selectedObjective || objective.objective_id === selectedObjective)
+      && (!selectedCampaign || objective.campaign_ids.includes(selectedCampaign)),
+    );
+    const splits = matchedObjectives.map((objective) => ({
+      objective,
+      split: splitObjectiveMissions(objective, missionById, campaigns, filter, selectedCampaign),
+    }));
+    const renderedIds = new Set<string>();
+    for (const { split } of splits) {
+      for (const campaign of split.visibleCampaigns) {
+        for (const id of campaign.mission_ids) {
+          const linked = missionById.get(id);
+          if (linked && matches(linked, filter)) renderedIds.add(id);
+        }
+      }
+      for (const direct of split.directMissions) renderedIds.add(direct.id);
+    }
+    const orphans = children.filter((child) => matches(child, filter) && !renderedIds.has(child.id));
+    const current = currentChildForGoal(directiveId, missions, hierarchy);
+    const latestComplete = children.find((child) => child.status === "COMPLETE") ?? null;
+    const isServed = activeGoalDirectiveId !== "" && directiveId === activeGoalDirectiveId;
+    const hasContent = splits.some(({ split }) => split.visibleCampaigns.length > 0 || split.directMissions.length > 0)
+      || orphans.length > 0
+      || (isServed && children.length > 0);
+    if (!hasContent) continue;
+    const indexBase = goalObjectiveOrdinal;
+    goalObjectiveOrdinal += matchedObjectives.length;
+    goalSections.push({
+      goal,
+      directiveId,
+      goalId,
+      label: goalHeadingLabel(goal),
+      status: goalStatusText(goal),
+      isServed,
+      children,
+      current,
+      latestComplete,
+      splits,
+      orphans,
+      indexBase,
+    });
+  }
+  // No-goal fallthrough: without a served active goal section, the existing
+  // flat objective/campaign views render unchanged.
+  const goalMode = activeOwnerGoal !== null && goalSections.some((section) => section.isServed);
+  const goalUnlinked = hierarchy
+    ? filtered.filter((mission) => !assignedMissionIds.has(mission.id) && !allGoalChildIds.has(mission.id))
     : [];
   const filters: Array<{ key: WorkFilter; label: string }> = [
     { key: "active", label: t("work.filterActive") }, { key: "waiting", label: t("work.filterWaiting") },
@@ -237,76 +485,112 @@ function WorkContent({ missions, hierarchy }: WorkData) {
         ))}
       </div>
 
-      {visibleObjectives.length ? (
-        <div className="rm-objective-list">
-          {visibleObjectives.map((objective, objectiveIndex) => {
-            const objectiveMissions = objective.mission_ids
-              .map((missionId) => missionById.get(missionId))
-              .filter((mission): mission is Mission => Boolean(mission && matches(mission, filter)));
-            const objectiveCampaigns = objective.campaign_ids
-              .map((campaignId) => campaigns.get(campaignId))
-              .filter((campaign): campaign is WorkCampaign => Boolean(campaign))
-              .filter((campaign) => !selectedCampaign || campaign.campaign_id === selectedCampaign);
-            const campaignMissionIds = new Set(objectiveCampaigns.flatMap((campaign) => campaign.mission_ids));
-            const directMissions = objectiveMissions.filter((mission) => !campaignMissionIds.has(mission.id));
-            const visibleCampaigns = objectiveCampaigns.filter((campaign) =>
-              campaign.mission_ids.some((id) => { const m = missionById.get(id); return m && matches(m, filter); }),
-            );
-            if (!visibleCampaigns.length && !directMissions.length) return null;
-            const goal = objective.goal_id ? goals.get(objective.goal_id) : null;
-            const project = objective.project_id ? projects.get(objective.project_id) : null;
-            const next = new URLSearchParams(params);
-            next.set("status", "all");
-            next.set("objective", objective.objective_id);
-            next.delete("campaign");
+      {goalMode ? (
+        <div className="rm-goal-list">
+          {goalSections.map((section, sectionIndex) => {
+            const workerLine = section.current && section.current.agentsActive > 0
+              ? `${section.current.agentsActive} active worker${section.current.agentsActive === 1 ? "" : "s"} linked`
+              : "No active worker linked";
+            const outcome = section.latestComplete
+              && section.latestComplete.objective.trim()
+              && section.latestComplete.objective !== "UNKNOWN"
+              ? section.latestComplete.objective
+              : null;
+            const nextText = section.current
+              && section.current.nextAction.trim()
+              && section.current.nextAction !== "UNKNOWN"
+              ? section.current.nextAction
+              : "Next action not recorded";
             return (
-              <section key={objective.objective_id} className="rm-objective" aria-labelledby={`objective-${objectiveIndex}`}>
-                <div className="rm-objective-head">
-                  <span className="rm-objective-index">O{String(objectiveIndex + 1).padStart(2, "0")}</span>
+              <section key={section.directiveId} className="rm-goal" aria-labelledby={`goal-${sectionIndex}`}>
+                <div className="rm-goal-head">
                   <div>
-                    <h2 id={`objective-${objectiveIndex}`}>
-                      <Link to={{ pathname: "/work", search: next.toString() }}>{objective.label}</Link>
-                    </h2>
-                    <p className="tech-id">{objective.objective_id} · {objective.status}</p>
-                    {(goal || project) && (goal?.label || project?.label) ? (
-                      <div className="rm-objective-lineage">
-                        {goal?.label ? <span>Goal: {goal.label}</span> : null}
-                        {project?.label ? <span>Project: {project.label}</span> : null}
-                      </div>
-                    ) : null}
+                    <h2 id={`goal-${sectionIndex}`}>{section.label}</h2>
+                    <p className="tech-id">{section.directiveId} · {section.status}</p>
                   </div>
                 </div>
-                <div className="rm-objective-work">
-                  {visibleCampaigns.map((campaign) => (
-                    <CampaignBlock
-                      key={campaign.campaign_id}
-                      campaign={campaign}
-                      missions={campaign.mission_ids
-                        .map((missionId) => missionById.get(missionId))
-                        .filter((mission): mission is Mission => Boolean(mission && matches(mission, filter)))}
-                      links={missionLinks}
-                      params={params}
-                    />
-                  ))}
-                  {directMissions.length ? (
-                    <div className="rm-campaign-block">
-                      <div className="rm-campaign-head"><div><strong>Direct missions</strong><small>No campaign identity recorded</small></div><span>{directMissions.length} mission{directMissions.length === 1 ? "" : "s"}</span></div>
-                      <MissionRows rows={directMissions} links={missionLinks} />
+                {section.isServed && section.current ? (
+                  <div className="rm-goal-card" aria-label="Active goal summary">
+                    <div className="rm-goal-current">
+                      <span>Current</span>
+                      <strong>{section.current.title}</strong>
+                      <small>{statusLabel(section.current.status)}</small>
+                      <Link to={`/missions/${section.current.id}`}>Open current mission</Link>
                     </div>
-                  ) : null}
-                  {!visibleCampaigns.length && !directMissions.length ? null : null}
-                </div>
+                    <div className="rm-goal-workers">
+                      <span>Workers</span>
+                      <p>{workerLine}</p>
+                    </div>
+                    {section.latestComplete ? (
+                      <div className="rm-goal-latest">
+                        <span>Latest result</span>
+                        <Link to={`/missions/${section.latestComplete.id}`}>{section.latestComplete.title}</Link>
+                        {outcome ? <small>{outcome}</small> : null}
+                      </div>
+                    ) : null}
+                    <div className="rm-goal-next">
+                      <span>Next</span>
+                      <p>{nextText}</p>
+                    </div>
+                  </div>
+                ) : null}
+                {section.splits.map(({ objective, split }, splitIndex) => {
+                  if (!split.visibleCampaigns.length && !split.directMissions.length) return null;
+                  return (
+                    <ObjectiveBlock
+                      key={objective.objective_id}
+                      objective={objective}
+                      index={section.indexBase + splitIndex}
+                      split={split}
+                      missionById={missionById}
+                      goals={goals}
+                      projects={projects}
+                      missionLinks={missionLinks}
+                      params={params}
+                      filter={filter}
+                    />
+                  );
+                })}
+                {section.orphans.length ? (
+                  <div className="rm-campaign-block">
+                    <div className="rm-campaign-head"><div><strong>Direct missions</strong><small>No campaign identity recorded</small></div><span>{section.orphans.length} mission{section.orphans.length === 1 ? "" : "s"}</span></div>
+                    <MissionRows rows={section.orphans} links={missionLinks} />
+                  </div>
+                ) : null}
+                {section.isServed && section.children.length ? (
+                  <div className="rm-goal-history" aria-label="Child history">
+                    <MissionRows rows={section.children} links={missionLinks} />
+                  </div>
+                ) : null}
               </section>
             );
           })}
+          {goalUnlinked.length && !selectedObjective && !selectedCampaign ? (
+            <UnlinkedMissions rows={goalUnlinked} links={missionLinks} />
+          ) : null}
+        </div>
+      ) : visibleObjectives.length ? (
+        <div className="rm-objective-list">
+          {visibleObjectives.map((objective, objectiveIndex) => {
+            const split = splitObjectiveMissions(objective, missionById, campaigns, filter, selectedCampaign);
+            if (!split.visibleCampaigns.length && !split.directMissions.length) return null;
+            return (
+              <ObjectiveBlock
+                key={objective.objective_id}
+                objective={objective}
+                index={objectiveIndex}
+                split={split}
+                missionById={missionById}
+                goals={goals}
+                projects={projects}
+                missionLinks={missionLinks}
+                params={params}
+                filter={filter}
+              />
+            );
+          })}
           {unlinkedMissions.length && !selectedObjective && !selectedCampaign ? (
-            <section className="rm-objective" aria-labelledby="objective-unlinked">
-              <div className="rm-objective-head">
-                <span className="rm-objective-index">UN</span>
-                <div><h2 id="objective-unlinked">Unlinked mission records</h2><p>No explicit Executive objective or campaign identity is published.</p></div>
-              </div>
-              <MissionRows rows={unlinkedMissions} links={missionLinks} />
-            </section>
+            <UnlinkedMissions rows={unlinkedMissions} links={missionLinks} />
           ) : null}
         </div>
       ) : (
