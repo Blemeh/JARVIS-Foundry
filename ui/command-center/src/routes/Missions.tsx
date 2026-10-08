@@ -12,6 +12,8 @@ import { Tooltip } from "../components/Tooltip";
 import { ContextChip } from "../components/EntityRefLink";
 import { useRouteQuery } from "../hooks/useRouteQuery";
 import { formatArchivedMissionLabel } from "../lib/routeResilience";
+import type { Mission } from "../lib/contracts";
+import { isHistoricalMission, missionDirectiveId, missionUpdatedAt } from "../lib/ownerWork";
 import { sourceCopy, sourceModeLabel } from "../lib/sourceMode";
 import { useLocale } from "../i18n/LocaleContext";
 
@@ -27,16 +29,69 @@ const statusParam: Record<string, Filter> = {
   blocked: "BLOCKED",
 };
 
-const priorityRank: Record<string, number> = {
-  CRITICAL: 0,
-  HIGH: 1,
-  ELEVATED: 2,
-  NORMAL: 3,
-  LOW: 4,
-};
+const EXECUTING_MISSION_STATUSES = new Set(["ACTIVE", "IN_PROGRESS", "INTERVENTION"]);
 
-export function Missions() {
-  const { client, version, mode, mutationsEnabled, sourceMode } = useCommandCenter();
+/**
+ * Historical flags for the Missions list (Task 5 fallback linkage).
+ *
+ * This route loads only `listMissions`: no owner-surface, decision-queue, or
+ * work-hierarchy probes are added here by design, so active-goal ids are
+ * unavailable. Sibling rows with live state (executing or COMPLETE) lend
+ * their directive lineages as the active-goal set, and the terminal-state +
+ * CI-marker rules delegate to Task 1 `isHistoricalMission`. A
+ * hierarchy-only link (no `created_from`/owner lineage match) still reads
+ * historical here; that limitation is recorded in the task report.
+ */
+export function historicalMissionsRowFlags(missions: readonly Mission[]): Map<string, boolean> {
+  const liveLineages = new Set<string>();
+  for (const mission of missions) {
+    if (EXECUTING_MISSION_STATUSES.has(mission.status) || mission.status === "COMPLETE") {
+      const lineage = missionDirectiveId(mission);
+      if (lineage) liveLineages.add(lineage);
+    }
+  }
+  const activeGoalIds = [...liveLineages];
+  return new Map(missions.map((mission) => [mission.id, isHistoricalMission(mission, activeGoalIds, [])]));
+}
+
+/**
+ * Owner-priority band for the default (sort=priority) order: executing (0) →
+ * attention (1) → recent completed (2) → other parked states (3) →
+ * historical last (4). Historical rows never change status; the band only
+ * orders them last so current work wins.
+ */
+export function missionOwnerBand(mission: Mission, historical: boolean): number {
+  if (historical) return 4;
+  if (EXECUTING_MISSION_STATUSES.has(mission.status)) return 0;
+  if (mission.status === "BLOCKED" || mission.status === "HALTED") return 1;
+  if (mission.status === "COMPLETE") return 2;
+  return 3;
+}
+
+function missionRecencyValue(mission: Mission): number {
+  const parsed = Date.parse(missionUpdatedAt(mission));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * Default-sort comparator: owner-priority band first, then `updated_at`
+ * (`startedAt` fallback) DESC, then id for determinism. Explicit
+ * sort=title/status comparators are untouched.
+ */
+export function compareMissionsByOwnerPriority(
+  a: Mission,
+  b: Mission,
+  historicalOf: (mission: Mission) => boolean,
+): number {
+  const band = missionOwnerBand(a, historicalOf(a)) - missionOwnerBand(b, historicalOf(b));
+  if (band !== 0) return band;
+  const recency = missionRecencyValue(b) - missionRecencyValue(a);
+  if (recency !== 0) return recency;
+  return a.id.localeCompare(b.id);
+}
+
+export function MissionsContent({ missions, onReload }: { missions: Mission[]; onReload?: () => void }) {
+  const { client, mode, mutationsEnabled, sourceMode } = useCommandCenter();
   const { t } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFromUrl = statusParam[searchParams.get("status") ?? ""] ?? "ALL";
@@ -51,13 +106,9 @@ export function Missions() {
   const live = mode === "live";
   const activeFilter = searchParams.get("status") ? statusFromUrl : filter;
 
-  const missionsQuery = useRouteQuery(
-    () => client.listMissions(),
-    [client, version],
-  );
+  const historicalFlags = useMemo(() => historicalMissionsRowFlags(missions), [missions]);
 
   const filtered = useMemo(() => {
-    const missions = missionsQuery.data ?? [];
     const candidateFilter = searchParams.get("candidate")?.toLowerCase();
     const q = query.trim().toLowerCase();
     let rows = missions;
@@ -87,9 +138,9 @@ export function Missions() {
     return [...rows].sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
       if (sort === "status") return a.status.localeCompare(b.status);
-      return (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
+      return compareMissionsByOwnerPriority(a, b, (mission) => historicalFlags.get(mission.id) ?? false);
     });
-  }, [missionsQuery.data, activeFilter, searchParams, query, sort]);
+  }, [missions, historicalFlags, activeFilter, searchParams, query, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -105,7 +156,7 @@ export function Missions() {
       if (result.accepted) {
         setSubmitted(true);
         setSubmitError(null);
-        missionsQuery.reload();
+        onReload?.();
       } else {
         setSubmitError(result.error ?? "owner goal rejected");
       }
@@ -114,26 +165,18 @@ export function Missions() {
     setSubmitted(true);
   };
 
-  return (
-    <RouteQueryGate
-      query={missionsQuery}
-      loadingLabel="Loading missions"
-      errorLabel="Missions unavailable"
-      surface="Mission vectors"
-    >
-      {(missions) => {
-        const archivedCount = missions.filter((m) => m.status === "COMPLETE").length;
-        const filters: { key: Filter; label: string }[] = [
-          { key: "ALL", label: "All" },
-          { key: "ACTIVE", label: `Active (${missions.filter((m) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(m.status)).length})` },
-          { key: "STANDBY", label: `Standby (${missions.filter((m) => m.status === "STANDBY").length})` },
-          { key: "BLOCKED", label: `Blocked (${missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length})` },
-          { key: "ARCHIVED", label: formatArchivedMissionLabel(archivedCount) },
-        ];
-        const statusValue = searchParams.get("status");
-        const candidateValue = searchParams.get("candidate");
+  const archivedCount = missions.filter((m) => m.status === "COMPLETE").length;
+  const filters: { key: Filter; label: string }[] = [
+    { key: "ALL", label: "All" },
+    { key: "ACTIVE", label: `Active (${missions.filter((m) => ["ACTIVE", "IN_PROGRESS", "INTERVENTION"].includes(m.status)).length})` },
+    { key: "STANDBY", label: `Standby (${missions.filter((m) => m.status === "STANDBY").length})` },
+    { key: "BLOCKED", label: `Blocked (${missions.filter((m) => m.status === "BLOCKED" || m.status === "HALTED").length})` },
+    { key: "ARCHIVED", label: formatArchivedMissionLabel(archivedCount) },
+  ];
+  const statusValue = searchParams.get("status");
+  const candidateValue = searchParams.get("candidate");
 
-        return (
+  return (
     <div className="shell-content cinematic-surface">
       <SectionHeader
         kicker="Mission Vectors"
@@ -312,6 +355,7 @@ export function Missions() {
                   <span className="t-mono mission-card-code">{m.code}</span>
                   <h2 className="mission-card-title">{m.title}</h2>
                 </div>
+                {historicalFlags.get(m.id) ? <span className="badge badge-muted">Historical</span> : null}
                 <StatusBadge status={m.status} pulse={m.status === "ACTIVE"} />
               </div>
               <div className="mission-card-stats">
@@ -446,8 +490,24 @@ export function Missions() {
         )}
       </Dialog>
     </div>
-        );
-      }}
+  );
+}
+
+export function Missions() {
+  const { client, version } = useCommandCenter();
+  const missionsQuery = useRouteQuery(
+    () => client.listMissions(),
+    [client, version],
+  );
+
+  return (
+    <RouteQueryGate
+      query={missionsQuery}
+      loadingLabel="Loading missions"
+      errorLabel="Missions unavailable"
+      surface="Mission vectors"
+    >
+      {(missions) => <MissionsContent missions={missions} onReload={missionsQuery.reload} />}
     </RouteQueryGate>
   );
 }
