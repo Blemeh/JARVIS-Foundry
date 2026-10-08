@@ -389,8 +389,8 @@ export function MissionsContent({ missions, onReload }: { missions: Mission[]; o
                   <span className="t-mono mission-card-code">{m.code}</span>
                   <h2 className="mission-card-title">{m.title}</h2>
                 </div>
-                {historicalFlags.get(m.id) ? <span className="badge badge-muted">Historical</span> : null}
                 <StatusBadge status={m.status} pulse={m.status === "ACTIVE"} />
+                {historicalFlags.get(m.id) ? <span className="badge badge-muted">Historical</span> : null}
               </div>
               <div className="mission-card-stats">
                 <div className="mission-card-stat">

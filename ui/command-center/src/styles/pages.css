@@ -686,115 +686,11 @@
   flex: none;
 }
 
-.md-pipeline {
-  padding: 18px 20px 20px;
-  margin-bottom: var(--gutter);
-}
-
-.md-pipeline-title {
-  margin-bottom: 20px;
-}
-
-.md-stages {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.md-track {
-  position: absolute;
-  top: 19px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--line);
-}
-
-.md-track-fill {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
-}
-
-.md-stage {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-width: 108px;
-  text-align: center;
-}
-
-.md-stage-dot {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--surface-1);
-  border: 1px solid var(--line-strong);
-  color: var(--text-muted);
-}
-
-.md-stage-complete .md-stage-dot {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.md-stage-active .md-stage-dot {
-  border: 2px solid var(--accent);
-  color: var(--accent);
-  background: rgba(34, 211, 238, 0.08);
-  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.35);
-  animation: lamp-pulse 2.4s var(--ease-out) infinite;
-}
-
-.md-stage-active .md-stage-label {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.md-stage-pending {
-  opacity: 0.5;
-}
-
-.md-stage-label {
-  font-size: 10px;
-  color: var(--text-primary);
-}
-
-.md-stage-detail {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.md-stage .ref-row {
-  width: 100%;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.md-stage .ref-link {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.md-stage-ref-count,
-.md-stage-events {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 9px;
-}
+/* NOTE (Task 8, owner-experience rescue): the wide horizontal md-pipeline /
+   md-stages prose strip was replaced by the compact Goal → Plan → Build →
+   Verify → Outcome tracker (see product.css `.md-compact-tracker`, spec §5).
+   The orphaned pipeline rules were removed here so no dead multi-column
+   strip can reintroduce horizontal scroll. Do not re-add them. */
 
 .md-grid {
   display: grid;
@@ -2506,9 +2402,7 @@
     grid-column: span 2;
   }
 
-  .md-stages {
-    justify-content: flex-start;
-  }
+  /* NOTE (Task 8): orphaned .md-stages rule removed with the pipeline strip. */
 
   .md-head,
   .page-head,
