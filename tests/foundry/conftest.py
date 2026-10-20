@@ -29,6 +29,12 @@ _path_entries = [str(SRC)] + [
     if entry and Path(entry).resolve() != SRC.resolve()
 ]
 os.environ["PYTHONPATH"] = os.pathsep.join(_path_entries)
+# Tests that probe "not a repository" / nested-root behaviour build their temp dirs
+# under pytest's basetemp. If that ever lands inside this checkout (for example
+# when the system temp dir is unwritable and Python falls back to the cwd), git
+# discovery would walk up into this repo and invert those assertions. Ceiling
+# discovery at the checkout root so disposable dirs are never inside it.
+os.environ.setdefault("GIT_CEILING_DIRECTORIES", str(ROOT))
 try:
     from jarvis_foundry.platform.windows_subprocess import sanitized_env
     _fixed = sanitized_env()
