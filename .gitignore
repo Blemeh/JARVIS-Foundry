@@ -89,3 +89,8 @@ evidence/release/overnight/
 
 # Disposable V10-A golden-journey evidence stays outside the source history.
 evidence-v10-a-golden-journey-1*.json
+
+# test scratch + editor state
+/pytest-of-*/
+/tmp*/
+.cursor/

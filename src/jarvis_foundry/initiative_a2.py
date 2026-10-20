@@ -1178,8 +1178,9 @@ def run_continuous_observation_cycle(
     sources = _with_default_vault_source(
         database, sources, source_limit=policy.source_limit,
     )
-    if len(sources) > policy.source_limit:
-        raise ValueError("configured source count exceeds observation bound")
+    # No total-count ceiling here: `source_limit` bounds how many monitors are
+    # polled per cycle (`due_monitors(limit=...)`), so more configured sources
+    # than that rotate across cycles instead of failing the whole cycle.
 
     # A non-empty source list is the complete desired configuration. Empty is
     # a restart path: continue from durable configuration without requiring

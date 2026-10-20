@@ -1480,8 +1480,28 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _freeze_executive_clock() -> None:
+    """Pin candidate-expiry scoring to the proof's fixed ``NOW``.
+
+    The proof records evidence at a fixed instant, but candidate expiry is
+    judged against the wall clock; once real time passed the candidate TTL the
+    Executive correctly refused the proof's candidates as STALE.  Freezing the
+    scoring clock keeps the proof deterministic (same technique as the
+    deterministic-clock tests).
+    """
+    from jarvis_foundry.executive import scoring
+
+    class _FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW if tz is not None else NOW.replace(tzinfo=None)
+
+    scoring.datetime = _FrozenDateTime
+
+
 def main() -> int:
     args = _parse_args()
+    _freeze_executive_clock()
     proof = build_proof(args.repo_root)
     rendered = json.dumps(proof, indent=2, sort_keys=True) + "\n"
     if args.output is not None:

@@ -25,6 +25,7 @@ from jarvis_foundry.initiative_a2 import (
     run_continuous_observation_cycle,
 )
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.runtime.provider_config import ProviderSettings
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
 
@@ -432,9 +433,17 @@ def test_existing_worker_choke_point_and_flag_exclusion(tmp_path) -> None:
     home = tmp_path / "home"
     database = FoundryDatabase(home / "foundry.db")
     database.initialize()
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
     config = WorkerRuntimeConfig(
         enabled=True,
         continuous_observation_enabled=True,
+        hermes={"allow_data_training_tiers_noninteractive": True},
+        provider_settings=settings,
+        provider_settings_pool=(settings,),
         continuous_observation={
             "enabled": True,
             "sources": [{
@@ -453,7 +462,14 @@ def test_existing_worker_choke_point_and_flag_exclusion(tmp_path) -> None:
         loop_id="continuous-worker", instance_id="continuous-supervisor",
     )
     assert result["outcome"] == "WAITING"
-    assert database.count("initiative_cycles") == 0
+    # Fabric re-evaluation (1896b5f5) legitimately records its own cycle; a
+    # disabled source must create no observation cycle.
+    with database.connect(readonly=True) as connection:
+        observation_cycles = connection.execute(
+            "SELECT COUNT(*) FROM initiative_cycles "
+            "WHERE cycle_id NOT LIKE 'fabric-reevaluation-%'"
+        ).fetchone()[0]
+    assert observation_cycles == 0
     with database.connect(readonly=True) as connection:
         assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 0
     row = configured_monitors(database)[0]
@@ -463,4 +479,6 @@ def test_existing_worker_choke_point_and_flag_exclusion(tmp_path) -> None:
         WorkerRuntimeConfig(
             continuous_observation_enabled=True,
             executive_autonomy_enabled=True,
+            provider_settings=settings,
+            provider_settings_pool=(settings,),
         ).validate()

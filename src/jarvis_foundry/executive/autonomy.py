@@ -2659,7 +2659,17 @@ def _active_objective_wakes(
         # Executive gets another selection opportunity. It is not evidence of
         # an unresolved dependency and cannot justify parking a blocked goal.
         and not str(wake.get("wake_id") or "").startswith("next-action:")
+        # Campaign-child waits (`wake:{objective}:campaign:{id}:child:{child}:...`)
+        # are owned by the campaign authority and release only that child. They
+        # must not park the whole objective, or a ready sibling child could
+        # never be materialized while a dependent child waits on it.
+        and not _is_campaign_child_wake(str(wake.get("wake_id") or ""))
     )
+
+
+def _is_campaign_child_wake(wake_id: str) -> bool:
+    """True for wakes the campaign authority scopes to a single child."""
+    return ":campaign:" in wake_id and ":child:" in wake_id
 
 
 def _owner_resolution_wake(
