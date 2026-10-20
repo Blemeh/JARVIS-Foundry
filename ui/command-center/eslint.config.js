@@ -24,7 +24,16 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/context/**"],
+    // Providers and views that co-locate small helpers/hooks with their component.
+    // The rule only affects dev-time fast refresh (not correctness), so keep it off
+    // for these rather than splitting tightly-coupled helpers into new files.
+    files: [
+      "src/context/**",
+      "src/i18n/**",
+      "src/components/TopStatusBar.tsx",
+      "src/routes/MissionDetail.tsx",
+      "src/routes/Missions.tsx",
+    ],
     rules: {
       "react-refresh/only-export-components": "off",
     },
