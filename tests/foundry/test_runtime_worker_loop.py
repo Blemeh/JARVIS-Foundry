@@ -57,6 +57,7 @@ def test_config_roundtrip(tmp_path):
     path.write_text(
         "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
         "model: deepseek-v4-flash\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n"
         "verification:\n  max_repairs: 3\n"
         "role_signals:\n  builder:\n    bounded: true\n",
         encoding="utf-8")
@@ -71,6 +72,7 @@ def test_campaign_runtime_config_is_explicit_and_observation_incompatible(tmp_pa
     path.write_text(
         "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
         "model: deepseek-v4-flash\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n"
         "campaign_runtime:\n  enabled: true\n"
         "  resource_capacity:\n    shared-repository: 1\n",
         encoding="utf-8",
@@ -82,6 +84,7 @@ def test_campaign_runtime_config_is_explicit_and_observation_incompatible(tmp_pa
     observation.write_text(
         "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
         "model: deepseek-v4-flash\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n"
         "campaign_runtime:\n  enabled: true\n"
         "continuous_observation:\n  enabled: true\n",
         encoding="utf-8",
