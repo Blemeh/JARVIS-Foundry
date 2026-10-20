@@ -213,7 +213,7 @@ def test_world_signal_to_executive_mission_fabric_effect_and_truthful_projection
     false = execute_action(
         db,
         ctx,
-        type("Intent", (), {"task_id": "v9-false", "required_actions": ("file.write",), "preferred": None, "unattended": False})(),
+        type("Intent", (), {"task_id": "v9-false", "required_actions": ("file.write",), "preferred": None, "unattended": False, "resource_id": None, "resource_capability": None})(),
         "file.write",
         {"target": "missing-by-claim.txt", "content": "never written"},
         claim_override={"claimed": "COMPLETED", "target": "missing-by-claim.txt", "content_hash": "wrong"},
@@ -372,6 +372,11 @@ def test_terminal_mission_updates_world_then_executive_and_replans_without_dupli
 
     observed = observe_mission_outcome(db, mission_id)
     assert observed["status"] in {"FAILED", "BLOCKED"}
+    # Production (worker_loop) makes a fresh goal-level decision immediately
+    # after reconciling the terminal outcome; mirror that sequence.
+    from jarvis_foundry.executive.autonomy import decide_continuation
+
+    decide_continuation(db, objective.objective_id)
     continuation = rebuild_executive_state(db).continuations[objective.objective_id]
     assert continuation.action in {"RETRY", "ESCALATE", "WAIT"}
     if continuation.action == "RETRY":
