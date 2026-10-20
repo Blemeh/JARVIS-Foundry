@@ -388,6 +388,7 @@ def test_new_project_speculative_work_is_judged_not_forced(tmp_path: Path) -> No
 def test_empty_a3_sources_bind_registered_projects(tmp_path: Path, monkeypatch) -> None:
     from jarvis_foundry.paths import FoundryPaths
     from jarvis_foundry.runtime.config import WorkerRuntimeConfig
+    from jarvis_foundry.runtime.provider_config import default_provider_settings
     from jarvis_foundry.runtime.worker_loop import run_cycle
 
     database, _alpha, _beta = _two_projects(tmp_path)
@@ -401,9 +402,13 @@ def test_empty_a3_sources_bind_registered_projects(tmp_path: Path, monkeypatch) 
         "jarvis_foundry.initiative_a2.run_continuous_observation_cycle",
         fake_observe,
     )
+    settings = default_provider_settings()
     config = WorkerRuntimeConfig(
         enabled=True,
         status="ACTIVE",
+        hermes={"allow_data_training_tiers_noninteractive": True},
+        provider_settings=settings,
+        provider_settings_pool=(settings,),
         lab_scripted_hermes=True,
         runtime_state_root=str(tmp_path / "runtime"),
         initiative_a3_enabled=True,

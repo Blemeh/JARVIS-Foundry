@@ -88,9 +88,9 @@ def test_5_result_envelope_identity_accuracy():
     from jarvis_foundry.workers.adapters.openhands import OpenHandsWorkerAdapter
     envelope = ResultEnvelope.from_contract(
         bounded_contract(Path(".")), framework="openhands",
-        provider_actual="opencode_go", model_actual="muse-spark-1.2-contributor")
+        provider_actual="opencode_go", model_actual="muse-spark-1.3-contributor")
     assert envelope.provider_actual == envelope.provider_requested == "opencode_go"
-    assert envelope.model_actual == envelope.model_requested == "muse-spark-1.2-contributor"
+    assert envelope.model_actual == envelope.model_requested == "muse-spark-1.3-contributor"
 
 
 def test_6_unsupported_telemetry_prevention():

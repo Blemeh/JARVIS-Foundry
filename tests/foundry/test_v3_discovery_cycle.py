@@ -93,13 +93,15 @@ def test_flag_defaults_off_and_config_roundtrip(tmp_path):
     yaml_path = tmp_path / "worker.yaml"
     yaml_path.write_text(
         "enabled: true\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n"
         "discovery:\n"
         "  cycle_enabled: true\n",
         encoding="utf-8")
     parsed = WorkerRuntimeConfig.from_yaml(yaml_path)
     assert parsed.discovery_cycle_enabled is True
     default_yaml = tmp_path / "default.yaml"
-    default_yaml.write_text("enabled: true\n", encoding="utf-8")
+    default_yaml.write_text(
+        "enabled: true\nhermes:\n  allow_data_training_tiers_noninteractive: true\n", encoding="utf-8")
     assert WorkerRuntimeConfig.from_yaml(default_yaml).discovery_cycle_enabled is False
 
 

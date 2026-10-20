@@ -47,7 +47,7 @@ def run(output: Path) -> dict:
             source_type="supervisor",
             source_id="v8-proof",
             provider_id="opencode_go",
-            model_id="muse-spark-1.2-contributor",
+            model_id="muse-spark-1.3-contributor",
             permissions=["candidate.read"],
             context={"scope": "disposable"},
             tool_support=["shell"],
@@ -72,7 +72,7 @@ def run(output: Path) -> dict:
                 "provider.health_sample",
                 {
                     "provider_id": "opencode_go",
-                    "model": "muse-spark-1.2-contributor",
+                    "model": "muse-spark-1.3-contributor",
                     "status": "DEGRADED",
                     "urgency": 0.62,
                     "evidence_refs": [f"provider-probe-{index}"],
@@ -142,7 +142,7 @@ def run(output: Path) -> dict:
             "provider.health_sample",
             {
                 "provider_id": "opencode_go",
-                "model": "muse-spark-1.2-contributor",
+                "model": "muse-spark-1.3-contributor",
                 "status": "HEALTHY",
                 "evidence_refs": ["provider-recovery"],
             },
