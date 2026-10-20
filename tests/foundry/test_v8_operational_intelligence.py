@@ -68,7 +68,7 @@ def test_capability_observation_is_authoritative_bounded_and_idempotent(
         source_type="supervisor",
         source_id="v8-test",
         provider_id="opencode_go",
-        model_id="muse-spark-1.2-contributor",
+        model_id="muse-spark-1.3-contributor",
         permissions=["workspace.read"],
         context={"scope": "candidate"},
         tool_support=["shell"],
@@ -245,7 +245,7 @@ def test_provider_and_command_center_surfaces_are_truthful_and_stop_is_non_autho
     _event(
         db,
         "provider.health_sample",
-        {"provider_id": "opencode_go", "model": "muse-spark-1.2-contributor", "status": "UNKNOWN"},
+        {"provider_id": "opencode_go", "model": "muse-spark-1.3-contributor", "status": "UNKNOWN"},
         "provider-unknown",
     )
     projection = project_operational_intelligence(db)
