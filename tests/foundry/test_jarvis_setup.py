@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+from jarvis_foundry.roles.adapter import ProviderFailure
 
 from jarvis_foundry.cli import main as cli_main
 from jarvis_foundry.cli.hermes_probe import (
