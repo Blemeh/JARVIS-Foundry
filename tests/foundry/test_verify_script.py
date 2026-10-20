@@ -53,6 +53,7 @@ def test_hermetic_env_never_exposes_the_live_machine(verify, tmp_path, monkeypat
     assert Path(env["LOCALAPPDATA"]).is_dir()
     assert env["TEMP"] == env["TMP"] == str(tmp_path)
     assert "OBSIDIAN_VAULT" not in env and "JARVIS_INSTALL_ROOT" not in env
+    assert env["HERMES_HOME"].startswith(str(tmp_path)) and Path(env["HERMES_HOME"]).is_dir()
     assert env["GIT_CEILING_DIRECTORIES"] == str(ROOT)
 
 
@@ -71,3 +72,17 @@ def test_scratch_root_is_writable_and_outside_nothing_it_should_not_be(verify) -
             import shutil
 
             shutil.rmtree(scratch, ignore_errors=True)
+
+
+def test_suite_cannot_touch_the_owner_windows_environment_or_hermes_profile() -> None:
+    """Guards from tests/foundry/conftest.py are active for every test."""
+    import os
+
+    winreg = pytest.importorskip("winreg")
+    with pytest.raises(AssertionError, match="registry"):
+        winreg.SetValueEx(None, "Path", 0, winreg.REG_SZ, "x")
+    from jarvis_foundry.deployment.path_setup import ensure_jarvis_bin_on_path
+
+    assert ensure_jarvis_bin_on_path() is False
+    assert "pytest" in os.environ["HERMES_HOME"].lower() or "hermes-home" in os.environ["HERMES_HOME"].lower()
+    assert os.environ["LOCALAPPDATA"] != os.path.expandvars(r"%USERPROFILE%\AppData\Local")

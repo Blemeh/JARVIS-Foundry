@@ -589,7 +589,7 @@ def test_validate_configuration_structure_requires_model():
     assert "model" in reason
 
 
-def test_zen_dispatch_clears_stale_go_env(tmp_path, monkeypatch):
+def test_zen_dispatch_is_refused_and_never_receives_a_stale_go_key(tmp_path, monkeypatch):
     settings = _settings(
         provider="opencode_zen",
         model="x-preview-f-free",
@@ -618,15 +618,19 @@ def test_zen_dispatch_clears_stale_go_env(tmp_path, monkeypatch):
         "jarvis_foundry.workers.adapters.hermes.run_subprocess_with_heartbeat",
         fake_run,
     )
-    adapter.dispatch(
-        WorkerStepContract(
-            run_id="r", mission_id="m", step_id="s", attempt=1,
-            role="builder", objective="o", instructions="i",
-            working_root=tmp_path, model=settings.model,
-        ),
-        heartbeat=lambda: None,
-    )
-    assert "OPENCODE_GO_API_KEY" not in captured
+    # Owner policy: only the exact OpenCode Go model may be dispatched (no
+    # pay-as-you-go Zen route), so a Zen dispatch is refused before any
+    # subprocess exists and the stale Go key can never reach it.
+    with pytest.raises(ProviderFailure, match="owner-authorized OpenCode Go"):
+        adapter.dispatch(
+            WorkerStepContract(
+                run_id="r", mission_id="m", step_id="s", attempt=1,
+                role="builder", objective="o", instructions="i",
+                working_root=tmp_path, model=settings.model,
+            ),
+            heartbeat=lambda: None,
+        )
+    assert captured == {}
 
 
 def test_provider_registry_metadata():

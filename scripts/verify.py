@@ -111,8 +111,11 @@ def hermetic_env(scratch: Path) -> dict[str, str]:
     env = dict(os.environ)
     local = scratch / "local-app-data"
     local.mkdir(parents=True, exist_ok=True)
+    hermes = scratch / "hermes-home"
+    hermes.mkdir(parents=True, exist_ok=True)
     env.update(
         LOCALAPPDATA=str(local),  # never read the live install / Foundry home
+        HERMES_HOME=str(hermes),  # overrides LOCALAPPDATA for the live Hermes profile
         TEMP=str(scratch),
         TMP=str(scratch),
         TMPDIR=str(scratch),

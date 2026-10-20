@@ -44,6 +44,30 @@ except Exception:
     pass
 
 
+@pytest.fixture(autouse=True)
+def _tests_never_touch_the_user_environment(monkeypatch):
+    """No test may edit the owner's Windows environment.
+
+    ``jarvis setup`` bootstraps the global CLI, which prepends the install bin
+    dir to the *user* PATH in the registry.  A test that reaches it would
+    permanently alter the machine it runs on, so the PATH writer is a no-op
+    here and any direct registry value write fails loudly.  Tests that
+    exercise launcher files patch their own ``LOCALAPPDATA``.
+    """
+    try:
+        import winreg
+    except ImportError:  # non-Windows host: nothing to protect
+        return
+
+    def _refuse(*_args, **_kwargs):
+        raise AssertionError("tests must not write the Windows registry")
+
+    monkeypatch.setattr(winreg, "SetValueEx", _refuse)
+    monkeypatch.setattr(
+        "jarvis_foundry.deployment.path_setup.ensure_jarvis_bin_on_path",
+        lambda root=None: False,
+    )
+
 @pytest.fixture(scope="session", autouse=True)
 def _hermetic_local_app_data(tmp_path_factory):
     """Keep the suite independent of the machine it runs on.
@@ -56,11 +80,15 @@ def _hermetic_local_app_data(tmp_path_factory):
     ``LOCALAPPDATA`` / ``JARVIS_INSTALL_ROOT`` themselves.
     """
     previous = os.environ.get("LOCALAPPDATA")
-    vault_env = {k: os.environ.pop(k, None) for k in ("OBSIDIAN_VAULT", "JARVIS_OBSIDIAN_VAULT")}
+    # HERMES_HOME overrides LOCALAPPDATA when resolving the live Hermes profile,
+    # so it must be redirected too or provider/setup tests write the real .env.
+    vault_env = {k: os.environ.pop(k, None) for k in ("OBSIDIAN_VAULT", "JARVIS_OBSIDIAN_VAULT", "HERMES_HOME", "JARVIS_INSTALL_ROOT")}
     os.environ["LOCALAPPDATA"] = str(tmp_path_factory.mktemp("local-app-data"))
+    os.environ["HERMES_HOME"] = str(tmp_path_factory.mktemp("hermes-home"))
     try:
         yield
     finally:
+        os.environ.pop("HERMES_HOME", None)
         for key, value in vault_env.items():
             if value is not None:
                 os.environ[key] = value
