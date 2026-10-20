@@ -1,0 +1,11 @@
+{
+  "campaign_continuity": true,
+  "provider_stop": true,
+  "command_center": true,
+  "head": "4e7b8c969342e94e02331b5e3cf3c122fa431f7f"
+}
+{
+  "head": "4e7b8c969342e94e02331b5e3cf3c122fa431f7f",
+  "handoff": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\HANDOFF.json",
+  "contract": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\INTEGRATION_CONTRACT.json"
+}

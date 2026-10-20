@@ -31,6 +31,8 @@ def execute_for_spine(
     attempt: int = 1,
     result_scope: str | None = None,
     route_owner: str | None = None,
+    resource_id: str | None = None,
+    resource_capability: str | None = None,
 ) -> dict[str, Any]:
     """Run one fabric action and journal an evidence receipt for the spine."""
     seed_builtins(database)
@@ -38,6 +40,8 @@ def execute_for_spine(
         task_id=mission_id,
         required_actions=(action_kind,),
         unattended=True,
+        resource_id=resource_id,
+        resource_capability=resource_capability,
     )
     result = execute_action(
         database,

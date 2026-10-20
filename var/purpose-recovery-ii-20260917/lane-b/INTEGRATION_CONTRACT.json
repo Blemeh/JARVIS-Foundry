@@ -1,0 +1,166 @@
+{
+  "lane": "B",
+  "branch": "candidate/purpose-recovery-ii-b-runtime-operations-20260917",
+  "base": "ddec34efc96b9a0154eb9821d6cc496ef76906a3",
+  "head": "4e7b8c969342e94e02331b5e3cf3c122fa431f7f",
+  "worktree": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917",
+  "live_boundary": "SOURCE_CANDIDATE_ONLY_LIVE_NOT_TOUCHED",
+  "merged_main": false,
+  "pushed": false,
+  "promoted": false,
+  "mission_intent_contract": {
+    "contract_version": "jarvis.purpose-recovery-ii-b.mission-intent.v1",
+    "carrier": "objective.metadata['intent'] -> portfolio work item metadata['intent']",
+    "fields": {
+      "objective": "high-level intent text (owner or upstream lane)",
+      "needs": "tuple of normalized need ids (see need_vocabulary)",
+      "inputs": "role-keyed supplied facts (see input_role_vocabulary)",
+      "success_criteria": "tuple of strings (carried into contract verification criteria)",
+      "constraints": "tuple of strings",
+      "unattended": "bool",
+      "evidence_refs": "tuple of durable evidence references",
+      "objective_id": "owning objective lineage",
+      "source": "producer tag"
+    },
+    "need_vocabulary": [
+      "web.research_read",
+      "web.authenticated_interaction",
+      "artifact.create_update",
+      "native.document_verify",
+      "desktop.app_operate",
+      "spreadsheet.document_edit",
+      "document.compose",
+      "spreadsheet.compose",
+      "repository.preserve",
+      "repository.publish",
+      "repository.inspect",
+      "artifact.stage_to_repository",
+      "note.bounded_write",
+      "compute.file_hash",
+      "reads.file_read",
+      "writes.file_write",
+      "system.diagnose"
+    ],
+    "input_role_vocabulary": [
+      "authenticated_source_url",
+      "browser_site_origin",
+      "browser_session_state_path",
+      "profile_id",
+      "owner_scope",
+      "credential_reference",
+      "allowed_hosts",
+      "allow_insecure_localhost",
+      "auth_marker_role",
+      "auth_marker_name",
+      "artifact_target_relative_path",
+      "artifact_title",
+      "native_process_id",
+      "native_application",
+      "owned_repository_root",
+      "repository_remote",
+      "repository_branch",
+      "commit_message",
+      "file_to_hash",
+      "file_target",
+      "file_content"
+    ],
+    "resolution_contract": {
+      "contract_version": "jarvis.purpose-recovery-ii-b.mission-resolution.v1",
+      "kinds": [
+        "WORKFLOW",
+        "ACTIONS",
+        "GAP",
+        "BLOCKED"
+      ],
+      "workflow": "{recipe_id, recipe_version, params} bound through declared recipe bind roles",
+      "actions": "ordered [{need, action_kind, capability_id, payload}]",
+      "gap": "durable fabric.gap.recorded record with needed_action + intent lineage",
+      "blocked": "missing supplied roles, listed exactly"
+    }
+  },
+  "capability_resolution_contract": {
+    "authority": "existing Fabric catalog + recipe registry (no second registry)",
+    "recipe_declarations_added": [
+      "Recipe.needs (normalized need ids the recipe satisfies)",
+      "RecipeParameter.bind (input role bound into that parameter)"
+    ],
+    "readiness": "Fabric catalog spec presence + observed readiness; the verified capability is then bound to the mission resource through the canonical capability.state_changed event",
+    "determinism": "candidate set = recipes whose declared needs cover the intent; rank = smallest extra-need footprint, then recipe id"
+  },
+  "verification_contract": {
+    "contract_version": "jarvis.purpose-recovery-ii-b.can-v2",
+    "rule": "A deterministic effect the runtime can re-derive is certified by the runtime's own predicate. A model verdict may never authorize such a step, and a model PASS that is not backed by a JARVIS-owned artifact predicate is still refused.",
+    "seam": "mission verifier session -> fabric.adapter.try_fabric_dispatch (role=verifier) -> fabric.adapter.canonical_verifier_dispatch -> fabric.loop.canonical_predicate_verdict over the step's recorded fabric.spine.result receipt",
+    "declines_to_the_model_path_when": [
+      "the mission step's contract capability does not resolve to a Fabric action kind",
+      "the step has no recorded fabric.spine.result receipt",
+      "the recorded observation is empty or malformed",
+      "the canonical predicate is undecided (UNKNOWN)",
+      "the recorded subject (path/target/source_ref/worktree) diverges from the declared intent payload"
+    ],
+    "verdict_evidence_marker": "verification:canonical-fabric-predicate (jarvis_foundry.fabric.model.CANONICAL_PREDICATE_EVIDENCE)",
+    "recorded_facts": [
+      "verdict evidence carries jarvis_predicate + verifier_answered_by (the frozen binding names the routed provider and is captured before the session)",
+      "event fabric.canonical_verification_observed (mission_id, step_id, run_id, action_kind, capability_id, predicate, reverified, receipt_id, effect_id, subject_ref, declared)"
+    ],
+    "fail_closed": [
+      "re-derivation is from reality (artifact replay or the action verifier over the recorded observation); the receipt's own verified/success fields are never trusted",
+      "MISMATCH is reported as FAIL, never softened",
+      "a resumed pass whose frozen binding drifted is refused with BLOCKED and the ledger's own reason instead of raising EventConflict out of the loop"
+    ],
+    "fabrication_risks": [
+      "Trust boundary (pre-existing product model, deliberately unchanged): the event ledger is authoritative, so an actor able to append arbitrary fabric.spine.result receipts could obtain a certification whose observation matches reality. The re-derivation validates the observation against the filesystem, not against who wrote the event; models do not author fabric.spine.result.",
+      "The declared-vs-observed subject guard compares the subject refs a contract declares (path/target/source_ref/worktree); a contract that declares its subject under none of those keys is certified purely on the predicate's re-derivation."
+    ]
+  },
+  "outcome_contract": {
+    "mission_outcome": "MissionLoop terminal outcome (PASSED/BLOCKED/FAILED) unchanged",
+    "unrealizable_intent": "plan step FAILED + mission BLOCKED + portfolio.intent_unresolved (durable) + Executive bounded retry owns the resume",
+    "duplicate_guarantees": "effect journal keys per (mission, step, attempt); identical re-delivery dedupes, changed payload records"
+  },
+  "events_added_or_changed": [
+    "portfolio.intent_unresolved (NEW, inert additive record: decision_id, item_id, mission_id, intent_id, intent_needs, gap, missing_inputs, reason)",
+    "fabric.canonical_verification_observed (NEW, inert additive record: the runtime predicate's re-derived verdict for a mission step, with effect/receipt/subject lineage)",
+    "capability.state_changed (existing event now also emitted by the intent-resolution capability binding and by the one-time registered-resource readiness projection)",
+    "executive.plan_updated (existing event now also emitted by _record_unrealizable_intent with the missing cap.* requirements attached)"
+  ],
+  "db_schema_changes": [],
+  "files_likely_to_conflict": [
+    "src/jarvis_foundry/executive/autonomy.py (intent travels with the work item; registered-resource capability projection in run_autonomy_cycle)",
+    "src/jarvis_foundry/executive/portfolio_bridge.py (intent resolution at the materialization boundary)",
+    "src/jarvis_foundry/fabric/adapter.py (browser_reauth_provider seam; canonical verifier dispatch)",
+    "src/jarvis_foundry/fabric/executors.py (post-recovery read receipt)",
+    "src/jarvis_foundry/fabric/loop.py (canonical_predicate_verdict)",
+    "src/jarvis_foundry/fabric/model.py (CANONICAL_PREDICATE_EVIDENCE)",
+    "src/jarvis_foundry/fabric/recipes/{model,builtins,registry}.py (needs + bind declarations)",
+    "src/jarvis_foundry/mission/loop.py (acceptance predicate + binding-drift refusal in run_step)",
+    "src/jarvis_foundry/control/{capabilities,registration}.py (capability_state_recorded, sync_registered_resource_capabilities)"
+  ],
+  "requirements_from_lane_a": [
+    "Deliver the selected mission's intent in the normalized contract above (objective + needs + role inputs) instead of naming a recipe or building recipe params; either in objective metadata['intent'] or through an equivalent public call.",
+    "Do not carry execution internals (browser/UIA/git) into owner-level goals: express the requirement as normalized needs only.",
+    "If the chosen mission needs inputs the runtime cannot supply, declare them in the intent inputs so the runtime can BLOCK honestly and list exactly what is missing.",
+    "Do not assume a model verdict can authorize a deterministic step: the runtime certifies those with its own predicate, and the verifier session for such a step is answered by the Fabric rather than by the routed provider."
+  ],
+  "guarantees_to_lane_a": [
+    "A selected objective/mission with a normalized intent gets a deterministic capability/workflow resolution with recorded provenance (considered candidates, chosen recipe, bound params).",
+    "Unrealizable intents produce a durable gap plus an honest blocked materialization; the objective is left resumable through the Executive's bounded retry path (no silent prose fallback, no stranded mission).",
+    "Workflow execution reports nested receipts; effect identity/exactly-once semantics are unchanged and remain owned by effects.py.",
+    "Registered resources have their declared capability readiness projected once into the durable capability plane, so selection no longer depends on a developer-side control step.",
+    "A mission step whose capability resolves to a Fabric action kind is verified by the runtime's own predicate over the recorded receipt, so a deterministic effect can reach PASSED without any provider being asked to judge it; the verdict records both the routed provider and who actually answered.",
+    "A verification pass that is resumed after the frozen state drifted refuses honestly (BLOCKED + the ledger's reason) instead of raising a control-plane exception, and stays resumable through a fresh attempt."
+  ],
+  "semantic_decisions": [
+    "Recipe selection is data-driven (declared needs), never LLM-judged: the resolver is a binder, not a planner.",
+    "The need vocabulary is the owner-level seam; action kinds, capabilities and recipe ids stay runtime-internal.",
+    "Missing capability -> durable gap + bounded retry; missing supplied inputs -> BLOCKED with the exact missing roles (never a guess).",
+    "Capability binding for a mission records capability.state_changed once per (resource, capability); per-mission lineage lives in the contract provenance.",
+    "Verification precedence: the runtime's own predicate for anything it can re-derive; a model only for judgment steps. The acceptance rule that demands a JARVIS-owned artifact predicate is unchanged and still refuses an unbacked model PASS."
+  ],
+  "open_gaps": [
+    "Native Windows toast remains unproven (winotify backend not installed); in-app toast is proven.",
+    "Real GitHub API writes and third-party authenticated sites remain live-only (owner-authorized config absent in this lane).",
+    "Gap-bridge wake ownership of intent-resolution gaps is partial (the requirement is attached and durable; the bridge wake -> replan path was not exercised end-to-end).",
+    "Lane-A semantic convergence: the parallel lane must deliver intents in the published shape before the two lanes converge."
+  ]
+}

@@ -22,6 +22,10 @@ PROOF_CONTRACT = "jarvis.v13.world-intelligence-proof.v1"
 VERIFIER_CONTRACT = "jarvis.v13.world-intelligence-verifier.v1"
 DOSSIER_CONTRACT = "jarvis.v13.research-dossier.v2"
 FROZEN_BASE = "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
+#: The schema this verifier expects the proof to have been produced at.
+#: Bumped with the product schema; kept as a local literal because this
+#: verifier deliberately imports nothing from the product it verifies.
+EXPECTED_SCHEMA = 41
 EXPECTED_MAIN = "2905c206fed0461bf3085bc0cb43773be913300a"
 EXPECTED_BRANCH = (
     "candidate/v13-final-personal-executive-convergence-20260905"
@@ -675,14 +679,17 @@ def verify(
         "proof.base-and-schema",
         (
             proof.get("base_sha") == FROZEN_BASE
-            and proof.get("schema") == 40
+            and proof.get("schema") == EXPECTED_SCHEMA
         ),
-        detail="The proof preserves the frozen base and schema v40.",
+        detail=(
+            "The proof preserves the frozen base and schema "
+            f"v{EXPECTED_SCHEMA}."
+        ),
         actual={
             "base_sha": proof.get("base_sha"),
             "schema": proof.get("schema"),
         },
-        expected={"base_sha": FROZEN_BASE, "schema": 40},
+        expected={"base_sha": FROZEN_BASE, "schema": EXPECTED_SCHEMA},
     )
     recorder.add(
         "proof.owner-context-input",

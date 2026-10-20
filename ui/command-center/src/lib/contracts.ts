@@ -171,8 +171,18 @@ export interface ForensicRecord {
   record: Record<string, unknown>;
 }
 
-/** Lifecycle truth is deliberately closed over explicit absence. */
-export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "UNKNOWN" | "UNAVAILABLE";
+/** Lifecycle truth is deliberately closed over explicit absence.
+ *
+ * Canonical lineage invariant: one mission page derives ONE authoritative
+ * lineage (owner directive -> objective -> plan -> mission -> worker runs
+ * -> artifacts -> evidence -> verifier -> outcome -> learning -> briefing).
+ * Every displayed identity must be causally related. When a relationship
+ * cannot be proven the stage reports NOT RECORDED (or NOT REQUIRED for
+ * successful terminal missions that never needed repair) instead of
+ * substituting an unrelated record. PENDING is reserved for active
+ * missions where future work is still possible; terminal missions never
+ * report PENDING for impossible future work. */
+export type PipelineStageState = "COMPLETE" | "ACTIVE" | "PENDING" | "FAILED" | "BLOCKED" | "NOT REQUIRED" | "NOT RECORDED" | "UNKNOWN" | "UNAVAILABLE";
 
 export interface AutonomyLifecycleRecord {
   key: string;
@@ -695,7 +705,7 @@ export interface RelatedEntities {
 }
 
 export type LineageNodeKind = "builder" | "verifier" | "finding" | "repair" | "evidence" | "pass";
-export type LineageNodeStatus = "PASS" | "FAIL" | "ACTIVE" | "PENDING";
+export type LineageNodeStatus = "PASS" | "FAIL" | "ACTIVE" | "PENDING" | "BLOCKED" | "NOT REQUIRED" | "NOT RECORDED";
 
 export interface LineageNode {
   id: string;
@@ -827,7 +837,16 @@ export interface AutonomyProjection {
     wait_reason: string | null;
     wait_boundary?: string | null;
     wait_reason_code?: string | null;
-    owner_action?: { value: string | null; status: ProjectionAvailability };
+    owner_action?: {
+      value: AutonomyOwnerAction | null;
+      status: ProjectionAvailability | "PARTIAL";
+      items: AutonomyOwnerAction[];
+      count: number;
+      open_count: number | null;
+      scan_truncated: boolean;
+      items_truncated: boolean;
+      scan_limit: number;
+    };
     active_wip: AutonomyMetric;
   };
   funnel: Record<string, AutonomyMetric>;
@@ -869,6 +888,18 @@ export interface AutonomyProjection {
   wait?: AutonomyContractProjection;
   contract_versions?: Record<string, string>;
   limits: Record<string, number>;
+}
+
+export interface AutonomyOwnerAction {
+  escalation_id: string;
+  objective_id: string | null;
+  decision: string;
+  why: string;
+  recommendation: string;
+  options: string[];
+  delay_consequence: string | null;
+  created_at: string | null;
+  event_id: string | null;
 }
 
 export interface JarvisClient {

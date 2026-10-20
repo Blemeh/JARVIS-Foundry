@@ -3,7 +3,11 @@ from __future__ import annotations
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
+
+import jarvis_foundry.initiative_a3 as initiative_a3
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_candidates import ingest_observed_candidate
 from jarvis_foundry.discovery_sources import SourceSpec
@@ -15,10 +19,19 @@ from jarvis_foundry.executive.autonomy import (
 )
 from jarvis_foundry.executive.decisions import ExecutiveDecision
 from jarvis_foundry.executive.owner_context import seed_owner_context
-from jarvis_foundry.fabric.catalog import record_outcome as record_fabric_outcome
+from jarvis_foundry.control.registration import inspect_git_resource, registration_event
+from jarvis_foundry.fabric.catalog import (
+    observed_readiness,
+    record_outcome as record_fabric_outcome,
+)
 from jarvis_foundry.fabric.loop import seed_builtins
 from jarvis_foundry.fabric.model import VerifyVerdict
 from jarvis_foundry.initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
+from jarvis_foundry.mission.intent import (
+    ACTIONS as MISSION_ACTIONS,
+    MissionIntent,
+    resolve_mission_intent,
+)
 from jarvis_foundry.initiative_a3 import (
     A3AdmissionPolicy,
     InitiativeAdmissionAuthority,
@@ -26,8 +39,33 @@ from jarvis_foundry.initiative_a3 import (
     pending_initiative_decision,
 )
 from jarvis_foundry.paths import FoundryPaths
+from jarvis_foundry.runtime.provider_config import ProviderSettings
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.runtime.worker_loop import run_cycle
+
+
+def test_a3_git_subprocess_uses_headless_flags(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="candidate/test\n", stderr="")
+
+    monkeypatch.setattr(
+        initiative_a3, "headless_run_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+    monkeypatch.setattr(initiative_a3.subprocess, "run", fake_run)
+
+    assert initiative_a3._run_git(tmp_path, "branch", "--show-current") == "candidate/test"
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command[3:] == ["branch", "--show-current"]
+    assert kwargs["creationflags"] & 0x08000000
+    assert kwargs["capture_output"] is True
+    assert kwargs["timeout"] == 60
 
 
 def _repo(root: Path, note: str = "improve reliability and fix regression with a bounded reversible local test") -> None:
@@ -38,6 +76,14 @@ def _repo(root: Path, note: str = "improve reliability and fix regression with a
     (root / "work.py").write_text(f"# TODO: {note}\nVALUE = 1\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(root), "add", "work.py"], check=True)
     subprocess.run(["git", "-C", str(root), "commit", "-qm", "seed owner repo"], check=True)
+
+
+def _muse_provider() -> ProviderSettings:
+    return ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
 
 
 def _ready_database(tmp_path: Path) -> FoundryDatabase:
@@ -60,6 +106,33 @@ def _ready_database(tmp_path: Path) -> FoundryDatabase:
             note="A3 focused readiness proof",
             at="2026-09-02T00:00:00Z",
         )
+    seed_owner_context(
+        database,
+        goals=[{
+            "text": "Improve owner repositories with bounded verified reliability fixes",
+            "source_ref": "IDEA.md",
+            "source_hash": "a" * 64,
+        }],
+        projects=[{
+            "text": "OwnerRepo active project",
+            "source_ref": "docs/CURRENT_STATE.md",
+            "source_hash": "b" * 64,
+        }],
+    )
+    return database
+
+
+def _unknown_database(tmp_path: Path) -> FoundryDatabase:
+    database = FoundryDatabase(tmp_path / "home" / "foundry.db")
+    database.initialize()
+    database.append(Event.create(
+        "system.start_build_recorded",
+        {"received_at": "2026-09-02T00:00:00Z", "standing_mandate": True},
+        source_type="owner",
+        source_id="a3-owner-mandate",
+        idempotency_key="system.start-build",
+    ))
+    seed_builtins(database)
     seed_owner_context(
         database,
         goals=[{
@@ -103,7 +176,19 @@ def _a2(database: FoundryDatabase, root: Path, *, cycle_id: str = "a3-cold", now
     return result["decision"]
 
 
-def _authority(database: FoundryDatabase, tmp_path: Path, root: Path, *, stop_path=None):
+def _authority(
+    database: FoundryDatabase,
+    tmp_path: Path,
+    root: Path,
+    *,
+    stop_path=None,
+    writable: bool = True,
+):
+    if database.row("resources", "resource_id", "OwnerRepo") is None:
+        resource = inspect_git_resource(
+            root, resource_id="OwnerRepo", writable=writable,
+        )
+        database.append(registration_event(resource, source_id="a3-test"))
     return InitiativeAdmissionAuthority(
         database,
         worktree_parent=tmp_path / "a3-worktrees",
@@ -200,6 +285,96 @@ def test_eligible_candidate_admits_once_with_stable_objective_and_worktree(tmp_p
     assert database.event_count(event_type="initiative.candidate_admitted") == 1
     assert database.event_count(event_type="initiative.worktree_prepared") == 1
     assert database.event_count(event_type="executive.objective_created") == 1
+
+
+def test_project_drift_qualifies_first_read_in_place_without_mutating_dirty_source(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    _repo(root)
+    tracked = root / "work.py"
+    tracked.write_text(
+        tracked.read_text(encoding="utf-8") + "# owner working-tree change\n",
+        encoding="utf-8",
+    )
+    before_text = tracked.read_text(encoding="utf-8")
+    before_head = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    database = _unknown_database(tmp_path)
+    decision = _manual_eligible(
+        database,
+        "Review meaningful working-tree drift in OwnerRepo",
+        "d",
+        candidate_type="project_drift",
+    )
+    authority = _authority(
+        database, tmp_path, root, writable=False,
+    )
+
+    admission = authority.admit(decision)
+
+    assert admission.admitted
+    assert admission.worktree is None
+    assert not (tmp_path / "a3-worktrees").exists()
+    assert tracked.read_text(encoding="utf-8") == before_text
+    assert subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip() == before_head
+    assert database.event_count(event_type="initiative.worktree_prepared") == 0
+    admitted = next(
+        event.payload for event in reversed(database.events(
+            event_types=("initiative.candidate_admitted",), readonly=True,
+        )) if event.payload.get("candidate_id") == decision.candidate_id
+    )
+    assert admitted["read_only"] is True
+    assert admitted["build_cost_units"] == 0.0
+    objective = rebuild_executive_state(database).objectives[admission.objective_id]
+    assert objective.metadata["read_only"] is True
+    assert objective.metadata["worktree"] is None
+    assert set(objective.metadata["intent"]["needs"]) == {
+        "repository.inspect", "repository.diff",
+    }
+    intent = MissionIntent.from_mapping(
+        objective.metadata["intent"],
+        intent_id="first-read",
+        resource_id=admission.resource_id,
+        objective=objective.objective,
+    )
+    resolution = resolve_mission_intent(database, intent)
+    assert resolution.kind == MISSION_ACTIONS
+    assert {action["action_kind"] for action in resolution.actions} == {
+        "git.inspect", "git.diff",
+    }
+    assert all(
+        observed_readiness(database, capability_id).state.value == "UNKNOWN"
+        for capability_id in ("cap.git.inspect", "cap.git.diff")
+    )
+
+
+def test_mutating_candidate_still_refuses_dirty_registered_source(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    _repo(root)
+    tracked = root / "work.py"
+    tracked.write_text(
+        tracked.read_text(encoding="utf-8") + "# dirty owner change\n",
+        encoding="utf-8",
+    )
+    before_text = tracked.read_text(encoding="utf-8")
+    database = _ready_database(tmp_path)
+    decision = _manual_eligible(
+        database, "Improve the tracked project safely", "e",
+    )
+    authority = _authority(database, tmp_path, root)
+
+    admission = authority.admit(decision)
+
+    assert admission.status == "DEFERRED"
+    assert "owner repository is dirty" in admission.reason
+    assert tracked.read_text(encoding="utf-8") == before_text
+    assert database.event_count(event_type="initiative.worktree_prepared") == 0
 
 
 def test_durable_select_is_resumed_once_after_pre_admission_restart(tmp_path: Path) -> None:
@@ -397,6 +572,9 @@ def test_runtime_full_path_accepts_once_then_waits_without_public_writes(tmp_pat
     config = WorkerRuntimeConfig(
         enabled=True,
         status="ACTIVE",
+        provider_settings=_muse_provider(),
+        provider_settings_pool=(_muse_provider(),),
+        hermes={"allow_data_training_tiers_noninteractive": True},
         lab_scripted_hermes=True,
         lab_false_success_step_id=None,
         runtime_state_root=str(tmp_path / "runtime"),
@@ -449,6 +627,9 @@ def test_failed_build_never_passes_and_replay_creates_no_second_effect(tmp_path:
     config = WorkerRuntimeConfig(
         enabled=True,
         status="ACTIVE",
+        provider_settings=_muse_provider(),
+        provider_settings_pool=(_muse_provider(),),
+        hermes={"allow_data_training_tiers_noninteractive": True},
         lab_scripted_hermes=True,
         lab_false_success_step_id="02-execute",
         max_repairs=0,

@@ -41,6 +41,7 @@ from ..effects import (
     freeze_effect,
 )
 from ..events import canonical_json
+from ..platform.windows_subprocess import headless_run_kwargs
 from ..systems import external_action_key
 from .contract import ConnectorSpec
 from .git import GitConnector
@@ -268,6 +269,7 @@ def gh_api_write_transport(
             capture_output=True,
             timeout=timeout_s,
             check=False,
+            **headless_run_kwargs(),
         )
     except subprocess.TimeoutExpired as error:
         raise GitHubWriteTransportError(
@@ -1343,6 +1345,7 @@ class GitHubPullRequestEffectDriver:
             errors="replace",
             timeout=60,
             check=False,
+            **headless_run_kwargs(),
         )
         if result.returncode != 0:
             raise GitHubWriteTransportError(
@@ -1366,6 +1369,7 @@ class GitHubPullRequestEffectDriver:
                 errors="replace",
                 timeout=90,
                 check=False,
+                **headless_run_kwargs(),
             )
         except subprocess.TimeoutExpired as error:
             raise TimeoutError("GitHub branch push timed out") from error
@@ -1452,6 +1456,7 @@ class GitHubPullRequestEffectDriver:
             capture_output=True,
             timeout=30,
             check=False,
+            **headless_run_kwargs(),
         )
         return result.returncode == 0
 

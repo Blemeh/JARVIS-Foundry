@@ -21,7 +21,7 @@ from jarvis_foundry.runtime.provider_config import ProviderSettings
 
 TEST_PROVIDER_SETTINGS = ProviderSettings(
     provider="opencode_go",
-    model="muse-spark-1.2-contributor",
+    model="muse-spark-1.3-contributor",
     base_url="https://opencode.ai/zen/go/v1",
     api_key="sk-test-adapter-key-1234567890",
     source="test",
@@ -69,8 +69,18 @@ def contract(tmp_path: Path) -> WorkerStepContract:
         working_root=tmp_path)
 
 
+def _hermes_adapter(tmp_path: Path, **kwargs: object) -> HermesWorkerAdapter:
+    """Give mocked Hermes dispatches the ordinary local accounting database."""
+    from jarvis_foundry.database import FoundryDatabase
+
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    kwargs.setdefault("database", database)
+    return HermesWorkerAdapter(**kwargs)
+
+
 def test_hermes_adapter_disabled_by_default(tmp_path):
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=False)
     with pytest.raises(ProviderUnavailable):
@@ -80,14 +90,14 @@ def test_hermes_adapter_disabled_by_default(tmp_path):
 def test_hermes_adapter_refuses_live_installation(tmp_path):
     live = HermesWorkerAdapter.LIVE_HERMES
     with pytest.raises(Exception):
-        HermesWorkerAdapter(
+        _hermes_adapter(tmp_path,
             hermes_root=live, hermes_home=tmp_path / "home", enabled=True)
 
 
 def test_hermes_adapter_refuses_live_home(tmp_path):
     live_home = HermesWorkerAdapter.LIVE_HERMES_HOME
     with pytest.raises(Exception):
-        HermesWorkerAdapter(
+        _hermes_adapter(tmp_path,
             hermes_root=tmp_path, hermes_home=live_home / "sub-probe",
             enabled=True,
             python_exe="python")
@@ -212,7 +222,7 @@ def test_hermes_adapter_redacts_captured_secrets(tmp_path, monkeypatch):
         ["python", "-m", "hermes_cli.main"], 0, captured, "")
     (tmp_path / "home").mkdir()
     _hermes_result_file(tmp_path)
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python")
     with mock.patch.object(
@@ -225,6 +235,82 @@ def test_hermes_adapter_redacts_captured_secrets(tmp_path, monkeypatch):
     assert envelope.verdict == "PASS"
     assert token not in envelope.summary
     assert "<REDACTED>" in envelope.summary
+
+
+def test_hermes_failed_adapter_keeps_both_bounded_redacted_streams(
+        tmp_path, monkeypatch):
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    token = "sk-" + "Y" * 24
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"],
+        2,
+        f"stdout diagnostic: plan.md missing; token={token}",
+        "stderr diagnostic: worker exited with code 2",
+    )
+    (tmp_path / "home").mkdir()
+    adapter = _hermes_adapter(
+        tmp_path,
+        hermes_root=tmp_path,
+        hermes_home=tmp_path / "home",
+        enabled=True,
+        timeout_seconds=0,
+        python_exe="python",
+    )
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+
+    assert envelope.worker_status == "FAILED"
+    assert envelope.exit_state == "EXIT_2"
+    assert "stdout diagnostic: plan.md missing" in envelope.summary
+    assert "stderr diagnostic: worker exited with code 2" in envelope.summary
+    assert "stdout: " in envelope.summary
+    assert "stderr: " in envelope.summary
+    assert token not in envelope.summary
+    assert "<REDACTED>" in envelope.summary
+    assert len(envelope.summary) <= adapter.FAILURE_DIAGNOSTIC_LIMIT
+
+
+def test_hermes_nonzero_rate_limit_keeps_typed_provider_failure(
+        tmp_path, monkeypatch):
+    from unittest import mock
+    from jarvis_foundry.roles.adapter import ProviderFailure
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"],
+        2,
+        "",
+        'Contributor consent notice: '
+        'security.allow_data_training_tiers_noninteractive is true.\n'
+        'HTTP 429: {"type":"rate_limit_exceeded",'
+        '"message":"Rate limit exceeded. Please retry after a brief wait."}',
+    )
+    (tmp_path / "home").mkdir()
+    adapter = _hermes_adapter(
+        tmp_path,
+        hermes_root=tmp_path,
+        hermes_home=tmp_path / "home",
+        enabled=True,
+        timeout_seconds=0,
+        python_exe="python",
+    )
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        with pytest.raises(ProviderFailure) as raised:
+            adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+
+    assert raised.value.failure_class == "RATE_LIMITED"
+    assert raised.value.retryable is True
+    assert "HTTP 429" in str(raised.value)
 
 
 def test_openhands_scrubs_disposable_run_state(tmp_path):
@@ -294,7 +380,7 @@ def test_hermes_scrubs_disposable_home(tmp_path):
     var_name = "JARVIS_" + "OPENCODE_API_KEY"
     session = home / "sessions" / "s1.json"
     session.write_text(f'{{"env": "{var_name}={token}"}}', encoding="utf-8")
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=home,
         enabled=False, timeout_seconds=0, python_exe="python")
     adapter._scrub_disposable_home()
@@ -324,7 +410,7 @@ def test_hermes_adapter_consumes_machine_result_file(tmp_path, monkeypatch):
         ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\nok\n", "")
     (tmp_path / "home").mkdir()
     _hermes_result_file(tmp_path)
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python")
     with mock.patch.object(
@@ -338,6 +424,29 @@ def test_hermes_adapter_consumes_machine_result_file(tmp_path, monkeypatch):
     assert envelope.files_changed == ("feature.py",)
 
 
+def test_hermes_adapter_reads_structured_verdict_from_stderr_fallback(tmp_path):
+    """A strict final verdict on stderr survives a wrapper stream redirect."""
+    from unittest import mock
+    from jarvis_foundry.workers.adapters import hermes as hermes_module
+
+    fake = subprocess.CompletedProcess(
+        ["python", "-m", "hermes_cli.main"], 0, "", "VERDICT: PASS\n")
+    (tmp_path / "home").mkdir()
+    _hermes_result_file(tmp_path)
+    adapter = _hermes_adapter(tmp_path,
+        hermes_root=tmp_path, hermes_home=tmp_path / "home",
+        enabled=True, timeout_seconds=0, python_exe="python")
+    with mock.patch.object(
+            hermes_module, "run_subprocess_with_heartbeat",
+            return_value=fake), \
+         mock.patch.object(
+            hermes_module, "configured_api_key", return_value=None):
+        envelope = adapter.dispatch(contract(tmp_path), heartbeat=lambda: None)
+    assert envelope.worker_status == "COMPLETED"
+    assert envelope.verdict == "PASS"
+    assert "VERDICT: PASS" in envelope.summary
+
+
 def test_hermes_adapter_missing_result_file_is_not_testable(
         tmp_path, monkeypatch):
     """A provider session that omits the result contract must never PASS:
@@ -349,7 +458,7 @@ def test_hermes_adapter_missing_result_file_is_not_testable(
     fake = subprocess.CompletedProcess(
         ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\n", "")
     (tmp_path / "home").mkdir()
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python")
     with mock.patch.object(
@@ -432,7 +541,7 @@ def test_malformed_result_file_stays_not_testable(tmp_path):
     fake = subprocess.CompletedProcess(
         ["python", "-m", "hermes_cli.main"], 0, "VERDICT: PASS\n", "")
     (tmp_path / "home").mkdir()
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python")
     with mock.patch.object(
@@ -459,7 +568,7 @@ def test_hermes_passes_result_path_env(tmp_path):
         captured["env"] = kwargs.get("env") or {}
         return fake
 
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python")
     with mock.patch.object(
@@ -479,7 +588,7 @@ def test_hermes_timeout_ingests_result_file_but_never_passes(tmp_path):
 
     _hermes_result_file(tmp_path)
     (tmp_path / "home").mkdir()
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=5, python_exe="python")
     with mock.patch.object(
@@ -498,7 +607,7 @@ def test_hermes_timeout_without_result_file_stays_not_tested(tmp_path):
     from jarvis_foundry.workers.adapters import hermes as hermes_module
 
     (tmp_path / "home").mkdir()
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=5, python_exe="python")
     with mock.patch.object(
@@ -524,7 +633,7 @@ def test_hermes_dispatch_passes_stop_path_and_pid_table(tmp_path):
     _hermes_result_file(tmp_path)
     stop = tmp_path / "EMERGENCY_STOP"
     table = tmp_path / "adapter_worker_pids.json"
-    adapter = HermesWorkerAdapter(
+    adapter = _hermes_adapter(tmp_path,
         hermes_root=tmp_path, hermes_home=tmp_path / "home",
         enabled=True, timeout_seconds=0, python_exe="python",
         stop_path=stop, pid_table=table)

@@ -66,6 +66,7 @@ class CapabilityReadinessEvidence:
     unattended: str
     usable: bool
     blocker: str | None
+    qualification_scope: str = ""
     version: str | None = None
     kind: str | None = None
     action_kind: str | None = None
@@ -89,6 +90,7 @@ class CapabilityReadinessEvidence:
             "state": self.state,
             "unattended": self.unattended,
             "usable": self.usable,
+            "qualification_scope": self.qualification_scope,
             "blocker": self.blocker,
             "version": self.version,
             "kind": self.kind,
@@ -117,6 +119,7 @@ class CapabilityRequirementSet:
     candidate_identity: Mapping[str, Any]
     required_capability_ids: tuple[str, ...]
     optional_capability_ids: tuple[str, ...]
+    qualification_required_capability_ids: tuple[str, ...]
     readiness: RequirementReadiness
     executable: bool
     decision: str
@@ -147,6 +150,9 @@ class CapabilityRequirementSet:
             "candidate_identity": dict(self.candidate_identity),
             "required_capability_ids": list(self.required_capability_ids),
             "optional_capability_ids": list(self.optional_capability_ids),
+            "qualification_required_capability_ids": list(
+                self.qualification_required_capability_ids
+            ),
             "readiness": self.readiness.value,
             "executable": self.executable,
             "decision": self.decision,
@@ -175,6 +181,7 @@ class CapabilityRequirementSet:
 class _CandidateRule:
     required_actions: tuple[str, ...]
     optional_actions: tuple[str, ...] = ()
+    first_use_scope: str = ""
 
 
 _ACTION_ALIASES: dict[str, str] = {
@@ -207,13 +214,15 @@ _CANDIDATE_RULES: dict[str, _CandidateRule] = {
     "repair": _CandidateRule(_LOCAL_CODE_ACTIONS),
     "repository_improvement": _CandidateRule(_LOCAL_CODE_ACTIONS),
     "tracked_work": _CandidateRule(_LOCAL_CODE_ACTIONS),
-    "github_issue": _CandidateRule(
-        ("github.issue.read", *_LOCAL_CODE_ACTIONS),
+    "github_issue": _CandidateRule(("github.issue.read", *_LOCAL_CODE_ACTIONS)),
+    "github_workflow_failure": _CandidateRule(("github.check.read", *_LOCAL_CODE_ACTIONS)),
+    "project_staleness": _CandidateRule(
+        ("git.inspect",), first_use_scope="REGISTERED_PROJECT_READ_ONLY",
     ),
-    "github_workflow_failure": _CandidateRule(
-        ("github.check.read", *_LOCAL_CODE_ACTIONS),
+    "project_drift": _CandidateRule(
+        ("git.inspect", "git.diff"),
+        first_use_scope="REGISTERED_PROJECT_READ_ONLY",
     ),
-    "project_drift": _CandidateRule(("git.inspect", "git.diff")),
     "research": _CandidateRule(
         ("browser.web.read",), optional_actions=("http.doc.read",),
     ),
@@ -798,6 +807,41 @@ def _usable(row: Mapping[str, Any], *, unattended: bool) -> bool:
     return True
 
 
+def _first_use_qualification_scope(
+    capability_id: str,
+    row: Mapping[str, Any] | None,
+    *,
+    candidate_type: str,
+    unattended: bool,
+) -> str:
+    """Return whether an UNKNOWN capability can qualify on a safe project read."""
+    if row is None:
+        return ""
+    readiness = row.get("readiness") or {}
+    spec = row.get("spec") or {}
+    metadata = row.get("metadata") or {}
+    if str(readiness.get("state") or "UNKNOWN") != "UNKNOWN":
+        return ""
+    if unattended and str(spec.get("unattended") or "UNKNOWN") != "ALLOWED":
+        return ""
+    trust = str(
+        readiness.get("trust_state")
+        or metadata.get("trust_state")
+        or "UNKNOWN"
+    )
+    if trust != "ESTABLISHED":
+        return ""
+    rule = _CANDIDATE_RULES.get(str(candidate_type or "").strip().lower())
+    if rule is None or not rule.first_use_scope:
+        return ""
+    action_kind = str(spec.get("action_kind") or "")
+    semantic = str(spec.get("semantic") or "").upper()
+    if rule.first_use_scope == "REGISTERED_PROJECT_READ_ONLY":
+        if action_kind in {"file.read", "git.inspect", "git.diff"} and semantic == "READ":
+            return rule.first_use_scope
+    return ""
+
+
 def _select_for_action(
     action: str,
     index: Mapping[str, Mapping[str, Any]],
@@ -889,6 +933,7 @@ def _capability_evidence(
     row: Mapping[str, Any] | None,
     *,
     unattended: bool,
+    candidate_type: str,
 ) -> CapabilityReadinessEvidence:
     if row is None:
         return CapabilityReadinessEvidence(
@@ -910,11 +955,17 @@ def _capability_evidence(
     readiness = row.get("readiness") or {}
     state = str(readiness.get("state") or "UNKNOWN")
     unattended_state = str(spec.get("unattended") or "UNKNOWN")
+    qualification_scope = _first_use_qualification_scope(
+        capability_id,
+        row,
+        candidate_type=candidate_type,
+        unattended=unattended,
+    )
     usable = state == "READY" and (
         not unattended or unattended_state == "ALLOWED"
     )
     blocker: str | None = None
-    if state != "READY":
+    if state != "READY" and not qualification_scope:
         blocker = f"CAPABILITY_{state}"
     elif unattended and unattended_state != "ALLOWED":
         blocker = (
@@ -934,6 +985,7 @@ def _capability_evidence(
         state=state,
         unattended=unattended_state,
         usable=usable,
+        qualification_scope=qualification_scope,
         blocker=blocker,
         version=str(spec.get("version")) if spec.get("version") is not None else None,
         kind=str(spec.get("kind")) if spec.get("kind") is not None else None,
@@ -1007,6 +1059,9 @@ def _evaluate_plan(
             "REQUIRED" if capability_id in required else "OPTIONAL",
             index.get(capability_id),
             unattended=unattended,
+            candidate_type=str(
+                (plan.get("candidate_identity") or {}).get("candidate_type") or ""
+            ),
         )
         for capability_id in sorted(required | optional)
     )
@@ -1016,8 +1071,13 @@ def _evaluate_plan(
     missing = tuple(sorted(
         item.capability_id for item in required_evidence if item.state == "MISSING"
     ))
+    qualification_required = tuple(sorted(
+        item.capability_id for item in required_evidence
+        if item.qualification_scope
+    ))
     blocked = tuple(sorted(
-        item.capability_id for item in required_evidence if not item.usable
+        item.capability_id for item in required_evidence
+        if not item.usable and not item.qualification_scope
     ))
     optional_unavailable = tuple(sorted(
         item.capability_id for item in evidence_rows
@@ -1040,7 +1100,8 @@ def _evaluate_plan(
                 "note": item.note,
             },
         }
-        for item in required_evidence if not item.usable
+        for item in required_evidence
+        if not item.usable and not item.qualification_scope
     )
     blockers.extend(
         {"code": "UNRESOLVED_ACTION", "action_kind": action}
@@ -1050,7 +1111,9 @@ def _evaluate_plan(
     executable = bool(required_evidence) and not blockers
     unavailable_count = sum(not item.usable for item in required_evidence)
     ready_count = sum(item.usable for item in required_evidence)
-    if executable:
+    if executable and qualification_required:
+        readiness = RequirementReadiness.PARTIALLY_READY
+    elif executable:
         readiness = RequirementReadiness.READY
     elif plan.get("context_blockers") and not unavailable_count and not unresolved:
         readiness = RequirementReadiness.BLOCKED
@@ -1059,7 +1122,10 @@ def _evaluate_plan(
     else:
         readiness = RequirementReadiness.BLOCKED
     decision = "EXECUTABLE" if executable else "BLOCKED"
-    disposition = "READY_FOR_ADMISSION" if executable else "DEFER"
+    disposition = (
+        "QUALIFY_FIRST_USE" if executable and qualification_required else
+        "READY_FOR_ADMISSION" if executable else "DEFER"
+    )
 
     catalog_material = [
         {
@@ -1067,6 +1133,7 @@ def _evaluate_plan(
             "state": item.state,
             "unattended": item.unattended,
             "usable": item.usable,
+            "qualification_scope": item.qualification_scope,
             "version": item.version,
             "effect_class": item.effect_class,
             "last_verified_at": item.last_verified_at,
@@ -1102,6 +1169,7 @@ def _evaluate_plan(
         candidate_identity=dict(plan.get("candidate_identity") or {}),
         required_capability_ids=tuple(sorted(required)),
         optional_capability_ids=tuple(sorted(optional)),
+        qualification_required_capability_ids=qualification_required,
         readiness=readiness,
         executable=executable,
         decision=decision,

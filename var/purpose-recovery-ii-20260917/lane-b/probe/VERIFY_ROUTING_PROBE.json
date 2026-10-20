@@ -1,0 +1,192 @@
+{
+  "acquisition": {
+    "capability_id": "cap.hash.file.sha256",
+    "claimed": "COMPLETED",
+    "verified": "MATCH"
+  },
+  "agent_runs": [
+    {
+      "capability": null,
+      "error_class": null,
+      "error_detail": null,
+      "model": "local",
+      "provider": "fabric",
+      "role": "builder",
+      "run_id": "run-1ff0f4dddc6e",
+      "status": "COMPLETED",
+      "step_id": "01-action",
+      "verdict": null
+    },
+    {
+      "capability": null,
+      "error_class": null,
+      "error_detail": null,
+      "model": "muse-spark-1.2-contributor",
+      "provider": "opencode_go",
+      "role": "verifier",
+      "run_id": "run-1ff0f4dddc6e-verify",
+      "status": "COMPLETED",
+      "step_id": "01-action",
+      "verdict": null
+    }
+  ],
+  "contract": {
+    "capability": "cap.hash.file.sha256",
+    "expected_artifacts": [],
+    "instructions": "{\"path\": \"C:\\\\temp\\\\JARVIS\\\\purpose-recovery-ii-b-runtime-operations-20260917\\\\var\\\\purpose-recovery-ii-20260917\\\\lane-b\\\\probe\\\\run\\\\project\\\\evidence.bin\"}",
+    "resource_id": "resource-lane-b-probe",
+    "source": "owner-goal-intent-resolution",
+    "step_id": "01-action",
+    "target_relative_path": ".jarvis/intents/owner-goal-mission-4352451bdb9d/step-01",
+    "verification_criteria": [
+      "hash.file.sha256 completes and is independently verified"
+    ]
+  },
+  "cycle_two": {
+    "materialized": true,
+    "mission_id": "mission-4352451bdb9d",
+    "status": "MISSION_MATERIALIZED"
+  },
+  "event_types_for_mission": [
+    "agent_run.started",
+    "evidence.created",
+    "executive.calibration_recorded",
+    "fabric.canonical_verification_observed",
+    "fabric.spine.result",
+    "memory.observed",
+    "mission.completed",
+    "mission.created",
+    "mission.outcome_finalized",
+    "mission.state_changed",
+    "mission.step_contract_recorded",
+    "portfolio.selection_materialized",
+    "provider.dispatch_attempted",
+    "provider.dispatch_succeeded",
+    "provider.identity_transition_authorized",
+    "provider.route_decided",
+    "verification.accepted",
+    "verification.started"
+  ],
+  "expected_sha": "b403461d6e199f508f24b66618b087136c95a753724c9f6540100713f7d0051f",
+  "general_work_verifier_replay": null,
+  "latest_contract_by_step": {
+    "by_step": "owner-goal-intent-resolution",
+    "without_step": "owner-goal-intent-resolution"
+  },
+  "mission_outcome": "PASSED",
+  "resolved_action": {
+    "contract_capability": "cap.hash.file.sha256",
+    "fabric_action_kind": "hash.file.sha256",
+    "resolve_verification_capability": null
+  },
+  "schema": "jarvis.lane-b.verify-routing-probe.v1",
+  "spec_for_capability": [
+    {
+      "__error__": "OperationalError: no such table: capability_specs"
+    }
+  ],
+  "spine_results": [
+    {
+      "action_kind": "hash.file.sha256",
+      "capability_id": "cap.hash.file.sha256",
+      "claimed": "COMPLETED",
+      "effect_id": "effect:6057b9464fff0c7cbf7ab79cc302ead51bd2b5c725b766a4315270a323500e78",
+      "observed": {
+        "claimed": "COMPLETED",
+        "path": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\probe\\run\\project\\evidence.bin",
+        "sha256": "b403461d6e199f508f24b66618b087136c95a753724c9f6540100713f7d0051f"
+      },
+      "observed_keys": [
+        "claimed",
+        "path",
+        "sha256"
+      ],
+      "payload_keys": [
+        "action_kind",
+        "after_state_ref",
+        "attempt",
+        "before_state_ref",
+        "capability_id",
+        "capability_version",
+        "claimed",
+        "claimed_outcome",
+        "contract_version",
+        "cost",
+        "effect_class",
+        "effect_id",
+        "error",
+        "evidence_refs",
+        "idempotency_key",
+        "mission_id",
+        "note",
+        "observed",
+        "observed_outcome",
+        "postcondition_results",
+        "provider_ref",
+        "receipt_id",
+        "state",
+        "step_id",
+        "success",
+        "verified",
+        "workflow_id",
+        "world_model_refs"
+      ],
+      "receipt_id": "receipt:effect:6057b9464fff0c7cbf7ab79cc302ead51bd2b5c725b766a4315270a323500e78:attempt:1",
+      "state": "VERIFIED",
+      "step_id": "01-action",
+      "success": true,
+      "verified": "MATCH"
+    }
+  ],
+  "verdict_columns": [
+    "verdict_id",
+    "mission_id",
+    "subject_type",
+    "subject_id",
+    "status",
+    "verdict",
+    "verifier_run_id",
+    "builder_run_id",
+    "independence_json",
+    "criteria_json",
+    "findings_json",
+    "evidence_json",
+    "missing_proof_json",
+    "scope_violations_json",
+    "repair_requirements_json",
+    "reason",
+    "blocking_dependency",
+    "issued_at",
+    "last_event_id",
+    "updated_at"
+  ],
+  "verdicts": [
+    {
+      "blocking_dependency": null,
+      "builder_run_id": "run-1ff0f4dddc6e",
+      "criteria_json": "[\"hash.file.sha256 completes and is independently verified\"]",
+      "evidence_json": "{\"artifact_hashes\":{},\"binding_hash\":\"053f1229f55b68c8edbf766e20f0e7f979f9762f244c1156fb8253311ff2f478\",\"binding_schema\":\"verifier-binding-v1\",\"builder_run_id\":\"run-1ff0f4dddc6e\",\"context_manifest_hash\":\"62f28521973cd593d1f6f0d10dfa731d9d39ea7be69132c449d2653dd181d6c5\",\"context_manifest_id\":\"\",\"diff_hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"fabrication_review\":\"performed\",\"jarvis_predicate\":\"verification:canonical-fabric-predicate\",\"target\":\"C:\\\\temp\\\\JARVIS\\\\purpose-recovery-ii-b-runtime-operations-20260917\\\\var\\\\purpose-recovery-ii-20260917\\\\lane-b\\\\probe\\\\run\\\\project\\\\.jarvis\\\\intents\\\\owner-goal-mission-4352451bdb9d\\\\step-01\",\"verifier_run_id\":\"run-1ff0f4dddc6e-verify\",\"verifier_session_id\":\"run-1ff0f4dddc6e-verify\"}",
+      "findings_json": "[]",
+      "independence_json": "{\"builder_provider\":\"fabric\",\"provider_diverse\":true,\"provider_independent\":true,\"same_provider_limitation\":\"\",\"session_independent\":true,\"session_isolation\":\"fresh-session\",\"verifier_provider\":\"opencode_go\"}",
+      "issued_at": "2026-09-18T07:29:16.157029Z",
+      "last_event_id": "db7680ba-e28f-4f15-944c-bddecabbeeb9",
+      "missing_proof_json": "[]",
+      "mission_id": "mission-4352451bdb9d",
+      "reason": null,
+      "repair_requirements_json": "[]",
+      "scope_violations_json": "[]",
+      "status": "PASS",
+      "subject_id": "01-action",
+      "subject_type": "mission_step",
+      "updated_at": "2026-09-18T07:29:16.157029Z",
+      "verdict": "PASS",
+      "verdict_id": "verdict-v2-288136cb86dc98bbc82c691d",
+      "verifier_run_id": "run-1ff0f4dddc6e-verify"
+    }
+  ],
+  "verification_bindings": [
+    {
+      "__error__": "OperationalError: no such table: verification_bindings"
+    }
+  ]
+}

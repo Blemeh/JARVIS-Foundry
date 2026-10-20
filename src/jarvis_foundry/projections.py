@@ -237,10 +237,11 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 contract_id, mission_id, step_id, version, resource_id, capability,
                 target_relative_path, instructions, expected_effects_json,
                 rollback_json, risk_class, verification_criteria_json,
-                expected_artifacts_json, forbidden_paths_json, contract_hash,
+                expected_artifacts_json, forbidden_paths_json,
+                required_capabilities_json, contract_hash,
                 recorded_by, source, provenance_json, supersedes_hash,
                 last_event_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 contract.contract_id, contract.mission_id, contract.step_id,
                 contract.version, contract.resource_id, contract.capability,
@@ -249,7 +250,9 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 canonical_json(contract.rollback), contract.risk_class,
                 canonical_json(contract.verification_criteria),
                 canonical_json(contract.expected_artifacts),
-                canonical_json(contract.forbidden_paths), contract.content_hash(),
+                canonical_json(contract.forbidden_paths),
+                canonical_json(contract.required_capabilities),
+                contract.content_hash(),
                 contract.recorded_by, contract.source, canonical_json(contract.provenance),
                 contract.supersedes_hash, event.event_id, event.recorded_at,
             ),
@@ -357,7 +360,8 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
                 provider=excluded.provider, model=excluded.model,
                 context_manifest_hash=excluded.context_manifest_hash,
                 tool_policy_json=excluded.tool_policy_json,
-                status='RUNNING', last_event_id=excluded.last_event_id,
+                status='RUNNING', result_json=NULL, failure_class=NULL,
+                finished_at=NULL, last_event_id=excluded.last_event_id,
                 updated_at=excluded.updated_at
             WHERE agent_runs.status IN ('RUNNING', 'FAILED')""",
             (
@@ -391,10 +395,25 @@ def apply_event(connection: sqlite3.Connection, event: Event) -> None:
         # DIR-2026-08-12 item 2: a COMPLETED run never regresses to FAILED
         # via a late failure event (e.g. a reaper event that lands after
         # the completion event in the stream).
+        result_payload = payload.get("result")
+        serialized_result = (
+            canonical_json(result_payload)
+            if isinstance(result_payload, dict)
+            else None
+        )
         connection.execute(
             """UPDATE agent_runs SET status = 'FAILED', finished_at = ?, failure_class = ?,
-               last_event_id = ?, updated_at = ? WHERE run_id = ? AND status != 'COMPLETED'""",
-            (event.recorded_at, payload.get("failure_class"), event.event_id, event.recorded_at, payload["run_id"]),
+               result_json = COALESCE(?, result_json),
+               last_event_id = ?, updated_at = ?
+               WHERE run_id = ? AND status != 'COMPLETED'""",
+            (
+                event.recorded_at,
+                payload.get("failure_class"),
+                serialized_result,
+                event.event_id,
+                event.recorded_at,
+                payload["run_id"],
+            ),
         )
     elif event.event_type == "evidence.created":
         connection.execute(

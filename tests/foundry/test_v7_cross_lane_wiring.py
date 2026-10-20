@@ -19,6 +19,7 @@ import pytest
 
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
+from jarvis_foundry.domain import CapabilityState
 from jarvis_foundry.executive import portfolio_bridge
 from jarvis_foundry.executive.portfolio_bridge import (
     capability_readiness,
@@ -347,6 +348,42 @@ def test_missing_capability_state_is_unknown_not_ready(tmp_path: Path) -> None:
     assert receipt["ready"] is False
 
 
+def test_fabric_objective_readiness_respects_resource_incident_state(
+        tmp_path: Path) -> None:
+    from jarvis_foundry.executive.autonomy import PlanStep, _capability_blockers
+    from jarvis_foundry.fabric.catalog import record_outcome
+    from jarvis_foundry.fabric.loop import seed_builtins
+    from jarvis_foundry.fabric.model import VerifyVerdict
+
+    db = database(tmp_path)
+    register_resource(db)
+    seed_builtins(db)
+    record_outcome(
+        db, "cap.file.write", success=True,
+        verified=VerifyVerdict.MATCH, note="disposable readiness fixture",
+    )
+    set_capability_state(
+        db, "resource-1", "cap.file.write", CapabilityState.READY.value,
+        source_id="test-resource-readiness",
+    )
+    step = PlanStep(
+        step_id="step-resource-write",
+        objective_id="objective-resource-write",
+        description="write to the registered resource",
+        required_capabilities=("cap.file.write",),
+        resource_id="resource-1",
+    )
+    assert _capability_blockers(db, step) == ()
+
+    set_capability_state(
+        db, "resource-1", "cap.file.write", CapabilityState.STOPPED.value,
+        source_id="incident:test-objective-readiness",
+    )
+    assert _capability_blockers(db, step) == (
+        "cap.file.write:RESOURCE_STOPPED",
+    )
+
+
 # ---------------------------------------------------------------------------
 # V7A -> V7B: procedures bind to missions with intact effect tickets
 # ---------------------------------------------------------------------------
@@ -396,9 +433,10 @@ def test_terminal_outcome_records_portfolio_calibration(
         tmp_path: Path) -> None:
     db = database(tmp_path)
     register_resource(db)
-    decision = decision_payload_for("cal-1", "IMPROVEMENT")
+    decision = decision_payload_for("cal-1", "NEW_MISSION")
     result = materialize_portfolio_selection(
         db, decision=decision, resource_id="resource-1")
+    assert result["materialized"] is True
     mission_id = result["mission_id"]
     recorded_id = record_mission_portfolio_outcome(
         db, decision=decision, mission_id=mission_id, status="PASSED",

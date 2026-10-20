@@ -33,6 +33,7 @@ from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
 from ..events import Event
 from ..mission.contracts import MissionStepContract, record_step_contract
+from ..platform.windows_subprocess import headless_run_kwargs
 from ..software_intelligence.project_identity import (
     ProjectIdentityResolver,
     normalize_remote,
@@ -125,6 +126,7 @@ def _run_git(cwd: Path, *args: str) -> str:
         errors="replace",
         timeout=15,
         check=False,
+        **headless_run_kwargs(),
     )
     if result.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")

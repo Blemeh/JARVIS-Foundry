@@ -1090,6 +1090,223 @@ def test_fabric_adapter_uses_registered_resource_not_constructor_root(tmp_path: 
     assert not (decoy / "notes.txt").exists()
 
 
+def test_resource_suspension_blocks_only_its_fabric_dispatch(tmp_path: Path) -> None:
+    from jarvis_foundry.control.capabilities import set_capability_state
+    from jarvis_foundry.control.registration import (
+        inspect_git_resource,
+        registration_event,
+    )
+    from jarvis_foundry.fabric.adapter import FabricRoleAdapter
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from jarvis_foundry.roles.manifest import ContextManifest
+    from jarvis_foundry.roles.results import BLOCKED, COMPLETED
+    from test_mission_loop import mission_fixture
+
+    database, repository, _policy, _router = mission_fixture(tmp_path)
+    database.append(registration_event(
+        inspect_git_resource(repository, resource_id="resource-2"),
+    ))
+    set_capability_state(
+        database, "resource-1", "write_registered_worktree_files", "STOPPED",
+        source_id="incident:test-scoped-stop",
+    )
+    set_capability_state(
+        database, "resource-2", "write_registered_worktree_files", "READY",
+        source_id="test-resource-ready",
+    )
+    inner = FakeHermesAdapter(working_root=repository)
+    adapter = FabricRoleAdapter(
+        database, owned_root=repository, inner=inner,
+    )
+
+    def manifest(*, run_id: str, mission_id: str, resource_id: str,
+                 target: str) -> ContextManifest:
+        return ContextManifest(
+            run_id=run_id,
+            role="builder",
+            mission_id=mission_id,
+            step_id="step-write",
+            resource_id=resource_id,
+            capability="write_registered_worktree_files",
+            provider="opencode_go",
+            model="local",
+            isolation_group="scoped-capability-test",
+            instructions=json.dumps({"target": target, "content": "fabric\n"}),
+        )
+
+    starts_before = database.event_count(event_type="system.action_started")
+    blocked = adapter.dispatch(
+        manifest(
+            run_id="run-resource-1",
+            mission_id="mission-resource-1",
+            resource_id="resource-1",
+            target="blocked.txt",
+        ),
+        heartbeat=lambda: None,
+    )
+    assert blocked.status == BLOCKED
+    assert blocked.error_class == "fabric_resource_capability_suspended"
+    assert database.event_count(event_type="system.action_started") == starts_before
+    assert not (repository / "blocked.txt").exists()
+    assert inner.received == []
+
+    allowed = adapter.dispatch(
+        manifest(
+            run_id="run-resource-2",
+            mission_id="mission-resource-2",
+            resource_id="resource-2",
+            target="allowed.txt",
+        ),
+        heartbeat=lambda: None,
+    )
+    assert allowed.status == COMPLETED
+    assert (repository / "allowed.txt").read_text(encoding="utf-8") == "fabric\n"
+    assert inner.received == []
+
+
+def test_scoped_suspension_at_effect_barrier_blocks_without_dispatch(
+        tmp_path: Path, monkeypatch) -> None:
+    from jarvis_foundry.control.capabilities import set_capability_state
+    from jarvis_foundry.fabric import loop as fabric_loop
+    from jarvis_foundry.fabric.adapter import FabricRoleAdapter
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from jarvis_foundry.roles.manifest import ContextManifest
+    from jarvis_foundry.roles.results import BLOCKED
+    from test_mission_loop import mission_fixture
+
+    database, repository, _policy, _router = mission_fixture(tmp_path)
+    inner = FakeHermesAdapter(working_root=repository)
+    adapter = FabricRoleAdapter(
+        database, owned_root=repository, inner=inner,
+    )
+    original_execute = fabric_loop.execute_fabric_effect
+    barrier_checks = 0
+
+    def suspend_between_claim_and_perform(*args, **kwargs):
+        original_stop_check = kwargs["stop_check"]
+
+        def stop_check() -> bool:
+            nonlocal barrier_checks
+            barrier_checks += 1
+            if barrier_checks == 2:
+                set_capability_state(
+                    database,
+                    "resource-1",
+                    "write_registered_worktree_files",
+                    "STOPPED",
+                    source_id="incident:between-claim-and-perform",
+                )
+            return bool(original_stop_check())
+
+        kwargs["stop_check"] = stop_check
+        return original_execute(*args, **kwargs)
+
+    monkeypatch.setattr(
+        fabric_loop, "execute_fabric_effect", suspend_between_claim_and_perform,
+    )
+    result = adapter.dispatch(
+        ContextManifest(
+            run_id="run-scoped-effect-barrier",
+            role="builder",
+            mission_id="mission-scoped-effect-barrier",
+            step_id="step-write",
+            resource_id="resource-1",
+            capability="write_registered_worktree_files",
+            provider="opencode_go",
+            model="local",
+            isolation_group="scoped-effect-barrier-test",
+            instructions=json.dumps({
+                "target": "barrier-blocked.txt",
+                "content": "must not be written\n",
+            }),
+        ),
+        heartbeat=lambda: None,
+    )
+
+    assert result.status == BLOCKED
+    assert result.error_class == "fabric_resource_capability_suspended"
+    assert barrier_checks == 2
+    assert not (repository / "barrier-blocked.txt").exists()
+    assert inner.received == []
+
+
+def test_scoped_suspension_preserves_frozen_effect_reconciliation(
+        tmp_path: Path, monkeypatch) -> None:
+    from jarvis_foundry.control.capabilities import set_capability_state
+    from jarvis_foundry.effects import effect_state
+    from jarvis_foundry.fabric.adapter import FabricRoleAdapter
+    from jarvis_foundry.fabric import loop as fabric_loop
+    from jarvis_foundry.roles.adapter import FakeHermesAdapter
+    from jarvis_foundry.roles.manifest import ContextManifest
+    from jarvis_foundry.roles.results import FAILED
+    from test_mission_loop import mission_fixture
+
+    database, repository, _policy, _router = mission_fixture(tmp_path)
+    payload = json.dumps({"target": "ambiguous.txt", "content": "written once\n"})
+    inner = FakeHermesAdapter(working_root=repository)
+    adapter = FabricRoleAdapter(
+        database, owned_root=repository, inner=inner,
+    )
+
+    def manifest(run_id: str) -> ContextManifest:
+        return ContextManifest(
+            run_id=run_id,
+            role="builder",
+            mission_id="mission-scoped-replay",
+            step_id="step-write",
+            resource_id="resource-1",
+            capability="write_registered_worktree_files",
+            provider="opencode_go",
+            model="local",
+            isolation_group="scoped-replay-test",
+            instructions=payload,
+        )
+
+    original_dispatch = fabric_loop.dispatch
+    calls: list[str] = []
+
+    def write_then_timeout(executor_context, action_kind, request, *, route_owner=None):
+        calls.append(action_kind)
+        original_dispatch(
+            executor_context, action_kind, request, route_owner=route_owner,
+        )
+        raise TimeoutError("simulated lost completion receipt")
+
+    monkeypatch.setattr(fabric_loop, "dispatch", write_then_timeout)
+    ambiguous = adapter.dispatch(
+        manifest("run-scoped-first-attempt"), heartbeat=lambda: None,
+    )
+    assert ambiguous.status == FAILED
+    first_receipt = next(
+        event.payload for event in reversed(database.events())
+        if event.event_type == "fabric.spine.result"
+    )
+    effect_id = first_receipt["effect_id"]
+    assert effect_state(database, effect_id)["status"] == "FROZEN"
+    assert calls == ["file.write"]
+    starts_before_replay = database.event_count(event_type="system.action_started")
+
+    set_capability_state(
+        database, "resource-1", "write_registered_worktree_files", "STOPPED",
+        source_id="incident:test-replay",
+    )
+    replay = adapter.dispatch(
+        manifest("run-scoped-replay"), heartbeat=lambda: None,
+    )
+    assert replay.status == FAILED
+    replay_receipt = next(
+        event.payload for event in reversed(database.events())
+        if event.event_type == "fabric.spine.result"
+        and event.payload.get("effect_id") == effect_id
+    )
+    assert replay_receipt["effect_id"] == effect_id
+    assert calls == ["file.write"]
+    assert database.event_count(event_type="system.action_started") == starts_before_replay
+    assert effect_state(database, effect_id)["status"] == "FROZEN"
+    assert (repository / "ambiguous.txt").read_text(encoding="utf-8") == "written once\n"
+    assert inner.received == []
+
+
 def test_worker_stack_structured_write_uses_fabric_without_hermes(tmp_path: Path) -> None:
     from jarvis_foundry.paths import FoundryPaths
     from jarvis_foundry.roles.manifest import ContextManifest

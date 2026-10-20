@@ -8,7 +8,10 @@ import winreg
 from pathlib import Path
 
 from .layout import cli_cmd, install_root
-from .release import JARVIS_CLI_CMD_TEXT
+from .release import (
+    JARVIS_CLI_CMD_TEXT,
+    JARVIS_CLI_CURRENT_SHA_VALIDATOR_TEXT,
+)
 
 
 def cli_launcher_destinations(root: Path | None = None) -> tuple[Path, ...]:
@@ -61,8 +64,11 @@ def ensure_jarvis_bin_on_path(root: Path | None = None) -> bool:
 
 
 def install_cli_launchers(root: Path | None = None) -> Path:
-    """Write ``jarvis.cmd`` to every known global command location."""
+    """Write ``jarvis.cmd`` and its CURRENT validator to known locations."""
     primary = cli_cmd(root)
+    validator = install_root(root) / "bin" / "validate-current.ps1"
+    validator.parent.mkdir(parents=True, exist_ok=True)
+    validator.write_text(JARVIS_CLI_CURRENT_SHA_VALIDATOR_TEXT, encoding="utf-8")
     for destination in cli_launcher_destinations(root):
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(JARVIS_CLI_CMD_TEXT, encoding="utf-8")

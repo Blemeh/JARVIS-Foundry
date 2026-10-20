@@ -66,6 +66,8 @@ const variantMap: Record<string, "accent" | "teal" | "amber" | "error" | "muted"
   NOT_TESTED: "muted",
   UNKNOWN: "muted",
   UNAVAILABLE: "muted",
+  "NOT REQUIRED": "muted",
+  "NOT RECORDED": "muted",
   MISSION: "accent",
   EVIDENCE: "teal",
   BELIEF: "muted",

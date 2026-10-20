@@ -4,20 +4,93 @@ import json
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+import jarvis_foundry.initiative_a2 as initiative_a2
+import jarvis_foundry.executive.intelligence as executive_intelligence
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.discovery_sources import SourceSpec
 from jarvis_foundry.executive.owner_context import seed_owner_context
-from jarvis_foundry.fabric.catalog import record_outcome
+from jarvis_foundry.executive.decisions import a2_precondition
+from jarvis_foundry.executive.scoring import CandidateScore, FactorValue
+from jarvis_foundry.fabric.catalog import get_spec, observed_readiness, record_outcome
 from jarvis_foundry.fabric.loop import seed_builtins
 from jarvis_foundry.fabric.model import VerifyVerdict
-from jarvis_foundry.initiative_a2 import InitiativeA2Bounds, run_initiative_a2_cycle
+from jarvis_foundry.initiative_a2 import (
+    InitiativeA2Bounds,
+    run_continuous_observation_cycle,
+    run_initiative_a2_cycle,
+)
+from jarvis_foundry.runtime.provider_config import ProviderSettings
 from jarvis_foundry.runtime.config import WorkerRuntimeConfig
 from jarvis_foundry.paths import FoundryPaths
 from jarvis_foundry.research_dossier import DOSSIER_CONTRACT
 from jarvis_foundry.runtime.worker_loop import run_cycle
+
+
+def test_project_source_git_inspection_uses_headless_child_processes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    root = tmp_path / "owner-project"
+    root.mkdir()
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        stdout = b"a" * 40 if "rev-parse" in command else b"1 file changed"
+        return SimpleNamespace(returncode=0, stdout=stdout)
+
+    monkeypatch.setattr(
+        initiative_a2, "headless_run_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+    monkeypatch.setattr(initiative_a2.subprocess, "run", fake_run)
+
+    result = initiative_a2._project_source_evidence(
+        {
+            "payload": {"project_id": "owner/project", "kind": "project_drift"},
+            "source_ref": str(root),
+        },
+        {},
+    )
+
+    assert result is not None
+    assert len(calls) == 2
+    assert [call[0][3:] for call in calls] == [
+        ["rev-parse", "HEAD"],
+        ["diff", "--stat", "--no-ext-diff"],
+    ]
+    for _, kwargs in calls:
+        assert kwargs["creationflags"] & 0x08000000
+        assert kwargs["capture_output"] is True
+        assert kwargs["check"] is False
+        assert kwargs["timeout"] == 15
+
+
+def test_executive_project_git_probe_uses_headless_child_process(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="main\n")
+
+    monkeypatch.setattr(
+        executive_intelligence, "headless_run_kwargs",
+        lambda: {"creationflags": 0x08000000},
+    )
+    monkeypatch.setattr(executive_intelligence.subprocess, "run", fake_run)
+
+    assert executive_intelligence._git(tmp_path, "branch", "--show-current") == "main"
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command[3:] == ["branch", "--show-current"]
+    assert kwargs["creationflags"] & 0x08000000
+    assert kwargs["capture_output"] is True
+    assert kwargs["timeout"] == 15
 
 
 def _project(root: Path) -> None:
@@ -82,11 +155,78 @@ def _events(database: FoundryDatabase, event_type: str) -> int:
     return database.event_count(event_type=event_type)
 
 
+def test_a2_allows_only_declared_read_only_first_use_qualification() -> None:
+    capability_ids = ("cap.git.inspect", "cap.git.diff")
+    requirement_set = {
+        "executable": True,
+        "candidate_identity": {"candidate_type": "project_drift"},
+        "qualification_required_capability_ids": list(capability_ids),
+        "capability_evidence": [
+            {
+                "capability_id": capability_id,
+                "state": "UNKNOWN",
+                "unattended": "ALLOWED",
+                "qualification_scope": "REGISTERED_PROJECT_READ_ONLY",
+            }
+            for capability_id in capability_ids
+        ],
+    }
+    score = CandidateScore(
+        candidate_id="candidate-first-use",
+        objective="review registered project drift",
+        source="initiative_observation",
+        composite=0.8,
+        base_score=0.8,
+        goal_fit=0.8,
+        calibration_adjustment=0.0,
+        owner_priority=0.0,
+        factors=(
+            FactorValue("confidence", 0.8, "KNOWN", 0.0, 0.0),
+            FactorValue("reversibility", 0.9, "KNOWN", 0.0, 0.0),
+        ),
+        compared_goals=(),
+        a2_metadata={
+            "capability_states": dict.fromkeys(capability_ids, "UNKNOWN"),
+            "unattended_states": dict.fromkeys(capability_ids, "ALLOWED"),
+            "capability_requirement_set": requirement_set,
+            "dependencies": {"states": {}},
+            "autonomous_wip": 0,
+            "autonomous_wip_cap": 1,
+        },
+    )
+
+    assert a2_precondition(score) is None
+
+    mismatched = CandidateScore(
+        **{
+            field: getattr(score, field)
+            for field in CandidateScore.__dataclass_fields__
+            if field != "a2_metadata"
+        },
+        a2_metadata={
+            **score.a2_metadata,
+            "capability_requirement_set": {
+                **requirement_set,
+                "capability_evidence": [
+                    {
+                        "capability_id": capability_id,
+                        "state": "UNKNOWN",
+                        "unattended": "ALLOWED",
+                        "qualification_scope": "A3_ISOLATED_WORKTREE",
+                    }
+                    for capability_id in capability_ids
+                ],
+            },
+        },
+    )
+    assert a2_precondition(mismatched)[1] == "CAPABILITY_UNAVAILABLE"
+
+
 def test_cycle_researches_judges_waits_and_replays_without_execution(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _project(root)
     database = FoundryDatabase(tmp_path / "a2.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     _seed(database)
     result = run_initiative_a2_cycle(
         database,
@@ -305,10 +445,17 @@ def test_interrupted_research_reader_is_not_retried_on_restart(tmp_path: Path) -
 
 
 def test_runtime_config_forbids_a2_with_execution_flags() -> None:
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
     with pytest.raises(ValueError, match="zero-execution"):
         WorkerRuntimeConfig(
             initiative_a2_enabled=True,
             executive_selection_enabled=True,
+            provider_settings=settings,
+            provider_settings_pool=(settings,),
         ).validate()
 
 
@@ -318,9 +465,17 @@ def test_existing_worker_choke_point_returns_wait_before_mission_paths(tmp_path:
     home = tmp_path / "home"
     database = FoundryDatabase(home / "foundry.db")
     database.initialize()
+    settings = ProviderSettings(
+        provider="opencode_go",
+        model="muse-spark-1.3-contributor",
+        base_url="https://opencode.ai/zen/go/v1",
+    )
     config = WorkerRuntimeConfig(
         enabled=True,
+        hermes={"allow_data_training_tiers_noninteractive": True},
         initiative_a2_enabled=True,
+        provider_settings=settings,
+        provider_settings_pool=(settings,),
         initiative_a2={
             "enabled": True,
             "sources": [{
@@ -350,3 +505,50 @@ def test_existing_worker_choke_point_returns_wait_before_mission_paths(tmp_path:
     assert _events(database, "mission.created") == 0
     assert _events(database, "executive.objective_created") == 0
     assert not any(event.event_type.startswith("system.action_") for event in database.events())
+    assert _events(database, "fabric.capability.registered") > 0
+    for capability_id in ("cap.git.inspect", "cap.git.diff"):
+        assert get_spec(database, capability_id) is not None
+        assert observed_readiness(database, capability_id).state.value == "UNKNOWN"
+
+
+def test_fabric_change_reconsiders_candidates_without_waiting_for_project_poll(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    _project(root)
+    database = FoundryDatabase(tmp_path / "fabric-reevaluation.db")
+    database.initialize()
+    seed_builtins(database)
+    source = _source(root, interval=300)
+    now = "2026-09-25T20:00:00Z"
+
+    first = run_continuous_observation_cycle(
+        database, sources=(source,), now=now,
+    )
+    unchanged = run_continuous_observation_cycle(
+        database, sources=(source,), now=now,
+    )
+    assert first["cycles_dispatched"] == 1
+    assert unchanged["cycles_dispatched"] == 0
+
+    record_outcome(
+        database,
+        "cap.git.inspect",
+        success=True,
+        verified=VerifyVerdict.MATCH,
+        note="verified Fabric readiness change",
+        at=now,
+    )
+    reevaluated = run_continuous_observation_cycle(
+        database, sources=(source,), now=now,
+    )
+
+    assert reevaluated["cycles_dispatched"] == 1
+    assert reevaluated["fabric_triggered_reevaluation"] is True
+    assert reevaluated["research_triggered_reevaluation"] is False
+    completed = next(
+        event.payload for event in reversed(database.events(
+            event_types=("initiative.cycle_completed",), readonly=True,
+        )) if event.payload.get("cycle_id") == reevaluated["cycle_id"]
+    )
+    assert completed["metrics"]["fabric_catalog_changed"] is True

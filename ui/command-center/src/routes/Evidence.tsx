@@ -26,6 +26,7 @@ export function Evidence() {
   const itemsQuery = useRouteQuery(
     () => client.listEvidence(),
     [client, version],
+    { keepPreviousWhileLoading: true },
   );
 
   const [query, setQuery] = useState("");

@@ -1,0 +1,30 @@
+...............................................F......                   [100%]
+================================== FAILURES ===================================
+__________________ test_inspection_of_non_repository_raises ___________________
+
+tmp_path = WindowsPath('C:/temp/JARVIS/purpose-recovery-ii-b-runtime-operations-20260917/var/purpose-recovery-ii-20260917/lane-b/probe/pytest-tmp/test_inspection_of_non_reposit0')
+
+    def test_inspection_of_non_repository_raises(tmp_path):
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        try:
+            inspect_git_resource(plain)
+            raised = False
+        except RegistrationError:
+            raised = True
+>       assert raised is True
+E       assert False is True
+
+tests\foundry\test_registration.py:130: AssertionError
+============================= slowest 8 durations =============================
+23.41s call     tests/foundry/test_v8_executive_autonomy.py::test_failed_strategy_retries_once_then_escalates
+15.55s call     tests/foundry/test_owner_goal_execution_spine.py::test_supervisor_owns_command_center_and_continues_goal_without_prompts
+13.47s call     tests/foundry/test_owner_goal_execution_spine.py::test_command_center_goal_plans_executes_rejects_false_success_and_repairs
+12.05s call     tests/foundry/test_v8_executive_autonomy.py::test_runtime_continues_owner_goal_without_prompt_and_closes_it
+3.76s call     tests/foundry/test_v8_executive_autonomy.py::test_revoked_owner_goal_suspends_objective_and_cancels_unfinished_mission
+3.41s call     tests/foundry/test_v8_executive_autonomy.py::test_owner_goal_autonomously_materializes_through_existing_portfolio
+2.60s setup    tests/foundry/test_v8_executive_autonomy.py::test_objective_plan_is_durable_and_cycles_are_rejected
+2.38s call     tests/foundry/test_post4_integration.py::test_new_project_factory_with_planted_failure_then_repair
+=========================== short test summary info ===========================
+FAILED tests/foundry/test_registration.py::test_inspection_of_non_repository_raises
+EXIT=1

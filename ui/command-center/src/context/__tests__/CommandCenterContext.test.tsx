@@ -105,4 +105,36 @@ describe("CommandCenterProvider live authority boundaries", () => {
     await userEvent.click(screen.getByRole("button", { name: "Reconnect probe" }));
     await waitFor(() => expect(reconnect).toHaveBeenCalledTimes(1));
   });
+  it("reconciles trust and routes after polling recovers without any new ledger event", async () => {
+    let online = false;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo) => {
+      if (!online) return new Response("offline", { status: 503 });
+      if (String(input).includes("/timeline?")) return new Response(JSON.stringify({
+        schema: "v13.command-center-event-page.v1", events: [], next_sequence: 9,
+        ledger_head_sequence: 9, has_more: false,
+      }));
+      return new Response(JSON.stringify(suspendedWithoutStop));
+    }));
+    clientState.current = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 250 });
+    function RecoveryProbe() {
+      const { trustSummaryStatus, version } = useCommandCenter();
+      return <span>{trustSummaryStatus}:{version}</span>;
+    }
+    render(<CommandCenterProvider><RecoveryProbe /></CommandCenterProvider>);
+    await waitFor(() => expect(screen.getByText("error:0")).toBeInTheDocument());
+    online = true;
+    await waitFor(() => expect(screen.getByText(/^ready:[1-9]/)).toBeInTheDocument(), { timeout: 3000 });
+  });
+
+  it("allows fresh canonical owner commands during degraded health while keeping ordinary effects gated", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ...suspendedWithoutStop, health: { ...suspendedWithoutStop.health, degraded: true } }))));
+    clientState.current = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
+    function CommandAvailabilityProbe() {
+      const { ownerCommandsEnabled, mutationsEnabled } = useCommandCenter();
+      return <span>{ownerCommandsEnabled ? "OWNER AVAILABLE" : "OWNER HELD"}:{mutationsEnabled ? "EFFECTS AVAILABLE" : "EFFECTS HELD"}</span>;
+    }
+    render(<CommandCenterProvider><CommandAvailabilityProbe /></CommandCenterProvider>);
+    await waitFor(() => expect(screen.getByText("OWNER AVAILABLE:EFFECTS HELD")).toBeInTheDocument());
+  });
+
 });

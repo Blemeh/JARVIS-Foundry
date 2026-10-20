@@ -60,6 +60,7 @@ interface CommandCenterState {
   resolveNotification: (id: string) => void;
   acknowledgeAll: () => void;
   mutationsEnabled: boolean;
+  ownerCommandsEnabled: boolean;
 }
 
 const CommandCenterContext = createContext<CommandCenterState | null>(null);
@@ -102,41 +103,39 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   // the public scenario state remains the render-visible projection.
   const appliedScenarioRef = useRef<Scenario | null>(null);
 
+  const refreshGeneration = useRef(0);
   const refreshNotifications = useCallback(async () => {
-    try {
-      const [list, trust, ownerSurface] = await Promise.all([
-        client.listNotifications(),
-        client.getTrustSummary(),
-        client.getOwnerControlSurface?.() ?? Promise.resolve(null),
-      ]);
-      setNotifications(list);
+    const generation = ++refreshGeneration.current;
+    const [list, trust, ownerSurface] = await Promise.allSettled([
+      client.listNotifications(),
+      client.getTrustSummary(),
+      client.getOwnerControlSurface?.() ?? Promise.resolve(null),
+    ]);
+    if (generation !== refreshGeneration.current) return;
+    if (list.status === "fulfilled") {
+      setNotifications(list.value);
       setNotificationsStatus("ready");
       setNotificationsError(null);
-      setTrustSummary(trust);
-      setTrustSummaryStatus("ready");
-      const nextConnection = client.connection;
-      setConnection(nextConnection);
-      if (mode === "live") {
-        setStreamConnected(nextConnection.connected && !nextConnection.stale);
-      }
-      const stopped = Boolean(ownerSurface?.stopped);
-      const nextPaused = Boolean(ownerSurface?.paused);
-      if (ownerSurface) {
-        setStopActive(stopped);
-        setPaused(nextPaused);
-        setResumeTargetId(ownerSurface.resumableDirectiveIds[0] ?? null);
-        if (!stopped) setStopActivatedAt(null);
-      }
-    } catch (err: unknown) {
-      setNotifications([]);
+    } else {
       setNotificationsStatus("error");
-      setNotificationsError(err instanceof Error ? err.message : String(err));
-      setTrustSummary(null);
-      setTrustSummaryStatus("error");
-      const nextConnection = client.connection;
-      setConnection(nextConnection);
-      if (mode === "live") setStreamConnected(false);
+      setNotificationsError(list.reason instanceof Error ? list.reason.message : String(list.reason));
     }
+    if (trust.status === "fulfilled") {
+      setTrustSummary(trust.value);
+      setTrustSummaryStatus("ready");
+    } else {
+      setTrustSummaryStatus("error");
+    }
+    if (ownerSurface.status === "fulfilled" && ownerSurface.value) {
+      const surface = ownerSurface.value;
+      setStopActive(Boolean(surface.stopped));
+      setPaused(Boolean(surface.paused));
+      setResumeTargetId(surface.resumableDirectiveIds[0] ?? null);
+      if (!surface.stopped) setStopActivatedAt(null);
+    }
+    const nextConnection = client.connection;
+    setConnection(nextConnection);
+    if (mode === "live") setStreamConnected(nextConnection.connected && !nextConnection.stale);
   }, [client, mode]);
 
   useEffect(() => {
@@ -156,15 +155,23 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stream = client.subscribeEvents();
+    let lastSnapshotAt = client.connection.lastFetchedAt;
     const syncConnection = () => {
       const next = client.connection;
+      if (mode === "live" && next.lastFetchedAt && next.lastFetchedAt !== lastSnapshotAt) {
+        lastSnapshotAt = next.lastFetchedAt;
+        setVersion((v) => v + 1);
+        void refreshNotifications();
+      }
       setConnection((current) => sameConnection(current, next) ? current : next);
       setStreamConnected(stream.connected && (mode === "simulated" || next.connected && !next.stale));
     };
     const unsubscribe = stream.subscribe((event) => {
-      setVersion((v) => v + 1);
+      if (mode === "simulated") {
+        setVersion((v) => v + 1);
+        void refreshNotifications();
+      }
       syncConnection();
-      void refreshNotifications();
       if (event.type === "stop.simulated") {
         setStopActive(true);
         setStopActivatedAt(event.at);
@@ -284,6 +291,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
   // A live control is available only after a canonical snapshot is connected.
   // Degraded/unknown/disconnected sources fail closed rather than attempting a
   // mutation against an untrusted or stale runtime.
+  const ownerCommandsEnabled = !stopActive && (sourceMode === "SIMULATED" || connection.connected && !connection.stale && (sourceMode === "LIVE" || sourceMode === "DEGRADED"));
   const mutationsEnabled = !stopActive && (sourceMode === "SIMULATED" || sourceMode === "LIVE");
 
   const value = useMemo<CommandCenterState>(
@@ -325,6 +333,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       resolveNotification,
       acknowledgeAll,
       mutationsEnabled,
+      ownerCommandsEnabled,
     }),
     [
       client,
@@ -364,6 +373,7 @@ export function CommandCenterProvider({ children }: { children: ReactNode }) {
       resolveNotification,
       acknowledgeAll,
       mutationsEnabled,
+      ownerCommandsEnabled,
     ],
   );
 

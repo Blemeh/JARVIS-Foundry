@@ -23,6 +23,7 @@ from .control.capabilities import set_capability_state
 from .control.registration import inspect_git_resource, registration_event
 from .database import FoundryDatabase
 from .events import Event, canonical_json
+from .capability_requirements import resolve_capability_requirements
 from .executive.autonomy import (
     PlanStep,
     build_plan,
@@ -32,16 +33,25 @@ from .executive.autonomy import (
 )
 from .executive.decisions import ExecutiveDecision
 from .fabric.catalog import get_spec, observed_readiness
+from .mission.intent import (
+    CANDIDATE_BUILD_CLASSES,
+    CANDIDATE_NEEDS,
+    MissionIntentError,
+    intent_from_observation,
+    needs_for_candidate_class,
+)
 from .mission.verification import accepted_verifications
+from .platform.windows_subprocess import headless_run_kwargs
 
 
 _TERMINAL_OBJECTIVE = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"})
-_ALLOWED_ACTION_CLASSES = frozenset({
-    "tracked_work",
-    "github_issue",
-    "github_workflow_failure",
-    "world_signal",
-})
+# The admitted set is the binder's own declared class table: a class that has
+# no deterministic need binding cannot be admitted, and a class the binder can
+# bind is not refused merely because it is a different kind of useful work.
+# The previous hand-written four-class list refused discovered project-health
+# work (project_staleness) while Lane A discovery emitted it - the observed
+# stall this convergence repairs.
+_ALLOWED_ACTION_CLASSES = frozenset(CANDIDATE_NEEDS) | CANDIDATE_BUILD_CLASSES
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +148,7 @@ def _run_git(root: Path, *args: str, timeout: int = 60) -> str:
         errors="replace",
         timeout=timeout,
         check=False,
+        **headless_run_kwargs(),
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"git {' '.join(args)} failed")
@@ -239,6 +250,60 @@ def _candidate_context(candidate: Mapping[str, Any]) -> tuple[list[dict[str, Any
     return rows, project, capabilities
 
 
+def _candidate_intent(
+    *,
+    candidate_id: str,
+    candidate_type: str,
+    objective_text: str,
+    objective_id: str,
+    evidence: Sequence[Mapping[str, Any]],
+    prepared: Mapping[str, Any],
+) -> tuple[Any, str, bool]:
+    """Derive the normalized intent for one admitted candidate.
+
+    The Executive side answers "what is worth doing"; the binder's declared
+    class table answers "which normalized needs that implies".  Only
+    runtime-owned facts are supplied as input roles, so no recipe id and no
+    registry-shaped parameter block crosses this boundary.
+
+    Returns ``(intent, error, bindable)``.  ``bindable`` is False for a class
+    the binder cannot yet express (a bounded repository change): those keep
+    the existing admitted-objective build path instead of being downgraded to
+    a read-only review.
+    """
+    if not needs_for_candidate_class(candidate_type):
+        return None, "", False
+    read_only = candidate_type in {"project_drift", "project_staleness"}
+    repository_root = str(prepared.get("worktree") or prepared["source_root"])
+    try:
+        intent = intent_from_observation(
+            candidate_id=candidate_id,
+            candidate_type=candidate_type,
+            objective=objective_text,
+            resource_id=str(prepared["resource_id"]),
+            objective_id=objective_id,
+            evidence_rows=evidence,
+            supplied_inputs={
+                "owned_repository_root": repository_root,
+                "repository_branch": str(prepared["branch"]),
+            },
+            success_criteria=(
+                "the review reads the repository state the observation reported",
+                "the independent verifier accepts the recorded receipts",
+            ),
+            constraints=(
+                (
+                    "read-only observation of the explicitly registered project"
+                    if read_only else "reads only in the isolated worktree"
+                ),
+                "no public writes, live runtime, production database or Scheduler mutation",
+            ),
+        )
+    except MissionIntentError as error:
+        return None, str(error), True
+    return intent, "", True
+
+
 def _factor_value(judgment: Mapping[str, Any], name: str) -> float | None:
     factors = _json(judgment.get("factors_json"), {})
     raw = factors.get(name) if isinstance(factors, Mapping) else None
@@ -316,6 +381,56 @@ def _resolve_project_root(
     return None
 
 
+def _configured_project_root(
+    project: str,
+    project_roots: Mapping[str, str | Path],
+) -> Path | None:
+    """Resolve only an explicit project-root configuration entry."""
+    project_key = str(project or "").strip().casefold()
+    if not project_key:
+        return None
+    for key, value in project_roots.items():
+        if str(key).strip().casefold() == project_key:
+            return Path(value).expanduser().resolve()
+    return None
+
+
+def _prepare_read_only_project(
+    database: FoundryDatabase,
+    *,
+    project_id: str,
+    source_root: Path,
+) -> dict[str, Any]:
+    """Pin a registered project for read-only Git observation in place."""
+    registered = database.row("resources", "resource_id", project_id)
+    if registered is None:
+        raise RuntimeError("read-only project observation requires a registered resource")
+    registered_root = Path(
+        str(registered.get("resolved_root") or registered.get("root_path") or "")
+    ).expanduser().resolve()
+    if registered_root != source_root.resolve():
+        raise RuntimeError(
+            "configured project root does not match the registered resource identity"
+        )
+    if not source_root.is_dir():
+        raise RuntimeError("configured registered project is unavailable")
+    top = Path(_run_git(source_root, "rev-parse", "--show-toplevel")).resolve()
+    if top != source_root.resolve():
+        raise RuntimeError("configured project root is not the registered Git root")
+    branch = _run_git(top, "branch", "--show-current")
+    base_sha = _run_git(top, "rev-parse", "HEAD")
+    dirty = bool(_run_git(top, "status", "--porcelain=v1"))
+    return {
+        "source_root": str(top),
+        "worktree": "",
+        "branch": branch,
+        "base_sha": base_sha,
+        "resource_id": project_id,
+        "read_only": True,
+        "source_dirty": dirty,
+    }
+
+
 def _prepare_worktree(
     database: FoundryDatabase,
     *,
@@ -347,6 +462,7 @@ def _prepare_worktree(
             capture_output=True,
             timeout=30,
             check=False,
+            **headless_run_kwargs(),
         ).returncode == 0
         args = ("worktree", "add", str(worktree), branch) if branch_exists else (
             "worktree", "add", "-b", branch, str(worktree), base_sha
@@ -447,6 +563,7 @@ class InitiativeAdmissionAuthority:
         decision: ExecutiveDecision,
         *,
         now: datetime | str | None = None,
+        replacing_objective_id: str | None = None,
     ) -> A3Admission:
         candidate_id = str(decision.candidate_id or "")
         if decision.kind != "SELECT" or not candidate_id:
@@ -488,7 +605,7 @@ class InitiativeAdmissionAuthority:
         expires_at = str(candidate.get("expires_at") or "").strip()
         if not expires_at or _utc(expires_at) <= _utc(now):
             return _blocked(self.database, candidate_id, "STALE", "candidate is stale at admission")
-        evidence, project, candidate_capabilities = _candidate_context(candidate)
+        evidence, project, _candidate_capabilities = _candidate_context(candidate)
         provenance_hash = str(candidate.get("provenance_hash") or "")
         if not evidence or len(provenance_hash) != 64:
             return _blocked(self.database, candidate_id, "INSUFFICIENT_EVIDENCE", "candidate evidence/provenance is no longer valid")
@@ -504,8 +621,11 @@ class InitiativeAdmissionAuthority:
                 self.database,
                 candidate_id,
                 "ACTION_CLASS_NOT_ALLOWED",
-                f"candidate action class {action_class or 'UNKNOWN'} is not a small owner-repo build",
+                f"candidate action class {action_class or 'UNKNOWN'} is outside the admitted "
+                "owner-repository policy",
             )
+        read_only_candidate = action_class in {"project_drift", "project_staleness"}
+        build_cost_units = 0.0 if read_only_candidate else 1.0
         objective_text = str(candidate.get("objective") or "").strip()
         objective_id = f"initiative-objective:{candidate_id}"
         equivalent = _equivalent_work(self.database, objective_text, objective_id)
@@ -515,16 +635,53 @@ class InitiativeAdmissionAuthority:
         if len(active) >= self.policy.autonomous_wip_cap:
             return _blocked(self.database, candidate_id, "WIP_LIMIT", "autonomous WIP cap 1 is occupied", details={"active": active})
         consumed_budget = _consumed_build_budget(self.database)
-        if consumed_budget + 1.0 > self.policy.build_budget_units:
+        replacement_credit = 0.0
+        if replacing_objective_id and not read_only_candidate:
+            replacement = rebuild_executive_state(self.database).objectives.get(
+                str(replacing_objective_id)
+            )
+            linked = any(
+                str(event.payload.get("objective_id") or "")
+                == str(replacing_objective_id)
+                for event in self.database.events(
+                    event_types=("initiative.execution_linked",), readonly=True
+                )
+            )
+            if (
+                replacement is not None
+                and replacement.status == "SUSPENDED"
+                and replacement.metadata.get("initiative") == "V11_A3"
+                and not linked
+            ):
+                # The old objective held the one build-unit reservation but
+                # never produced a mission. A research-driven replacement
+                # transfers that unused reservation; it does not enlarge the
+                # budget or bypass the unchanged WIP cap.
+                replacement_credit = 1.0
+        effective_consumed = max(0.0, consumed_budget - replacement_credit)
+        if effective_consumed + build_cost_units > self.policy.build_budget_units:
             return _blocked(
                 self.database,
                 candidate_id,
                 "BUDGET_EXCEEDED",
                 "the one-objective A3 build budget is already consumed",
-                details={"consumed_units": consumed_budget},
+                details={
+                    "consumed_units": consumed_budget,
+                    "replacement_credit": replacement_credit,
+                    "effective_consumed_units": effective_consumed,
+                },
             )
 
-        source_root = _resolve_project_root(self.database, candidate_id, project, self.project_roots)
+        configured_root = _configured_project_root(project, self.project_roots)
+        if read_only_candidate and configured_root is None:
+            return _blocked(
+                self.database, candidate_id, "TARGET_UNAVAILABLE",
+                "read-only project work requires an explicit registered project-root mapping",
+            )
+        source_root = (
+            configured_root if read_only_candidate else
+            _resolve_project_root(self.database, candidate_id, project, self.project_roots)
+        )
         identities = {"GLOBAL", candidate_id, project, str(source_root or "")}
         identities.discard("")
         veto = matching_veto_reason(self.database, identities)
@@ -533,13 +690,80 @@ class InitiativeAdmissionAuthority:
         if source_root is None:
             return _blocked(self.database, candidate_id, "TARGET_UNAVAILABLE", "candidate has no explicit owner-repository mapping")
 
-        required = tuple(dict.fromkeys((*candidate_capabilities, *self.policy.required_fabric_capabilities)))
+        # Carry the same registered, read-only project understanding used by
+        # Executive observation into the admitted objective. Repository text
+        # remains advisory; the candidate judgment and admission gates below
+        # retain their existing authority.
+        from .executive.project_context import resolve_registered_project_context
+
+        project_context = resolve_registered_project_context(
+            self.database,
+            project_id=project,
+            resource_id=project,
+            root=source_root,
+            cycle_id=f"admission:{candidate_id}",
+        )
+
+        requirement_set = resolve_capability_requirements(
+            self.database, candidate, unattended=True,
+        )
+        if not requirement_set.executable:
+            requirement_blockers = []
+            for row in requirement_set.blockers[:8]:
+                code = str(row.get("code") or "CAPABILITY_UNAVAILABLE")
+                capability = str(
+                    row.get("capability_id") or row.get("action_kind") or ""
+                )
+                requirement_blockers.append(
+                    f"{capability}:{code}" if capability else code
+                )
+            return _blocked(
+                self.database,
+                candidate_id,
+                "CAPABILITY_UNAVAILABLE",
+                "candidate capability requirements are not executable: "
+                + (", ".join(requirement_blockers) or "BLOCKED"),
+                details={"capability_requirement_set": requirement_set.as_dict()},
+            )
+        required = tuple(requirement_set.required_capability_ids)
+        if action_class in CANDIDATE_BUILD_CLASSES:
+            required = tuple(dict.fromkeys((
+                *required, *self.policy.required_fabric_capabilities,
+            )))
+        expected_first_use_scope = (
+            "REGISTERED_PROJECT_READ_ONLY" if read_only_candidate
+            else ""
+        )
+        qualification_ids = set(
+            requirement_set.qualification_required_capability_ids
+        )
+        evidence_by_capability = {
+            row.capability_id: row
+            for row in requirement_set.capability_evidence
+            if row.requirement_kind == "REQUIRED"
+        }
         missing: list[str] = []
         for capability_id in required:
             spec = get_spec(self.database, capability_id)
             readiness = observed_readiness(self.database, capability_id)
             unattended = getattr(getattr(spec, "unattended", None), "value", "UNKNOWN")
-            if spec is None or readiness.state.value != "READY" or unattended != "ALLOWED":
+            evidence_row = evidence_by_capability.get(capability_id)
+            first_use_qualified = bool(
+                spec is not None
+                and readiness.state.value == "UNKNOWN"
+                and readiness.trust_state.value == "ESTABLISHED"
+                and unattended == "ALLOWED"
+                and bool(expected_first_use_scope)
+                and capability_id in qualification_ids
+                and evidence_row is not None
+                and evidence_row.qualification_scope == expected_first_use_scope
+            )
+            if (
+                spec is None
+                or readiness.trust_state.value == "DISABLED"
+                or (readiness.state.value != "READY" and not first_use_qualified)
+                or unattended != "ALLOWED"
+            ):
                 missing.append(f"{capability_id}={readiness.state.value}/{unattended}")
         if missing:
             return _blocked(
@@ -550,38 +774,115 @@ class InitiativeAdmissionAuthority:
             )
 
         try:
-            prepared = _prepare_worktree(
-                self.database,
-                candidate_id=candidate_id,
-                fingerprint=str(candidate.get("fingerprint") or ""),
-                source_root=source_root,
-                worktree_parent=self.worktree_parent,
-            )
+            if read_only_candidate:
+                prepared = _prepare_read_only_project(
+                    self.database,
+                    project_id=project,
+                    source_root=source_root,
+                )
+            else:
+                prepared = _prepare_worktree(
+                    self.database,
+                    candidate_id=candidate_id,
+                    fingerprint=str(candidate.get("fingerprint") or ""),
+                    source_root=source_root,
+                    worktree_parent=self.worktree_parent,
+                )
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             return _blocked(self.database, candidate_id, "WORKTREE_BLOCKED", str(error)[:500])
 
+        intent, intent_error, intent_bindable = _candidate_intent(
+            candidate_id=candidate_id,
+            candidate_type=action_class,
+            objective_text=objective_text,
+            objective_id=objective_id,
+            evidence=evidence,
+            prepared=prepared,
+        )
+        if intent_bindable and intent is None:
+            return _blocked(
+                self.database,
+                candidate_id,
+                "INTENT_UNBINDABLE",
+                f"observed work has no normalized intent: {intent_error}",
+            )
+        intent_payload = intent.as_dict() if intent is not None else None
+
         score = float(judgment.get("score") or 0.5)
+        objective_constraints = (
+            (
+                "read-only observation of the explicitly registered project",
+                "no file writes, public writes, live runtime, production database, or Scheduler mutation",
+            )
+            if read_only_candidate else
+            (
+                "small reversible change in the isolated worktree only",
+                "no merge, push, deploy, email, live runtime, production database, or Scheduler mutation",
+            )
+        )
+        objective_success = (
+            (
+                "the declared Git observations are recorded from the registered project",
+                "the independent verifier accepts the recorded receipts",
+            )
+            if read_only_candidate else
+            (
+                "a real repository improvement satisfies the admitted candidate",
+                "relevant local tests pass",
+                "the independent verifier records verification.accepted",
+            )
+        )
+        objective_failure = (
+            (
+                "the independent verifier rejects the recorded Git observations",
+                "the registered project cannot be observed within the bounded mission",
+            )
+            if read_only_candidate else
+            (
+                "build or tests remain failed after bounded repair",
+                "independent verifier rejects the output",
+            )
+        )
+        plan_description = (
+            f"Read the registered project through Fabric and record the useful findings: {objective_text}."
+            if read_only_candidate else
+            f"Perform the admitted candidate in the isolated worktree: {objective_text}. "
+            "Make the smallest useful repository change and run its relevant tests."
+        )
+        if project_context.get("status") == "AVAILABLE":
+            plan_description += (
+                " Registered project profile is advisory repository data: "
+                f"{project_context['classification']} "
+                f"({project_context['unknown_count']} unresolved context items); "
+                "inspect current project instructions before acting."
+            )
+        observed_actions = tuple(dict.fromkeys(
+            evidence_by_capability[capability_id].action_kind
+            for capability_id in required
+            if capability_id in evidence_by_capability
+            and evidence_by_capability[capability_id].action_kind
+        ))
+        plan_output_contract = (
+            tuple(f"recorded {action} receipt" for action in observed_actions)
+            + ("independent verification.accepted",)
+            if read_only_candidate else
+            ("real repository diff", "recorded local test result")
+        )
         objective = create_objective(
             self.database,
             objective_text,
             objective_id=objective_id,
             owner_authority="v11-a3-autonomous-initiative",
-            constraints=(
-                "small reversible change in the isolated worktree only",
-                "no merge, push, deploy, email, live runtime, production database, or Scheduler mutation",
+            constraints=objective_constraints,
+            success_criteria=objective_success,
+            failure_criteria=objective_failure,
+            autonomy_boundaries=(
+                ("C1", "LOCAL_ONLY", "READ_ONLY", "NO_PUBLIC_WRITES")
+                if read_only_candidate else
+                ("C1", "LOCAL_ONLY", "REVERSIBLE", "NO_PUBLIC_WRITES")
             ),
-            success_criteria=(
-                "a real repository improvement satisfies the admitted candidate",
-                "relevant local tests pass",
-                "the independent verifier records verification.accepted",
-            ),
-            failure_criteria=(
-                "build or tests remain failed after bounded repair",
-                "independent verifier rejects the output",
-            ),
-            autonomy_boundaries=("C1", "LOCAL_ONLY", "REVERSIBLE", "NO_PUBLIC_WRITES"),
             budget={
-                "build_units": self.policy.build_budget_units,
+                "build_units": build_cost_units,
                 "max_missions": float(self.policy.max_missions),
                 "max_retries": float(self.policy.max_retries),
             },
@@ -591,7 +892,9 @@ class InitiativeAdmissionAuthority:
             reversibility=reversibility,
             confidence=confidence,
             resource_id=prepared["resource_id"],
-            required_capabilities=("write_registered_worktree_files",),
+            required_capabilities=(
+                () if read_only_candidate else ("write_registered_worktree_files",)
+            ),
             provenance={
                 "candidate_id": candidate_id,
                 "candidate_fingerprint": candidate.get("fingerprint"),
@@ -603,10 +906,23 @@ class InitiativeAdmissionAuthority:
                 "initiative": "V11_A3",
                 "project_id": project,
                 "candidate_type": action_class,
+                "read_only": read_only_candidate,
                 "source_root": prepared["source_root"],
-                "worktree": prepared["worktree"],
+                "worktree": prepared.get("worktree") or None,
                 "branch": prepared["branch"],
                 "base_sha": prepared["base_sha"],
+                "qualification_required_capability_ids": sorted(qualification_ids),
+                "project_profile_ref": (
+                    {
+                        key: project_context[key]
+                        for key in (
+                            "profile_id", "profile_hash", "evidence_hash",
+                            "source_fingerprint", "authority",
+                        )
+                    }
+                    if project_context.get("status") == "AVAILABLE" else None
+                ),
+                **({"intent": intent_payload} if intent_payload else {}),
             },
             source_id="v11-a3-admission",
         )
@@ -617,14 +933,17 @@ class InitiativeAdmissionAuthority:
                 PlanStep(
                     step_id="execute",
                     objective_id=objective.objective_id,
-                    description=(
-                        f"Perform the admitted candidate in the isolated worktree: {objective_text}. "
-                        "Make the smallest useful repository change and run its relevant tests."
+                    description=plan_description,
+                    required_capabilities=(
+                        () if read_only_candidate else ("write_registered_worktree_files",)
                     ),
-                    required_capabilities=("write_registered_worktree_files",),
                     resource_id=prepared["resource_id"],
-                    output_contract=("real repository diff", "recorded local test result"),
-                    verification_contract=("independent verifier accepts direct worktree and test evidence",),
+                    output_contract=plan_output_contract,
+                    verification_contract=(
+                        ("independent verifier accepts the direct Git receipts",)
+                        if read_only_candidate else
+                        ("independent verifier accepts direct worktree and test evidence",)
+                    ),
                     max_retries=self.policy.max_retries,
                 ),
             ),
@@ -642,16 +961,24 @@ class InitiativeAdmissionAuthority:
                 "plan_id": f"initiative-plan:{candidate_id}",
                 "resource_id": prepared["resource_id"],
                 "source_root": prepared["source_root"],
-                "worktree": prepared["worktree"],
+                "worktree": prepared.get("worktree") or None,
                 "branch": prepared["branch"],
                 "base_sha": prepared["base_sha"],
+                "read_only": read_only_candidate,
+                "source_dirty": bool(prepared.get("source_dirty", False)),
                 "required_fabric_capabilities": list(required),
+                "qualification_required_capability_ids": sorted(qualification_ids),
                 "wip_cap": self.policy.autonomous_wip_cap,
                 "build_budget_units": self.policy.build_budget_units,
-                "build_cost_units": 1.0,
+                "build_cost_units": build_cost_units,
+                "replacing_objective_id": replacing_objective_id,
+                "replacement_credit_units": replacement_credit,
                 "action_class": action_class,
                 "reversibility": reversibility,
                 "confidence": confidence,
+                "intent_id": (intent_payload or {}).get("intent_id"),
+                "intent_needs": list((intent_payload or {}).get("needs") or ()),
+                "intent_source": (intent_payload or {}).get("source"),
             },
             source_type="supervisor",
             source_id="v11-a3-admission",
@@ -662,7 +989,7 @@ class InitiativeAdmissionAuthority:
             candidate_id,
             objective.objective_id,
             None,
-            prepared["worktree"],
+            prepared.get("worktree") or None,
             prepared["resource_id"],
             "ADMITTED",
             "A2 ELIGIBLE candidate admitted to the existing Executive",
@@ -731,6 +1058,8 @@ def continue_initiative_objective(
                 "mission_id": mission_id,
                 "resource_id": objective.resource_id,
                 "worktree": objective.metadata.get("worktree"),
+                "source_root": objective.metadata.get("source_root"),
+                "read_only": bool(objective.metadata.get("read_only")),
                 "branch": objective.metadata.get("branch"),
                 "base_sha": objective.metadata.get("base_sha"),
             },
@@ -788,18 +1117,24 @@ def record_terminal_initiative_outcome(
         "IN_PROGRESS" if retry_available else
         "FAILED" if runtime_outcome in {"FAILED", "BLOCKED"} else "IN_PROGRESS"
     )
-    worktree = Path(str(link.get("worktree") or ""))
+    worktree_value = str(link.get("worktree") or "").strip()
+    source_root_value = str(link.get("source_root") or "").strip()
+    evidence_root = worktree_value or (
+        source_root_value if bool(link.get("read_only")) else ""
+    )
     final_sha = None
-    if worktree.is_dir():
+    if evidence_root and Path(evidence_root).is_dir():
         try:
-            final_sha = _run_git(worktree, "rev-parse", "HEAD")
+            final_sha = _run_git(Path(evidence_root), "rev-parse", "HEAD")
         except RuntimeError:
             final_sha = None
     payload = {
         "candidate_id": candidate_id,
         "objective_id": objective_id,
         "mission_id": mission_id,
-        "worktree": str(worktree) if str(worktree) != "." else None,
+        "worktree": worktree_value or None,
+        "source_root": source_root_value or None,
+        "read_only": bool(link.get("read_only")),
         "base_sha": link.get("base_sha"),
         "final_sha": final_sha,
         "runtime_outcome": runtime_outcome,

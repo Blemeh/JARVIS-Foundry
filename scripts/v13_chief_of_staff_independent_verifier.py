@@ -33,6 +33,7 @@ from jarvis_foundry.owner_context import (
 )
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.reconcile import reconcile
+from jarvis_foundry.migrations import SCHEMA_VERSION
 
 
 V12_FINAL_CANDIDATE = "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
@@ -1134,7 +1135,9 @@ def verify_proof(
             and proof_inputs.get("owner_context_source")
             == OWNER_CONTEXT_SOURCE
         ),
-        "schema_v40": _schema(database) == 40,
+        # Key name is historical and is recorded in committed evidence
+        # receipts; the comparison tracks the current schema.
+        "schema_v40": _schema(database) == SCHEMA_VERSION,
         "event_integrity": (
             database.verify_event_integrity() == database.event_count()
         ),

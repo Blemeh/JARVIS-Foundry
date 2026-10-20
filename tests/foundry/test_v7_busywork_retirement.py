@@ -1,10 +1,11 @@
-"""Regression: terminal outcomes retire derived portfolio items.
+"""Regression: unscoped immutable V6 records are quarantined from selection.
 
 Live busywork incident 2026-08-24: an IMPROVEMENT item derived from a V6
 improvement record kept being re-selected after PASSED outcomes because
-derived items rebuild from the source table and never consume. The bridge
-now registers a durable mirror on materialization; the outcome closure
-marks the mirror COMPLETED, which permanently retires the entity.
+derived items rebuild from the source table and never consume. Unscoped
+improvements now stop at the V6 implementation gate. A durable block record
+quarantines that immutable finding; future execution requires a newly
+scoped record identity.
 """
 from __future__ import annotations
 
@@ -14,9 +15,11 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.events import Event
 from jarvis_foundry.executive.portfolio_bridge import (
     materialize_portfolio_selection,
-    record_mission_portfolio_outcome,
 )
-from jarvis_foundry.evolution.executive_portfolio import select_next_work
+from jarvis_foundry.evolution.executive_portfolio import (
+    _improvement_items,
+    select_next_work,
+)
 
 
 def _database(tmp_path: Path) -> FoundryDatabase:
@@ -39,7 +42,7 @@ def _database(tmp_path: Path) -> FoundryDatabase:
     return db
 
 
-def test_passed_improvement_is_not_readmitted(tmp_path: Path) -> None:
+def test_unscoped_blocked_improvement_is_not_readmitted(tmp_path: Path) -> None:
     db = _database(tmp_path)
     db.append(Event.create(
         "improvement.recorded",
@@ -64,11 +67,13 @@ def test_passed_improvement_is_not_readmitted(tmp_path: Path) -> None:
     assert first.kind == "SELECT"
     result = materialize_portfolio_selection(
         db, decision=first.to_payload(), resource_id="resource-x")
-    assert result["materialized"] is True
-    record_mission_portfolio_outcome(
-        db, decision=first.to_payload(),
-        mission_id=str(result["mission_id"]), status="PASSED",
-        outcome_id="out-busy-1")
+    assert result["materialized"] is False
+    assert result["mission_id"] is None
+    assert db.event_count(event_type="mission.created") == 0
+    assert not any(
+        item.item_id == "improvement:imp-busywork"
+        for item in _improvement_items(db)
+    )
 
     second = select_next_work(db, loop_id="busy-2")
     ranked = second.entity_id if second.kind == "SELECT" else None

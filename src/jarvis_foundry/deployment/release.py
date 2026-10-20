@@ -56,48 +56,72 @@ if not exist "%PY%" (
 set "JARVIS_RELEASE_ID=%SHA%"
 set "JARVIS_RELEASE_SHA=%SHA%"
 set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\\.pw"
-"%PY%" -m jarvis_foundry.deployment.launcher %*
+"%PY%" -I -m jarvis_foundry.deployment.launcher %*
 exit /b %ERRORLEVEL%
 """
 
-JARVIS_CLI_CMD_TEXT = """@echo off
+# Validate CURRENT in a static PowerShell file so its raw bytes never enter
+# CMD syntax. The only value returned to the batch file is a lowercase
+# 40/64-character Git object id, safe to place in the immutable release path.
+JARVIS_CLI_CURRENT_SHA_VALIDATOR_TEXT = r"""try {
+    $raw = [IO.File]::ReadAllText([IO.Path]::Combine($env:JARVIS_INSTALL_ROOT, 'CURRENT'))
+} catch {
+    exit 2
+}
+$match = [regex]::Match($raw, '^([0-9a-f]{40}|[0-9a-f]{64})(?:\r?\n)?\z')
+if ($match.Success) {
+    [Console]::Out.WriteLine($match.Groups[1].Value)
+    exit 0
+}
+exit 2
+"""
+
+# The direct bootstrap pins imports to source copied into a new immutable
+# release. A release predating that file still runs from its own venv package.
+JARVIS_CLI_CMD_TEXT = rf"""@echo off
 setlocal EnableExtensions
 set "PYTHONPATH="
 set "PYTHONHOME="
-if exist "C:\\Python313\\python.exe" (
-  "C:\\Python313\\python.exe" -m jarvis_foundry.cli.main %*
-  exit /b %ERRORLEVEL%
+if not defined JARVIS_INSTALL_ROOT set "JARVIS_INSTALL_ROOT=%LOCALAPPDATA%\JARVIS"
+set "SHA="
+for /f "usebackq delims=" %%A in (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -NonInteractive -File "%JARVIS_INSTALL_ROOT%\bin\validate-current.ps1"`) do set "SHA=%%A"
+if not defined SHA (
+  echo FAIL_CLOSED: CURRENT pointer must contain one full lowercase Git object id>&2
+  exit /b 2
 )
-if exist "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" (
-  "%APPDATA%\\Python\\Python313\\Scripts\\jarvis.exe" %*
-  exit /b %ERRORLEVEL%
+set "RELEASE=%JARVIS_INSTALL_ROOT%\releases\%SHA%"
+set "PY=%RELEASE%\.venv\Scripts\python.exe"
+if not exist "%PY%" (
+  echo FAIL_CLOSED: release python missing>&2
+  exit /b 2
 )
-where py >nul 2>nul && (
-  py -3.13 -m jarvis_foundry.cli.main %*
-  exit /b %ERRORLEVEL%
-)
-if not defined JARVIS_INSTALL_ROOT set "JARVIS_INSTALL_ROOT=%LOCALAPPDATA%\\JARVIS"
-set "CURRENT_FILE=%JARVIS_INSTALL_ROOT%\\CURRENT"
-if exist "%CURRENT_FILE%" (
-  set /p SHA=<"%CURRENT_FILE%"
-  for /f "tokens=* delims= " %%A in ("%SHA%") do set "SHA=%%A"
-  set "PY=%JARVIS_INSTALL_ROOT%\\releases\\%SHA%\\.venv\\Scripts\\python.exe"
-  if exist "%PY%" (
-    "%PY%" -m jarvis_foundry.cli.main %*
-    exit /b %ERRORLEVEL%
-  )
-)
-echo FAIL_CLOSED: jarvis CLI not installed. Run: pip install -e . from JARVIS-Foundry>&2
-exit /b 2
+set "CLI_ENTRY=%RELEASE%\source\src\jarvis_foundry\deployment\cli_launcher.py"
+set "JARVIS_RELEASE_ID=%SHA%"
+set "JARVIS_RELEASE_SHA=%SHA%"
+set "PLAYWRIGHT_BROWSERS_PATH=%RELEASE%\.pw"
+if not exist "%CLI_ENTRY%" goto legacy_cli
+"%PY%" -I "%CLI_ENTRY%" %*
+exit /b %ERRORLEVEL%
+:legacy_cli
+rem Backward-compatible route for immutable releases predating the CLI bootstrap.
+"%PY%" -I -m jarvis_foundry.cli.main %*
+exit /b %ERRORLEVEL%
 """
 
 
 def _packaging_template(name: str) -> Path:
-    repo = Path(__file__).resolve().parents[3]
-    path = repo / "packaging" / name
-    if not path.is_file():
-        raise ReleaseError(f"missing packaging template: {path}")
-    return path
+    module_root = Path(__file__).resolve().parents[1]
+    packaged_path = module_root / "assets" / "packaging" / name
+    if packaged_path.is_file():
+        return packaged_path
+    # Source checkouts keep release templates in the repository-level
+    # packaging directory. _copy_source_snapshot also copies them into the
+    # package assets so installed immutable releases can build later releases.
+    source_path = Path(__file__).resolve().parents[3] / "packaging" / name
+    if source_path.is_file():
+        return source_path
+    raise ReleaseError(
+        f"missing packaging template: {packaged_path} (source: {source_path})")
 
 
 class ReleaseError(RuntimeError):
@@ -639,6 +663,13 @@ def _copy_source_snapshot(source_repo: Path, staging: Path) -> None:
             shutil.copytree(origin, destination, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         else:
             shutil.copy2(origin, destination)
+    package_assets = staging / "src" / "jarvis_foundry" / "assets" / "packaging"
+    package_assets.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        Path(source_repo) / "packaging",
+        package_assets,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
 
 
 def _build_command_center_bundle(
@@ -1057,7 +1088,22 @@ def set_current(
     previous = read_current(root)
     rollback_runtime_retirement = _rollback_runtime_retirement_plan(
         root, target_source_sha=source_sha)
-    if previous == source_sha and database is None:
+    if previous == source_sha:
+        # Idempotent retry: this release is already the live authority.
+        # Return success without touching pointers so a repeated
+        # activation (e.g. after an operator rerun, or task retarget
+        # healing) never fails with a false previous_runtime mismatch.
+        # The caller still reconciles the scheduled task afterwards.
+        # When a database is supplied, verify its live slot agrees and
+        # heal it if it diverged (DB restore/recreation can split file
+        # pointers from DB authority); never bless a split authority.
+        if database is not None:
+            active = _database_active_release(database)
+            if active.get("source_sha") != source_sha:
+                record_active_release(
+                    source_sha, root=root, database=database,
+                    reason=reason,
+                )
         _retire_obsolete_rollback_runtime(rollback_runtime_retirement)
         return {"current": source_sha, "previous": read_previous(root)}
     candidate_previous = candidate["manifest"].get("previous_runtime")

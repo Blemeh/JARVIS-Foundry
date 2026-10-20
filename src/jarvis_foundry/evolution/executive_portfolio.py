@@ -451,7 +451,12 @@ def _project_from_event(state: PortfolioState, event: Event) -> None:
 def rebuild_portfolio_state(database: FoundryDatabase) -> PortfolioState:
     """Rebuild the V7 portfolio projection from the append-only ledger."""
     state = PortfolioState()
-    for sequence, event in enumerate(database.events(), start=1):
+    # This projection is entirely derived from portfolio-domain events. Keep
+    # the original ledger sequence while avoiding decoding unrelated worker,
+    # provider, and perception history on every reconstruction.
+    for sequence, event in database.events_with_sequences(
+        event_type_prefixes=("portfolio.",),
+    ):
         payload = event.payload
         _project_from_event(state, event)
         if event.event_type == "portfolio.policy_configured":
@@ -684,7 +689,9 @@ def update_work_item(
     _require(item_id in rebuild_portfolio_state(database).work_items,
              f"unknown portfolio item: {item_id}")
     allowed = {
-        "objective", "goal_ids", "project_id", "resource_id", "expected_value",
+        "objective", "goal_ids", "project_id", "resource_id", "mission_id",
+        "candidate_id",
+        "expected_value",
         "urgency", "information_gain", "confidence", "effort", "cost_usd",
         "risk", "reversibility", "opportunity_cost", "dependencies", "due_at",
         "expires_at", "owner_only", "requires_workers", "requires_verifier",
@@ -719,10 +726,20 @@ def set_work_status(
              f"unknown portfolio item: {item_id}")
     payload = {"item_id": item_id, "status": status, "reason": reason,
                "controller": controller}
+    # Exactly-once belongs to ONE logical transition, not to a status value
+    # for all time.  Keying by {item_id}:{status} burned the first CONSUMED /
+    # BLOCKED forever, so a bounded recovery that legitimately re-enters the
+    # same status collided with its own first cycle (live 2026-09-29 ->
+    # 2026-10-02, pw-dupkey-...-f2757e1b6f92) and the guarded consumption
+    # stamp could never run again — recovery was materialization-unreachable.
+    # The reason names the transition (it carries the mission/candidate/cycle
+    # that caused it), so a repeat of the SAME transition stays a no-op while
+    # a genuinely new one records.
     event = Event.create(
         "portfolio.work_status_changed", payload,
         source_type=source_type, source_id=source_id,
-        idempotency_key=f"portfolio.work_status_changed:{item_id}:{status}",
+        idempotency_key=(f"portfolio.work_status_changed:{item_id}:{status}:"
+                         f"{hashlib.sha256(reason.encode('utf-8')).hexdigest()[:16]}"),
     )
     return str(database.append(event)[0])
 
@@ -961,7 +978,22 @@ def _capacity_check(
     reasons: list[str] = []
     if item.status not in ("OPEN", "PLANNED", "ELIGIBLE"):
         reasons.append(f"status:{item.status}")
-    if item.blocked_reason:
+    # A work item's status is the authoritative blocked-ness.  The narrative
+    # reason of the transition that set it is audit information, NOT a live
+    # block: `set_work_status` stamps `blocked_reason = payload["reason"]` for
+    # EVERY status change, including the ones that return an item to OPEN.
+    # Gating on the narrative disqualified the item by the very reopen that
+    # made it executable again (live 2026-10-02 21:00Z: the bounded recovery
+    # reopened pw-dupkey-...-f2757e1b6f92 to OPEN and selection then WAITed
+    # with "blocked:recovery reopen for cand-...: terminal lineage failed"
+    # — the reopen made recovery unreachable while reading truthfully).
+    #
+    # Registered items reach this function only after `_all_work_items` has
+    # filtered them to OPEN/PLANNED/ELIGIBLE, so the status clause below is
+    # unreachable for them and the removed gate is NOT compensated here.  The
+    # real enforcement of blocked-ness is that filter; the bounded retirement
+    # of derived repair items lives in `_mission_items`.
+    if item.blocked_reason and item.status in ("BLOCKED", "CANCELLED"):
         reasons.append(f"blocked:{item.blocked_reason}")
     if item.owner_only:
         reasons.append("owner_only_fact")
@@ -1320,6 +1352,33 @@ def _owner_goal_items(
     return items
 
 
+def _retired_repair_missions(database: FoundryDatabase) -> set[str]:
+    """Mission ids whose repair work has already been retired.
+
+    ``portfolio.repair_retired`` is the durable signal that a REPAIR item for
+    a terminal mission was attempted and could not be materialized (no
+    remaining executable step contract).  Without honouring it here, the
+    derived ``repair:{mission_id}`` item is re-admitted to the ranked pool on
+    every cycle forever: it re-selects, materializes nothing, and appends a
+    fresh ``portfolio.repair_retired`` each cycle because that event is keyed
+    by ``{decision_id}:{mission_id}`` and decision_id changes per cycle.
+
+    That unbounded loop was previously masked by the D5 narrative gate,
+    which rejected the item for carrying a blocked_reason — a gate that also
+    made the bounded recovery reopen unreachable.  The bounded truth lives
+    here: a retired mission's repair is not re-offered.
+    """
+    retired: set[str] = set()
+    with database.connect(readonly=True) as connection:
+        for row in connection.execute(
+                "SELECT json_extract(payload_json, '$.mission_id') AS m "
+                "FROM events WHERE event_type = 'portfolio.repair_retired'"
+        ).fetchall():
+            if row["m"]:
+                retired.add(str(row["m"]))
+    return retired
+
+
 def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
     items: list[WorkItem] = []
     with database.connect() as connection:
@@ -1327,6 +1386,7 @@ def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
             "SELECT mission_id, objective, resource_id, state, next_action "
             "FROM missions ORDER BY rowid"
         ).fetchall()
+    retired = _retired_repair_missions(database)
     for row in rows:
         state = str(row["state"] or "")
         mission_id = str(row["mission_id"] or "")
@@ -1341,6 +1401,11 @@ def _mission_items(database: FoundryDatabase) -> list[WorkItem]:
                 metadata={"mission_state": state},
             ))
         elif state in {"FAILED", "BLOCKED"}:
+            if mission_id in retired:
+                # Durable bounded retirement (see _retired_repair_missions):
+                # this repair was already attempted and could not be
+                # materialized, so it must not be re-offered every cycle.
+                continue
             items.append(WorkItem(
                 item_id=f"repair:{mission_id}", kind="REPAIR",
                 objective=f"Repair mission {mission_id}: {objective}", status="OPEN",
@@ -1435,24 +1500,76 @@ def _improvement_items(database: FoundryDatabase) -> list[WorkItem]:
     except ValueError:
         return []
     completed: set[str] = set()
+    implementation_blocked: set[str] = set()
+    extension_refs: dict[str, list[str]] = {}
+    extension_snapshots: dict[str, str] = {}
     for event in database.events():
         if event.event_type == "cycle.completed":
             improvement_id = str(event.payload.get("improvement_id") or "")
             if improvement_id:
                 completed.add(improvement_id)
-    return [
-        WorkItem(
+        elif event.event_type == "improvement.implementation_blocked":
+            improvement_id = str(event.payload.get("improvement_id") or "")
+            if improvement_id:
+                implementation_blocked.add(improvement_id)
+        elif event.event_type == "improvement.evidence_extended":
+            improvement_id = str(event.payload.get("improvement_id") or "")
+            refs = event.payload.get("evidence_refs")
+            if improvement_id and isinstance(refs, list):
+                bucket = extension_refs.setdefault(improvement_id, [])
+                bucket.extend(
+                    str(ref) for ref in refs
+                    if isinstance(ref, str) and ref.strip()
+                    and ref not in bucket)
+                snapshot_hash = event.payload.get("snapshot_hash")
+                if isinstance(snapshot_hash, str) and snapshot_hash:
+                    extension_snapshots[improvement_id] = snapshot_hash
+    items: list[WorkItem] = []
+    for row in rows:
+        if str(row.get("state") or "") != "FROZEN" or \
+                str(row.get("improvement_id")) in completed or \
+                str(row.get("improvement_id")) in implementation_blocked:
+            # Frozen records are immutable. If implementation authority was
+            # missing, quarantine this record instead of reselecting it each
+            # cycle; any later scoped finding must be a new record identity.
+            continue
+        try:
+            evidence_refs = json.loads(
+                str(row.get("evidence_refs_json") or "[]"))
+        except (TypeError, ValueError):
+            evidence_refs = []
+        if not isinstance(evidence_refs, list):
+            evidence_refs = []
+        try:
+            provenance = json.loads(
+                str(row.get("provenance_json") or "{}"))
+        except (TypeError, ValueError):
+            provenance = {}
+        if not isinstance(provenance, Mapping):
+            provenance = {}
+        improvement_id = str(row["improvement_id"])
+        evidence_refs = list(dict.fromkeys(
+            [str(ref) for ref in evidence_refs
+             if isinstance(ref, str) and ref.strip()]
+            + extension_refs.get(improvement_id, [])
+        ))
+        item_provenance = dict(provenance)
+        latest_snapshot = extension_snapshots.get(improvement_id)
+        if latest_snapshot:
+            item_provenance["latest_detector_snapshot_hash"] = latest_snapshot
+        items.append(WorkItem(
             item_id=f"improvement:{row['improvement_id']}", kind="IMPROVEMENT",
             objective=str(row.get("problem") or row["improvement_id"]),
             expected_value=0.7, urgency=0.4, information_gain=0.5,
             confidence=0.7, reversibility=0.8, requires_verifier=True,
             metadata={"improvement_id": row["improvement_id"],
                       "risk_class": row.get("risk_class")},
-        )
-        for row in rows
-        if str(row.get("state") or "") == "FROZEN"
-        and str(row.get("improvement_id")) not in completed
-    ]
+            evidence_refs=tuple(
+                str(ref) for ref in evidence_refs
+                if isinstance(ref, str) and ref.strip()),
+            provenance=item_provenance,
+        ))
+    return items
 
 
 _SEVERITY_URGENCY = {

@@ -133,9 +133,40 @@ def _rows_in_window(database: FoundryDatabase, table: str,
     return rows
 
 
+def _agent_runs_in_window(
+    database: FoundryDatabase, start: datetime, end: datetime,
+) -> list[dict[str, Any]]:
+    """Attribute terminal agent outcomes to the day they became known."""
+    rows: list[dict[str, Any]] = []
+    with database.connect() as connection:
+        cursor = connection.execute("SELECT * FROM agent_runs ORDER BY rowid")
+        names = [description[0] for description in cursor.description]
+        for raw_row in cursor.fetchall():
+            row = dict(zip(names, raw_row))
+            terminal = str(row.get("status") or "").upper() in {
+                "FAILED", "COMPLETED",
+            }
+            value = (row.get("finished_at") if terminal else None) \
+                or row.get("started_at")
+            if not isinstance(value, str) or not value:
+                continue
+            try:
+                moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if start <= moment <= end:
+                rows.append(row)
+    return rows
+
+
 def _observation_id(payload: dict[str, Any]) -> str:
     return "weakness-" + hashlib.sha256(
         canonical_json(payload).encode("utf-8")).hexdigest()[:12]
+
+
+def _detector_identity(payload: dict[str, Any]) -> str:
+    return "detector-" + hashlib.sha256(
+        canonical_json(payload).encode("utf-8")).hexdigest()
 
 
 def _confidence(sample: int, minimum: int, *, has_baseline: bool) -> float:
@@ -152,7 +183,7 @@ def _risk_hint(component: str) -> str:
 def _emit(rule: str, metric: str, value: float, baseline: float | None,
           threshold: float, window: tuple[str, str],
           evidence_refs: list[str], component: str, sample: int,
-          *, detail: str) -> dict[str, Any]:
+          *, detail: str, identity_scope: str = "") -> dict[str, Any]:
     has_baseline = baseline is not None
     payload = {
         "rule": rule,
@@ -171,6 +202,11 @@ def _emit(rule: str, metric: str, value: float, baseline: float | None,
     payload["dedupe_identity"] = _observation_id({
         key: value_ for key, value_ in payload.items()
         if key != "detail"})
+    payload["detector_identity"] = _detector_identity({
+        "rule": rule, "metric": metric, "component": component,
+        "identity_scope": identity_scope,
+        "window_start": window[0], "window_end": window[1],
+    })
     payload["confidence"] = _confidence(
         sample, RULES[rule]["min_sample"], has_baseline=has_baseline)
     payload["risk_hint"] = _risk_hint(component)
@@ -197,10 +233,8 @@ def detect_weaknesses(database: FoundryDatabase, *,
     prior_start_dt = start - span
     prior_start = prior_start_dt.isoformat()
 
-    runs = _rows_in_window(database, "agent_runs", "started_at",
-                           start, end)
-    prior_runs = _rows_in_window(database, "agent_runs", "started_at",
-                                 prior_start_dt, start)
+    runs = _agent_runs_in_window(database, start, end)
+    prior_runs = _agent_runs_in_window(database, prior_start_dt, start)
     evals = _rows_in_window(database, "evaluation_runs", "created_at",
                             start, end)
     prior_evals = _rows_in_window(database, "evaluation_runs", "created_at",
@@ -234,10 +268,11 @@ def detect_weaknesses(database: FoundryDatabase, *,
     repaired: set[str] = set()
     for run in failed:
         mission = str(run["mission_id"])
+        failed_at = str(run.get("finished_at") or run["started_at"])
         later = [r for r in runs
                  if str(r["mission_id"]) == mission
                  and r.get("status") in ("RUNNING", "COMPLETED")
-                 and str(r["started_at"]) > str(run["started_at"])]
+                 and str(r["started_at"]) > failed_at]
         if later:
             repaired.add(mission)
     if failed:
@@ -301,7 +336,8 @@ def detect_weaknesses(database: FoundryDatabase, *,
                                 for r in mission_runs][:10],
                  component="mission/", sample=1,
                  detail=(f"mission {mission} consumed "
-                         f"{len(mission_runs)} runs in the window"))
+                         f"{len(mission_runs)} runs in the window"),
+                 identity_scope=mission)
 
     # R4 provider/model underperformance vs overall failure rate.
     overall_failed = len(failed) + len(prior_runs)
@@ -431,7 +467,8 @@ def detect_weaknesses(database: FoundryDatabase, *,
                 window, [f"missions/{row['mission_id']}"],
                 "mission/", 1,
                 detail=(f"mission {row['mission_id']} stuck in {state} "
-                        f"since {row['updated_at']}"))
+                        f"since {row['updated_at']}"),
+                identity_scope=str(row["mission_id"]))
             observation["rule"] = "mission_staleness"
             observation["rationale"] = (
                 "a mission stuck in BLOCKED/REPAIRING/REJECTING past its "
@@ -491,7 +528,8 @@ def detect_weaknesses(database: FoundryDatabase, *,
                 evidence_ids.get(correlation_key, [])[:10],
                 "resilience/", count,
                 detail=(f"correlation {correlation_key} produced {count} "
-                        "incident signals in one window"))
+                        "incident signals in one window"),
+                identity_scope=correlation_key)
             observation["rule"] = "incident_recurrence"
             observation["rationale"] = (
                 "repeated incidents with one root pattern indicate a "
@@ -537,14 +575,18 @@ def discovery_sources(database: FoundryDatabase, *,
                                window_end=window_end)
     sources: dict[str, list[dict[str, Any]]] = {
         "metric_exceedances": [], "guardrail_breaches": [],
-        "task_failures": []}
+        "task_failures": [], "capability_gaps": []}
     for observation in result["observations"]:
-        ref = observation["evidence_refs"][0]
-        common = {"evidence_ref": ref, "observed_at": window_end,
+        refs = observation["evidence_refs"][:10]
+        ref = refs[0]
+        common = {"evidence_ref": ref, "evidence_refs": refs,
+                  "observed_at": window_end,
                   "surfaces": [observation["affected_component"]],
                   # observation lineage travels with the hypothesis
                   "provenance": {
                       "detector_rule": observation["rule"],
+                      "detector_identity":
+                          observation["detector_identity"],
                       "dedupe_identity":
                           observation["dedupe_identity"],
                       "window_start": observation["window_start"],
@@ -571,4 +613,130 @@ def discovery_sources(database: FoundryDatabase, *,
                 "task": observation["rule"],
                 "detail": observation["detail"],
             })
+    sources["capability_gaps"].extend(
+        _terminal_capability_gap_sources(database))
+    return sources
+
+
+def _terminal_capability_gap_sources(
+    database: FoundryDatabase,
+) -> list[dict[str, Any]]:
+    """Expose only durable, still-blocking Fabric gap outcomes to V6."""
+    from ..fabric.gap_bridge import (
+        ALTERNATE_REPLAN_REQUESTED,
+        ATTEMPT_FAILED,
+        BUDGET_EXHAUSTED,
+        GAP_OPENED,
+        RECURSION_BLOCKED,
+        SOURCE_ID as CAPABILITY_GAP_SOURCE_ID,
+        CapabilityGapStatus,
+        rebuild_gap_state,
+    )
+
+    opening_events: dict[str, Any] = {}
+    failure_events: dict[str, list[Any]] = {}
+    gap_events = [
+        event for event in database.events(
+            event_type_prefixes=("fabric.capability_gap.",),
+        )
+        if event.source_type == "supervisor"
+        and event.source_id == CAPABILITY_GAP_SOURCE_ID
+    ]
+    relevant_failures = {
+        ATTEMPT_FAILED, BUDGET_EXHAUSTED,
+        ALTERNATE_REPLAN_REQUESTED, RECURSION_BLOCKED,
+    }
+    for event in gap_events:
+        gap_id = str(event.payload.get("gap_id") or "")
+        if not gap_id:
+            continue
+        if event.event_type == GAP_OPENED:
+            opening_events[gap_id] = event
+        if event.event_type in relevant_failures:
+            failure_events.setdefault(gap_id, []).append(event)
+
+    actionable = {
+        CapabilityGapStatus.BUDGET_EXHAUSTED,
+        CapabilityGapStatus.REPLAN_REQUIRED,
+        CapabilityGapStatus.RECURSION_BLOCKED,
+    }
+    failure_types = {
+        CapabilityGapStatus.BUDGET_EXHAUSTED: {BUDGET_EXHAUSTED},
+        CapabilityGapStatus.REPLAN_REQUIRED: {
+            ATTEMPT_FAILED, ALTERNATE_REPLAN_REQUESTED,
+        },
+        CapabilityGapStatus.RECURSION_BLOCKED: {RECURSION_BLOCKED},
+    }
+    class _CanonicalGapLedger:
+        """Pass only Fabric bridge-owned records to its state projection."""
+
+        def events(self, *, event_type_prefixes: tuple[str, ...] = ()) -> list[Any]:
+            if not event_type_prefixes:
+                return list(gap_events)
+            return [
+                event for event in gap_events
+                if event.event_type.startswith(event_type_prefixes)
+            ]
+
+    sources: list[dict[str, Any]] = []
+    states = rebuild_gap_state(_CanonicalGapLedger())  # type: ignore[arg-type]
+    for gap_id, state in sorted(states.items()):
+        if state.status not in actionable:
+            continue
+        relevant = [
+            event for event in failure_events.get(gap_id, ())
+            if event.event_type in failure_types[state.status]
+        ]
+        trigger = relevant[-1] if relevant else None
+        opened = opening_events.get(gap_id)
+        if trigger is None and state.status is CapabilityGapStatus.RECURSION_BLOCKED:
+            trigger = next((
+                event for event in failure_events.get(gap_id, ())
+                if event.event_type == RECURSION_BLOCKED
+            ), None)
+            opened = opened or trigger
+        if trigger is None or opened is None:
+            # A state without its authoritative triggering event is not
+            # sufficient evidence to create an improvement.
+            continue
+        capability_id = state.required_capability_id
+        if not capability_id:
+            continue
+        sources.append({
+            "evidence_ref": f"events/{trigger.event_id}",
+            "evidence_refs": [
+                f"events/{opened.event_id}",
+                f"events/{trigger.event_id}",
+            ],
+            "observed_at": trigger.occurred_at,
+            "surfaces": [f"fabric/{capability_id}"],
+            "capability_id": capability_id,
+            "gap_id": gap_id,
+            "status": state.status.value,
+            "detail": (
+                "the persisted Fabric gap remains blocked after the current "
+                "expansion or replan lifecycle"
+            ),
+            "provenance": {
+                "detector_rule": "fabric_capability_gap_blocked",
+                "dedupe_identity": (
+                    "fabric-gap-" + hashlib.sha256(
+                        (gap_id + trigger.event_id).encode("utf-8")
+                    ).hexdigest()[:12]
+                ),
+                "gap_id": gap_id,
+                "opening_event_ref": f"events/{opened.event_id}",
+                "failure_event_ref": f"events/{trigger.event_id}",
+                "required_capability_id": capability_id,
+                "gap_status": state.status.value,
+                "observation_scope": "current_terminal_gap_state",
+                "detector_identity": _detector_identity({
+                    "rule": "fabric_capability_gap_blocked",
+                    "gap_id": gap_id,
+                    "scope": "current_terminal_gap_state",
+                }),
+                "state_updated_at": state.updated_at,
+                "gap_source_id": CAPABILITY_GAP_SOURCE_ID,
+            },
+        })
     return sources

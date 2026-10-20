@@ -23,6 +23,7 @@ def list_recipes() -> list[dict[str, Any]]:
             "required_capabilities": list(item.required_capabilities),
             "steps": len(item.steps),
             "tags": list(item.tags),
+            "needs": list(item.needs),
         }
         for item in recipes
     ]

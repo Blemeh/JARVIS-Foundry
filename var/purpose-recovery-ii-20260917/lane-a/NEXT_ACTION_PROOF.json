@@ -1,0 +1,14 @@
+{
+  "proof_id": "lane-a-next-action-20260917",
+  "kind": "ISOLATED_PRODUCT_PATH",
+  "test": "tests/foundry/test_purpose_recovery_ii_lane_a.py::test_low_value_outcome_reduces_later_similar_score",
+  "result": "PASS",
+  "after_pass": "schedule_next_action_after_outcome creates executive.wake_created WAIT_UNTIL_TIME with not_before=now",
+  "second_cycle": "run_executive_intelligence_cycle with no additional owner GOAL",
+  "second_cycle_outcome": "SELECT or JUSTIFIED_WAIT",
+  "owner_continue_required": false,
+  "worker_loop_hook": "runtime.worker_loop schedules the same wake after a finalized A3 initiative outcome",
+  "worker_loop_empty_sources_test": "tests/foundry/test_purpose_recovery_ii_lane_a.py::test_empty_a3_sources_bind_registered_projects",
+  "wait_diagnosis_product_path_test": "tests/foundry/test_purpose_recovery_ii_lane_a.py::test_evaluate_records_wait_diagnosis_and_prediction_merge",
+  "live_supervisor_poll": "NOT_TESTED / live JARVIS not touched"
+}

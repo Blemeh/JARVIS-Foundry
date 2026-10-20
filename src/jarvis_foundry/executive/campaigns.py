@@ -113,6 +113,29 @@ class CampaignError(ValueError):
     """A deterministic campaign contract or lifecycle refusal."""
 
 
+#: Refusal classes that are durable campaign truth, in the order they are
+#: matched against the error text.  ``ensure_warranted_campaign`` records the
+#: class in the ``executive.campaign_warranted`` receipt and in its idempotency
+#: key, so a second refusal of the same class is a no-op while a differently
+#: caused one is a NEW durable record rather than a deduped-away attempt.
+_CAMPAIGN_REFUSAL_CODES: tuple[tuple[str, str], ...] = (
+    ("terminal objective", "TERMINAL_OBJECTIVE"),
+    ("already", "ALREADY_EXISTS"),
+    ("deadline", "DEADLINE_INVALID"),
+    ("plan", "PLAN_UNSUITABLE"),
+)
+
+
+def _campaign_refusal_code(error: CampaignError) -> str:
+    """A stable, bounded class for a campaign refusal."""
+
+    text = str(error).lower()
+    for needle, code in _CAMPAIGN_REFUSAL_CODES:
+        if needle in text:
+            return code
+    return "UNCLASSIFIED"
+
+
 def _tuple(value: Any) -> tuple[str, ...]:
     if value is None:
         return ()
@@ -961,6 +984,396 @@ def create_campaign(
     return rebuild_campaign_state(database).campaigns[cid]
 
 
+CAMPAIGN_WARRANT_PREDICATE_VERSION = "campaign-warrant-1"
+CAMPAIGN_WARRANT_MIN_STEPS = 2
+_CAMPAIGN_WARRANT_METADATA_VALUES = frozenset({"CAMPAIGN", "MULTI_MISSION", "LONG_HORIZON"})
+
+
+def campaign_warrant(
+    database: FoundryDatabase,
+    objective_id: str,
+    *,
+    min_steps: int = CAMPAIGN_WARRANT_MIN_STEPS,
+) -> dict[str, Any]:
+    """Decide, deterministically and auditably, whether an objective warrants one.
+
+    Two signals, both derived from durable Executive state and neither invented
+    by a caller: the objective's own ACTIVE plan decomposes into at least
+    ``min_steps`` executable steps, or the objective's metadata declares a
+    long-horizon decomposition.  The predicate never creates anything; it is
+    the receipt that justifies a later ``campaign.created``.
+    """
+
+    from .autonomy import active_plan, rebuild_executive_state
+
+    oid = str(objective_id or "")
+    objective = rebuild_executive_state(database).objectives.get(oid)
+    if objective is None:
+        return {"warranted": False, "objective_id": oid, "reason": "objective_missing"}
+    if objective.status in {"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"}:
+        return {"warranted": False, "objective_id": oid, "reason": "terminal_objective",
+                "objective_status": objective.status}
+    plan = active_plan(database, oid)
+    step_ids = [
+        str(step.step_id) for step in tuple(getattr(plan, "steps", ()) or ())
+        if str(getattr(step, "step_id", ""))
+    ]
+    signal = None
+    basis: dict[str, Any] = {"step_count": len(step_ids), "min_steps": int(min_steps)}
+    if len(step_ids) >= int(min_steps):
+        signal = "multi_step_plan"
+    else:
+        declared = str(
+            (objective.metadata or {}).get("decomposition") or ""
+        ).upper()
+        if declared in _CAMPAIGN_WARRANT_METADATA_VALUES:
+            signal = "objective_metadata_decomposition"
+            basis["declared_decomposition"] = declared
+    if signal is None:
+        return {"warranted": False, "objective_id": oid, "reason": "single_step_objective",
+                **basis, "objective_status": objective.status}
+    return {
+        "warranted": True,
+        "objective_id": oid,
+        "signal": signal,
+        "predicate_version": CAMPAIGN_WARRANT_PREDICATE_VERSION,
+        "plan_id": str(getattr(plan, "plan_id", "") or ""),
+        "objective_status": objective.status,
+        "objective": objective.objective[:240],
+        **basis,
+    }
+
+
+def campaign_for_objective(database: FoundryDatabase, objective_id: str) -> CampaignRecord | None:
+    """Return the durable campaign that already owns this objective, if any."""
+
+    for campaign in rebuild_campaign_state(database).campaigns.values():
+        if campaign.objective_id == str(objective_id):
+            return campaign
+    return None
+
+
+def ensure_warranted_campaign(
+    database: FoundryDatabase,
+    *,
+    objective_id: str | None = None,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+    min_steps: int = CAMPAIGN_WARRANT_MIN_STEPS,
+    deadline: str | None = None,
+    max_replans: int = 1,
+    max_parallel_children: int = 2,
+) -> list[dict[str, Any]]:
+    """Create the campaign an objective's own plan warrants - the missing half.
+
+    ``create_campaign`` was production-dead because nothing decided that a
+    campaign was warranted.  This is that decision plus the call, in the same
+    module and under the same Supervisor authority: it re-reads the Executive's
+    durable plan, records an ``executive.campaign_warranted`` receipt naming the
+    predicate and its inputs, and then creates the campaign through the
+    UNCHANGED ``create_campaign`` (which owns the STOP gate, the deterministic
+    identity and the first checkpoint).  Replays are no-ops because the
+    campaign-for-objective lookup is durable.
+    """
+
+    _gate(database, controller, stop_path=stop_path)
+    from .autonomy import rebuild_executive_state
+
+    state = rebuild_executive_state(database)
+    targets = [str(objective_id)] if objective_id else sorted(state.objectives)
+    created: list[dict[str, Any]] = []
+    for oid in targets:
+        warrant = campaign_warrant(database, oid, min_steps=min_steps)
+        if not warrant.get("warranted"):
+            continue
+        existing = campaign_for_objective(database, oid)
+        if existing is not None:
+            continue
+        summary = {
+            **warrant,
+            "recorded_at": isoformat(),
+            "campaign_id": None,
+            "created": False,
+        }
+        try:
+            record = create_campaign(
+                database,
+                oid,
+                deadline=deadline,
+                max_replans=max_replans,
+                max_parallel_children=max_parallel_children,
+                metadata={
+                    "warrant": warrant["signal"],
+                    "warrant_predicate_version": warrant["predicate_version"],
+                    "plan_id": warrant["plan_id"],
+                },
+                controller=controller,
+                stop_path=stop_path,
+            )
+        except CampaignError as error:
+            summary["reason"] = f"{type(error).__name__}: {error}"[:300]
+            summary["refusal_code"] = _campaign_refusal_code(error)
+        else:
+            summary["campaign_id"] = record.campaign_id
+            summary["created"] = True
+        try:
+            _append(
+                database,
+                "executive.campaign_warranted",
+                summary,
+                key=(
+                    f"executive.campaign_warranted:{oid}:"
+                    f"{warrant['predicate_version']}"
+                    # A refusal is durable campaign truth: without the outcome in
+                    # the key a second, differently-caused refusal would be
+                    # deduped away and the attempt history lost.  A successful
+                    # creation keeps the stable key so replays stay no-ops.
+                    + ("" if summary["created"] else f":refused:{summary.get('refusal_code') or 'UNKNOWN'}")
+                ),
+            )
+        except Exception:  # noqa: BLE001 - receipt failure never rewrites the pass
+            pass
+        created.append(summary)
+    return created
+
+
+CAMPAIGN_CHILD_MATERIALIZATION_VERSION = "campaign-child-materialization-v1"
+
+
+def _materialized_child_id(campaign_id: str, step_id: str) -> str:
+    """The campaign authority's own deterministic child identity for a step."""
+    return f"child:{campaign_id}:{step_id}"
+
+
+def materialize_campaign_children(
+    database: FoundryDatabase,
+    *,
+    campaign_id: str | None = None,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+    max_children: int = 8,
+) -> list[dict[str, Any]]:
+    """Declare one campaign child per step of the campaign's ACTIVE plan.
+
+    Deterministic by construction, so the same durable state always produces the
+    same children and a replay is a no-op:
+
+      * the plan is re-read from the Executive's durable state
+        (``autonomy.active_plan``), never from a caller-supplied list, so a hard
+        restart rebuilds identical children;
+      * each child id is this module's own ``child:{campaign_id}:{step_id}``
+        derivation, which `declare_child_mission` also uses when it is given a
+        ``step_id`` — so a step can never acquire two children;
+      * a step's plan dependencies become the child ids of those steps, which
+        keeps the existing DAG validation and the existing
+        ``_reconcile_dependency_waits`` pending-work boundary authoritative;
+      * a terminal campaign is never given new children; STOP and owner controls
+        are honoured through the same ``_gate`` every other writer uses;
+      * ``max_children`` bounds one pass; a bounded pass records what it left
+        rather than silently dropping it.
+
+    Returns one summary per campaign inspected.  Nothing here fabricates an
+    outcome: a declaration that the authority refuses is recorded as refused with
+    its refusal code, and the campaign's own checkpoint/state events remain the
+    only truth about child progress.
+    """
+
+    _gate(database, controller, stop_path=stop_path, campaign_id=campaign_id)
+    from .autonomy import active_plan
+
+    state = rebuild_campaign_state(database)
+    if campaign_id:
+        campaigns = [state.campaign(campaign_id)]
+    else:
+        campaigns = [state.campaigns[key] for key in sorted(state.campaigns)]
+
+    summaries: list[dict[str, Any]] = []
+    for campaign in campaigns:
+        if campaign.status in {"COMPLETED", "CANCELLED"}:
+            continue
+        plan = active_plan(database, campaign.objective_id)
+        summary: dict[str, Any] = {
+            "campaign_id": campaign.campaign_id,
+            "objective_id": campaign.objective_id,
+            "campaign_status": campaign.status,
+            "plan_id": getattr(plan, "plan_id", None),
+            "plan_version": getattr(plan, "version", None),
+            "materialization_version": CAMPAIGN_CHILD_MATERIALIZATION_VERSION,
+            "declared": [],
+            "already_declared": [],
+            "refused": [],
+            "bounded_out": [],
+            "reason": None,
+            "recorded_at": isoformat(),
+        }
+        if plan is None:
+            summary["reason"] = "the campaign objective has no ACTIVE plan"
+            summaries.append(summary)
+            continue
+
+        budget = max(0, int(max_children))
+        for step in plan.steps:
+            step_id = str(getattr(step, "step_id", "") or "")
+            if not step_id:
+                continue
+            child_id = _materialized_child_id(campaign.campaign_id, step_id)
+            if child_id in state.children:
+                summary["already_declared"].append(child_id)
+                continue
+            if budget <= 0:
+                summary["bounded_out"].append(child_id)
+                continue
+            dependencies = tuple(
+                _materialized_child_id(campaign.campaign_id, str(dependency))
+                for dependency in (getattr(step, "dependencies", ()) or ())
+                if str(dependency)
+            )
+            try:
+                record = declare_child_mission(
+                    database,
+                    campaign.campaign_id,
+                    child_id=child_id,
+                    mission_id=getattr(step, "mission_id", None),
+                    step_id=step_id,
+                    dependencies=dependencies,
+                    required_capabilities=tuple(
+                        str(value) for value in
+                        (getattr(step, "required_capabilities", ()) or ()) if str(value)
+                    ),
+                    task_type="builder",
+                    max_retries=max(0, int(getattr(step, "max_retries", 0) or 0)),
+                    metadata={
+                        "plan_id": str(getattr(plan, "plan_id", "") or ""),
+                        "plan_step_description": str(getattr(step, "description", "") or ""),
+                        "materialization_version": CAMPAIGN_CHILD_MATERIALIZATION_VERSION,
+                    },
+                    controller=controller,
+                    stop_path=stop_path,
+                )
+            except CampaignError as error:
+                summary["refused"].append({
+                    "child_id": child_id,
+                    "step_id": step_id,
+                    "reason": f"{type(error).__name__}: {error}"[:300],
+                    "refusal_code": _campaign_refusal_code(error),
+                })
+                continue
+            summary["declared"].append(record.child_id)
+            state = rebuild_campaign_state(database)
+            budget -= 1
+
+        try:
+            _append(
+                database,
+                "campaign.children_materialized",
+                summary,
+                key=(
+                    f"campaign.children_materialized:{campaign.campaign_id}:"
+                    f"{summary['plan_id']}:{summary['plan_version']}:"
+                    f"{CAMPAIGN_CHILD_MATERIALIZATION_VERSION}"
+                ),
+                campaign_id=campaign.campaign_id,
+            )
+        except EventConflict:
+            # The same (campaign, plan, version) receipt already exists: the pass
+            # was replayed.  The children themselves are the durable truth and
+            # were already deduplicated above, so a repeated receipt is noise.
+            summary["receipt_replayed"] = True
+        summaries.append(summary)
+    return summaries
+
+
+def reconcile_campaign_step_bindings(
+    database: FoundryDatabase,
+    *,
+    controller: str = SUPERVISOR_CONTROLLER,
+    stop_path: str | Path | None = None,
+) -> list[dict[str, str]]:
+    """Recover the exact canonical mission/child edge after an interrupted pass.
+
+    Portfolio materialization and campaign binding are distinct durable
+    authorities.  Re-read their receipts before selection so a crash between
+    those appends cannot leave an executable mission outside its campaign.
+    """
+    _gate(database, controller, stop_path=stop_path)
+    from .autonomy import active_plan, bind_mission_to_step
+    from ..evolution.executive_portfolio import rebuild_portfolio_state
+    from ..mission.contracts import MissionStepContractError, next_executable_contract
+
+    state = rebuild_campaign_state(database)
+    if not any(not child.mission_id or child.status == "PENDING"
+               for child in state.children.values()):
+        return []
+    portfolio = rebuild_portfolio_state(database)
+    results: list[dict[str, str]] = []
+    for child in tuple(state.children.values()):
+        if child.mission_id and child.status != "PENDING":
+            continue
+        campaign = state.campaigns.get(child.campaign_id)
+        if campaign is None or campaign.status in {"COMPLETED", "CANCELLED"}:
+            continue
+        plan = active_plan(database, campaign.objective_id)
+        step = next((row for row in (plan.steps if plan else ())
+                     if row.step_id == child.step_id), None)
+        if step is None:
+            continue
+        candidates = {str(step.mission_id)} if step.mission_id else set()
+        for item in portfolio.work_items.values():
+            metadata = item.metadata
+            if (
+                item.kind != "OWNER_GOAL"
+                or str(metadata.get("executive_objective_id") or "") != campaign.objective_id
+                or str(metadata.get("executive_step_id") or "") != child.step_id
+            ):
+                continue
+            with database.connect(readonly=True) as connection:
+                rows = connection.execute(
+                    "SELECT json_extract(payload_json, '$.mission_id') AS mission_id "
+                    "FROM events WHERE event_type = 'portfolio.selection_materialized' "
+                    "AND json_extract(payload_json, '$.item_id') = ?",
+                    (item.item_id,),
+                ).fetchall()
+                # The mission and its executable contracts can be durable
+                # before the final portfolio receipt.  Recover that narrow
+                # crash window from the canonical created_from projection.
+                mission_rows = connection.execute(
+                    "SELECT mission_id FROM missions WHERE created_from = ?",
+                    (f"portfolio:{item.item_id}",),
+                ).fetchall()
+            candidates.update(str(row["mission_id"]) for row in rows if row["mission_id"])
+            candidates.update(str(row["mission_id"]) for row in mission_rows if row["mission_id"])
+        if child.mission_id:
+            candidates.add(child.mission_id)
+        executable: set[str] = set()
+        for mission_id in candidates:
+            if database.row("missions", "mission_id", mission_id) is None:
+                continue
+            try:
+                contract = next_executable_contract(database, mission_id)
+            except MissionStepContractError:
+                contract = None
+            if contract is not None:
+                executable.add(mission_id)
+        candidates = executable
+        if len(candidates) != 1:
+            if len(candidates) > 1:
+                results.append({"child_id": child.child_id, "status": "AMBIGUOUS"})
+            continue
+        mission_id = next(iter(candidates))
+        if child.mission_id and child.mission_id != mission_id:
+            results.append({"child_id": child.child_id, "status": "CONFLICT"})
+            continue
+        if step.mission_id is None:
+            bind_mission_to_step(database, campaign.objective_id, str(child.step_id), mission_id, controller=controller)
+        if child.mission_id is None:
+            bind_child_mission(database, child.child_id, mission_id, controller=controller, stop_path=stop_path)
+        current = rebuild_campaign_state(database).child(child.child_id)
+        if current.status == "PENDING" and not _unmet_dependencies(rebuild_campaign_state(database), current):
+            record_child_state(database, child.child_id, "READY", reason="canonical Executive step mission recovered", controller=controller, stop_path=stop_path)
+        results.append({"child_id": child.child_id, "mission_id": mission_id, "status": "BOUND"})
+    return results
+
+
 def _campaign_status_event(
     database: FoundryDatabase,
     campaign: CampaignRecord,
@@ -1120,6 +1533,13 @@ def _sync_campaign_readiness(
         and not _unmet_dependencies(state, child)
         for child in children
     )
+    pending_materialization = any(
+        child.status == "PENDING" and not child.mission_id
+        and child.metadata.get("materialization_version") == CAMPAIGN_CHILD_MATERIALIZATION_VERSION
+        and bool(child.metadata.get("plan_id"))
+        and not _unmet_dependencies(state, child)
+        for child in children
+    )
     explicit_wait = any(
         child.status in {"WAITING", "UNKNOWN", "BLOCKED"}
         or (
@@ -1129,12 +1549,13 @@ def _sync_campaign_readiness(
         or bool(child.wait_kind or child.wait_reason)
         for child in children
     )
-    if dispatchable and campaign.status == "WAITING":
+    if (dispatchable or pending_materialization) and campaign.status == "WAITING":
         updated = _campaign_status_event(
             database,
             campaign,
             "EXECUTING",
-            reason="a child is dispatchable after wait recovery",
+            reason=("a child is dispatchable after wait recovery" if dispatchable
+                    else "a dependency-free child awaits canonical mission materialization"),
             controller=controller,
             stop_path=stop_path,
         )
@@ -1161,7 +1582,7 @@ def _sync_campaign_readiness(
         )
         sync_objective_wait("EXECUTING")
         return updated
-    if not dispatchable and explicit_wait and campaign.status == "EXECUTING":
+    if not dispatchable and not pending_materialization and explicit_wait and campaign.status == "EXECUTING":
         updated = _campaign_status_event(
             database,
             campaign,
@@ -4888,6 +5309,7 @@ __all__ = [
     "CampaignError", "CampaignRecord", "ChildMissionRecord", "Campaign", "ChildMission", "CampaignProgress",
     "CampaignCheckpoint", "CampaignState", "CampaignResumeReport",
     "rebuild_campaign_state", "create_campaign", "declare_child_mission",
+    "materialize_campaign_children", "reconcile_campaign_step_bindings", "CAMPAIGN_CHILD_MATERIALIZATION_VERSION",
     "bind_child_mission", "bind_child_effect", "record_child_state",
     "reconcile_child_effects", "reconcile_campaign_children",
     "checkpoint_campaign", "record_campaign_checkpoint",

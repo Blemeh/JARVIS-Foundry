@@ -3,17 +3,9 @@
 # Never commit the live file or store api_key in Git-tracked YAML.
 
 provider: opencode_go
-model: muse-spark-1.2-contributor
+model: muse-spark-1.3-contributor
 base_url: https://opencode.ai/zen/go/v1
 api_key: ""
 
-# Optional V12 fallback pool. Keep this absent unless every identity is
-# explicitly configured and the worker-runtime provider_resilience block is
-# enabled with evidence-backed profiles/readiness. The top-level identity is
-# always primary and need not be repeated here. A configured fallback is not
-# automatically READY, policy-cleared, capable, or within budget.
-# providers:
-#   - provider: opencode_zen
-#     model: x-preview-f-free
-#     base_url: https://opencode.ai/zen/v1
-#     api_key: ""
+# This sustained-autonomy run is authorized for the exact primary identity
+# above only. Do not configure a provider fallback.

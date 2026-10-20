@@ -21,6 +21,7 @@ from jarvis_foundry.executive.scoring import A2GovernorBounds
 from jarvis_foundry.fabric.catalog import record_outcome as record_fabric_outcome
 from jarvis_foundry.fabric.loop import seed_builtins
 from jarvis_foundry.fabric.model import VerifyVerdict
+from jarvis_foundry.migrations import SCHEMA_VERSION
 from jarvis_foundry.initiative_a3 import (
     A3AdmissionPolicy,
     InitiativeAdmissionAuthority,
@@ -1341,8 +1342,9 @@ def build_proof(repo_root: Path) -> dict[str, Any]:
         scratch_root = Path(raw).resolve()
         database = FoundryDatabase(scratch_root / "foundry.db")
         schema = database.initialize()
-        if schema != 40:
-            raise RuntimeError(f"expected schema 40, got {schema}")
+        if schema != SCHEMA_VERSION:
+            raise RuntimeError(
+                f"expected schema {SCHEMA_VERSION}, got {schema}")
         seed_owner_context(
             database,
             goals=[{

@@ -10,7 +10,20 @@ from .decisions import (
     ExecutiveDecisionService,
     ExecutiveWait,
 )
-from .goals import StructuredGoal, active_goals
+from .intelligence import (
+    IntelligenceCycle,
+    assemble_project_inventory,
+    observation_sources_from_registered_projects,
+    run_executive_intelligence_cycle,
+    schedule_next_action_after_outcome,
+)
+from .standing_intent import (
+    is_discovery_mandate,
+    extract_continuation_semantics,
+    is_standing_directive_text,
+    is_standing_strategic_text,
+    standing_directive_kind,
+)
 from .continuous import (  # V9 Continuous Executive
     WakeCondition,
     create_wake,
@@ -21,6 +34,10 @@ from .continuous import (  # V9 Continuous Executive
     due_wakes,
     tick_wakes,
     bridge_world_signals,
+    bridge_research_completions,
+    consume_research_wakes,
+    record_research_wake_continuation,
+    RESEARCH_WAKE_PREFIX,
     continuous_snapshot,
     blocker_for,
     run_continuous_cycle,
@@ -81,6 +98,7 @@ from .campaigns import (  # V12 objective-scale campaign runtime
     complete_campaign,
     create_campaign,
     declare_child_mission,
+    materialize_campaign_children,
     evaluate_joins,
     handle_deadlines,
     propagate_stop,
@@ -101,6 +119,12 @@ __all__ = [
     "ExecutiveWait",
     "StructuredGoal",
     "active_goals",
+    "is_discovery_mandate",
+    "IntelligenceCycle",
+    "assemble_project_inventory",
+    "observation_sources_from_registered_projects",
+    "run_executive_intelligence_cycle",
+    "schedule_next_action_after_outcome",
     "AutonomyCycle",
     "ContinuationDecision",
     "CoordinationDecision",
@@ -166,6 +190,7 @@ __all__ = [
     "complete_campaign",
     "create_campaign",
     "declare_child_mission",
+    "materialize_campaign_children",
     "evaluate_joins",
     "handle_deadlines",
     "propagate_stop",

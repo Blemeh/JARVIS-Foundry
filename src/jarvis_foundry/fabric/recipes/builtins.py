@@ -18,7 +18,8 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
         "required_capabilities": ("browser.web.read", "file.write", "file.read"),
         "parameters": {
             "source_url": {"required": True, "description": "Bounded HTTPS source to read."},
-            "artifact_target": {"default": "research/artifact.md", "description": "Owned-root markdown target."},
+            "artifact_target": {
+                "bind": "artifact_target_relative_path","default": "research/artifact.md", "description": "Owned-root markdown target."},
             "artifact_title": {"default": "Research artifact", "description": "Artifact heading."},
         },
         "steps": (
@@ -47,6 +48,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "source_url": "$fetch.final_url",
         },
         "tags": ("v14", "research", "artifact"),
+        "needs": ("web.research_read", "artifact.create_update"),
     },
     {
         "recipe_id": "v14.open_and_verify",
@@ -55,8 +57,10 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
         "required_capabilities": ("file.inspect", "desktop.open", "desktop.control.assert"),
         "parameters": {
             "artifact_target": {"required": True, "description": "Owned-root artifact to open."},
-            "process_id": {"required": True, "description": "Stable logical process id for the open."},
-            "application": {"default": "notepad.exe", "description": "Native viewer executable."},
+            "process_id": {
+                "bind": "native_process_id","required": True, "description": "Stable logical process id for the open."},
+            "application": {
+                "bind": "native_application","default": "notepad.exe", "description": "Native viewer executable."},
             "application_args": {"default": [], "description": "Exact native viewer arguments before the artifact path."},
             "idempotency_key": {"default": "v14-open-default", "description": "Stable open idempotency key."},
             "expected_text": {"default": "", "description": "Text the assert step must observe."},
@@ -91,6 +95,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "artifact_target": "$params.artifact_target",
         },
         "tags": ("v14", "desktop", "verify"),
+        "needs": ("native.document_verify",),
     },
     {
         "recipe_id": "v14.publish_verified_work",
@@ -98,9 +103,12 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
         "description": "Verify local repo state then publish via local git push (disposable remote only).",
         "required_capabilities": ("git.inspect", "git.log", "git.push"),
         "parameters": {
-            "worktree": {"required": True, "description": "Owned worktree path."},
-            "remote": {"default": "origin", "description": "Disposable remote name."},
-            "branch": {"default": "", "description": "Branch to push; empty lets the connector decide."},
+            "worktree": {
+                "bind": "owned_repository_root","required": True, "description": "Owned worktree path."},
+            "remote": {
+                "bind": "repository_remote","default": "origin", "description": "Disposable remote name."},
+            "branch": {
+                "bind": "repository_branch","default": "", "description": "Branch to push; empty lets the connector decide."},
         },
         "steps": (
             {
@@ -128,6 +136,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "remote_head": "$push.remote_head",
         },
         "tags": ("v14", "git", "publish"),
+        "needs": ("repository.publish",),
     },
     {
         "recipe_id": "v14.digital_operator.close",
@@ -146,9 +155,12 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "git.push",
         ),
         "parameters": {
-            "source_url": {"required": True, "description": "Bounded source to research."},
-            "site_origin": {"required": True, "description": "Owner-configured exact browser origin."},
-            "session_state_path": {"required": True, "description": "Brokered Playwright storage-state path."},
+            "source_url": {
+                "bind": "authenticated_source_url","required": True, "description": "Bounded source to research."},
+            "site_origin": {
+                "bind": "browser_site_origin","required": True, "description": "Owner-configured exact browser origin."},
+            "session_state_path": {
+                "bind": "browser_session_state_path","required": True, "description": "Brokered Playwright storage-state path."},
             "profile_id": {"default": "v14-operator", "description": "Configured browser profile identity."},
             "owner_scope": {"default": "owner-local", "description": "Configured owner scope."},
             "credential_reference": {"default": "browser-session-configured", "description": "Opaque credential reference."},
@@ -156,16 +168,22 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "allow_insecure_localhost": {"default": False, "description": "Disposable-localhost opt-in."},
             "auth_marker_role": {"required": True, "description": "Authenticated-page marker role."},
             "auth_marker_name": {"required": True, "description": "Authenticated-page marker name."},
-            "artifact_target": {"default": "research/close.md", "description": "Owned-root artifact target."},
+            "artifact_target": {
+                "bind": "artifact_target_relative_path","default": "research/close.md", "description": "Owned-root artifact target."},
             "artifact_title": {"default": "Operator close-out", "description": "Artifact heading."},
-            "process_id": {"required": True, "description": "Stable logical process id for native open."},
-            "application": {"default": "notepad.exe", "description": "Native viewer executable."},
+            "process_id": {
+                "bind": "native_process_id","required": True, "description": "Stable logical process id for native open."},
+            "application": {
+                "bind": "native_application","default": "notepad.exe", "description": "Native viewer executable."},
             "application_args": {"default": [], "description": "Exact native viewer arguments before the artifact path."},
             "idempotency_key": {"default": "v14-close-default", "description": "Stable open idempotency key."},
             "expected_text": {"default": "", "description": "Text the assert step must observe."},
-            "worktree": {"required": True, "description": "Owned worktree to publish from."},
-            "remote": {"default": "origin", "description": "Disposable remote name."},
-            "branch": {"default": "main", "description": "Disposable remote branch."},
+            "worktree": {
+                "bind": "owned_repository_root","required": True, "description": "Owned worktree to publish from."},
+            "remote": {
+                "bind": "repository_remote","default": "origin", "description": "Disposable remote name."},
+            "branch": {
+                "bind": "repository_branch","default": "main", "description": "Disposable remote branch."},
             "commit_message": {"default": "Preserve verified operator artifact", "description": "Local commit message."},
         },
         "steps": (
@@ -284,6 +302,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "remote_head": "$push.remote_head",
         },
         "tags": ("v14", "digital-operator", "close"),
+        "needs": ("web.authenticated_interaction", "artifact.create_update", "native.document_verify", "repository.preserve"),
     },
     {
         "recipe_id": "v14.research_to_docx",
@@ -319,6 +338,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "output_hash": "$compose.output_sha256",
         },
         "tags": ("v14", "general-work", "docx"),
+        "needs": ("document.compose",),
     },
     {
         "recipe_id": "v14.research_to_xlsx",
@@ -358,6 +378,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "output_hash": "$build.output_sha256",
         },
         "tags": ("v14", "general-work", "xlsx"),
+        "needs": ("spreadsheet.compose",),
     },
     {
         "recipe_id": "v14.artifact_to_local_repo",
@@ -367,7 +388,8 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
         "parameters": {
             "artifact_source": {"required": True, "description": "Owned-root artifact source."},
             "repo_target": {"required": True, "description": "Destination inside the owned worktree."},
-            "worktree": {"required": True, "description": "Owned worktree path."},
+            "worktree": {
+                "bind": "owned_repository_root","required": True, "description": "Owned worktree path."},
         },
         "steps": (
             {
@@ -391,6 +413,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "head": "$inspect_repo.head",
         },
         "tags": ("v14", "artifact", "repo"),
+        "needs": ("artifact.stage_to_repository",),
     },
     {
         "recipe_id": "v16.bounded_note",
@@ -421,6 +444,7 @@ BUILTIN_RECIPE_MAPPINGS: tuple[dict[str, Any], ...] = (
             "content_hash": "$verify.content_hash",
         },
         "tags": ("v16", "campaign", "bounded"),
+        "needs": ("note.bounded_write",),
     },
 )
 

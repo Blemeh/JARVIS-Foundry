@@ -202,7 +202,16 @@ def test_a2_barrier_runs_real_project_observation_with_zero_execution(tmp_path: 
     report = HARNESS.a2_barrier(argparse.Namespace(output=tmp_path / "a2"))
 
     assert report["verdict"] == "PASS"
-    assert report["database_schema"] == 40
+    # Bound to the product's own schema constant (reached through the harness's
+    # import) rather than to a duplicated literal: the duplicated `40` form made
+    # this acceptance test red the moment SCHEMA_VERSION moved to 41, reporting
+    # a broken barrier for a schema bump that was entirely correct.
+    assert report["database_schema"] == HARNESS.SCHEMA_VERSION
+    # And the DURABLE schema, read back from the ledger rather than from
+    # initialize()'s return value: that return is SCHEMA_VERSION by
+    # construction, so `database_schema` alone is X == X and can never fail
+    # (round-3 finding V3-I-1).
+    assert report["durable_schema"] == HARNESS.SCHEMA_VERSION
     assert report["cycle_outcome"] in {"WAIT", "IDLE"}
     assert report["metrics"]["observations"] >= 1
     assert report["metrics"]["objectives"] == 0

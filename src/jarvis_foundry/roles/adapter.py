@@ -72,32 +72,49 @@ class ProviderUnavailable(ProviderFailure):
 
 
 def classify_provider_failure(text: str) -> str:
-    """Classify known provider/transport refusal text without guessing PASS."""
+    """Classify provider errors before informational policy notices."""
 
     lowered = str(text or "").lower()
+    normalized = lowered.replace("_", " ").replace("-", " ")
+    # The local spend gateway uses 429 for two materially different cases.
+    # Contention on an already-held reservation is temporary provider
+    # unavailability; exceeding the remaining authorized ceiling is a durable
+    # owner/budget blocker and must not be retried as if it were rate limiting.
+    # Hermes may also print the Contributor-consent notice in the same stream;
+    # that notice is not the cause when the provider/gateway returned a
+    # concrete rate-limit or spend response.
+    if any(token in normalized for token in (
+        "another provider request still holds",
+        "holds the authorized spend reservation",
+    )):
+        return "RATE_LIMITED"
+    if "provider spend blocked" in normalized:
+        return "COST_BLOCKED"
+    if any(token in normalized for token in (
+        "http 429", "rate limit", "too many requests", "quota",
+    )):
+        return "RATE_LIMITED"
+    if any(token in normalized for token in (
+        "not supported", "unsupported model", "incompatible", "context length",
+        "payload too large", "invalid tool call", "output length limit",
+    )):
+        return "INCOMPATIBLE"
+    if any(token in normalized for token in (
+        "billing", "credits exhausted", "insufficient funds", "budget",
+        "worst case cost exceeds the remaining authorized spend",
+        "spend ceiling",
+    )):
+        return "COST_BLOCKED"
+    if any(token in normalized for token in (
+        "timeout", "timed out", "connection", "network", "unavailable",
+        "could not launch", "http 5",
+    )):
+        return "OUTAGE"
     if any(token in lowered for token in (
         "allow_data_training_tiers_noninteractive", "data training",
         "privacy policy", "policy blocked", "interactive required",
     )):
         return "BLOCKED_POLICY"
-    if any(token in lowered for token in (
-        "http 429", "rate limit", "rate-limit", "too many requests", "quota",
-    )):
-        return "RATE_LIMITED"
-    if any(token in lowered for token in (
-        "not supported", "unsupported model", "incompatible", "context length",
-        "payload too large", "invalid tool call", "output length limit",
-    )):
-        return "INCOMPATIBLE"
-    if any(token in lowered for token in (
-        "billing", "credits exhausted", "insufficient funds", "budget",
-    )):
-        return "COST_BLOCKED"
-    if any(token in lowered for token in (
-        "timeout", "timed out", "connection", "network", "unavailable",
-        "could not launch", "http 5",
-    )):
-        return "OUTAGE"
     return "DEGRADED"
 
 

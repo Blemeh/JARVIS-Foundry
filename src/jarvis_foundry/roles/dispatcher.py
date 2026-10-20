@@ -25,10 +25,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import hashlib
 import json
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
 from ..clock import isoformat, parse, utc_now
+from ..control.redaction import redact_payload
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict
 from ..supervisor.leases import LeaseManager, LeaseUnavailable
@@ -318,9 +320,17 @@ class RoleDispatcher:
             idempotency_key=idempotency_key,
         ))
 
-    def _start_run(self, manifest: ContextManifest, provider: str, model: str) -> None:
-        # provider is part of the key so a fallback re-start is a distinct
-        # durable event; the projection upsert keeps one row per run_id.
+    def _start_run(
+        self,
+        manifest: ContextManifest,
+        provider: str,
+        model: str,
+        *,
+        attempt_generation: int,
+        attempt_ordinal: int,
+    ) -> None:
+        # Attempt identity distinguishes provider fallback and durable resume
+        # generations while keeping replay of the same attempt idempotent.
         payload = {
             "run_id": manifest.run_id,
             "mission_id": manifest.mission_id,
@@ -328,6 +338,8 @@ class RoleDispatcher:
             "role": manifest.role,
             "provider": provider,
             "model": model,
+            "attempt_generation": attempt_generation,
+            "attempt_ordinal": attempt_ordinal,
             "context_manifest_hash": manifest.content_hash(),
             "tool_policy": list(manifest.tool_policy),
         }
@@ -350,7 +362,10 @@ class RoleDispatcher:
         self._append(
             "agent_run.started",
             payload,
-            idempotency_key=f"agent_run.started:{manifest.run_id}:{provider}",
+            idempotency_key=(
+                f"agent_run.started:{manifest.run_id}:{attempt_generation}:"
+                f"{attempt_ordinal}:{provider}"
+            ),
         )
 
     def _heartbeat(self, run_id: str) -> None:
@@ -367,11 +382,27 @@ class RoleDispatcher:
             "cost": {"usd": result.cost_usd},
         }, idempotency_key=f"agent_run.completed:{result.run_id}")
 
-    def _fail_run(self, run_id: str, failure_class: str, detail: str | None = None,
-                  *, suffix: str | None = None) -> None:
+    def _fail_run(
+        self,
+        run_id: str,
+        failure_class: str,
+        detail: str | None = None,
+        *,
+        suffix: str | None = None,
+        result: RoleResult | None = None,
+    ) -> None:
         payload = {"run_id": run_id, "failure_class": failure_class}
         if detail is not None:
             payload["detail"] = detail
+        if result is not None:
+            if result.run_id != run_id:
+                raise DispatchError(
+                    "failed result identity must match the dispatched run"
+                )
+            payload["result"] = result.to_payload()
+        payload = redact_payload(payload)
+        if not isinstance(payload, dict):
+            raise DispatchError("failed run payload must remain an object")
         key = f"agent_run.failed:{run_id}:{failure_class}"
         if suffix:
             key = f"{key}:{suffix}"
@@ -1892,6 +1923,9 @@ class RoleDispatcher:
             **cost_fields,
             **dict(lineage),
         }
+        settlement_payload = redact_payload(settlement_payload)
+        if not isinstance(settlement_payload, dict):
+            raise DispatchError("attempt settlement payload must remain an object")
         events = [self._event(
             "provider.dispatch_attempt_settled",
             settlement_payload,
@@ -1900,43 +1934,51 @@ class RoleDispatcher:
         if cost_state == "OBSERVED":
             if observed_cost_micros is None:
                 raise DispatchError("observed settlement requires cost micros")
+            recorded_payload = {
+                "run_id": result.run_id,
+                "mission_id": manifest.mission_id,
+                "step_id": manifest.step_id,
+                "role": manifest.role,
+                "provider_id": provider,
+                "provider": provider,
+                "model_id": model,
+                "model": model,
+                "attempt_generation": attempt_generation,
+                "attempt_ordinal": attempt_ordinal,
+                "cost_micros": observed_cost_micros,
+                "cost_usd": self._cost_usd(observed_cost_micros),
+                **dict(lineage),
+            }
+            recorded_payload = redact_payload(recorded_payload)
+            if not isinstance(recorded_payload, dict):
+                raise DispatchError("provider cost payload must remain an object")
             events.append(self._event(
                 "provider.dispatch_cost_recorded",
-                {
-                    "run_id": result.run_id,
-                    "mission_id": manifest.mission_id,
-                    "step_id": manifest.step_id,
-                    "role": manifest.role,
-                    "provider_id": provider,
-                    "provider": provider,
-                    "model_id": model,
-                    "model": model,
-                    "attempt_generation": attempt_generation,
-                    "attempt_ordinal": attempt_ordinal,
-                    "cost_micros": observed_cost_micros,
-                    "cost_usd": self._cost_usd(observed_cost_micros),
-                    **dict(lineage),
-                },
+                recorded_payload,
                 idempotency_key=f"provider.dispatch_cost_recorded:{identity}",
             ))
         elif cost_state == "UNAVAILABLE":
             reason = cost_reason or "attempt cost telemetry was unavailable"
+            unavailable_payload = {
+                "run_id": result.run_id,
+                "mission_id": manifest.mission_id,
+                "step_id": manifest.step_id,
+                "role": manifest.role,
+                "provider_id": provider,
+                "provider": provider,
+                "model_id": model,
+                "model": model,
+                "attempt_generation": attempt_generation,
+                "attempt_ordinal": attempt_ordinal,
+                "reason": reason,
+                **dict(lineage),
+            }
+            unavailable_payload = redact_payload(unavailable_payload)
+            if not isinstance(unavailable_payload, dict):
+                raise DispatchError("provider cost payload must remain an object")
             events.append(self._event(
                 "provider.dispatch_cost_unavailable",
-                {
-                    "run_id": result.run_id,
-                    "mission_id": manifest.mission_id,
-                    "step_id": manifest.step_id,
-                    "role": manifest.role,
-                    "provider_id": provider,
-                    "provider": provider,
-                    "model_id": model,
-                    "model": model,
-                    "attempt_generation": attempt_generation,
-                    "attempt_ordinal": attempt_ordinal,
-                    "reason": reason,
-                    **dict(lineage),
-                },
+                unavailable_payload,
                 idempotency_key=f"provider.dispatch_cost_unavailable:{identity}",
             ))
         elif cost_state != "NOT_INCURRED":
@@ -1978,6 +2020,9 @@ class RoleDispatcher:
             **dict(provider_details or {}),
             **dict(lineage),
         }
+        provider_payload = redact_payload(provider_payload)
+        if not isinstance(provider_payload, dict):
+            raise DispatchError("provider dispatch payload must remain an object")
         events.append(self._event(
             provider_event_type,
             provider_payload,
@@ -1985,13 +2030,16 @@ class RoleDispatcher:
         ))
         events.extend(extra_events)
         if provider_event_type == "provider.dispatch_succeeded":
+            completed_payload = redact_payload({
+                "run_id": result.run_id,
+                "result": result.to_payload(),
+                "cost": {"usd": result.cost_usd},
+            })
+            if not isinstance(completed_payload, dict):
+                raise DispatchError("completed run payload must remain an object")
             events.append(self._event(
                 "agent_run.completed",
-                {
-                    "run_id": result.run_id,
-                    "result": result.to_payload(),
-                    "cost": {"usd": result.cost_usd},
-                },
+                completed_payload,
                 idempotency_key=f"agent_run.completed:{result.run_id}",
             ))
         elif provider_event_type == "provider.dispatch_failed" or terminal_run:
@@ -1999,9 +2047,11 @@ class RoleDispatcher:
             failure_payload: dict[str, Any] = {
                 "run_id": result.run_id,
                 "failure_class": run_failure,
+                "result": result.to_payload(),
             }
             if result.error_detail is not None:
                 failure_payload["detail"] = result.error_detail
+            failure_payload = redact_payload(failure_payload)
             events.append(self._event(
                 "agent_run.failed",
                 failure_payload,
@@ -2099,7 +2149,7 @@ class RoleDispatcher:
         reason: str,
         lineage: Mapping[str, Any],
     ) -> None:
-        self._append("provider.dispatch_cost_unavailable", {
+        payload = redact_payload({
             "run_id": run_id,
             "mission_id": mission_id,
             "step_id": step_id,
@@ -2112,7 +2162,10 @@ class RoleDispatcher:
             "attempt_ordinal": attempt_ordinal,
             "reason": reason,
             **dict(lineage),
-        }, idempotency_key=(
+        })
+        if not isinstance(payload, dict):
+            raise DispatchError("provider cost payload must remain an object")
+        self._append("provider.dispatch_cost_unavailable", payload, idempotency_key=(
             f"provider.dispatch_cost_unavailable:{run_id}:"
             f"{attempt_generation}:{attempt_ordinal}:{provider}:{model}"
         ))
@@ -2133,38 +2186,83 @@ class RoleDispatcher:
         lineage: Mapping[str, Any],
         observed_effect_action_key: str | None = None,
     ) -> Event:
+        safe_action_payload = redact_payload({
+            "effect_action_key": effect_action_key,
+        })
+        if not isinstance(safe_action_payload, dict):
+            raise DispatchError("effect reconciliation payload must remain an object")
+        safe_action_key = str(safe_action_payload["effect_action_key"])
         requirement_id = (
             f"{run_id}:{attempt_generation}:{attempt_ordinal}:"
-            f"{effect_action_key}"
+            f"{safe_action_key}"
         )
+        payload = redact_payload({
+            "run_id": run_id,
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "provider": provider,
+            "model": model,
+            "failure_class": failure_class,
+            "reason": str(reason)[:500],
+            **dict(lineage),
+            "effect_action_key": safe_action_key,
+            "attempt_generation": attempt_generation,
+            "attempt_ordinal": attempt_ordinal,
+            "effect_requirement_id": requirement_id,
+            **(
+                {
+                    "observed_effect_action_key": observed_effect_action_key
+                }
+                if observed_effect_action_key
+                else {}
+            ),
+        })
+        if not isinstance(payload, dict):
+            raise DispatchError("effect reconciliation payload must remain an object")
         return self._event(
             "provider.effect_reconciliation_required",
-            {
-                "run_id": run_id,
-                "mission_id": mission_id,
-                "step_id": step_id,
-                "provider": provider,
-                "model": model,
-                "failure_class": failure_class,
-                "reason": str(reason)[:500],
-                **dict(lineage),
-                "effect_action_key": effect_action_key,
-                "attempt_generation": attempt_generation,
-                "attempt_ordinal": attempt_ordinal,
-                "effect_requirement_id": requirement_id,
-                **(
-                    {
-                        "observed_effect_action_key": (
-                            observed_effect_action_key
-                        )
-                    }
-                    if observed_effect_action_key
-                    else {}
-                ),
-            },
+            payload,
             idempotency_key=(
                 "provider.effect_reconciliation_required:"
                 f"{requirement_id}"
+            ),
+        )
+
+    def _effect_identity_mismatch_event(
+        self,
+        *,
+        run_id: str,
+        mission_id: str,
+        step_id: str | None,
+        provider: str,
+        expected_action_key: str | None,
+        observed_action_key: str,
+        attempt_generation: int,
+        attempt_ordinal: int,
+        lineage: Mapping[str, Any],
+    ) -> Event:
+        observed_digest = hashlib.sha256(
+            observed_action_key.encode("utf-8")
+        ).hexdigest()[:24]
+        payload = redact_payload({
+            "run_id": run_id,
+            "mission_id": mission_id,
+            "step_id": step_id,
+            "provider": provider,
+            "expected_effect_action_key": expected_action_key,
+            "observed_effect_action_key": observed_action_key,
+            "attempt_generation": attempt_generation,
+            "attempt_ordinal": attempt_ordinal,
+            **dict(lineage),
+        })
+        if not isinstance(payload, dict):
+            raise DispatchError("effect identity mismatch payload must remain an object")
+        return self._event(
+            "provider.effect_identity_mismatch",
+            payload,
+            idempotency_key=(
+                f"provider.effect_identity_mismatch:{run_id}:"
+                f"{attempt_generation}:{attempt_ordinal}:{observed_digest}"
             ),
         )
 
@@ -3250,7 +3348,13 @@ class RoleDispatcher:
                 total_attempts += 1
                 provider_counts[provider] = count + 1
                 estimated_spend_micros += estimate_micros
-                self._start_run(manifest, provider, model)
+                self._start_run(
+                    manifest,
+                    provider,
+                    model,
+                    attempt_generation=attempt_generation,
+                    attempt_ordinal=total_attempts,
+                )
                 invoke_fault_hook(self.fault_hook, "post agent_run.started")
                 attempt_inserted = self._record_provider_attempt(
                     run_id=run_id,
@@ -3366,34 +3470,21 @@ class RoleDispatcher:
                                 action_key = (
                                     f"provider-effect:{mission_id}:"
                                     f"{step_id or 'start'}:{run_id}"
-                                )
+                            )
                             if effect_identity_mismatch:
-                                extra_events.append(self._event(
-                                    "provider.effect_identity_mismatch",
-                                    {
-                                        "run_id": run_id,
-                                        "mission_id": mission_id,
-                                        "step_id": step_id,
-                                        "provider": provider,
-                                        "expected_effect_action_key": (
-                                            effect_action_key
-                                        ),
-                                        "observed_effect_action_key": (
-                                            reported_action_key
-                                        ),
-                                        "attempt_generation": (
-                                            attempt_generation
-                                        ),
-                                        "attempt_ordinal": total_attempts,
-                                        **lineage,
-                                    },
-                                    idempotency_key=(
-                                        "provider.effect_identity_mismatch:"
-                                        f"{run_id}:{attempt_generation}:"
-                                        f"{total_attempts}:"
-                                        f"{reported_action_key}"
-                                    ),
-                                ))
+                                extra_events.append(
+                                    self._effect_identity_mismatch_event(
+                                        run_id=run_id,
+                                        mission_id=mission_id,
+                                        step_id=step_id,
+                                        provider=provider,
+                                        expected_action_key=effect_action_key,
+                                        observed_action_key=reported_action_key,
+                                        attempt_generation=attempt_generation,
+                                        attempt_ordinal=total_attempts,
+                                        lineage=lineage,
+                                    )
+                                )
                             extra_events.append(
                                 self._effect_reconciliation_requirement(
                                     run_id=run_id,
@@ -3463,7 +3554,7 @@ class RoleDispatcher:
                     self._fail_run(
                         run_id, error_class, str(error),
                         suffix=f"{provider}:{total_attempts}")
-                    self._append("provider.dispatch_failed", {
+                    dispatch_failure_payload = redact_payload({
                         "run_id": run_id,
                         "mission_id": mission_id,
                         "step_id": step_id,
@@ -3480,10 +3571,20 @@ class RoleDispatcher:
                         "attempt_ordinal": total_attempts,
                         **lineage,
                         "effect_action_key": resolved_action_key,
-                    }, idempotency_key=(
-                        f"provider.dispatch_failed:{run_id}:"
-                        f"{attempt_generation}:{total_attempts}:"
-                        f"{provider}:{failure_class}"))
+                    })
+                    if not isinstance(dispatch_failure_payload, dict):
+                        raise DispatchError(
+                            "provider dispatch failure payload must remain an object"
+                        )
+                    self._append(
+                        "provider.dispatch_failed",
+                        dispatch_failure_payload,
+                        idempotency_key=(
+                            f"provider.dispatch_failed:{run_id}:"
+                            f"{attempt_generation}:{total_attempts}:"
+                            f"{provider}:{failure_class}"
+                        ),
+                    )
                     record_provider_readiness(
                         self.database,
                         provider_id=provider,
@@ -3499,41 +3600,41 @@ class RoleDispatcher:
                         if not action_key:
                             action_key = f"provider-effect:{mission_id}:{step_id or 'start'}:{run_id}"
                         if effect_identity_mismatch:
-                            self._append("provider.effect_identity_mismatch", {
-                                "run_id": run_id,
-                                "mission_id": mission_id,
-                                "step_id": step_id,
-                                "provider": provider,
-                                "expected_effect_action_key": effect_action_key,
-                                "observed_effect_action_key": reported_action_key,
-                                "attempt_generation": attempt_generation,
-                                "attempt_ordinal": total_attempts,
-                                **lineage,
-                            }, idempotency_key=(
-                                f"provider.effect_identity_mismatch:{run_id}:"
-                                f"{attempt_generation}:{total_attempts}:"
-                                f"{reported_action_key}"
-                            ))
-                        self.database.append_events([
-                            self._effect_reconciliation_requirement(
-                                run_id=run_id,
-                                mission_id=mission_id,
-                                step_id=step_id,
-                                provider=provider,
-                                model=model,
-                                failure_class=failure_class,
-                                reason=str(error),
-                                effect_action_key=action_key,
-                                attempt_generation=attempt_generation,
-                                attempt_ordinal=total_attempts,
-                                lineage=lineage,
-                                observed_effect_action_key=(
-                                    reported_action_key
-                                    if effect_identity_mismatch
-                                    else None
-                                ),
+                            self.database.append(
+                                self._effect_identity_mismatch_event(
+                                    run_id=run_id,
+                                    mission_id=mission_id,
+                                    step_id=step_id,
+                                    provider=provider,
+                                    expected_action_key=effect_action_key,
+                                    observed_action_key=reported_action_key,
+                                    attempt_generation=attempt_generation,
+                                    attempt_ordinal=total_attempts,
+                                    lineage=lineage,
+                                )
                             )
-                        ])
+                        requirement_event = self._effect_reconciliation_requirement(
+                            run_id=run_id,
+                            mission_id=mission_id,
+                            step_id=step_id,
+                            provider=provider,
+                            model=model,
+                            failure_class=failure_class,
+                            reason=str(error),
+                            effect_action_key=action_key,
+                            attempt_generation=attempt_generation,
+                            attempt_ordinal=total_attempts,
+                            lineage=lineage,
+                            observed_effect_action_key=(
+                                reported_action_key
+                                if effect_identity_mismatch
+                                else None
+                            ),
+                        )
+                        self.database.append_events([requirement_event])
+                        durable_action_key = str(
+                            requirement_event.payload.get("effect_action_key") or ""
+                        )
                         return RoleResult(
                             run_id=run_id, role=role, status=BLOCKED,
                             provider=provider, model=model, verdict="BLOCKED",
@@ -3545,7 +3646,7 @@ class RoleDispatcher:
                             error_detail=(
                                 "possible external mutation must be reconciled "
                                 "before any alternate provider dispatch"),
-                            effect_action_key=action_key,
+                            effect_action_key=durable_action_key,
                             cost_usd=self._cost_usd(costs.run_micros),
                             started_at=isoformat(utc_now()),
                             finished_at=isoformat(utc_now()),
@@ -3579,14 +3680,18 @@ class RoleDispatcher:
                             failure_class="COST_UNKNOWN",
                             cost_reason=detail,
                         )
-                    self._fail_run(run_id, "adapter_crash", str(error), suffix=provider)
-                    return RoleResult(
+                    result = RoleResult(
                         run_id=run_id, role=role, status=FAILED,
                         provider=provider, model=model,
                         verdict="NOT_TESTED", error_class="adapter_crash",
                         error_detail=str(error),
                         started_at=isoformat(utc_now()), finished_at=isoformat(utc_now()),
                     )
+                    self._fail_run(
+                        run_id, "adapter_crash", str(error), suffix=provider,
+                        result=result,
+                    )
+                    return result
                 observed_provider = result.provider
                 observed_model = result.model
                 observed_provider_evidence = tuple(result.evidence)
@@ -3909,6 +4014,7 @@ class RoleDispatcher:
                             "workforce_cost_telemetry_unavailable",
                             detail,
                             suffix=f"{provider}:{total_attempts}",
+                            result=result,
                         )
                         return result
                     attempt_cost = (
@@ -3958,6 +4064,7 @@ class RoleDispatcher:
                         "provider_incompatible",
                         result.error_detail,
                         suffix=f"identity:{provider}:{total_attempts}",
+                        result=result,
                     )
                     self.database.append_events(list(identity_events))
                     return result
@@ -3978,6 +4085,7 @@ class RoleDispatcher:
                         "provider_effect_reconciliation_required",
                         result.error_detail,
                         suffix=f"result-identity:{provider}:{total_attempts}",
+                        result=result,
                     )
                     self.database.append_events(list(identity_events))
                     return result
@@ -4000,26 +4108,16 @@ class RoleDispatcher:
                         effect_action_key=effect_action_key,
                     )
                     effect_events = (
-                        self._event(
-                            "provider.effect_identity_mismatch",
-                            {
-                                "run_id": run_id,
-                                "mission_id": mission_id,
-                                "step_id": step_id,
-                                "provider": provider,
-                                "expected_effect_action_key": effect_action_key,
-                                "observed_effect_action_key": (
-                                    observed_action_key
-                                ),
-                                "attempt_generation": attempt_generation,
-                                "attempt_ordinal": total_attempts,
-                                **lineage,
-                            },
-                            idempotency_key=(
-                                "provider.effect_identity_mismatch:"
-                                f"{run_id}:{attempt_generation}:"
-                                f"{total_attempts}:{observed_action_key}"
-                            ),
+                        self._effect_identity_mismatch_event(
+                            run_id=run_id,
+                            mission_id=mission_id,
+                            step_id=step_id,
+                            provider=provider,
+                            expected_action_key=effect_action_key,
+                            observed_action_key=observed_action_key,
+                            attempt_generation=attempt_generation,
+                            attempt_ordinal=total_attempts,
+                            lineage=lineage,
                         ),
                         self._effect_reconciliation_requirement(
                             run_id=run_id,
@@ -4052,6 +4150,7 @@ class RoleDispatcher:
                         "provider_incompatible",
                         detail,
                         suffix=f"effect-identity:{provider}:{total_attempts}",
+                        result=result,
                     )
                     self.database.append_events(list(effect_events))
                     return result
@@ -4226,6 +4325,7 @@ class RoleDispatcher:
                             result.error_class or "provider_unavailable",
                             result.error_detail,
                             suffix=f"{provider}:{total_attempts}",
+                            result=result,
                         )
                         self._append("provider.dispatch_failed", {
                             "run_id": run_id,
@@ -4277,8 +4377,13 @@ class RoleDispatcher:
                         failure_class=result.error_class or "session_failed",
                         totals=settlement_totals,
                     )
-                self._fail_run(run_id, result.error_class or "session_failed",
-                               result.error_detail, suffix=provider)
+                self._fail_run(
+                    run_id,
+                    result.error_class or "session_failed",
+                    result.error_detail,
+                    suffix=provider,
+                    result=result,
+                )
                 return result
 
             # 4. all providers exhausted
@@ -4352,7 +4457,9 @@ class RoleDispatcher:
                     totals=costs.settlement_fields(),
                     provider_details={"reason": detail},
                 )
-            self._fail_run(run_id, error_class, detail, suffix="exhausted")
+            self._fail_run(
+                run_id, error_class, detail, suffix="exhausted", result=result,
+            )
             return result
         finally:
             self.leases.release(lease_key, run_id)

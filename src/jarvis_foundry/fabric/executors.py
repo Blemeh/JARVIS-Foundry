@@ -44,6 +44,7 @@ from ..connectors.github_write import (
     github_write_intent,
     reconcile_github_write_effect,
 )
+from ..platform.windows_subprocess import headless_run_kwargs
 from ..connectors.web_research import BrowserExecutionAuthorization
 from ..database import FoundryDatabase
 from ..effects import (
@@ -54,6 +55,7 @@ from ..effects import (
     finalize_verified_effect,
     freeze_effect,
 )
+from ..hashing import sha256_path
 from .general_work import dispatch_general_work
 from .model import ClaimOutcome, FabricError
 
@@ -101,7 +103,7 @@ class ExecutorContext:
 
 
 def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha256_path(path)
 
 
 def filesystem_write(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -346,6 +348,7 @@ def git_commit(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
     observed = subprocess.run(
         ["git", "-C", str(worktree), "rev-parse", "HEAD"],
         capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
+        **headless_run_kwargs(),
     )
     return {
         "claimed": "COMPLETED",
@@ -1112,6 +1115,7 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
                             "session": status.to_evidence(),
                             "authority": "DATA_ONLY",
                         }
+                    was_authenticated = bool(status.authenticated)
                     status = session.ensure_authenticated()
                     if not status.authenticated:
                         return {
@@ -1121,6 +1125,13 @@ def browser_read(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, 
                             "session": status.to_evidence(),
                             "authority": "DATA_ONLY",
                         }
+                    if not was_authenticated:
+                        # Repair: the first navigation ran against the expired
+                        # session and only reached the login page.  Re-read the
+                        # requested target on the recovered session so the
+                        # receipt and the document describe the same page
+                        # instead of reporting the pre-recovery redirect.
+                        capture = session.navigate(url)
                 return _browser_attempt_payload(
                     capture.attempt, page=capture.page, session=session,
                 ) | {
@@ -2070,6 +2081,7 @@ def system_diagnose(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[st
     git = subprocess.run(
         ["git", "--version"], capture_output=True, text=True, encoding="utf-8",
         timeout=15, check=False,
+        **headless_run_kwargs(),
     )
     gh = shutil.which("gh")
     disk = shutil.disk_usage(ctx.owned_root)
@@ -2099,6 +2111,7 @@ def tests_run(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, Any
         [sys.executable, "-m", "pytest", str(resolved), "-q"],
         capture_output=True, text=True, encoding="utf-8", timeout=120, check=False,
         cwd=str(ctx.owned_root),
+        **headless_run_kwargs(),
     )
     return {
         "claimed": "COMPLETED" if result.returncode == 0 else "FAILED",
@@ -2420,6 +2433,7 @@ def script_run(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[str, An
         [sys.executable, str(resolved), *list(payload.get("args") or ())],
         capture_output=True, text=True, encoding="utf-8", timeout=60, check=False,
         cwd=str(ctx.owned_root),
+        **headless_run_kwargs(),
     )
     return {
         "claimed": "COMPLETED" if result.returncode == 0 else "FAILED",
@@ -2434,7 +2448,7 @@ def script_hash_file(ctx: ExecutorContext, payload: Mapping[str, Any]) -> dict[s
     path = Path(payload["path"])
     if not path.is_absolute():
         path = ctx.owned_root / path
-    digest = _sha256_file(path)
+    digest = sha256_path(path)
     return {
         "claimed": "COMPLETED",
         "path": str(path),

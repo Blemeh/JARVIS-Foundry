@@ -24,7 +24,7 @@ from jarvis_foundry.world_model.research_handoff import (
 
 def _database(tmp_path: Path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "foundry.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     return database
 
 

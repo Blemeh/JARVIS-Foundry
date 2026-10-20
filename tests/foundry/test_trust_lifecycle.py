@@ -49,9 +49,35 @@ def test_non_supervisor_evidence_cannot_promote(tmp_path):
         )
 
 
-def test_all_evidence_promotes_and_retry_returns_immutable_event(tmp_path):
+def test_supervisor_emits_live_identity_bound_report_and_stopped_runtime_invalidates_it(
+        tmp_path, monkeypatch):
+    from jarvis_foundry.deployment.layout import install_root
+    from jarvis_foundry.deployment.release import read_current
+
     database = _database(tmp_path)
-    events = {}
+    current = read_current(install_root())
+    if not current:
+        pytest.skip("installed CURRENT release is unavailable")
+    monkeypatch.setenv("JARVIS_RELEASE_SHA", current)
+    supervisor = Supervisor(
+        database, tmp_path / "EMERGENCY_STOP", instance_id="trust-report-runtime",
+    )
+    assert supervisor.start() == "RUNNING"
+    try:
+        assert supervisor.heartbeat() == "RUNNING"
+        status = trust_status(database)
+        assert status["latest_report"]["schema"] == "jarvis.trust-gate-report.v1"
+        assert set(status["latest_report"]["dimensions"]) == set(REQUIRED_EVIDENCE)
+        assert status["checks"]["schema_integrity"] == "PASS"
+        assert status["eligible"] is False
+        assert status["limited_eligible"] is False
+    finally:
+        supervisor.stop()
+    assert trust_status(database)["checks"] == {}
+
+
+def test_unbound_evidence_rows_cannot_make_trust_eligible(tmp_path):
+    database = _database(tmp_path)
     for key in REQUIRED_EVIDENCE:
         first = record_trust_evidence(
             database, key, status="PASS", evidence={"profile": key},
@@ -60,29 +86,17 @@ def test_all_evidence_promotes_and_retry_returns_immutable_event(tmp_path):
             database, key, status="PASS", evidence={"profile": key},
         )
         assert first.event_id == second.event_id
-        events[key] = first.event_id
     assessment = assess_trust(database)
-    assert assessment.eligible is True
-    assert assessment.missing == ()
-    assert assessment.recommended_state == "TRUSTED_AUTONOMOUS"
-    transition_trust(database, "PROVING", reason="acceptance evidence collected")
-    transition_trust(database, "LIMITED_AUTONOMY", reason="bounded safety gate passed")
-    promoted = transition_trust(
-        database, "TRUSTED_AUTONOMOUS", reason="all acceptance dimensions passed",
-    )
-    assert trust_status(database)["state"] == "TRUSTED_AUTONOMOUS"
-    assert promoted.payload["evidence_digest"] == assessment.evidence_digest
+    assert assessment.eligible is False
+    assert assessment.checks == {}
+    assert assessment.missing == REQUIRED_EVIDENCE
+    assert trust_status(database)["state"] == "LAB"
+    with pytest.raises(TrustError, match="missing evidence"):
+        transition_trust(database, "TRUSTED_AUTONOMOUS", reason="unbound rows")
 
 
 def test_trust_demotion_is_persisted_and_projection_rebuilds(tmp_path):
     database = _database(tmp_path)
-    for key in REQUIRED_EVIDENCE:
-        record_trust_evidence(
-            database, key, status="PASS", evidence={"profile": key},
-        )
-    transition_trust(database, "PROVING", reason="promotion evidence staged")
-    transition_trust(database, "LIMITED_AUTONOMY", reason="bounded safety gate passed")
-    transition_trust(database, "TRUSTED_AUTONOMOUS", reason="promotion proof")
     demoted = transition_trust(database, "DEGRADED", reason="runtime parity drift")
     assert demoted.payload["to_state"] == "DEGRADED"
     assert trust_status(database)["state"] == "DEGRADED"
@@ -91,55 +105,44 @@ def test_trust_demotion_is_persisted_and_projection_rebuilds(tmp_path):
     assert trust_status(database)["history"][-1]["to_state"] == "DEGRADED"
 
 
-def test_trusted_state_survives_supervisor_restart(tmp_path):
+def test_suspended_state_survives_supervisor_restart(tmp_path):
     database = _database(tmp_path)
-    for key in REQUIRED_EVIDENCE:
-        record_trust_evidence(
-            database, key, status="PASS", evidence={"profile": key},
-        )
-    transition_trust(database, "PROVING", reason="all proof recorded")
-    transition_trust(database, "LIMITED_AUTONOMY", reason="bounded safety gate passed")
-    transition_trust(database, "TRUSTED_AUTONOMOUS", reason="certification complete")
+    transition_trust(database, "SUSPENDED", reason="trust proof is not established")
 
     stop_path = tmp_path / "EMERGENCY_STOP"
     first = Supervisor(database, stop_path, instance_id="trust-restart-a")
     assert first.start() == "RUNNING"
     first.stop()
-    assert trust_status(database)["state"] == "TRUSTED_AUTONOMOUS"
+    assert trust_status(database)["state"] == "SUSPENDED"
 
     second = Supervisor(database, stop_path, instance_id="trust-restart-b")
     assert second.start() == "RUNNING"
     try:
-        assert trust_status(database)["state"] == "TRUSTED_AUTONOMOUS"
+        assert trust_status(database)["state"] == "SUSPENDED"
         started = [event for event in database.events()
                    if event.event_type == "supervisor.started"][-1]
-        assert started.payload["trust_state"] == "TRUSTED_AUTONOMOUS"
+        assert started.payload["trust_state"] == "SUSPENDED"
     finally:
         second.stop()
 
 
-def test_limited_state_survives_supervisor_restart(tmp_path):
+def test_degraded_state_survives_supervisor_restart(tmp_path):
     database = _database(tmp_path)
-    for key in LIMITED_AUTONOMY_EVIDENCE:
-        record_trust_evidence(
-            database, key, status="PASS", evidence={"profile": key},
-        )
-    transition_trust(database, "PROVING", reason="bounded proof recorded")
-    transition_trust(database, "LIMITED_AUTONOMY", reason="bounded gate passed")
+    transition_trust(database, "DEGRADED", reason="trust proof is not established")
 
     stop_path = tmp_path / "EMERGENCY_STOP"
     first = Supervisor(database, stop_path, instance_id="limited-restart-a")
     assert first.start() == "RUNNING"
     first.stop()
-    assert trust_status(database)["state"] == "LIMITED_AUTONOMY"
+    assert trust_status(database)["state"] == "DEGRADED"
 
     second = Supervisor(database, stop_path, instance_id="limited-restart-b")
     assert second.start() == "RUNNING"
     try:
-        assert trust_status(database)["state"] == "LIMITED_AUTONOMY"
+        assert trust_status(database)["state"] == "DEGRADED"
         started = [event for event in database.events()
                    if event.event_type == "supervisor.started"][-1]
-        assert started.payload["trust_state"] == "LIMITED_AUTONOMY"
+        assert started.payload["trust_state"] == "DEGRADED"
     finally:
         second.stop()
 
@@ -156,7 +159,7 @@ def test_evidence_status_change_is_append_only_and_demotes_recommendation(tmp_pa
     )
     assert first.event_id != second.event_id
     assessment = assess_trust(database)
-    assert assessment.checks["release_parity"] == "FAIL"
+    assert assessment.checks == {}
     assert "release_parity" in assessment.missing
     assert len([
         event for event in database.events()
@@ -182,22 +185,17 @@ def test_limited_autonomy_is_a_separate_evidence_gate(tmp_path):
     for key in LIMITED_AUTONOMY_EVIDENCE:
         record_trust_evidence(
             database, key, status="PASS", evidence={"profile": key},
-        )
+    )
 
     assessment = assess_trust(database)
-    assert assessment.limited_eligible is True
-    assert assessment.limited_missing == ()
+    assert assessment.limited_eligible is False
+    assert assessment.limited_missing == LIMITED_AUTONOMY_EVIDENCE
     assert assessment.eligible is False
-    assert assessment.missing == ("provider_routing",)
-    assert assessment.recommended_state == "PROVING"
+    assert assessment.missing == REQUIRED_EVIDENCE
+    assert assessment.recommended_state == "LAB"
 
     transition_trust(database, "PROVING", reason="bounded proving started")
-    assert assess_trust(database).recommended_state == "LIMITED_AUTONOMY"
-    limited = transition_trust(
-        database, "LIMITED_AUTONOMY", reason="bounded safety gate passed",
-    )
-    assert limited.payload["gate_required_evidence"] == list(LIMITED_AUTONOMY_EVIDENCE)
-    assert trust_status(database)["state"] == "LIMITED_AUTONOMY"
+    assert assess_trust(database).recommended_state == "LAB"
 
     with pytest.raises(TrustError, match="provider_routing"):
         transition_trust(
@@ -207,9 +205,8 @@ def test_limited_autonomy_is_a_separate_evidence_gate(tmp_path):
     record_trust_evidence(
         database, "provider_routing", status="PASS", evidence={"profile": "provider"},
     )
-    assert assess_trust(database).recommended_state == "TRUSTED_AUTONOMOUS"
-    transition_trust(database, "TRUSTED_AUTONOMOUS", reason="full gate passed")
-    assert trust_status(database)["state"] == "TRUSTED_AUTONOMOUS"
+    assert assess_trust(database).eligible is False
+    assert trust_status(database)["state"] == "PROVING"
 
 
 def test_non_supervisor_trust_transition_cannot_mutate_projection(tmp_path):
@@ -235,14 +232,10 @@ def test_malformed_supervisor_heartbeat_preserves_valid_trust_state(tmp_path):
     assert trust_status(database)["state"] == "SUSPENDED"
 
 
-def test_trusted_promotion_cannot_bypass_limited_stage(tmp_path):
+def test_trusted_promotion_refuses_missing_live_report(tmp_path):
     database = _database(tmp_path)
-    for key in REQUIRED_EVIDENCE:
-        record_trust_evidence(
-            database, key, status="PASS", evidence={"profile": key},
-        )
     transition_trust(database, "PROVING", reason="full evidence recorded")
-    with pytest.raises(TrustError, match="invalid trust transition"):
+    with pytest.raises(TrustError, match="missing evidence"):
         transition_trust(
             database, "TRUSTED_AUTONOMOUS", reason="bypass limited stage",
         )

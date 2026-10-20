@@ -1,0 +1,171 @@
+{
+  "lane": "A",
+  "generated_at": "2026-09-18T00:00:00Z",
+  "audit": "adversarial-product-path",
+  "base": "ddec34efc96b9a0154eb9821d6cc496ef76906a3",
+  "branch": "candidate/purpose-recovery-ii-a-executive-intelligence-20260917",
+  "product_entrypoint": "jarvis_foundry.runtime.worker_loop.run_cycle",
+  "pytest_helper_not_used_as_real_autonomous_evidence": "run_executive_intelligence_cycle",
+  "rows": [
+    {
+      "domain": "A1 standing owner goals",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "worker_loop A3 → prepare_executive_observation → sync_owner_goals",
+      "what_triggers_it": "authenticated owner GOAL directive",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json standing_intents=1", "owner_goal_objectives=[]"],
+      "what_was_fixed": "Discovery mandates are not compiled into owner-goal:<id> missions",
+      "remaining_dependency": "none for isolated candidate"
+    },
+    {
+      "domain": "A2 project inventory",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "observation_sources_from_registered_projects / assemble_project_inventory",
+      "what_triggers_it": "resources table rows for registered git clones of real owner repos",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json registered_projects jarvis+operatoros", "executive.context_assembled"],
+      "what_was_fixed": "Empty A3 YAML sources bind registered git resources",
+      "remaining_dependency": "live JARVIS resource table not read (isolated DB)"
+    },
+    {
+      "domain": "A3 observation to opportunity",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "run_cycle → run_continuous_observation_cycle → read_project_source",
+      "what_triggers_it": "actual OperatorOS git inactivity / project_staleness",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json candidate Review inactive project resource-operatoros"],
+      "what_was_fixed": "Source-dir walk priority; discovery-mandate alignment for staleness/drift",
+      "remaining_dependency": "none for this observation class"
+    },
+    {
+      "domain": "A4 candidate generation",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "ingest_observed_candidate from A2 observation",
+      "what_triggers_it": "candidate_worthy project observation",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json candidate_count=1"],
+      "what_was_fixed": "Reuse existing ingest; no second candidate store",
+      "remaining_dependency": "none"
+    },
+    {
+      "domain": "A5 candidate rejection",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "ExecutiveDecisionService.evaluate_a2 rejected/deferred lists",
+      "what_triggers_it": "comparative ranking",
+      "did_a_test_fixture_supply_the_decision": "YES for the older style-TODO pytest; NO on the product run, which rejected nothing",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json rejected_count=0"],
+      "what_was_fixed": "Rejection wiring exists; not exercised by real-repo observation",
+      "remaining_dependency": "a real second weak candidate from actual project state"
+    },
+    {
+      "domain": "A6 multi-project prioritization",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "evaluate_a2 over combined registered-project candidates",
+      "what_triggers_it": "candidates from >=2 projects",
+      "did_a_test_fixture_supply_the_decision": "NO on product run; only one project produced a candidate",
+      "real_project_runtime_evidence": ["two registered clones; one candidate from OperatorOS"],
+      "what_was_fixed": "Inventory is multi-project; selection was not a two-opportunity comparison",
+      "remaining_dependency": "a second real candidate-worthy opportunity"
+    },
+    {
+      "domain": "A7 research-gap recognition",
+      "classification": "WAITING_FOR_PARALLEL_CONVERGENCE",
+      "normal_product_entrypoint": "A2 _run_research / ResearchQueue",
+      "what_triggers_it": "uncertainty near do_nothing_score",
+      "did_a_test_fixture_supply_the_decision": "N/A",
+      "real_project_runtime_evidence": ["Lane A never called browser APIs"],
+      "what_was_fixed": "none required in Lane A",
+      "remaining_dependency": "Goal B browser/research execution"
+    },
+    {
+      "domain": "A8 research findings to decision",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "evaluate_a2 research factors after ResearchQueue COMPLETED",
+      "what_triggers_it": "COMPLETED DATA_ONLY findings",
+      "did_a_test_fixture_supply_the_decision": "YES for the injected CONTRADICTING pytest",
+      "real_project_runtime_evidence": ["not observed on worker_loop real-repo run"],
+      "what_was_fixed": "Stance-aware scoring exists; product-path change-of-mind not proven",
+      "remaining_dependency": "Goal B completing research items, or a natural local dossier that changes selection"
+    },
+    {
+      "domain": "A9 autonomous software-engineering selection",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "worker_loop A3 admit of evaluate_a2 SELECT",
+      "what_triggers_it": "standing GOAL + registered repo observations",
+      "did_a_test_fixture_supply_the_decision": "NO — JARVIS chose project_staleness; harness supplied no task/TODO/file",
+      "real_project_runtime_evidence": ["selected Review inactive project resource-operatoros; A3 refused admission"],
+      "what_was_fixed": "Standing-goal alignment includes staleness/drift; A3 still only admits tracked_work/github_*",
+      "remaining_dependency": "real tracked_work in owner repos, or A3 admission of project-health classes (policy)"
+    },
+    {
+      "domain": "A10 new-project judgment",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "judge_new_project_opportunity on worker_loop A3",
+      "what_triggers_it": "presence or absence of new-project-shaped candidates",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json new_project_judgment NONE"],
+      "what_was_fixed": "Judgment recorded on the product path; no app forced",
+      "remaining_dependency": "none for REJECT/NONE; BUILD still needs a real new-project candidate"
+    },
+    {
+      "domain": "A11 outcome measurement",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "reconcile_outcome_learning → merge_predicted_vs_actual → executive.outcome_measured",
+      "what_triggers_it": "terminal accepted mission",
+      "did_a_test_fixture_supply_the_decision": "YES for helper measure_outcome pytest; product run had no PASS",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json outcome_measured=false"],
+      "what_was_fixed": "Predicted vs actual merge on the canonical reconcilers",
+      "remaining_dependency": "an admitted+PASSed mission on the real-repo path"
+    },
+    {
+      "domain": "A12 learning",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "calibration.rebuild_calibration consumed by later evaluate_a2",
+      "what_triggers_it": "executive.calibration_recorded from a real outcome",
+      "did_a_test_fixture_supply_the_decision": "YES for the helper low-value PASS pytest",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json calibration_recorded=false; second_cycle=null"],
+      "what_was_fixed": "LOW_VALUE_PENALTY exists; not retrieved on a later worker_loop cycle here",
+      "remaining_dependency": "PASS or FAIL then a second worker_loop cycle"
+    },
+    {
+      "domain": "A13 institutional memory",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "prepare_executive_observation → load_owner_context",
+      "what_triggers_it": "cycle start",
+      "did_a_test_fixture_supply_the_decision": "NO for standing-goal/inventory assembly; vault was not used",
+      "real_project_runtime_evidence": ["executive.context_assembled; live Obsidian NOT_TESTED; no OBSIDIAN_VAULT"],
+      "what_was_fixed": "Context assembly on worker_loop",
+      "remaining_dependency": "configured live/candidate Obsidian vault"
+    },
+    {
+      "domain": "A14 PASS to next action",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "normal_product_entrypoint": "worker_loop after finalized A3 outcome → schedule_next_action_after_outcome → next run_cycle",
+      "what_triggers_it": "mission PASS",
+      "did_a_test_fixture_supply_the_decision": "older A3 runtime test plants a TODO; this product run never PASSed",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json second_cycle=null; outcome WAITING/STALL"],
+      "what_was_fixed": "Next-action wake is wired after A3 terminal; not reached from real registered repos",
+      "remaining_dependency": "A3-admissible selected work that PASSes"
+    },
+    {
+      "domain": "A15 justified WAIT vs stall",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "record_product_wait_diagnosis on worker_loop A3 WAIT/admission-fail",
+      "what_triggers_it": "no registered sources, or SELECT that cannot continue",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["WAIT_PROOF.json JUSTIFIED_WAIT", "STALL_PROOF.json STALL after project_staleness SELECT"],
+      "what_was_fixed": "Worker_loop records WAIT vs STALL; STALL when selected work does not become a mission",
+      "remaining_dependency": "none for these two cases"
+    },
+    {
+      "domain": "A16 Command Center decision truth",
+      "classification": "REAL_AUTONOMOUS",
+      "normal_product_entrypoint": "evaluate_a2 → executive.decision_recorded.decision_truth",
+      "what_triggers_it": "any ExecutiveDecisionService evaluate on worker_loop",
+      "did_a_test_fixture_supply_the_decision": "NO",
+      "real_project_runtime_evidence": ["PRODUCT_PATH_PROOF.json decision_truth.why_chosen and next_action from ledger"],
+      "what_was_fixed": "Additive decision_truth; Command Center reads ledger fields",
+      "remaining_dependency": "learned stays empty until a real outcome; UI remains Goal B"
+    }
+  ]
+}

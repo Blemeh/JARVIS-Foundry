@@ -94,7 +94,7 @@ def _contradicting_evidence(*, hostile: bool = False) -> dict[str, Any]:
 
 def _db_candidate(tmp_path: Path) -> tuple[FoundryDatabase, str]:
     database = FoundryDatabase(tmp_path / "v11-research.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     result = ingest_observed_candidate(
         database,
         "v11-research-cycle",

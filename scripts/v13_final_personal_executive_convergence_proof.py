@@ -71,6 +71,12 @@ from jarvis_foundry.workforce import (
     rebuild_workforce_state,
 )
 
+#: The schema this proof was last re-validated against.  The guards below are
+#: deliberately NOT comparisons of SCHEMA_VERSION with itself: they fail closed
+#: when the product's schema moves, forcing this proof to be re-validated rather
+#: than silently claiming a schema it was never run against.
+VALIDATED_SCHEMA = 41
+
 
 BRANCH = "candidate/v13-final-personal-executive-convergence-20260905"
 BASE_SHA = "51d2cfcce1be847fd252d1c857105f09f5f2c0e4"
@@ -188,7 +194,9 @@ def _source_identity(expected_source_sha: str | None) -> dict[str, Any]:
         merge_base == BASE_SHA,
         f"candidate is not based on exact V12 final {BASE_SHA}",
     )
-    _require(SCHEMA_VERSION == 40, f"expected schema 40, got {SCHEMA_VERSION}")
+    _require(
+        SCHEMA_VERSION == VALIDATED_SCHEMA,
+        f"expected schema {VALIDATED_SCHEMA}, got {SCHEMA_VERSION}")
     _require(not status, f"source-bound proof requires clean worktree: {status}")
     main_sha = _git("rev-parse", "main")
     origin_main_sha = _git("rev-parse", "origin/main")
@@ -346,7 +354,7 @@ def _validate_receipts(
         "world_intelligence": (
             world.get("contract") == "jarvis.v13.world-intelligence-proof.v1"
             and world.get("source_sha") == source_sha
-            and world.get("schema") == 40
+            and world.get("schema") == SCHEMA_VERSION
             and _at(world, "proofs", "D", "action")
             == "WAIT_AND_RESEARCH_LATER"
             and _at(world, "boundaries", "live_mutated") is False
@@ -1531,7 +1539,7 @@ def _run_spine_proof(
     work_root.mkdir(parents=True)
     database = FoundryDatabase(work_root / "foundry.db")
     schema = database.initialize()
-    _require(schema == 40, f"expected schema 40, got {schema}")
+    _require(schema == SCHEMA_VERSION, f"expected schema {SCHEMA_VERSION}, got {schema}")
 
     proof_a = _proof_a(database, work_root)
     path_b = _owner_path(

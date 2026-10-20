@@ -18,7 +18,10 @@ from ..deployment.layout import install_root
 from ..database import FoundryDatabase
 from ..paths import FoundryPaths
 from ..supervisor.worker import WorkerController
-from ..workers.adapters.hermes import HermesWorkerAdapter
+from ..workers.adapters.hermes import (
+    HermesWorkerAdapter,
+    _delegation_request_overrides,
+)
 from ..workers.adapters.openhands import OpenHandsWorkerAdapter
 from ..workers.adapters.registry import WorkerRegistry
 from ..workers.mission_bridge import HybridWorkerRoleAdapter
@@ -38,6 +41,7 @@ from .provider_registry import (
 from .config import WorkerRuntimeConfig
 from .authority import require_existing_executable
 from .provider_config import ProviderSettings
+from .provider_spend import AUTHORIZED_API_MODE
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,6 +223,8 @@ _OPENCODE_SESSION_HEADER = "x-opencode-session"
 def _provider_request_headers(
     hermes: dict[str, Any],
     provider_settings: ProviderSettings | None,
+    *,
+    existing_headers: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """Return the per-run provider headers Hermes must send on every request.
 
@@ -230,6 +236,12 @@ def _provider_request_headers(
     generated once here and reused for the whole run.
     """
     headers: dict[str, str] = {}
+    if isinstance(existing_headers, dict):
+        headers.update({
+            str(key): str(value)
+            for key, value in existing_headers.items()
+            if value is not None
+        })
     declared = hermes.get("extra_headers")
     if isinstance(declared, dict):
         headers.update({
@@ -241,7 +253,16 @@ def _provider_request_headers(
         return headers
     family = family_for_provider(provider_settings.provider)
     if family is not None and family.family_id == OPENCODE_FAMILY_ID:
-        headers.setdefault(_OPENCODE_SESSION_HEADER, str(uuid.uuid4()))
+        existing_session = next(
+            (
+                value
+                for key, value in headers.items()
+                if key.casefold() == _OPENCODE_SESSION_HEADER
+            ),
+            None,
+        )
+        if not existing_session:
+            headers[_OPENCODE_SESSION_HEADER] = str(uuid.uuid4())
         headers.setdefault("User-Agent", f"jarvis-foundry/{__version__}")
     return headers
 
@@ -263,30 +284,144 @@ def _prepare_hermes_home(
     :func:`_provider_request_headers`) so the OpenCode session identity stays
     stable for the whole run without any live-profile or environment write.
     """
+    config_path = home / "config.yaml"
     document: dict[str, Any] = {}
+    if config_path.exists():
+        import yaml
+
+        parsed = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        if not isinstance(parsed, dict):
+            from ..workers.adapters.base import AdapterConfigurationError
+
+            raise AdapterConfigurationError(
+                "isolated Hermes config.yaml must be a valid mapping")
+        document.update(parsed)
     if hermes.get("allow_data_training_tiers_noninteractive") is True:
-        document["security"] = {
-            "allow_data_training_tiers_noninteractive": True,
-        }
-    headers = _provider_request_headers(hermes, provider_settings)
+        security = document.get("security")
+        if not isinstance(security, dict):
+            security = {}
+        security["allow_data_training_tiers_noninteractive"] = True
+        document["security"] = security
+    existing_providers = document.get("providers")
+    existing_provider = (
+        existing_providers.get("opencode-go")
+        if isinstance(existing_providers, dict)
+        else None
+    )
+    existing_headers = (
+        existing_provider.get("extra_headers")
+        if isinstance(existing_provider, dict)
+        else None
+    )
+    headers = _provider_request_headers(
+        hermes,
+        provider_settings,
+        existing_headers=existing_headers if isinstance(existing_headers, dict) else None,
+    )
     if headers and provider_settings is not None:
+        # Hermes names this provider with a hyphen. JARVIS uses the internal
+        # underscore id only until the adapter boundary.
         document["providers"] = {
-            provider_settings.provider: {
+            "opencode-go": {
                 "api": provider_settings.base_url,
                 "extra_headers": headers,
             },
         }
-    if not document:
-        return
-    config_path = home / "config.yaml"
-    if config_path.exists():
-        # Never overwrite a pre-existing run profile: an explicit false or a
-        # malformed file must remain fail-closed and observable to Hermes.
-        return
+        document["model"] = {
+            "provider": "opencode-go",
+            "model": provider_settings.model,
+        }
+        document["fallback_providers"] = []
+        document["fallback_model"] = []
+        document["credential_pool_strategies"] = {}
+        agent = document.get("agent")
+        if not isinstance(agent, dict):
+            agent = {}
+        # Hermes owns bounded same-route resends; the request gateway meters
+        # each one independently. Do not allow a hidden route-level retry pool.
+        agent["api_max_retries"] = 1
+        document["agent"] = agent
+        auxiliary = document.get("auxiliary")
+        if not isinstance(auxiliary, dict):
+            auxiliary = {}
+        auxiliary["transient_retries"] = 0
+        task_names = (
+            "vision", "compression", "skills_hub", "approval", "review",
+            "mcp", "title_generation", "memory_query_rewrite", "tts_audio_tags",
+            "triage_specifier", "kanban_decomposer", "profile_describer",
+            "goal_judge", "curator", "monitor", "background_review",
+            "moa_reference", "moa_aggregator", "web_extract",
+        )
+        for task_name in task_names:
+            task = auxiliary.get(task_name)
+            if not isinstance(task, dict):
+                task = {}
+            task["provider"] = "opencode-go"
+            task["model"] = provider_settings.model
+            task["base_url"] = provider_settings.base_url
+            task["api_key"] = ""
+            task["api_mode"] = AUTHORIZED_API_MODE
+            task["fallback_chain"] = []
+            auxiliary[task_name] = task
+        document["auxiliary"] = auxiliary
+        delegation = document.get("delegation")
+        if not isinstance(delegation, dict):
+            delegation = {}
+        delegation["provider"] = "opencode-go"
+        delegation["model"] = provider_settings.model
+        delegation["base_url"] = provider_settings.base_url
+        delegation["api_key"] = ""
+        delegation["api_mode"] = AUTHORIZED_API_MODE
+        delegation["fallback_providers"] = []
+        delegation["request_overrides"] = _delegation_request_overrides(
+            delegation.get("request_overrides"), headers)
+        document["delegation"] = delegation
     import yaml
 
-    config_path.write_text(
-        yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    if document:
+        temporary = config_path.with_suffix(".yaml.tmp")
+        temporary.write_text(
+            yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+        temporary.replace(config_path)
+
+
+def worker_framework_eligibility(config: Any) -> dict[str, bool]:
+    """Evidence-driven worker eligibility shared by stack and recovery.
+
+    A framework is eligible only when its adapter is enabled in runtime
+    config AND positive recorded evidence marks it READY (the lab harness
+    aside, which marks its scripted adapter READY by construction).
+    Anything else is NOT_READY so the router default baseline can never
+    leak into the live path. Single authority for mission dispatch
+    (build_worker_stack below) and worker-availability recovery.
+    """
+    from ..workers.contracts import VALID_WORKERS
+
+    lab = bool(getattr(config, "lab_scripted_hermes", False))
+    if lab:
+        enabled = ["hermes"]
+    else:
+        enabled = []
+        hermes = getattr(config, "hermes", None) or {}
+        openhands = getattr(config, "openhands", None) or {}
+        if hermes.get("enabled", False):
+            enabled.append("hermes")
+        if openhands.get("enabled", False):
+            enabled.append("openhands")
+    readiness = getattr(config, "readiness", None) or {}
+    result: dict[str, bool] = {}
+    for framework in VALID_WORKERS:
+        if framework not in enabled:
+            result[framework] = False
+            continue
+        if lab and framework == "hermes":
+            result[framework] = True
+            continue
+        spec = dict(readiness.get(framework) or {})
+        result[framework] = (
+            str(spec.get("state") or NOT_READY) == READY
+            and bool(spec.get("evidence")))
+    return result
 
 
 def build_worker_stack(
@@ -372,6 +507,7 @@ def build_worker_stack(
                 workers=workers,
                 provider_settings=config.provider_settings,
                 provider_settings_by_id=provider_settings_by_id,
+                database=database,
             ),
         )
         enabled.append("hermes")
@@ -399,12 +535,17 @@ def build_worker_stack(
 
     # Readiness is evidence-driven: only frameworks with positive recorded
     # containment evidence become READY; everything else stays NOT_READY.
+    # The decision is worker_framework_eligibility above (single authority
+    # shared with worker-availability recovery); only audit notes differ.
+    eligibility = worker_framework_eligibility(config)
+    readiness_specs = {
+        framework: dict(config.readiness.get(framework) or {})
+        for framework in enabled}
     for framework in enabled:
         if config.lab_scripted_hermes and framework == "hermes":
             continue
-        spec = dict(config.readiness.get(framework) or {})
-        state = str(spec.get("state") or NOT_READY)
-        if state != READY or not spec.get("evidence"):
+        spec = readiness_specs.get(framework, {})
+        if not eligibility.get(framework, False):
             router.mark_ready(
                 framework, state=NOT_READY,
                 note="no positive containment evidence in runtime config",
@@ -428,14 +569,16 @@ def build_worker_stack(
                 evidence=(),
             )
 
-    vault = paths.home / "connector-root"
+    from ..vault_indexer import configured_vault_root
+
+    vault = configured_vault_root(database)
     bridge = HybridWorkerRoleAdapter(
         database=database,
         router=router,
         registry=registry,
         role_signals=dict(config.role_signals),
         stop_path=config.resolve_stop_path(paths.home),
-        vault_root=vault if vault.is_dir() else None,
+        vault_root=vault,
         use_fabric=not config.lab_scripted_hermes,
         mcp_backend=mcp_backend,
     )

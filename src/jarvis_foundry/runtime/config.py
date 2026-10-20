@@ -27,7 +27,7 @@ class WorkerRuntimeConfig:
     resource_id: str = "resource-wfm-optimizer"
     capability: str = "write_registered_worktree_files"
     provider: str = "opencode_go"
-    model: str = "muse-spark-1.2-contributor"
+    model: str = "muse-spark-1.3-contributor"
     runtime_state_root: str = "var/worker-runtime"
     hermes: dict[str, Any] = field(default_factory=dict)
     openhands: dict[str, Any] = field(default_factory=dict)
@@ -64,6 +64,11 @@ class WorkerRuntimeConfig:
     # V9 Continuous Executive: durable wake/condition system above autonomy.
     # OFF by default; when ON the loop uses run_continuous_cycle as the single wake-aware path.
     continuous_enabled: bool = False
+    # Discovery inside the Continuous Executive: observing registered projects
+    # and admitting the Executive's selected work is part of the canonical
+    # next-work authority, not a separate selector branch.  DEFAULT ON so a
+    # candidate that enables the Continuous Executive actually observes.
+    continuous_discovery_enabled: bool = True
     # V11 A2 initiative observation/judgment is an inert admission-boundary
     # probe.  It may observe, research, and rank, but it is mutually exclusive
     # with every execution-capable selector and remains OFF in production.
@@ -83,6 +88,21 @@ class WorkerRuntimeConfig:
     # configurations retain their exact execution path by default.
     campaign_runtime_enabled: bool = False
     campaign_runtime: dict[str, Any] = field(default_factory=dict)
+    # Capability expansion (SelfExpansionEngine production caller).  Opt-in so a
+    # committed configuration never starts an isolated trial on its own; the
+    # gap bridge's WAIT/wake/replan ownership is unchanged either way.
+    self_expansion_enabled: bool = False
+    self_expansion: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def self_expansion_active(self) -> bool:
+        """Canonical opt-in bit, accepting the nested YAML form as well."""
+
+        return bool(self.self_expansion_enabled or self.expansion_section.get("enabled", False))
+
+    @property
+    def expansion_section(self) -> dict[str, Any]:
+        return self.self_expansion if isinstance(self.self_expansion, dict) else {}
 
     @property
     def campaign_enabled(self) -> bool:
@@ -176,6 +196,11 @@ class WorkerRuntimeConfig:
                 raw.get("discovery", {}).get("cycle_enabled", False)),
             continuous_enabled=bool(
                 raw.get("executive", {}).get("continuous_enabled", False) or raw.get("continuous", {}).get("enabled", False)),
+            continuous_discovery_enabled=bool(
+                raw.get("executive", {}).get(
+                    "continuous_discovery_enabled",
+                    raw.get("continuous", {}).get("discovery_enabled", True),
+                )),
             initiative_a2_enabled=bool(
                 raw.get("initiative_a2", {}).get("enabled", False)),
             initiative_a2=dict(raw.get("initiative_a2") or {}),
@@ -191,6 +216,12 @@ class WorkerRuntimeConfig:
                     campaign_section.get("enabled", False),
                 )),
             campaign_runtime=campaign_section,
+            self_expansion_enabled=bool(
+                raw.get(
+                    "self_expansion_enabled",
+                    (raw.get("self_expansion") or {}).get("enabled", False),
+                )),
+            self_expansion=dict(raw.get("self_expansion") or {}),
         )
         cfg.validate()
         return cfg
@@ -217,6 +248,31 @@ class WorkerRuntimeConfig:
                 f"{self.provider_settings.provider!r} + "
                 f"{self.provider_settings.model!r} only, got "
                 f"{self.provider!r} + {self.model!r}")
+        if (
+            self.provider_settings.provider == "opencode_go"
+            and self.provider_settings.model == "muse-spark-1.3-contributor"
+        ):
+            identities = [
+                (item.provider, item.model)
+                for item in self.provider_settings_pool
+            ]
+            if identities != [("opencode_go", "muse-spark-1.3-contributor")]:
+                raise ValueError(
+                    "the authorized Muse Spark run requires a single-provider, "
+                    "single-model pool with no paid fallback")
+            if self.provider_resilience_enabled:
+                raise ValueError(
+                    "provider resilience must remain disabled for the exact "
+                    "owner-authorized compute route")
+            if bool(self.openhands.get("enabled", False)):
+                raise ValueError(
+                    "OpenHands is not attached to the authorized request-level "
+                    "spend gate and cannot be enabled for this route")
+            if self.enabled and self.hermes.get(
+                "allow_data_training_tiers_noninteractive") is not True:
+                raise ValueError(
+                    "unattended Muse Spark Contributor work requires the "
+                    "authenticated owner training-consent policy")
         if self.provider_resilience_enabled:
             identities = [(item.provider, item.model) for item in self.provider_settings_pool]
             if not identities or identities[0] != (
@@ -283,3 +339,24 @@ class WorkerRuntimeConfig:
             raise ValueError(
                 "campaign_runtime is execution-capable and cannot be combined "
                 "with zero-execution observation modes")
+        if self.continuous_enabled:
+            # The Continuous Executive is the single canonical next-work
+            # authority.  Any YAML that lets a second factory create a mission
+            # in the same cycle is rejected here, including the
+            # continuous+portfolio pair that used to validate successfully.
+            competing_factories = {
+                "discovery.cycle_enabled": self.discovery_cycle_enabled,
+                "executive.selection_enabled": self.executive_selection_enabled,
+                "executive.autonomy_enabled": self.executive_autonomy_enabled,
+                "executive.portfolio_selection_enabled": (
+                    self.portfolio_selection_enabled),
+                "initiative_a3.enabled": self.initiative_a3_enabled,
+            }
+            active = [
+                name for name, enabled in competing_factories.items() if enabled
+            ]
+            if active:
+                raise ValueError(
+                    "executive.continuous_enabled is the single next-work "
+                    "authority and cannot be combined with a competing mission "
+                    f"factory: {', '.join(active)}")

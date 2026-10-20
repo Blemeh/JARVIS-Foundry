@@ -39,6 +39,7 @@ from .discovery_monitors import (
 from .events import Event, canonical_json
 from .executive.decisions import ExecutiveDecisionService, a2_precondition
 from .executive.scoring import A2GovernorBounds
+from .platform.windows_subprocess import headless_run_kwargs
 from .research_dossier import (
     ResearchDossierPolicy,
     research_candidate_dossier,
@@ -129,15 +130,50 @@ def _append_stage(
     ))
 
 
-def _candidate_rows(database: FoundryDatabase, limit: int) -> list[dict[str, Any]]:
+def _candidate_rows(
+    database: FoundryDatabase,
+    limit: int,
+    *,
+    reconsider_dispositions: bool = False,
+) -> list[dict[str, Any]]:
+    statuses = (
+        "('NEW', 'SCORED', 'ELIGIBLE', 'APPROVED', 'REJECTED', 'DEFERRED')"
+        if reconsider_dispositions else "('NEW', 'SCORED', 'ELIGIBLE')"
+    )
     with database.connect(readonly=True) as connection:
         rows = connection.execute(
             "SELECT * FROM candidates WHERE source = 'initiative_observation' "
-            "AND status IN ('NEW', 'SCORED', 'ELIGIBLE') "
+            f"AND status IN {statuses} "
             "ORDER BY rowid DESC LIMIT ?",
             (max(1, min(int(limit), 100)),),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def _fabric_catalog_watermark(database: FoundryDatabase) -> str:
+    """Return the latest append-only event sequence that can change Fabric."""
+    from .fabric.catalog import DISABLED, OUTCOME, REGISTERED, SUPERSEDED
+
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT COALESCE(MAX(sequence), 0) FROM events "
+            "WHERE event_type IN (?, ?, ?, ?)",
+            (REGISTERED, SUPERSEDED, DISABLED, OUTCOME),
+        ).fetchone()
+    return str(int(row[0] or 0))
+
+
+def _last_fabric_catalog_watermark(database: FoundryDatabase) -> str | None:
+    with database.connect(readonly=True) as connection:
+        row = connection.execute(
+            "SELECT json_extract(payload_json, "
+            "'$.source_digest.fabric_catalog_watermark') "
+            "FROM events WHERE event_type = 'initiative.cycle_completed' "
+            "AND json_extract(payload_json, "
+            "'$.source_digest.fabric_catalog_watermark') IS NOT NULL "
+            "ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+    return str(row[0]) if row is not None else None
 
 
 def _research_sources(database: FoundryDatabase, candidate_id: str) -> list[dict[str, Any]]:
@@ -332,10 +368,12 @@ def _project_source_evidence(
         head = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
             capture_output=True, check=False, timeout=15,
+            **headless_run_kwargs(),
         )
         diff = subprocess.run(
             ["git", "-C", str(root), "diff", "--stat", "--no-ext-diff"],
             capture_output=True, check=False, timeout=15,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -671,11 +709,22 @@ def run_initiative_a2_cycle(
     fault_hook: FaultHook | None = None,
     now: datetime | str | None = None,
     source_readers: Mapping[str, SourceReader] | None = None,
+    research_wake_consumed: int = 0,
 ) -> dict[str, Any]:
-    """Run one replay-safe A2 pass and return WAIT/IDLE, never work."""
+    """Run one replay-safe A2 pass and return WAIT/IDLE, never work.
+
+    ``research_wake_consumed`` counts the research-completion wakes the calling
+    Executive cycle released.  Durable research findings are a meaningful change
+    for the Executive even when no observed source moved, so a non-zero count
+    suppresses the zero-change short circuit and this pass reaches research
+    reuse and a fresh A2 evaluation instead of returning WAIT immediately.
+    """
     if not cycle_id.strip():
         raise ValueError("cycle_id is required")
     policy = bounds or InitiativeA2Bounds()
+    sources = _with_default_vault_source(
+        database, sources, source_limit=policy.source_limit,
+    )
     if len(sources) > policy.source_limit:
         raise ValueError("configured source count exceeds observation bound")
     stopped = _stop_reason(database, stop_path)
@@ -725,6 +774,13 @@ def run_initiative_a2_cycle(
             stop_path=stop_path,
             readers=source_readers,
         )
+        source_digest = dict(observed.get("source_digest") or {})
+        fabric_catalog_watermark = _fabric_catalog_watermark(database)
+        fabric_catalog_changed = (
+            _last_fabric_catalog_watermark(database)
+            != fabric_catalog_watermark
+        )
+        source_digest["fabric_catalog_watermark"] = fabric_catalog_watermark
         _append_stage(database, cycle_id, "OBSERVATIONS_RECORDED")
         if fault_hook:
             fault_hook("after_observations")
@@ -743,7 +799,9 @@ def run_initiative_a2_cycle(
         if (not expired_due
                 and int(observed.get("candidates_created") or 0) == 0
                 and int(observed.get("candidates_refreshed") or 0) == 0
-                and int(observed.get("meaningful_changes") or 0) == 0):
+                and int(observed.get("meaningful_changes") or 0) == 0
+                and int(research_wake_consumed or 0) == 0
+                and not fabric_catalog_changed):
             source_rows = list(observed.get("sources") or ())
             status = (
                 "IDLE" if source_rows
@@ -770,6 +828,7 @@ def run_initiative_a2_cycle(
                 ),
                 "candidates_refreshed": 0,
                 "meaningful_source_changes": 0,
+                "fabric_catalog_changed": fabric_catalog_changed,
                 "candidates_researched": 0,
                 "candidates_rejected": 0,
                 "candidates_deferred": 0,
@@ -792,7 +851,7 @@ def run_initiative_a2_cycle(
                     "budgets": {"research_used": 0.0},
                     "metrics": metrics,
                     "reason": "no meaningful source change",
-                    "source_digest": observed.get("source_digest", {}),
+                    "source_digest": source_digest,
                     "next_due_at": min((
                         row.get("next_due_at") for row in source_rows
                         if row.get("next_due_at")
@@ -805,13 +864,20 @@ def run_initiative_a2_cycle(
             return {
                 "cycle_id": cycle_id, "outcome": status,
                 "reason": "no meaningful source change", "metrics": metrics,
-                "source_digest": observed.get("source_digest", {}),
+                "source_digest": source_digest,
             }
 
         _append_stage(database, cycle_id, "CANDIDATES_READY")
         if fault_hook:
             fault_hook("after_candidate_generation")
-        rows = _candidate_rows(database, policy.candidate_limit)
+        rows = _candidate_rows(
+            database,
+            policy.candidate_limit,
+            reconsider_dispositions=(
+                int(research_wake_consumed or 0) > 0
+                or fabric_catalog_changed
+            ),
+        )
         research = _run_research(
             database,
             cycle_id=cycle_id,
@@ -839,6 +905,10 @@ def run_initiative_a2_cycle(
             governor=policy.governor(),
             candidate_limit=policy.candidate_limit,
             resource_contention=0.0,
+            reconsider_dispositions=(
+                int(research_wake_consumed or 0) > 0
+                or fabric_catalog_changed
+            ),
         )
         _append_stage(database, cycle_id, "JUDGED")
     except Exception as error:
@@ -868,6 +938,7 @@ def run_initiative_a2_cycle(
         "candidate_duplicates_suppressed": int(observed.get("duplicates_suppressed") or 0),
         "candidates_refreshed": int(observed.get("candidates_refreshed") or 0),
         "meaningful_source_changes": int(observed.get("meaningful_changes") or 0),
+        "fabric_catalog_changed": fabric_catalog_changed,
         "candidates_researched": len(research),
         **judgment,
         "cycles_completed": 1,
@@ -887,7 +958,7 @@ def run_initiative_a2_cycle(
             "budgets": {"research_used": metrics["research_budget_used"]},
             "metrics": metrics,
             "reason": decision.reason,
-            "source_digest": observed.get("source_digest", {}),
+            "source_digest": source_digest,
             "next_due_at": min((row.get("next_due_at") for row in source_rows if row.get("next_due_at")), default=None),
         },
         source_type="supervisor",
@@ -900,7 +971,7 @@ def run_initiative_a2_cycle(
         "reason": decision.reason,
         "decision": decision,
         "metrics": metrics,
-        "source_digest": observed.get("source_digest", {}),
+        "source_digest": source_digest,
     }
 
 
@@ -968,6 +1039,33 @@ def _configured_source_specs(database: FoundryDatabase) -> tuple[SourceSpec, ...
         )
         for row in configured_monitors(database, enabled_only=True)
     )
+
+
+def _with_default_vault_source(
+    database: FoundryDatabase,
+    sources: Sequence[SourceSpec],
+    *,
+    source_limit: int,
+) -> tuple[SourceSpec, ...]:
+    """Keep the already-indexed owner vault on the canonical A2 watch path."""
+    resolved = tuple(sources)
+    if any(spec.source_kind == "vault" for spec in resolved):
+        return resolved
+    if len(resolved) >= source_limit:
+        return resolved
+    from .vault_indexer import configured_vault_root
+
+    root = configured_vault_root(database)
+    if root is None:
+        return resolved
+    return resolved + (SourceSpec(
+        source_id="owner-vault",
+        source_kind="vault",
+        source_identity=str(root),
+        poll_interval_s=300,
+        config={},
+        enabled=True,
+    ),)
 
 
 def _current_time(value: datetime | str | None) -> datetime:
@@ -1050,12 +1148,20 @@ def run_continuous_observation_cycle(
     source_readers: Mapping[str, SourceReader] | None = None,
     fault_hook: FaultHook | None = None,
     now: datetime | str | None = None,
+    research_wake_consumed: int = 0,
+    research_trigger_id: str = "",
 ) -> dict[str, Any]:
     """Dispatch at most one due observation pass from one Executive wake.
 
     Runtime configuration is projected into the existing monitor table once.
     Later invocations read schedule/readiness/backoff from SQLite, so restart
     does not reset cadence. Calls before the durable due time append nothing.
+
+    ``research_wake_consumed`` is the count of research-completion wakes the
+    current Continuous Executive cycle consumed.  Newly durable research
+    findings are a meaningful change for the Executive even when no observed
+    source moved, so that count suppresses the zero-change short circuit below
+    and the cycle proceeds to research reuse and a fresh A2 evaluation.
     """
     policy = bounds or InitiativeA2Bounds()
     current = _current_time(now)
@@ -1067,6 +1173,13 @@ def run_continuous_observation_cycle(
             "cycles_dispatched": 0, "research_dispatches": 0,
             "next_due_at": next_monitor_due_at(database),
         }
+
+    sources = tuple(sources) or _configured_source_specs(database)
+    sources = _with_default_vault_source(
+        database, sources, source_limit=policy.source_limit,
+    )
+    if len(sources) > policy.source_limit:
+        raise ValueError("configured source count exceeds observation bound")
 
     # A non-empty source list is the complete desired configuration. Empty is
     # a restart path: continue from durable configuration without requiring
@@ -1112,6 +1225,7 @@ def run_continuous_observation_cycle(
             source_readers=source_readers,
             fault_hook=fault_hook,
             now=current,
+            research_wake_consumed=int(research_wake_consumed or 0),
         )
         next_due = next_monitor_due_at(database)
         next_wake = None
@@ -1132,6 +1246,64 @@ def run_continuous_observation_cycle(
     due = due_monitors(database, now=current, limit=policy.source_limit)
     earliest = next_monitor_due_at(database)
     wake = _ensure_observation_wake(database, not_before=earliest)
+    fabric_catalog_watermark = _fabric_catalog_watermark(database)
+    fabric_catalog_changed = (
+        _last_fabric_catalog_watermark(database)
+        != fabric_catalog_watermark
+    )
+    if not due and (
+        int(research_wake_consumed or 0) > 0 or fabric_catalog_changed
+    ):
+        # Durable research completion and canonical Fabric state changes are
+        # independent reevaluation triggers. Neither should wait for an
+        # unrelated project edit or poll interval; both re-enter normal A2.
+        specs = tuple(sources) or _configured_source_specs(database)
+        if not specs:
+            return {
+                "outcome": "WAIT",
+                "reason": "reevaluation requested but no observation source is configured",
+                "cycles_dispatched": 0,
+                "research_dispatches": 0,
+                "next_due_at": earliest,
+                "wake_id": wake.get("wake_id") if wake else None,
+            }
+        trigger_material = {
+            "research_trigger_id": str(research_trigger_id or ""),
+            "fabric_catalog_watermark": (
+                fabric_catalog_watermark if fabric_catalog_changed else None
+            ),
+            "sources": [spec.source_id for spec in specs],
+        }
+        trigger_kind = (
+            "research" if int(research_wake_consumed or 0) > 0 else "fabric"
+        )
+        cycle_id = f"{trigger_kind}-reevaluation-" + _hash(trigger_material)[:20]
+        report = run_initiative_a2_cycle(
+            database,
+            cycle_id=cycle_id,
+            sources=specs,
+            resource_id=resource_id,
+            capability=capability,
+            bounds=policy,
+            stop_path=stop_path,
+            research_reader=research_reader,
+            source_readers=source_readers,
+            fault_hook=fault_hook,
+            now=current,
+            research_wake_consumed=int(research_wake_consumed or 0),
+        )
+        metrics = dict(report.get("metrics") or {})
+        return {
+            **report,
+            "cycle_id": cycle_id,
+            "cycles_dispatched": 1,
+            "research_dispatches": int(metrics.get("research_calls") or 0),
+            "next_due_at": next_monitor_due_at(database),
+            "wake_id": wake.get("wake_id") if wake else None,
+            "dispatched_at": current_text,
+            "research_triggered_reevaluation": int(research_wake_consumed or 0) > 0,
+            "fabric_triggered_reevaluation": fabric_catalog_changed,
+        }
     if not due:
         return {
             "outcome": "WAIT",
@@ -1187,6 +1359,7 @@ def run_continuous_observation_cycle(
         source_readers=source_readers,
         fault_hook=fault_hook,
         now=current,
+        research_wake_consumed=int(research_wake_consumed or 0),
     )
     next_due = next_monitor_due_at(database)
     next_wake = None

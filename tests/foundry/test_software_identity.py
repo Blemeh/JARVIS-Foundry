@@ -48,9 +48,7 @@ def _init_repo(path: Path, slug: str | None = None) -> Path:
     _git(path, "add", "-A")
     _git(path, "commit", "-q", "-m", "init")
     if slug:
-        # local bare remote stands in for a hosted URL; normalize_remote is
-        # exercised separately with real hosted forms
-        pass
+        _git(path, "remote", "add", "origin", slug)
     return path
 
 
@@ -93,11 +91,12 @@ class TestRegistrationAndAliases:
                           slug="https://github.com/acme/alpha.git")
         record = resolver.register_repository(repo)
         assert record["resource_id"].startswith("resource-")
+        assert record["resolved_root"] == str(repo.resolve())
         row = db.row("resources", "resource_id", record["resource_id"])
         assert row is not None
-        assert f"path:{str(repo.resolve()).lower()}" in record["provenance"] or True
         aliases = resolver.aliases_for(record["resource_id"])
         assert any(a.startswith("path:") for a in aliases)
+        assert "remote:acme/alpha" in aliases
 
     def test_reregistration_is_idempotent_on_identity(self, db, tmp_path):
         resolver = ProjectIdentityResolver(db)

@@ -526,6 +526,80 @@ def _maybe_portfolio_select(
 
 
 
+def _absolute_worktree_parent(value: Any, paths: FoundryPaths) -> Path:
+    """Resolve the admission worktree parent to an explicit absolute path.
+
+    ``InitiativeAdmissionAuthority`` refuses a relative parent on purpose: an
+    isolated worktree must never be created relative to an unknown cwd.  A
+    candidate config may still express it relative to the candidate home, so
+    resolve that here (and default to ``<home>/worktrees``) rather than letting
+    admission raise and the discovery phase report a false BLOCKED.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return (paths.home / "worktrees").resolve()
+    candidate = Path(raw).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (paths.home / candidate).resolve()
+
+
+def _discovery_settings(
+    database: FoundryDatabase,
+    config: WorkerRuntimeConfig,
+    paths: FoundryPaths,
+) -> dict[str, Any] | None:
+    """Discovery/admission settings handed to the Continuous Executive cycle.
+
+    Observing registered projects and admitting the Executive's selected work
+    is part of the canonical next-work authority, so the CE cycle receives the
+    admission policy, the registered project roots and the isolated worktree
+    parent instead of a second selector branch running beside it.
+    """
+    if not getattr(config, "continuous_discovery_enabled", True):
+        return None
+    from ..discovery_sources import SourceSpec
+    from ..executive.intelligence import project_roots_from_sources
+    from ..initiative_a3 import A3AdmissionPolicy
+
+    raw = dict(getattr(config, "initiative_a3", None) or {})
+    sources = tuple(
+        SourceSpec(
+            source_id=str(item["source_id"]),
+            source_kind=str(item["source_kind"]),
+            source_identity=str(item["source_identity"]),
+            poll_interval_s=int(item.get("poll_interval_s", 300)),
+            config=dict(item.get("config") or {}),
+            enabled=bool(item.get("enabled", True)),
+        )
+        for item in (raw.get("sources") or ())
+        if isinstance(item, dict)
+    )
+    policy_raw = dict(raw.get("policy") or {})
+    if "allowed_action_classes" in policy_raw:
+        policy_raw["allowed_action_classes"] = frozenset(
+            str(value) for value in policy_raw["allowed_action_classes"])
+    allowed_policy = {
+        name: value for name, value in policy_raw.items()
+        if name in A3AdmissionPolicy.__dataclass_fields__
+    }
+    project_roots = dict(raw.get("project_roots") or {})
+    if not project_roots and sources:
+        project_roots = project_roots_from_sources(sources)
+    return {
+        "resource_id": config.resource_id,
+        "capability": config.capability,
+        "sources": sources,
+        "stop_path": _default_stop_path(paths, config),
+        "policy": A3AdmissionPolicy(**allowed_policy),
+        "project_roots": project_roots,
+        "worktree_parent": str(
+            _absolute_worktree_parent(raw.get("worktree_parent"), paths)
+        ),
+        "bounds": dict(raw.get("bounds") or {}),
+    }
+
+
 def _maybe_continuous_cycle(
     database,
     config,
@@ -557,6 +631,13 @@ def _maybe_continuous_cycle(
             cycle_id=f"continuous:{loop_id}",
             controller="supervisor",
             excluded_objective_ids=tuple(excluded_objective_ids),
+            discovery=_discovery_settings(database, config, paths),
+            stop_path=_default_stop_path(paths, config),
+            consumer_id=f"worker-loop:{instance_id}",
+            resource_id=config.resource_id,
+            capability=config.capability,
+            max_new_missions=1,
+            self_expansion=bool(getattr(config, "self_expansion_active", False)),
         )
         # run_continuous_cycle already does wake tick + autonomy cycle; return its mission if any
         ac = result.get("autonomy_cycle") if isinstance(result, dict) else None
@@ -1082,6 +1163,29 @@ def run_cycle(
     if not config.enabled:
         return {"loop_id": loop_id, "outcome": "DISABLED",
                 "reason": "worker runtime subsystem is not enabled"}
+    # ONE STOP authority.  The filesystem sentinel is
+    # ``{foundry_home}/EMERGENCY_STOP``, but the Executive, autonomy, campaign
+    # and MissionLoop defaults read ``{db.parent}/EMERGENCY_STOP``.  Those must
+    # be the same path or a STOP would freeze only half the spine, so a cycle
+    # whose DB does not live in the foundry home refuses to run at all instead
+    # of silently watching a different sentinel.
+    if Path(database.path).parent.resolve() != Path(paths.home).resolve():
+        mismatch = (
+            f"STOP authority split: database parent {Path(database.path).parent} "
+            f"is not the foundry home {paths.home}"
+        )
+        try:
+            database.append(Event.create(
+                "worker_loop.stop_authority_mismatch",
+                {"loop_id": loop_id, "instance_id": instance_id,
+                 "database_path": str(database.path), "foundry_home": str(paths.home),
+                 "reason": mismatch},
+                source_type="supervisor", source_id=f"worker-loop:{instance_id}",
+                idempotency_key=f"worker_loop.stop_authority_mismatch:{loop_id}",
+            ))
+        except Exception:
+            pass
+        return {"loop_id": loop_id, "outcome": "FROZEN", "reason": mismatch}
     estop = EmergencyStop(_default_stop_path(paths, config))
     if estop.active():
         stop = estop.read()
@@ -1134,6 +1238,12 @@ def run_cycle(
             idempotency_key=f"worker_loop.cycle_started:{loop_id}",
         ))
         invoke_fault_hook(fault_hook, "post worker_loop.cycle_started")
+        # Candidate selection resolves requirements from the canonical Fabric
+        # Catalog. Register its built-in specs before A2/A3 observation; their
+        # readiness remains UNKNOWN until a real Fabric action is verified.
+        from ..fabric.loop import seed_builtins
+
+        seed_builtins(database)
         from ..effects import discover_reconcilable_developer_effects
 
         developer_effect_recovery = discover_reconcilable_developer_effects(database)
@@ -1157,10 +1267,43 @@ def run_cycle(
                 ),
             ))
         initiative_mission_id: str | None = None
+        # Stranded-mission recovery (P3-D2).  The Supervisor performs this in
+        # _reap_and_recover(), but it deliberately skips the call while a
+        # worker-loop is alive AND its singleton lease is live.  A one-shot
+        # loop refreshes that lease every cycle, so the Supervisor gate stays
+        # closed exactly while a loop is running - the only time a stranded
+        # mission could be picked up again.  A mission left in EXECUTING by a
+        # killed session is returned by neither canonical selector
+        # (dispatchable_contract_missions and select_dispatchable_mission both
+        # accept only ACTION_SELECTION/REPAIRING/READY/VERIFYING) and
+        # propose_next_action raises ProposalError for it, so it would stall
+        # forever (live 2026-09-14: mission-65b4968b76e6).
+        #
+        # This loop already holds the worker-loop singleton lease, so the
+        # in-process handoff race the Supervisor guard exists to protect
+        # against cannot apply here: recovery still refuses any mission whose
+        # RUNNING role run holds a live lease, is idempotent, and appends only
+        # the two canonical recovery transitions.
+        try:
+            from ..roles.reaper import (
+                reap_stale_role_runs,
+                recover_stale_mission_state,
+            )
+            reap_stale_role_runs(database)
+            recover_stale_mission_state(database)
+        except Exception as error:  # noqa: BLE001 - recovery must not wedge the cycle
+            database.append(Event.create(
+                "worker_loop.recovery_failed",
+                {"instance_id": instance_id, "loop_id": loop_id,
+                 "error_class": type(error).__name__,
+                 "error": str(error)[:300]},
+                source_type="supervisor", source_id=instance_id,
+                idempotency_key=f"worker_loop.recovery_failed:{loop_id}",
+            ))
         campaign_resume_payload: dict[str, Any] | None = None
         campaign_blocked_mission_ids: tuple[str, ...] = ()
         campaign_dispatchable_mission_ids: tuple[str, ...] = ()
-        campaign_objective_ids: tuple[str, ...] = ()
+        campaign_excluded_objective_ids: tuple[str, ...] = ()
         # Once a campaign has been durably created, its recovery/dispatch
         # guard remains active even if a later worker config omits the opt-in
         # flag.  Otherwise a config flip or stale process would let campaign
@@ -1172,6 +1315,71 @@ def run_cycle(
             or database.event_count(event_type="campaign.created") > 0
         )
         if campaign_runtime_active:
+            # The warrant half: an objective whose own durable plan decomposes
+            # into multiple executable steps gets exactly one campaign.  The
+            # decision and the creation are Supervisor-owned and live in
+            # executive/campaigns.py; recovery below still owns everything after
+            # creation.  A failure here is recorded and never silently retried
+            # into a second campaign.
+            from ..executive.campaigns import ensure_warranted_campaign
+
+            campaign_warrants: list[dict[str, Any]] = []
+            try:
+                campaign_warrants = ensure_warranted_campaign(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                )
+            except Exception as error:  # noqa: BLE001 - fail closed, record
+                campaign_warrants = [{
+                    "status": "FAILED",
+                    "reason": f"{type(error).__name__}: {error}"[:300],
+                }]
+            # The missing half of the warrant: the campaign exists, but until a
+            # production caller turns the objective's ACTIVE plan into children,
+            # a warranted campaign can hold zero children and never dispatch
+            # anything.  The declaration itself is Supervisor-owned and lives in
+            # executive/campaigns.py; this seam only invokes it, in the same
+            # cycle as the warrant, before recovery reconciles the new children.
+            from ..executive.campaigns import materialize_campaign_children
+
+            campaign_materialization: list[dict[str, Any]] = []
+            try:
+                campaign_materialization = materialize_campaign_children(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                )
+            except Exception as error:  # noqa: BLE001 - fail closed, record
+                campaign_materialization = [{
+                    "status": "FAILED",
+                    "reason": f"{type(error).__name__}: {error}"[:300],
+                }]
+            from ..executive.campaigns import reconcile_campaign_step_bindings
+
+            try:
+                binding_results = reconcile_campaign_step_bindings(
+                    database,
+                    stop_path=_default_stop_path(paths, config),
+                    controller="supervisor",
+                )
+            except PermissionError:
+                # STOP belongs to startup_resume_pass below, which propagates
+                # the exact stopped checkpoint before the worker can select.
+                binding_results = []
+            except Exception as error:  # noqa: BLE001 - no unbound mission dispatch
+                return {
+                    "loop_id": loop_id,
+                    "outcome": "BLOCKED",
+                    "reason": f"campaign mission binding failed: {type(error).__name__}: {error}"[:500],
+                }
+            if any(row.get("status") in {"AMBIGUOUS", "CONFLICT"} for row in binding_results):
+                return {
+                    "loop_id": loop_id,
+                    "outcome": "BLOCKED",
+                    "reason": "campaign mission binding has conflicting canonical identities",
+                    "campaign_bindings": binding_results,
+                }
             # Campaign recovery is a Supervisor-owned startup seam.  It only
             # reconciles durable mission/effect/provider truth and re-derives
             # wakes; dispatch still enters through the existing selector and
@@ -1194,17 +1402,30 @@ def run_cycle(
                 campaign_dispatchable_mission_ids = tuple(
                     campaign_resume.dispatchable_mission_ids)
                 from ..executive.campaigns import rebuild_campaign_state
+                from ..executive.autonomy import rebuild_executive_state
 
-                campaign_objective_ids = tuple(sorted({
+                executive_state = rebuild_executive_state(database)
+                # Previously all campaign objectives were excluded from the
+                # Executive, leaving children permanently unbound.  Admit
+                # authenticated owner objectives through their existing
+                # mission path; keep unrelated/manual campaigns on their
+                # prior guarded path.
+                campaign_excluded_objective_ids = tuple(sorted({
                     campaign.objective_id
                     for campaign in rebuild_campaign_state(database).campaigns.values()
                     if campaign.status not in {"COMPLETED", "CANCELLED"}
+                    and not (
+                        (objective := executive_state.objectives.get(campaign.objective_id))
+                        and objective.provenance.get("directive_id")
+                        and objective.provenance.get("authenticated")
+                    )
                 }))
                 database.append(Event.create(
                     "worker_loop.campaign_resume_completed",
                     {
                         "loop_id": loop_id,
                         "instance_id": instance_id,
+                        "campaign_warrants": campaign_warrants,
                         **campaign_resume_payload,
                     },
                     source_type="supervisor", source_id=instance_id,
@@ -1329,9 +1550,12 @@ def run_cycle(
                 config=dict(item.get("config") or {}),
             ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
             if not sources:
+                from ..executive.intelligence import observation_sources_from_registered_projects
+                sources = observation_sources_from_registered_projects(database)
+            if not sources:
                 return _waiting_report(
                     database, loop_id=loop_id, instance_id=instance_id,
-                    reason="V11 A2 has no configured observation sources",
+                    reason="V11 A2 has no registered project sources",
                 )
             bounds_raw = dict(raw.get("bounds") or {})
             allowed_bounds = {
@@ -1373,6 +1597,12 @@ def run_cycle(
                 pending_initiative_decision,
             )
             raw = dict(config.initiative_a3 or {})
+            from ..executive.intelligence import (
+                judge_new_project_opportunity,
+                prepare_executive_observation,
+                record_product_wait_diagnosis,
+            )
+            prepare_executive_observation(database, cycle_id=loop_id)
             sources = tuple(SourceSpec(
                 source_id=str(item["source_id"]),
                 source_kind=str(item["source_kind"]),
@@ -1382,9 +1612,33 @@ def run_cycle(
                 enabled=bool(item.get("enabled", True)),
             ) for item in (raw.get("sources") or ()) if isinstance(item, dict))
             if not sources:
+                from ..executive.intelligence import observation_sources_from_registered_projects
+                required_source_capabilities = raw.get("required_capabilities")
+                configured_policy = raw.get("policy") or {}
+                if (
+                    required_source_capabilities is None
+                    and isinstance(configured_policy, dict)
+                    and "required_fabric_capabilities" in configured_policy
+                ):
+                    required_source_capabilities = configured_policy.get(
+                        "required_fabric_capabilities"
+                    )
+                if not isinstance(required_source_capabilities, (list, tuple)):
+                    required_source_capabilities = ()
+                sources = observation_sources_from_registered_projects(
+                    database,
+                    required_capabilities=tuple(required_source_capabilities),
+                )
+            if not sources:
+                record_product_wait_diagnosis(
+                    database,
+                    cycle_id=loop_id,
+                    reason="V11 A3 has no registered project sources",
+                )
+                judge_new_project_opportunity(database, None)
                 return _waiting_report(
                     database, loop_id=loop_id, instance_id=instance_id,
-                    reason="V11 A3 has no configured observation sources",
+                    reason="V11 A3 has no registered project sources",
                 )
             bounds_raw = dict(raw.get("bounds") or {})
             allowed_bounds = {
@@ -1399,10 +1653,14 @@ def run_cycle(
                 name: value for name, value in policy_raw.items()
                 if name in A3AdmissionPolicy.__dataclass_fields__
             }
+            project_roots = dict(raw.get("project_roots") or {})
+            if not project_roots:
+                from ..executive.intelligence import project_roots_from_sources
+                project_roots = project_roots_from_sources(sources)
             authority = InitiativeAdmissionAuthority(
                 database,
                 worktree_parent=str(raw.get("worktree_parent") or ""),
-                project_roots=dict(raw.get("project_roots") or {}),
+                project_roots=project_roots,
                 policy=A3AdmissionPolicy(**allowed_policy),
                 stop_path=_default_stop_path(paths, config),
             )
@@ -1411,6 +1669,8 @@ def run_cycle(
             # or admission pass. This is the normal MissionLoop continuation,
             # not a new scheduler.
             initiative_mission_id = _select_contract(database)
+            decision = None
+            admission = None
             if initiative_mission_id is None:
                 active_objective = active_initiative_objective(database)
                 if active_objective is not None:
@@ -1433,9 +1693,22 @@ def run_cycle(
                         )
                         decision = report.get("decision")
                         if getattr(decision, "kind", None) != "SELECT":
+                            wait_reason = (
+                                f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}"
+                            )
+                            record_product_wait_diagnosis(
+                                database,
+                                cycle_id=loop_id,
+                                decision=decision if hasattr(decision, "kind") else None,
+                                reason=wait_reason,
+                            )
+                            judge_new_project_opportunity(
+                                database,
+                                decision if hasattr(decision, "kind") else None,
+                            )
                             return _waiting_report(
                                 database, loop_id=loop_id, instance_id=instance_id,
-                                reason=f"V11 A3 WAIT: {report.get('reason') or 'no eligible candidate'}",
+                                reason=wait_reason,
                             )
                         invoke_fault_hook(fault_hook, "post initiative.selection")
                     admission = authority.admit(decision)
@@ -1450,9 +1723,21 @@ def run_cycle(
                     invoke_fault_hook(fault_hook, "post initiative.mission_created")
                 initiative_mission_id = admission.mission_id
                 if initiative_mission_id is None:
+                    wait_reason = f"V11 A3 {admission.status}: {admission.reason}"
+                    record_product_wait_diagnosis(
+                        database,
+                        cycle_id=loop_id,
+                        decision=decision if hasattr(decision, "kind") else None,
+                        admission=admission,
+                        reason=wait_reason,
+                    )
+                    judge_new_project_opportunity(
+                        database,
+                        decision if hasattr(decision, "kind") else None,
+                    )
                     return _waiting_report(
                         database, loop_id=loop_id, instance_id=instance_id,
-                        reason=f"V11 A3 {admission.status}: {admission.reason}",
+                        reason=wait_reason,
                     )
         # V3 WP3 single choke point: when discovery.cycle_enabled the
         # unified experimental cycle replaces the split selection path.
@@ -1500,6 +1785,31 @@ def run_cycle(
             preferred_mission_ids = campaign_dispatchable_mission_ids
             if initiative_mission_id is not None:
                 preferred_mission_ids += (initiative_mission_id,)
+            # Worker-availability recovery: a mission BLOCKED on an empty
+            # worker route decision re-enters action selection once the
+            # shared eligibility authority reports an eligible framework.
+            # Exactly once per blocking decision, with full lineage; a
+            # no-op while workers stay unavailable (truthful WAIT).
+            try:
+                from ._stack import worker_framework_eligibility
+                from ..workers.mission_bridge import (
+                    resume_worker_blocked_missions,
+                )
+                resume_worker_blocked_missions(
+                    database,
+                    eligible_frameworks=worker_framework_eligibility(config),
+                    source_id=f"worker-loop:{instance_id}",
+                )
+            except Exception as error:  # noqa: BLE001 - recovery never wedges selection
+                database.append(Event.create(
+                    "worker_loop.recovery_failed",
+                    {"loop_id": loop_id, "instance_id": instance_id,
+                     "reason": f"worker-availability recovery: {type(error).__name__}"[:300]},
+                    source_type="supervisor", source_id=instance_id,
+                    idempotency_key=(
+                        f"worker_loop.recovery_failed:{loop_id}:"
+                        f"worker-availability:{type(error).__name__}"),
+                ))
             mission_id = _select_contract(
                 database,
                 excluded_mission_ids=campaign_blocked_mission_ids,
@@ -1512,17 +1822,23 @@ def run_cycle(
                     paths=paths,
                     loop_id=loop_id,
                     instance_id=instance_id,
-                    excluded_objective_ids=campaign_objective_ids,
+                    excluded_objective_ids=campaign_excluded_objective_ids,
                 )
-            if mission_id is None and config.executive_autonomy_enabled:
+                # The Continuous Executive is the canonical next-work authority.
+                # Once it has run, no later factory may create the mission in
+                # this loop_id: CE returning None is an honest WAIT/STALL, and a
+                # fall-through here is how two selectors used to win one cycle.
+            elif mission_id is None and config.executive_autonomy_enabled:
                 mission_id = _maybe_executive_autonomy(
                     database, config, paths=paths,
                     loop_id=loop_id, instance_id=instance_id,
-                    excluded_objective_ids=campaign_objective_ids)
-            if mission_id is None and config.executive_selection_enabled:
+                    excluded_objective_ids=campaign_excluded_objective_ids)
+            if mission_id is None and not getattr(config, "continuous_enabled", False) \
+                    and config.executive_selection_enabled:
                 mission_id = _maybe_executive_select(
                     database, config, loop_id=loop_id, instance_id=instance_id)
-            if mission_id is None and config.portfolio_selection_enabled:
+            if mission_id is None and not getattr(config, "continuous_enabled", False) \
+                    and config.portfolio_selection_enabled:
                 mission_id = _maybe_portfolio_select(
                     database,
                     config,
@@ -1704,30 +2020,52 @@ def run_cycle(
                     database, mission_id=mission_id, outcome=outcome,
                     status=portfolio_status, instance_id=instance_id)
             if learning.get("finalized") and (
-                config.executive_autonomy_enabled or config.initiative_a3_enabled
+                config.executive_autonomy_enabled
+                or config.initiative_a3_enabled
+                or config.continuous_enabled
             ):
                 try:
-                    from ..executive.autonomy import observe_mission_outcome
-                    observe_mission_outcome(database, mission_id)
+                    from ..executive.autonomy import (
+                        decide_continuation,
+                        observe_mission_outcome,
+                        rebuild_executive_state,
+                    )
+
+                    if config.executive_autonomy_enabled or config.initiative_a3_enabled:
+                        observe_mission_outcome(database, mission_id)
+                    else:
+                        # Continuous Executive is the production next-work
+                        # authority in this runtime. Keep its wake/dependency
+                        # reconciliation, then ask the same Executive goal
+                        # continuation authority to decide what follows this
+                        # terminal mission. Mission failure alone must not
+                        # strand the owner objective in passive WAIT.
+                        from ..executive.continuous import on_mission_outcome
+
+                        observed = on_mission_outcome(database, mission_id)
+                        if observed.get("error"):
+                            raise RuntimeError(str(observed["error"]))
+                    executive_state = rebuild_executive_state(database)
+                    affected_objectives = sorted({
+                        plan.objective_id
+                        for plan in executive_state.plans.values()
+                        for step in plan.steps
+                        if step.mission_id == mission_id
+                    })
+                    for objective_id in affected_objectives:
+                        # Mission terminality is not owner-goal terminality.
+                        # The existing Executive must make a fresh, durable
+                        # goal-level decision immediately after reconciling the
+                        # accepted mission/verifier outcome. Idempotent
+                        # continuation keys make restart/replay harmless.
+                        decide_continuation(database, objective_id)
                 except Exception as error:  # noqa: BLE001 - outcome remains authoritative
                     database.append(Event.create(
-                        "worker_loop.executive_autonomy_observation_blocked",
+                        "worker_loop.executive_terminal_decision_blocked",
                         {"loop_id": loop_id, "mission_id": mission_id,
                          "reason": f"{type(error).__name__}: {error}"[:500]},
                         source_type="supervisor", source_id=instance_id,
-                        idempotency_key=f"worker_loop.executive_autonomy_observation_blocked:{loop_id}",
-                    ))
-            elif learning.get("finalized") and getattr(config, "continuous_enabled", False):
-                try:
-                    from ..executive.continuous import on_mission_outcome
-                    on_mission_outcome(database, mission_id)
-                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
-                    database.append(Event.create(
-                        "worker_loop.continuous_outcome_observation_blocked",
-                        {"loop_id": loop_id, "mission_id": mission_id,
-                         "reason": f"{type(error).__name__}: {error}"[:500]},
-                        source_type="supervisor", source_id=instance_id,
-                        idempotency_key=f"worker_loop.continuous_outcome_observation_blocked:{loop_id}",
+                        idempotency_key=f"worker_loop.executive_terminal_decision_blocked:{mission_id}",
                     ))
             if learning.get("finalized") and config.initiative_a3_enabled:
                 try:
@@ -1749,6 +2087,36 @@ def run_cycle(
                         source_type="supervisor",
                         source_id=instance_id,
                         idempotency_key=f"worker_loop.initiative_outcome_blocked:{loop_id}",
+                    ))
+            # PASS must not be silence.  A finalized terminal outcome schedules
+            # the Executive's next action as a durable, objective-bound wake,
+            # whichever single mission factory produced the mission.
+            #
+            # This used to live inside the A3-only block above, so a
+            # continuous-executive runtime completed a verified mission and
+            # never created the canonical continuation wake at all: the next
+            # cycle could only ever come from the periodic observation tick,
+            # and PASS produced no attributable continuation.  The call is
+            # idempotent per mission and Supervisor-owned.
+            if learning.get("finalized"):
+                try:
+                    from ..executive.intelligence import schedule_next_action_after_outcome
+                    schedule_next_action_after_outcome(
+                        database,
+                        mission_id=mission_id,
+                        outcome=str(terminal or getattr(outcome, "outcome", "UNKNOWN")),
+                    )
+                except Exception as error:  # noqa: BLE001 - outcome remains authoritative
+                    database.append(Event.create(
+                        "worker_loop.next_action_schedule_blocked",
+                        {
+                            "loop_id": loop_id,
+                            "mission_id": mission_id,
+                            "reason": f"{type(error).__name__}: {error}"[:500],
+                        },
+                        source_type="supervisor",
+                        source_id=instance_id,
+                        idempotency_key=f"worker_loop.next_action_schedule_blocked:{loop_id}",
                     ))
         # V3 WP-B single authoritative closure seam: when the discovery
         # cycle is enabled, a terminal harmless result is handed to the

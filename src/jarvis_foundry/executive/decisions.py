@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
-from ..events import Event
+from ..events import Event, EventConflict
 from .calibration import CalibrationState, rebuild_calibration
 from .eligibility import (
     WAIT_COMPARATIVE,
@@ -67,6 +67,76 @@ class ExecutiveDecision:
     eligibility: dict[str, Any] = field(default_factory=dict)
     calibration_version: str = ""
     owner_controls: dict[str, Any] = field(default_factory=dict)
+
+
+def diagnose_wait_or_stall(
+    decision: ExecutiveDecision,
+    *,
+    rejected: tuple[dict[str, Any], ...] | list[dict[str, Any]] = (),
+) -> dict[str, Any]:
+    """Distinguish justified WAIT from a stall where useful work exists."""
+    items = list(rejected or decision.rejected)
+    if decision.kind == "SELECT":
+        return {
+            "classification": "ACTION",
+            "reason": decision.reason,
+        }
+    strong_rejected = [
+        item for item in items
+        if isinstance(item, dict)
+        and str(item.get("reason_code") or "") not in {
+            "LOW_VALUE", "LOW_OWNER_RELEVANCE", "DUPLICATE", "ALREADY_DONE",
+            "PREVIOUSLY_REJECTED", "SUPERSEDED", "STALE", "INSUFFICIENT_EVIDENCE",
+        }
+        and float(item.get("composite") or 0.0) >= 0.45
+    ]
+    if decision.kind == "WAIT" and strong_rejected:
+        return {
+            "classification": "STALL",
+            "reason": "useful executable work existed but selection returned WAIT",
+            "evidence": list(strong_rejected)[:5],
+        }
+    wait = decision.wait
+    return {
+        "classification": "JUSTIFIED_WAIT",
+        "reason": (wait.reason if wait is not None else decision.reason),
+        "reconsider_condition": (wait.reconsider_condition if wait is not None else ""),
+    }
+
+
+def decision_truth_payload(decision: ExecutiveDecision) -> dict[str, Any]:
+    """Durable Command Center facts for one Executive decision."""
+    wait = decision.wait
+    rejected = [
+        dict(item) if isinstance(item, dict) else {"reason": str(item)}
+        for item in decision.rejected
+    ]
+    next_action = "WAIT"
+    wait_reason = ""
+    owner_attention = False
+    if decision.kind == "SELECT":
+        next_action = f"admit and execute candidate {decision.candidate_id}"
+    elif wait is not None:
+        next_action = f"WAIT until {wait.reconsider_condition}"
+        wait_reason = wait.reason
+        owner_attention = (
+            "owner" in wait.reason.lower()
+            or "veto" in wait.reason.lower()
+            or "STOP" in wait.reason
+        )
+    diagnosis = diagnose_wait_or_stall(decision, rejected=tuple(rejected))
+    return {
+        "why_chosen": str(decision.reason or ""),
+        "alternatives_rejected": rejected,
+        "learned": {},
+        "next_action": next_action,
+        "wait_reason": wait_reason,
+        "wait_diagnosis": diagnosis,
+        "owner_attention_required": owner_attention,
+        "decision": decision.kind,
+        "candidate_id": decision.candidate_id,
+        "active_goals": list(decision.active_goals),
+    }
 
 
 class ExecutiveDecisionService:
@@ -177,6 +247,7 @@ class ExecutiveDecisionService:
         resource_contention: float | None = None,
         a2_mode: bool = False,
         governor: A2GovernorBounds | None = None,
+        reconsider_dispositions: bool = False,
     ) -> ExecutiveDecision:
         """Evaluate eligible candidates and return exactly one decision."""
         decision_id = self._decision_id_for_loop(loop_id)
@@ -207,7 +278,11 @@ class ExecutiveDecisionService:
         # compared without manufacturing the trusted admission event that the
         # execution path requires. The normal Executive path is unchanged.
         rows = (
-            _a2_observation_candidates(self.database, limit=candidate_limit)
+            _a2_observation_candidates(
+                self.database,
+                limit=candidate_limit,
+                reconsider_dispositions=reconsider_dispositions,
+            )
             if a2_mode else eligible_candidates(
                 self.database,
                 activation_epoch=self.activation_epoch,
@@ -250,7 +325,10 @@ class ExecutiveDecisionService:
         if a2_mode:
             viable: list[CandidateScore] = []
             for score in ranked:
-                disposition = a2_precondition(score)
+                disposition = a2_precondition(
+                    score,
+                    allow_occupied_wip=reconsider_dispositions,
+                )
                 if disposition is None:
                     viable.append(score)
                     continue
@@ -472,6 +550,7 @@ class ExecutiveDecisionService:
         governor: A2GovernorBounds | None = None,
         candidate_limit: int | None = None,
         resource_contention: float | None = None,
+        reconsider_dispositions: bool = False,
     ) -> ExecutiveDecision:
         """Run rejection-first judgment and stop before objective/mission creation."""
 
@@ -484,6 +563,7 @@ class ExecutiveDecisionService:
             resource_contention=resource_contention,
             a2_mode=True,
             governor=bounds,
+            reconsider_dispositions=reconsider_dispositions,
         )
         self._record_a2_judgments(decision, cycle_id=loop_id)
         return decision
@@ -696,6 +776,9 @@ class ExecutiveDecisionService:
                 "best_score": decision.wait.best_score,
                 "comparative_rationale": decision.wait.comparative_rationale,
             }
+        payload["decision_truth"] = decision_truth_payload(decision)
+        diagnosis = dict(payload["decision_truth"].get("wait_diagnosis") or {})
+        payload["wait_diagnosis"] = diagnosis
         self.database.append(Event.create(
             "executive.decision_recorded",
             payload,
@@ -703,6 +786,16 @@ class ExecutiveDecisionService:
             source_id=self.source_id,
             idempotency_key=f"executive.decision_recorded:{decision.decision_id}",
         ))
+        try:
+            self.database.append(Event.create(
+                "executive.wait_diagnosis_recorded",
+                {"decision_id": decision.decision_id, **diagnosis},
+                source_type="supervisor",
+                source_id=self.source_id,
+                idempotency_key=f"executive.wait_diagnosis_recorded:{decision.decision_id}",
+            ))
+        except EventConflict:
+            pass
         return decision
 
 
@@ -741,8 +834,19 @@ def _a2_disposition_record(
     }
 
 
-def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
-    """Return terminal/deferred disposition before comparative ranking."""
+def a2_precondition(
+    score: CandidateScore,
+    *,
+    allow_occupied_wip: bool = False,
+) -> tuple[str, str, str] | None:
+    """Return terminal/deferred disposition before comparative ranking.
+
+    A research-triggered reevaluation may compare a better action while the
+    current objective still occupies the WIP slot.  This only removes global
+    WIP as a *decision* confound; the A3 admission authority remains unchanged
+    and still refuses a second active objective.  Equivalent-active work is
+    always deferred above, so the current objective cannot duplicate itself.
+    """
     meta = score.a2_metadata
     if meta.get("duplicate_of"):
         return "REJECTED", "DUPLICATE", f"duplicate of {meta['duplicate_of']}"
@@ -785,9 +889,38 @@ def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
             "DEFERRED", "CAPABILITY_UNAVAILABLE",
             "canonical Fabric capability requirements unavailable: " + reason,
         )
+    identity = requirement_set.get("candidate_identity") or {}
+    candidate_type = str(identity.get("candidate_type") or "").strip().lower()
+    expected_first_use_scope = (
+        "REGISTERED_PROJECT_READ_ONLY"
+        if candidate_type in {"project_drift", "project_staleness"}
+        else ""
+    )
+    qualification_ids = set(
+        str(value) for value in
+        (requirement_set.get("qualification_required_capability_ids") or ())
+    )
+    qualification_evidence = {
+        str(item.get("capability_id") or ""): item
+        for item in (requirement_set.get("capability_evidence") or ())
+        if isinstance(item, dict)
+    }
+    qualified_unknown = {
+        capability_id
+        for capability_id in qualification_ids
+        if expected_first_use_scope
+        and capability_states.get(capability_id) == "UNKNOWN"
+        and unattended_states.get(capability_id) == "ALLOWED"
+        and str(
+            qualification_evidence.get(capability_id, {}).get("qualification_scope") or ""
+        ) == expected_first_use_scope
+    }
     unavailable = [
         capability_id for capability_id, state in capability_states.items()
-        if state != "READY" or unattended_states.get(capability_id) != "ALLOWED"
+        if (
+            (state != "READY" and capability_id not in qualified_unknown)
+            or unattended_states.get(capability_id) != "ALLOWED"
+        )
     ]
     if unavailable:
         return (
@@ -804,7 +937,10 @@ def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
         return "DEFERRED", "UNSATISFIED_DEPENDENCY", f"unsatisfied dependencies: {', '.join(blocked)}"
     if meta.get("autonomous_wip") is None:
         return "DEFERRED", "INSUFFICIENT_EVIDENCE", "autonomous WIP state is unavailable"
-    if int(meta["autonomous_wip"]) >= int(meta.get("autonomous_wip_cap") or 1):
+    if (
+        not allow_occupied_wip
+        and int(meta["autonomous_wip"]) >= int(meta.get("autonomous_wip_cap") or 1)
+    ):
         return "DEFERRED", "WIP_LIMIT", "autonomous WIP cap 1 is already occupied"
     requested = meta.get("research_budget_requested")
     if requested is not None:
@@ -821,6 +957,13 @@ def a2_precondition(score: CandidateScore) -> tuple[str, str, str] | None:
     ):
         return "REJECTED", "LOW_OWNER_RELEVANCE", "no evidence-backed owner goal or active-project relevance"
     confidence = _score_factor(score, "confidence")
+    research = meta.get("research") or {}
+    if research.get("contradicting") and not research.get("supporting"):
+        return (
+            "REJECTED",
+            "INSUFFICIENT_EVIDENCE",
+            "research findings contradict the candidate premise",
+        )
     if confidence is None:
         return "REJECTED", "INSUFFICIENT_EVIDENCE", "candidate confidence is unknown"
     if confidence < 0.20:
@@ -849,14 +992,19 @@ def _a2_observation_candidates(
     database: FoundryDatabase,
     *,
     limit: int,
+    reconsider_dispositions: bool = False,
 ) -> list[dict[str, Any]]:
     """Return bounded discovery candidates before Executive admission."""
 
     with database.connect(readonly=True) as connection:
+        statuses = (
+            "('NEW', 'SCORED', 'ELIGIBLE', 'APPROVED', 'REJECTED', 'DEFERRED')"
+            if reconsider_dispositions else "('NEW', 'SCORED', 'ELIGIBLE')"
+        )
         rows = connection.execute(
             "SELECT * FROM candidates "
             "WHERE source = 'initiative_observation' "
-            "AND status IN ('NEW', 'SCORED', 'ELIGIBLE') "
+            f"AND status IN {statuses} "
             "ORDER BY rowid DESC LIMIT ?",
             (max(1, int(limit)),),
         ).fetchall()

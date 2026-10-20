@@ -51,6 +51,15 @@ def success_envelope(repository: Path, **overrides):
         claimed_outcome="implemented feature", **overrides)
 
 
+def owner_goal_contract(repository: Path, *expected_artifacts: str):
+    return WorkerStepContract(
+        run_id="run-owner-goal", mission_id="mission-owner-goal",
+        step_id="step-owner-goal", attempt=1, role="builder",
+        objective="complete the owner goal", instructions="make the change",
+        working_root=repository, expected_artifacts=expected_artifacts,
+    )
+
+
 def test_false_success_claim_rejected(tmp_path):
     """B3 regression: worker claims success but changed nothing."""
     repository = make_repo(tmp_path)
@@ -333,6 +342,106 @@ def test_result_control_file_does_not_condemn_claim(tmp_path):
     report = reconciler.reconcile(step, envelope, before=before)
     assert report.agree is True
     assert ".jarvis-result.json" not in report.observed_changed_files
+
+
+def test_expected_owner_goal_receipt_is_not_a_business_mutation(tmp_path):
+    repository = make_repo(tmp_path)
+    receipt = ".jarvis/owner-goals/0123456789/plan.md"
+    receipt_path = repository / receipt
+    receipt_path.parent.mkdir(parents=True)
+    receipt_path.write_text("bridge baseline\n", encoding="utf-8")
+    reconciler = EvidenceReconciler()
+    step = owner_goal_contract(repository, receipt, "feature.py")
+    before = reconciler.capture_before(step)
+
+    assert receipt not in before.changed_files
+    assert receipt not in before.file_hashes
+
+    receipt_path.write_text("required owner plan\n", encoding="utf-8")
+    (repository / "feature.py").write_text("owner goal change\n", encoding="utf-8")
+    expected_hash = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+    envelope = ResultEnvelope.from_contract(
+        step, framework="openhands", claimed_outcome="implemented owner goal",
+        files_changed=("feature.py",))
+    report = reconciler.reconcile(
+        step, envelope, before=before,
+        delta_baseline=before.changed_files,
+        expected_artifact_hashes={receipt: expected_hash})
+
+    assert report.agree is True
+    assert report.unrecorded_mutations == ()
+    assert report.missing_artifacts == ()
+    assert report.artifact_hash_mismatches == ()
+    # Keep the system receipt visible in raw evidence while excluding it from
+    # worker business-file accounting.
+    assert receipt in report.observed_changed_files
+    assert "feature.py" in report.observed_changed_files
+
+    # Some adapters can echo declared artifacts in files_changed; that path is
+    # normalized only because this exact receipt is declared by the contract.
+    receipt_claim = ResultEnvelope.from_contract(
+        step, framework="openhands", claimed_outcome="implemented owner goal",
+        files_changed=("feature.py", receipt))
+    receipt_claim_report = reconciler.reconcile(
+        step, receipt_claim, before=before,
+        delta_baseline=before.changed_files)
+    assert receipt_claim_report.agree is True
+
+    wrong_hash_report = reconciler.reconcile(
+        step, envelope, before=before,
+        delta_baseline=before.changed_files,
+        expected_artifact_hashes={receipt: "0" * 64})
+    assert wrong_hash_report.agree is False
+    assert wrong_hash_report.artifact_hash_mismatches == (receipt,)
+
+
+def test_missing_expected_owner_goal_receipt_still_fails(tmp_path):
+    repository = make_repo(tmp_path)
+    receipt = ".jarvis/owner-goals/0123456789/outcome.md"
+    reconciler = EvidenceReconciler()
+    step = owner_goal_contract(repository, receipt)
+    before = reconciler.capture_before(step)
+    envelope = ResultEnvelope.from_contract(
+        step, framework="openhands", claimed_outcome="completed owner goal",
+        files_changed=())
+
+    report = reconciler.reconcile(step, envelope, before=before)
+
+    assert report.agree is False
+    assert report.missing_artifacts == (receipt,)
+    assert any("expected artifacts missing" in item
+               for item in report.mismatches)
+
+
+def test_unexpected_owner_goal_path_remains_claim_accountable(tmp_path):
+    repository = make_repo(tmp_path)
+    receipt = ".jarvis/owner-goals/0123456789/plan.md"
+    receipt_path = repository / receipt
+    receipt_path.parent.mkdir(parents=True)
+    receipt_path.write_text("required plan\n", encoding="utf-8")
+    reconciler = EvidenceReconciler()
+    step = owner_goal_contract(repository, receipt)
+    before = reconciler.capture_before(step)
+
+    # A valid sibling receipt is still worker-accountable unless this exact
+    # path was declared as expected for the current step.
+    unexpected = ".jarvis/owner-goals/0123456789/outcome.md"
+    unexpected_path = repository / unexpected
+    unexpected_path.write_text("unclaimed extra\n", encoding="utf-8")
+    envelope = ResultEnvelope.from_contract(
+        step, framework="openhands", claimed_outcome="completed owner goal",
+        files_changed=())
+
+    report = reconciler.reconcile(
+        step, envelope, before=before,
+        delta_baseline=before.changed_files)
+
+    assert report.agree is False
+    assert report.unrecorded_mutations == (unexpected,)
+    assert receipt in report.observed_changed_files
+    assert unexpected in report.observed_changed_files
+    assert any("files_changed disagree" in item
+               for item in report.mismatches)
 
 
 def test_verifier_delta_ignores_builder_result_control_file(tmp_path):

@@ -6,6 +6,7 @@ second operational truth and it never starts a worker, sender, or connector.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import mimetypes
 import os
@@ -320,7 +321,7 @@ def build_operational_status_snapshot(
                 rows = connection.execute(
                     f"SELECT {column}, COUNT(*) FROM {table} GROUP BY {column}"  # noqa: S608 - fixed table/column constants
                 ).fetchall()
-                return {str(row[0] or "UNKNOWN"): int(row[1]) for row in rows}
+                return {str(row[0]) if row[0] is not None else "UNKNOWN": int(row[1]) for row in rows}
 
             mission_counts = grouped("missions", "state")
             worker_counts = grouped("agent_runs", "status")
@@ -622,6 +623,35 @@ def _worker_lease_matches(lease: dict[str, Any], worker: dict[str, Any]) -> bool
     return (lease_key == role_key and owner_id == run_id) or (
         lease_key == worker_key and owner_id == worker_key
     )
+
+
+def _drop_live_loop_lease(
+    database: FoundryDatabase,
+    stale_leases: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop a time-expired worker-loop lease whose owner process is alive.
+
+    A worker-loop cycle legitimately outlasts its 120s singleton TTL while
+    a multi-minute worker run proceeds, and the loop only releases the
+    lease when the cycle ends.  Treating that expiry as stale degrades the
+    product for the whole run even though the runtime is healthy.  The
+    loop-lease liveness authority (recorded PID plus creation identity)
+    distinguishes a live loop from a dead generation; a dead owner stays
+    stale and keeps degrading truthfully.  Any failure here fails closed
+    to the unfiltered list.
+    """
+    try:
+        from .runtime.worker_loop import LOOP_LEASE_KEY, worker_loop_lease_is_live
+    except Exception:
+        return stale_leases
+    if not any(l.get("lease_key") == LOOP_LEASE_KEY for l in stale_leases):
+        return stale_leases
+    try:
+        if worker_loop_lease_is_live(database):
+            return [l for l in stale_leases if l.get("lease_key") != LOOP_LEASE_KEY]
+    except Exception:
+        pass
+    return stale_leases
 
 
 def _current_failed_workers(
@@ -1166,9 +1196,20 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
     decisions: list[dict[str, Any]] = []
     predictions: dict[str, dict[str, Any]] = {}
     calibrations: list[dict[str, Any]] = []
+    wait_diagnoses: list[dict[str, Any]] = []
     activation_epoch: str | None = None
     admission_authority: str = "UNKNOWN"
-    for event in database.events(readonly=True, event_type_prefixes=("executive.",)):
+    # Context-resolution events can dominate the live ledger. This view uses
+    # only the decision/authority types below, so filter before decoding JSON.
+    for event in database.events(readonly=True, event_types=(
+        "executive.activation_recorded",
+        "executive.admission_authority_enabled",
+        "executive.admission_authority_disabled",
+        "executive.prediction_recorded",
+        "executive.calibration_recorded",
+        "executive.wait_diagnosis_recorded",
+        "executive.decision_recorded",
+    )):
         etype = str(event.event_type or "")
         payload = event.payload if isinstance(event.payload, dict) else {}
         if etype == "executive.activation_recorded":
@@ -1194,6 +1235,15 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
                 "calibration_version": payload.get("calibration_version"),
                 "event_id": event.event_id,
             })
+        elif etype == "executive.wait_diagnosis_recorded":
+            wait_diagnoses.append({
+                "classification": payload.get("classification"),
+                "reason": payload.get("reason"),
+                "decision_id": payload.get("decision_id"),
+                "cycle_id": payload.get("cycle_id"),
+                "event_id": event.event_id,
+                "occurred_at": event.occurred_at,
+            })
         elif etype == "executive.decision_recorded":
             decisions.append({
                 "decision_id": payload.get("decision_id"),
@@ -1209,6 +1259,7 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
                 "deferred": payload.get("deferred") or [],
                 "selected_score": _json_value(payload.get("selected_score")),
                 "wait": _json_value(payload.get("wait")),
+                "decision_truth": _json_value(payload.get("decision_truth")),
                 "calibration_version": payload.get("calibration_version"),
                 "event_id": event.event_id,
                 "occurred_at": event.occurred_at,
@@ -1232,12 +1283,65 @@ def _executive_projection(database: FoundryDatabase, *, limit: int = 25) -> dict
         key = str(latest.get("decision_id") or "")
         latest["prediction"] = predictions.get(key)
         latest["calibration"] = calibration_by_decision.get(key)
+        truth = latest.get("decision_truth") if isinstance(latest.get("decision_truth"), dict) else {}
+        wait = latest.get("wait") if isinstance(latest.get("wait"), dict) else {}
+        learned = {}
+        cal = latest.get("calibration")
+        if isinstance(cal, dict):
+            learned = {
+                "outcome": cal.get("outcome"),
+                "mission_id": cal.get("mission_id"),
+                "actual": cal.get("actual"),
+                "decision_linked": True,
+            }
+        if not learned and calibrations:
+            # The calibration writer keys post-mission calibration on
+            # ``post-mission-<mission_id>`` rather than on a decision id, so a
+            # decision-linked lookup is often empty even though the ledger holds
+            # a real measured outcome.  Fall back to the newest calibration
+            # record and say explicitly that it is not decision-linked instead
+            # of reporting nothing was learned.
+            newest = calibrations[-1]
+            learned = {
+                "outcome": newest.get("outcome"),
+                "mission_id": newest.get("mission_id"),
+                "actual": newest.get("actual"),
+                "decision_linked": False,
+                "calibration_decision_id": newest.get("decision_id"),
+                "calibration_event_id": newest.get("event_id"),
+            }
+        latest["why_chosen"] = truth.get("why_chosen") or latest.get("reason")
+        latest["alternatives_rejected"] = (
+            truth.get("alternatives_rejected") or latest.get("rejected") or []
+        )
+        latest["learned"] = truth.get("learned") or learned
+        latest["next_action"] = truth.get("next_action") or (
+            f"WAIT until {wait.get('reconsider_condition')}" if wait else
+            ("execute selected candidate" if latest.get("decision") == "SELECT" else "WAIT")
+        )
+        latest["wait_reason"] = truth.get("wait_reason") or wait.get("reason")
+        latest["wait_diagnosis"] = (
+            truth.get("wait_diagnosis")
+            or latest.get("wait_diagnosis")
+            or ({"classification": "JUSTIFIED_WAIT", "reason": latest.get("wait_reason")}
+                if latest.get("decision") == "WAIT" else
+                {"classification": "ACTION", "reason": latest.get("reason")}
+                if latest.get("decision") == "SELECT" else None)
+        )
+        latest["owner_attention_required"] = bool(
+            truth.get("owner_attention_required")
+            or (str(wait.get("wait_kind") or "").endswith("OWNER"))
+        )
     return {
         "activation_epoch": activation_epoch,
         "admission_authority": admission_authority,
         "latest_decision": latest,
         "recent_decisions": ordered,
         "calibrations": calibrations[-limit:],
+        # The decision-time diagnosis stays on ``latest_decision``; the
+        # authoritative CURRENT wait is the newest durable diagnosis, which is
+        # written by the runtime after the decision and can supersede it.
+        "latest_wait_diagnosis": wait_diagnoses[-1] if wait_diagnoses else None,
     }
 
 
@@ -1748,6 +1852,84 @@ def _discovery_projection(
     }
 
 
+def _runtime_identity_projection(
+    database: FoundryDatabase,
+    *,
+    release_identity: Mapping[str, Any] | None = None,
+    runtime_home: str | Path | None = None,
+) -> dict[str, Any]:
+    """Expose which runtime wrote this ledger, beside which release is installed.
+
+    ``release_identity`` is a machine-wide filesystem pointer to the INSTALLED
+    release; it is not the runtime that produced these events.  The runtime
+    that produced them is named on ``worker_loop.cycle_started`` payloads (which
+    the timeline deliberately excludes).  This read-only projection surfaces
+    both, with the source of each, so an owner can tell a candidate runtime
+    from the installed release instead of reading one as the other.
+    """
+
+    installed = release_identity if isinstance(release_identity, Mapping) else {}
+    # The authoritative home for THIS ledger: the caller's runtime home when it
+    # has one, otherwise the directory the ledger itself lives in - the same
+    # resolution every other Command Center surface already uses.  Calling
+    # release_authority_report() with no home at all returned the constant
+    # FOUNDRY_HOME_MISSING body, which is not a fact about this runtime.
+    if runtime_home is not None:
+        identity_home = Path(runtime_home).expanduser().resolve()
+        identity_home_source = "runtime_home_argument"
+    else:
+        identity_home = Path(database.path).expanduser().resolve().parent
+        identity_home_source = "database_parent"
+    authority: Mapping[str, Any] = {}
+    try:
+        from .deployment.release import release_authority_report
+        authority = release_authority_report(foundry_home=identity_home)
+    except Exception:  # noqa: BLE001 - identity is reported, never invented
+        authority = {}
+    execution = None
+    try:
+        events = list(database.events(
+            readonly=True,
+            newest_first=True,
+            limit=1,
+            event_types=("worker_loop.cycle_started",),
+        ))
+    except Exception:  # noqa: BLE001 - a projection error must not fail the snapshot
+        events = []
+    if events:
+        payload = events[0].payload if isinstance(events[0].payload, dict) else {}
+        execution = {
+            "instance_id": payload.get("instance_id"),
+            "loop_id": payload.get("loop_id"),
+            "pid": payload.get("pid"),
+            "resource_id": payload.get("resource_id"),
+            "capability": payload.get("capability"),
+            "creation_identity": _json_value(payload.get("creation_identity")),
+            "occurred_at": events[0].occurred_at,
+            "event_id": events[0].event_id,
+        }
+    return {
+        "contract": "jarvis.runtime-identity.v1",
+        "latest_worker_loop_execution": execution,
+        "latest_worker_loop_identity_source": "worker_loop.cycle_started",
+        "installed_release": {
+            "current": installed.get("current"),
+            "previous": installed.get("previous"),
+            "source": installed.get("source") or "immutable_release_pointers",
+        },
+        "foundry_home": str(identity_home),
+        "foundry_home_source": identity_home_source,
+        "release_authority": {
+            "status": authority.get("status"),
+            "consistent": authority.get("consistent"),
+        },
+        "note": (
+            "installed_release is a machine-wide filesystem pointer; the "
+            "execution identity is the runtime that wrote this ledger."
+        ),
+    }
+
+
 def build_snapshot(
     database: FoundryDatabase,
     *,
@@ -1755,6 +1937,7 @@ def build_snapshot(
     now: str | None = None,
     timeline_limit: int = 200,
     discovery_cycle_enabled: bool | None = None,
+    runtime_home: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build one complete snapshot inside a shared read-only context."""
     with database.read_snapshot():
@@ -1764,6 +1947,7 @@ def build_snapshot(
             now=now,
             timeline_limit=timeline_limit,
             discovery_cycle_enabled=discovery_cycle_enabled,
+            runtime_home=runtime_home,
         )
 
 
@@ -1774,6 +1958,7 @@ def _build_snapshot(
     now: str | None = None,
     timeline_limit: int = 200,
     discovery_cycle_enabled: bool | None = None,
+    runtime_home: str | Path | None = None,
 ) -> dict[str, Any]:
     """Build the complete JSON-safe Command Center projection.
 
@@ -1830,6 +2015,46 @@ def _build_snapshot(
                 "ACCEPTED" if str(verdict.get("verdict_id") or "") in accepted_ids
                 else "PENDING"
             )
+        # Canonical lineage invariant: the work-hierarchy join must prove
+        # one authoritative lineage per mission (directive -> objective ->
+        # plan -> mission -> worker runs -> artifacts -> evidence ->
+        # verifier). The top-level snapshot lists stay bounded for list
+        # views, but hierarchy linkage is complete per mission in this
+        # snapshot so an aged-out global window can never attach a
+        # nearest-record or newest-goal guess to another mission.
+        snapshot_mission_ids = [str(m.get("mission_id") or "") for m in missions if m.get("mission_id")]
+        if snapshot_mission_ids:
+            placeholders = ",".join("?" for _ in snapshot_mission_ids)
+            hierarchy_workers = _rows(
+                connection,
+                f"SELECT * FROM agent_runs WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+            hierarchy_evidence = _rows(
+                connection,
+                f"SELECT * FROM evidence_bundles WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+            hierarchy_verdicts = _rows(
+                connection,
+                f"SELECT * FROM verification_verdicts WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+            for verdict in hierarchy_verdicts:
+                verdict["acceptance_status"] = (
+                    "ACCEPTED" if str(verdict.get("verdict_id") or "") in accepted_ids
+                    else "PENDING"
+                )
+            hierarchy_steps = _rows(
+                connection,
+                f"SELECT contract_id, mission_id, step_id, version, capability, last_event_id, updated_at FROM mission_step_contracts WHERE mission_id IN ({placeholders}) ORDER BY updated_at DESC",
+                tuple(snapshot_mission_ids),
+            )
+        else:
+            hierarchy_workers = []
+            hierarchy_evidence = []
+            hierarchy_verdicts = []
+            hierarchy_steps = []
         resources = _rows(connection, "SELECT * FROM resources ORDER BY updated_at DESC LIMIT 100")
         directives = _rows(connection, "SELECT * FROM directives WHERE active = 1 ORDER BY updated_at DESC")
         leases = _rows(connection, "SELECT * FROM leases ORDER BY heartbeat_at DESC")
@@ -1919,6 +2144,7 @@ def _build_snapshot(
     reprioritizations = [d for d in directives if d.get("command_type") == "REPRIORITIZE"]
     redirects = [d for d in directives if d.get("command_type") == "REDIRECT"]
     stale_leases = [l for l in leases if l.get("expires_at") and str(l["expires_at"]) < generated_at]
+    stale_leases = _drop_live_loop_lease(database, stale_leases)
     blocked = [m for m in missions if m.get("state") == "BLOCKED"]
     crashed_workers = _current_failed_workers(runtime_workers, leases, stale_leases)
     runtime_degraded = supervisor.get("status") == "DEGRADED" or bool(
@@ -2028,10 +2254,10 @@ def _build_snapshot(
             autonomy=autonomy_projection,
             goals=goals,
             missions=missions,
-            workers=workers,
-            evidence=evidence,
-            verdicts=verdicts,
-            mission_steps=steps,
+            workers=hierarchy_workers if snapshot_mission_ids else workers,
+            evidence=hierarchy_evidence if snapshot_mission_ids else evidence,
+            verdicts=hierarchy_verdicts if snapshot_mission_ids else verdicts,
+            mission_steps=hierarchy_steps if snapshot_mission_ids else steps,
             limit=100,
         )
     except Exception as error:  # noqa: BLE001 - optional read model fails closed
@@ -2226,6 +2452,9 @@ def _build_snapshot(
         "portfolio": portfolio_projection,
         "discovery": discovery_surface,
         "capability_fabric": capability_fabric,
+        "runtime_identity": _runtime_identity_projection(
+            database, release_identity=release_identity, runtime_home=runtime_home,
+        ),
     }
     # Keep the pre-V9 top-level snapshot shape byte-compatible for databases
     # with no World Intelligence records.  Once the advisory world layer has
@@ -2547,6 +2776,7 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 stop_path=self.stop_path,
                 timeline_limit=self.timeline_limit,
                 discovery_cycle_enabled=self.discovery_cycle_enabled,
+                runtime_home=self.runtime_home,
             )
             handler_cls._snapshot_cache_payload = payload
             handler_cls._snapshot_cache_at = now
@@ -2756,6 +2986,12 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
                 controls_configured=bool(self.owner_secret),
                 runtime_home=self.runtime_home,
                 source_repo=self.source_repo)
+            # The owner status poll must not hash an entire release or replay
+            # the ledger. Keep those forensic checks available explicitly.
+            query = parse_qs(urlparse(self.path).query)
+            if query.get("diagnostics", [""])[0] != "full":
+                self._json_response(status, status=200)
+                return
             try:
                 from .deployment.status import production_status
                 deployment_status = production_status(
@@ -2931,8 +3167,8 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
             body = self._html(snapshot).encode("utf-8")
             content_type = "text/html; charset=utf-8"
         else:
-            body = json.dumps(snapshot, ensure_ascii=True).encode()
-            content_type = "application/json; charset=utf-8"
+            self._json_response(snapshot, status=200)
+            return
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -3122,8 +3358,25 @@ class _CommandCenterHandler(BaseHTTPRequestHandler):
 
     def _json_response(self, value: dict[str, Any], *, status: int) -> None:
         body = json.dumps(value, ensure_ascii=True).encode("utf-8")
+        compressed = False
+        if len(body) >= 64 * 1024:
+            for encoding in self.headers.get("Accept-Encoding", "").split(","):
+                parts = [part.strip().lower() for part in encoding.split(";")]
+                if parts[0] != "gzip":
+                    continue
+                try:
+                    quality = next((float(part[2:]) for part in parts[1:] if part.startswith("q=")), 1.0)
+                except ValueError:
+                    quality = 0.0
+                if quality > 0:
+                    body = gzip.compress(body, compresslevel=1)
+                    compressed = True
+                break
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Vary", "Accept-Encoding")
+        if compressed:
+            self.send_header("Content-Encoding", "gzip")
         self._cors_headers()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import json
+import sys
 
 import pytest
 
@@ -10,6 +11,7 @@ from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.supervisor.estop import EmergencyStop
 from jarvis_foundry.supervisor.leases import LeaseManager, LeaseUnavailable
 from jarvis_foundry.supervisor.service import Supervisor
+from jarvis_foundry.supervisor.worker import WorkerController
 
 
 def test_supervisor_runs_and_freezes_without_hermes(tmp_path):
@@ -269,6 +271,37 @@ def test_spawn_worker_loop_defaults_off(tmp_path):
     supervisor.stop()
 
 
+def test_supervisor_renews_live_worker_loop_process_lease_before_reaping(tmp_path):
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    workers = WorkerController(
+        database, lease_seconds=60, pid_table=tmp_path / "worker-pids.json")
+    supervisor = Supervisor(
+        database, tmp_path / "STOP", instance_id="renew-worker-loop",
+        workers=workers)
+    assert supervisor.start() == "RUNNING"
+    try:
+        workers.spawn(
+            "worker-loop", [sys.executable, "-c", "import time; time.sleep(30)"])
+        expired_at = isoformat(utc_now() - timedelta(seconds=2))
+        with database.transaction() as connection:
+            connection.execute(
+                "UPDATE leases SET expires_at = ? WHERE lease_key = ?",
+                (expired_at, "worker:worker-loop"),
+            )
+
+        assert workers.status("worker-loop").lease_expired
+        assert supervisor.heartbeat() == "RUNNING"
+
+        status = workers.status("worker-loop")
+        assert status.alive
+        assert not status.lease_expired
+        heartbeat = [event for event in database.events()
+                     if event.event_type == "supervisor.heartbeat"][-1]
+        assert "worker-loop" not in heartbeat.payload.get("reaped_workers", [])
+    finally:
+        supervisor.stop()
+
+
 def test_spawn_worker_loop_noops_when_yaml_disabled(tmp_path):
     config = tmp_path / "workers.yaml"
     config.write_text(
@@ -289,8 +322,9 @@ def test_spawn_worker_loop_registers_child_when_enabled(tmp_path, monkeypatch):
 
     config = tmp_path / "workers.yaml"
     config.write_text(
-        "enabled: true\nstatus: ACTIVE\nprovider: opencode_go\n"
-        "model: deepseek-v4-flash\n",
+        "enabled: true\nstatus: ACTIVE\n"
+        "hermes:\n"
+        "  allow_data_training_tiers_noninteractive: true\n",
         encoding="utf-8")
     database = FoundryDatabase(tmp_path / "foundry.db")
     supervisor = Supervisor(

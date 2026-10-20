@@ -8,8 +8,10 @@ from pathlib import Path
 
 import pytest
 
+import jarvis_foundry.mission.commit as commit_module
 from jarvis_foundry.control.policy import ActionPolicy
 from jarvis_foundry.database import FoundryDatabase
+from jarvis_foundry.effects import COMPLETED, FAILED, effect_state
 from jarvis_foundry.events import Event
 from jarvis_foundry.mission.commit import CommitError, commit_after_pass
 from jarvis_foundry.mission.loop import BLOCKED_OUTCOME, MissionLoop, PASSED
@@ -47,6 +49,8 @@ def test_verdict_records_independence_metadata(tmp_path):
         **step_kwargs(), commit_envelope=commit_envelope(repository))
 
     assert outcome.outcome == PASSED
+    commit_head = git_out("rev-parse", "HEAD", cwd=repository)
+    assert outcome.commit_head == commit_head
     latest = latest_verdict_for_step(database, "mission-1", "step-1")
     assert latest["status"] == "PASS"
     assert latest["verdict"] == "PASS"
@@ -60,6 +64,20 @@ def test_verdict_records_independence_metadata(tmp_path):
     assert meta["same_provider_limitation"] == ""
     # Criteria and findings are durable.
     assert "independent verifier" in json.dumps(json.loads(latest["criteria_json"]))
+    with database.connect(readonly=True) as connection:
+        evidence_row = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = 'evidence.created' "
+            "AND json_extract(payload_json, '$.mission_id') = 'mission-1' "
+            "ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        accepted_count = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type = 'verification.accepted' "
+            "AND json_extract(payload_json, '$.mission_id') = 'mission-1'"
+        ).fetchone()[0]
+    assert accepted_count == 1
+    evidence = json.loads(evidence_row["payload_json"])
+    assert evidence["after_state"]["head"] == commit_head
+    assert evidence["baseline_commit"] != commit_head
 
 
 def test_verdict_fail_records_findings_and_repair_requirements(tmp_path):
@@ -132,11 +150,198 @@ def test_commit_after_pass_creates_exactly_one_deterministic_commit(tmp_path):
 
     assert state["commit_head"] is not None
     assert state["baseline_commit"] != state["commit_head"]
+    assert state["diff_metadata_state"] == "COMPLETE"
     assert git_out("rev-list", "--count", "HEAD", cwd=repository) == "2"
     assert git_out("log", "-1", "--format=%s", cwd=repository) == (
         "jarvis: mission-1 step-1 verified PASS (run run-b)")
     assert git_out("diff", "--name-only", "HEAD~1..HEAD", cwd=repository) == "result.txt"
     assert state["files_changed"] == ["result.txt"]
+
+
+def test_commit_effect_uses_safe_revision_args_on_long_path_with_edge_filename(
+    tmp_path, monkeypatch,
+):
+    # Match the observed Windows failure: the worktree plus a 40..40 revision
+    # token exceeds MAX_PATH if Git falls back to interpreting it as a path.
+    target_worktree_chars = 183
+    pad_base = tmp_path / "long-path-commit-effect"
+    pad_chars = target_worktree_chars - len(str(pad_base)) - 6
+    assert pad_chars > 0
+    fixture_root = pad_base / ("p" * pad_chars)
+    fixture_root.mkdir(parents=True)
+    database, repository, policy, _router = mission_fixture(fixture_root)
+    assert len(str(repository)) == target_worktree_chars
+    (repository / "work.py").write_text("print('verified')\n", encoding="utf-8")
+    start_verification(
+        database, verdict_id="verdict-long-path", mission_id="mission-1",
+        step_id="step-1", builder_run_id="run-b", verifier_run_id="run-v",
+        independence={}, criteria=["work.py exists"],
+    )
+    record_verification_outcome(
+        database, verdict_id="verdict-long-path", outcome="PASS",
+        findings=[], evidence={"path_case": "long Windows worktree"},
+    )
+    envelope = commit_envelope(repository)
+    baseline = git_out("rev-parse", "HEAD", cwd=repository)
+    original_git = commit_module._git
+    head_reads = 0
+    edge_paths: list[Path] = []
+
+    def add_revision_range_edge_file(root, *args):
+        nonlocal head_reads
+        result = original_git(root, *args)
+        if args == ("rev-parse", "HEAD"):
+            head_reads += 1
+            if head_reads == 2:
+                edge_path = Path(root) / f"{baseline}..{result}"
+                edge_path.write_text("untracked pathspec edge\n", encoding="utf-8")
+                edge_paths.append(edge_path)
+        return result
+
+    monkeypatch.setattr(commit_module, "_git", add_revision_range_edge_file)
+    state = commit_after_pass(
+        database, mission_id="mission-1", step_id="step-1", run_id="run-b",
+        worktree=repository, policy=policy, envelope=envelope,
+    )
+
+    created = git_out("rev-parse", "HEAD", cwd=repository)
+    assert created == state["commit_head"]
+    assert state["baseline_commit"] == baseline
+    assert state["diff_metadata_state"] == "COMPLETE"
+    assert state["files_changed"] == ["work.py"]
+    assert len(edge_paths) == 1 and edge_paths[0].exists()
+    bad = subprocess.run(
+        ["git", "-C", str(repository), "diff", "--stat", f"{baseline}..{created}"],
+        capture_output=True, text=True, check=False,
+    )
+    assert bad.returncode != 0
+    assert "Filename too long" in bad.stderr
+    safe = subprocess.run(
+        ["git", "-C", str(repository), "diff", "--stat", baseline, created, "--"],
+        capture_output=True, text=True, check=False,
+    )
+    assert safe.returncode == 0
+    assert "work.py" in safe.stdout
+    assert effect_state(database, state["action_key"])["status"] == COMPLETED
+    assert git_out("rev-list", "--count", "HEAD", cwd=repository) == "2"
+    with database.connect(readonly=True) as connection:
+        event_counts = dict(connection.execute(
+            "SELECT event_type, COUNT(*) FROM events "
+            "WHERE json_extract(payload_json, '$.action_key') = ? "
+            "GROUP BY event_type", (state["action_key"],),
+        ).fetchall())
+    assert event_counts["system.action_started"] == 1
+    assert event_counts["system.action_completed"] == 1
+    assert event_counts.get("system.action_failed", 0) == 0
+
+
+def test_post_commit_metadata_failure_records_degraded_success_and_replays_once(
+    tmp_path, monkeypatch,
+):
+    database, repository, policy, _router = mission_fixture(tmp_path)
+    (repository / "work.py").write_text("print('verified')\n", encoding="utf-8")
+    start_verification(
+        database, verdict_id="verdict-metadata-degraded", mission_id="mission-1",
+        step_id="step-1", builder_run_id="run-b", verifier_run_id="run-v",
+        independence={}, criteria=["work.py exists"],
+    )
+    record_verification_outcome(
+        database, verdict_id="verdict-metadata-degraded", outcome="PASS",
+        findings=[], evidence={},
+    )
+    envelope = commit_envelope(repository)
+    baseline = git_out("rev-parse", "HEAD", cwd=repository)
+    original_git = commit_module._git
+
+    def fail_diff_stat_after_commit(root, *args):
+        if args[:2] == ("diff", "--stat"):
+            raise CommitError("injected auxiliary diff metadata failure")
+        return original_git(root, *args)
+
+    monkeypatch.setattr(commit_module, "_git", fail_diff_stat_after_commit)
+    state = commit_after_pass(
+        database, mission_id="mission-1", step_id="step-1", run_id="run-b",
+        worktree=repository, policy=policy, envelope=envelope,
+    )
+    created = git_out("rev-parse", "HEAD", cwd=repository)
+    assert created != baseline
+    assert state["commit_head"] == created
+    assert state["performed"] is True
+    assert state["claimed"] == COMPLETED
+    assert state["journal_state"] == COMPLETED
+    assert state["diff_metadata_state"] == "DEGRADED"
+    assert state["diff_metadata_error_code"] == "commit_diff_metadata_failed"
+    assert state["diff_metadata_error_type"] == "CommitError"
+    assert state["diff_metadata_error_detail"] == (
+        "injected auxiliary diff metadata failure"
+    )
+    assert effect_state(database, state["action_key"])["status"] == COMPLETED
+
+    # A same-identity retry returns the recorded degraded result and never
+    # runs the mutation or creates another effect.
+    replay = commit_after_pass(
+        database, mission_id="mission-1", step_id="step-1", run_id="run-b",
+        worktree=repository, policy=policy, envelope=envelope,
+    )
+    assert replay["replayed"] is True
+    assert replay["performed"] is False
+    assert replay["commit_head"] == created
+    assert replay["diff_metadata_state"] == "DEGRADED"
+    assert git_out("rev-list", "--count", "HEAD", cwd=repository) == "2"
+    with database.connect(readonly=True) as connection:
+        event_counts = dict(connection.execute(
+            "SELECT event_type, COUNT(*) FROM events "
+            "WHERE json_extract(payload_json, '$.action_key') = ? "
+            "GROUP BY event_type", (state["action_key"],),
+        ).fetchall())
+    assert event_counts["system.action_started"] == 1
+    assert event_counts["system.action_completed"] == 1
+    assert event_counts.get("system.action_failed", 0) == 0
+
+
+def test_commit_failure_before_mutation_remains_a_real_failure(tmp_path, monkeypatch):
+    database, repository, policy, _router = mission_fixture(tmp_path)
+    (repository / "work.py").write_text("print('verified')\n", encoding="utf-8")
+    start_verification(
+        database, verdict_id="verdict-commit-failure", mission_id="mission-1",
+        step_id="step-1", builder_run_id="run-b", verifier_run_id="run-v",
+        independence={}, criteria=["work.py exists"],
+    )
+    record_verification_outcome(
+        database, verdict_id="verdict-commit-failure", outcome="PASS",
+        findings=[], evidence={},
+    )
+    envelope = commit_envelope(repository)
+    baseline = git_out("rev-parse", "HEAD", cwd=repository)
+    original_git = commit_module._git
+
+    def fail_commit_before_mutation(root, *args):
+        if args[:2] == ("commit", "-m"):
+            raise CommitError("injected Git commit failure before mutation")
+        return original_git(root, *args)
+
+    monkeypatch.setattr(commit_module, "_git", fail_commit_before_mutation)
+    with pytest.raises(CommitError, match="local commit effect did not complete"):
+        commit_after_pass(
+            database, mission_id="mission-1", step_id="step-1", run_id="run-b",
+            worktree=repository, policy=policy, envelope=envelope,
+        )
+    action_key = commit_module._commit_effect_id(
+        mission_id="mission-1", step_id="step-1", run_id="run-b",
+        worktree=repository.resolve(), envelope=envelope,
+    )
+    assert git_out("rev-parse", "HEAD", cwd=repository) == baseline
+    assert git_out("rev-list", "--count", "HEAD", cwd=repository) == "1"
+    assert effect_state(database, action_key)["status"] == FAILED
+    with database.connect(readonly=True) as connection:
+        event_counts = dict(connection.execute(
+            "SELECT event_type, COUNT(*) FROM events "
+            "WHERE json_extract(payload_json, '$.action_key') = ? "
+            "GROUP BY event_type", (action_key,),
+        ).fetchall())
+    assert event_counts["system.action_started"] == 1
+    assert event_counts["system.action_failed"] == 1
+    assert event_counts.get("system.action_completed", 0) == 0
 
 
 def test_policy_denied_commit_refused(tmp_path):

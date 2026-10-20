@@ -216,7 +216,7 @@ def _recommendation(
 
 def _database(tmp_path: Path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "foundry.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     return database
 
 

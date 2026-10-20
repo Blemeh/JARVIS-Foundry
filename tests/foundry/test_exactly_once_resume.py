@@ -31,9 +31,10 @@ from test_mission_loop import mission_fixture
 
 VERIFIER_INSTRUCTIONS = (
     "independently verify step step-1 of mission-1: inspect the frozen "
-    "artifact directly and confirm each criterion. End your response "
-    "with a line: VERDICT: PASS | FAIL | BLOCKED | NOT_TESTED "
-    "(NOT_TESTED when you cannot determine a verdict).")
+    "artifact directly and confirm each criterion. At the end, choose "
+    "exactly one verdict and emit one line in this format: VERDICT: PASS. "
+    "Replace PASS with exactly one of FAIL, BLOCKED, or NOT_TESTED when "
+    "appropriate; do not list the alternatives.")
 
 
 def builder_manifest() -> ContextManifest:

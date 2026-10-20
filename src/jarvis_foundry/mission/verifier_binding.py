@@ -61,6 +61,7 @@ from typing import Any
 from ..control.broker import emergency_stop_reason, matching_veto_reason
 from ..database import FoundryDatabase
 from ..events import Event, canonical_json
+from ..platform.windows_subprocess import headless_run_kwargs
 from .verification import SUBJECT_STEP, latest_verdict_for_step
 
 VERDICTS = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
@@ -171,6 +172,7 @@ def _git_diff_hash(root: Path) -> str:
         result = subprocess.run(
             ["git", "-C", str(root), "diff", "HEAD", "--no-ext-diff"],
             capture_output=True, text=True, timeout=30, check=False,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return _sha256_text(f"git-unavailable:{root}")
@@ -186,6 +188,7 @@ def _git_head(root: Path) -> str:
         result = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
             capture_output=True, text=True, timeout=30, check=False,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""

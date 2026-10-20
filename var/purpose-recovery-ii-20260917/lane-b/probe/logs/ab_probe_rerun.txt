@@ -1,0 +1,41 @@
+{
+  "discriminates": true,
+  "before": {
+    "outcome": "BLOCKED",
+    "reason": "repair budget exhausted (2 failed verdicts > 1)",
+    "verdicts": [
+      {
+        "status": "FAIL",
+        "verdict": "FAIL",
+        "findings": [
+          "model PASS is not backed by a JARVIS-owned artifact predicate"
+        ],
+        "predicate": null,
+        "answered_by": null
+      },
+      {
+        "status": "FAIL",
+        "verdict": "FAIL",
+        "findings": [
+          "model PASS is not backed by a JARVIS-owned artifact predicate"
+        ],
+        "predicate": null,
+        "answered_by": null
+      }
+    ]
+  },
+  "after": {
+    "outcome": "PASSED",
+    "verdicts": [
+      {
+        "status": "PASS",
+        "verdict": "PASS",
+        "findings": [],
+        "predicate": "verification:canonical-fabric-predicate",
+        "answered_by": "fabric"
+      }
+    ],
+    "observations": 1
+  }
+}
+EXIT=0

@@ -12,6 +12,7 @@ from typing import Any, Iterable, Mapping
 
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict, canonical_json
+from ..platform.windows_subprocess import headless_run_kwargs
 from .contracts import CONVERGENCE_CLASSIFICATIONS, ConvergenceDecision
 from .state import (
     SUPERVISOR_CONTROLLER,
@@ -256,6 +257,7 @@ def _run_git(
         check=False,
         timeout=30,
         env=environment,
+        **headless_run_kwargs(),
     )
     if completed.returncode not in allowed_returncodes:
         detail = completed.stderr.strip() or f"exit {completed.returncode}"

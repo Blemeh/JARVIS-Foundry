@@ -7,7 +7,9 @@ from typing import Any, Mapping
 
 from ..clock import isoformat
 from ..control.broker import emergency_stop_reason
+from ..control.capabilities import blocking_capability_state
 from ..database import FoundryDatabase
+from ..platform.windows_subprocess import headless_run_kwargs
 from .catalog import (
     capability_metadata,
     capability_trust,
@@ -107,6 +109,7 @@ def _developer_recovery_intent(
             encoding="utf-8",
             timeout=30,
             check=False,
+            **headless_run_kwargs(),
         )
         if observed.returncode != 0 or not observed.stdout.strip():
             raise FabricError("git.push recovery intent requires a readable local HEAD")
@@ -531,6 +534,18 @@ def select_capability(
     intent: TaskIntent,
     action_kind: str,
 ) -> Selection:
+    if intent.resource_id and intent.resource_capability:
+        suspended = blocking_capability_state(
+            database, intent.resource_id, intent.resource_capability,
+        )
+        if suspended is not None:
+            return Selection(
+                task_id=intent.task_id,
+                action_kind=action_kind,
+                capability_id=None,
+                fallbacks=(),
+                reason=str(suspended["reason"]),
+            )
     specs = list(specs_for_action(database, action_kind))
     if not specs:
         gap = GapRecord(
@@ -835,10 +850,12 @@ def _verify_action(
             observed_branch = subprocess.run(
                 ["git", "-C", str(worktree), "branch", "--show-current"],
                 capture_output=True, text=True, timeout=30, check=False,
+                **headless_run_kwargs(),
             )
             observed_head = subprocess.run(
                 ["git", "-C", str(worktree), "rev-parse", "HEAD"],
                 capture_output=True, text=True, timeout=30, check=False,
+                **headless_run_kwargs(),
             )
         except OSError:
             return VerifyVerdict.MISMATCH
@@ -1314,6 +1331,57 @@ def _verify_canonical_artifact(
         }
 
 
+def canonical_predicate_verdict(
+    database: FoundryDatabase,
+    *,
+    action_kind: str,
+    capability_id: str,
+    declared: Mapping[str, Any],
+    claimed: Mapping[str, Any],
+    owned_root: Path,
+    executor_context: ExecutorContext | None = None,
+) -> VerifyVerdict:
+    """Re-derive an action's verdict with the canonical JARVIS predicate.
+
+    Shares the exact predicate the Fabric spine applies to the action itself
+    (a Factory artifact replay when the capability is a canonical adapter,
+    otherwise the action verifier plus declared postconditions), so an
+    independent verifier session re-derives the same truth from reality
+    instead of re-judging a deterministic effect.
+    """
+
+    spec = get_spec(database, capability_id)
+    if spec is not None and spec.kind is Kind.ADAPTER:
+        metadata = metadata_for_spec(spec)
+        if metadata.execute.get("artifact_id"):
+            try:
+                verdict, _ = _verify_canonical_artifact(
+                    spec.executor,
+                    spec.capability_id,
+                    declared,
+                    claimed,
+                    python_executable=(
+                        str(metadata.execute.get("python_executable") or "") or None
+                    ),
+                    owned_root=owned_root,
+                )
+            except Exception:  # noqa: BLE001 - a re-derivation that cannot run
+                return VerifyVerdict.UNKNOWN  # is not a verdict; fail closed.
+            return verdict
+    try:
+        verdict, _ = _verify_with_postconditions(
+            action_kind,
+            claimed,
+            owned_root,
+            declared,
+            executor_context,
+            None,
+        )
+    except Exception:  # noqa: BLE001 - predicates may raise on vanished
+        return VerifyVerdict.UNKNOWN  # subjects; never a verdict, never a crash.
+    return verdict
+
+
 _SPECIALIZED_EFFECT_ACTIONS = frozenset({
     "git.push",
     "browser.web.execute",
@@ -1588,6 +1656,24 @@ def execute_action(
         )
         if recovery_intent is not None:
             request_identity["recovery_intent"] = recovery_intent
+
+        def effect_blocked() -> bool:
+            if emergency_stop_reason(
+                database,
+                payload.get("stop_path"),
+                identities=stop_identities,
+            ):
+                return True
+            return bool(
+                intent.resource_id
+                and intent.resource_capability
+                and blocking_capability_state(
+                    database,
+                    intent.resource_id,
+                    intent.resource_capability,
+                )
+            )
+
         claimed = execute_fabric_effect(
             database,
             action_key=request.effect_id,
@@ -1604,17 +1690,26 @@ def execute_action(
             action_id=request.request_id,
             request_identity=request_identity,
             perform=perform,
-            stop_check=lambda: bool(
-                emergency_stop_reason(
-                    database,
-                    payload.get("stop_path"),
-                    identities=stop_identities,
-                )
-            ),
+            stop_check=effect_blocked,
             claim_ttl_s=float(payload.get("claim_ttl_s") or 300.0),
         )
     else:
-        claimed = perform()
+        scoped_blocker = (
+            blocking_capability_state(
+                database, intent.resource_id, intent.resource_capability,
+            )
+            if intent.resource_id and intent.resource_capability else None
+        )
+        claimed = (
+            {
+                "claimed": "BLOCKED",
+                "performed": False,
+                "replayed": False,
+                "error_code": "resource_capability_suspended",
+                "detail": str(scoped_blocker["reason"]),
+            }
+            if scoped_blocker is not None else perform()
+        )
     if (
         action_kind.startswith("mcp.")
         and request.effect_class is not EffectClass.READ_ONLY
@@ -1648,7 +1743,21 @@ def execute_action(
             route_owner,
         )
     claimed_outcome = ClaimOutcome(str(claimed.get("claimed") or "UNKNOWN"))
-    if claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
+    scoped_effect_blocker = (
+        blocking_capability_state(
+            database, intent.resource_id, intent.resource_capability,
+        )
+        if intent.resource_id and intent.resource_capability else None
+    )
+    if (
+        claimed_outcome is ClaimOutcome.BLOCKED
+        and scoped_effect_blocker is not None
+        and claimed.get("error_code") in {
+            "stop_requested", "resource_capability_suspended",
+        }
+    ):
+        note = str(scoped_effect_blocker["reason"])
+    elif claimed_outcome is ClaimOutcome.COMPLETED and verdict is VerifyVerdict.MISMATCH:
         note = "worker claim diverged from observed effect"
     else:
         note = str(claimed.get("error_code") or "")

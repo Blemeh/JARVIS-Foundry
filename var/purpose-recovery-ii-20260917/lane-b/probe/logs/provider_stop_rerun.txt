@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": {
+    "owner_goal_admitted": true,
+    "mission_materialized": true,
+    "pause_applied": true,
+    "pause_blocks_missionloop": true,
+    "no_consequential_effects_during_pause": true,
+    "resume_clears_pause": true,
+    "resume_completes_work": true,
+    "stop_file_persists": true,
+    "stop_survives_reopen": true,
+    "canonical_revoke_clears_stop": true,
+    "objective_lineage_intact": true,
+    "no_orphaned_started_at_terminal": true
+  }
+}
+EXIT=0

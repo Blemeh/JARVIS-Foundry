@@ -39,7 +39,7 @@ jarvis-adapter-factory = "jarvis_foundry.adapter_factory.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-jarvis_foundry = ["assets/*"]
+jarvis_foundry = ["assets/*", "assets/packaging/*"]
 
 [tool.pytest.ini_options]
 # FAST = default development suite. FULL is never this default.

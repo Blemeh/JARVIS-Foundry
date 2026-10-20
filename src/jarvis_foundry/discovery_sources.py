@@ -37,7 +37,7 @@ from .world_model.signals import WorldSignalStore
 
 
 SOURCE_STATUSES = frozenset({"READY", "BLOCKED", "UNKNOWN", "IDLE"})
-EXTERNAL_SOURCE_KINDS = frozenset({"github", "web", "project"})
+EXTERNAL_SOURCE_KINDS = frozenset({"github", "web", "project", "vault"})
 _REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _TEXT_EXTENSIONS = frozenset({
     ".md", ".txt", ".py", ".js", ".ts", ".tsx", ".jsx", ".toml",
@@ -46,6 +46,9 @@ _TEXT_EXTENSIONS = frozenset({
 _SKIP_DIRS = frozenset({
     ".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache",
     ".mypy_cache", ".ruff_cache", "dist", "build",
+})
+_SOURCE_DIR_PRIORITY = frozenset({
+    "src", "source", "lib", "packages", "backend", "frontend", "services",
 })
 _DEPENDENCY_FILES = frozenset({
     "Cargo.lock", "Cargo.toml", "Gemfile", "Gemfile.lock", "go.mod", "go.sum",
@@ -165,7 +168,9 @@ class SourceSpec:
     def __post_init__(self) -> None:
         if not self.source_id.strip() or not self.source_identity.strip():
             raise ValueError("source_id and source_identity are required")
-        if self.source_kind not in {"github", "web", "project", "world", "gmail"}:
+        if self.source_kind not in {
+            "github", "web", "project", "world", "gmail", "vault",
+        }:
             raise ValueError(f"unsupported source_kind {self.source_kind!r}")
         if not 1 <= int(self.poll_interval_s) <= 86_400:
             raise ValueError("poll_interval_s must be between 1 and 86400")
@@ -302,6 +307,7 @@ def read_github_source(
     repo = str(spec.config.get("repo") or spec.source_identity).strip()
     if not _REPO.fullmatch(repo):
         return SourceReadResult("BLOCKED", reason="invalid configured GitHub repository")
+    target_project = str(spec.config.get("target_project") or repo).strip() or repo
     limit = max(1, min(int(spec.config.get("max_items", 10)), 20))
     recent_days = max(1, min(int(spec.config.get("recent_days", 30)), 365))
     reader = connector or GitHubResearchConnector()
@@ -427,7 +433,7 @@ def read_github_source(
             "github", opportunity, safe["url"] or f"https://github.com/{repo}/issues/{number}",
             safe, content_hash(semantic),
             proposed_outcome=(f"Evaluate and resolve GitHub issue #{number}: {title}" if state == "open" else None),
-            target_project=repo, alias_key=opportunity, candidate_type="github_issue",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_issue",
             confidence=0.8, candidate_on="always" if state == "open" else "never",
             raw_content_hash=content_hash(safe), opportunity_key=opportunity,
             significance_hint="issue content or lifecycle changed",
@@ -459,7 +465,7 @@ def read_github_source(
         observations.append(SourceObservation(
             "github", opportunity, safe["url"] or f"https://github.com/{repo}/pull/{number}",
             safe, content_hash(semantic), proposed_outcome=outcome,
-            target_project=repo, alias_key=opportunity, candidate_type="github_pull_request",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_pull_request",
             confidence=0.7, candidate_on="change_only" if outcome else "never",
             raw_content_hash=content_hash(safe), opportunity_key=opportunity,
             significance_hint="pull request lifecycle changed",
@@ -491,7 +497,7 @@ def read_github_source(
             safe, content_hash(safe),
             proposed_outcome=(f"Review {repo} release {tag} for current runtime compatibility"
                               if affects_runtime and recent and not safe["draft"] else None),
-            target_project=str(spec.config.get("target_project") or repo), alias_key=opportunity,
+            target_project=target_project, alias_key=opportunity,
             candidate_type="github_release", confidence=0.85,
             candidate_on="always" if affects_runtime and recent else "never",
             raw_content_hash=content_hash(item), opportunity_key=opportunity,
@@ -514,7 +520,7 @@ def read_github_source(
             {"kind": "tags", "repo": repo, "tags": tag_state}, content_hash(tag_state),
             proposed_outcome=(f"Review {repo} tag {latest_tag} for current runtime compatibility"
                               if tag_affects_runtime else None),
-            target_project=str(spec.config.get("target_project") or repo),
+            target_project=target_project,
             alias_key=tag_opportunity, candidate_type="github_release_tag",
             confidence=0.8, candidate_on="always" if tag_affects_runtime else "never",
             raw_content_hash=content_hash(tags[:limit]),
@@ -527,6 +533,14 @@ def read_github_source(
     for item in runs[:limit]:
         if not isinstance(item, dict) or item.get("conclusion") not in {"failure", "cancelled", "timed_out"}:
             continue
+        expires_at = _historical_expiry(item.get("updated_at") or item.get("created_at"))
+        if expires_at is None:
+            continue
+        try:
+            if _utc(expires_at) <= now:
+                continue
+        except (TypeError, ValueError):
+            continue
         run_id, name = item.get("id"), _bounded_text(item.get("name"), 160) or "workflow"
         safe = {
             "kind": "workflow_run", "repo": repo, "run_id": run_id, "name": name,
@@ -538,10 +552,10 @@ def read_github_source(
         observations.append(SourceObservation(
             "github", f"github:{repo}:workflow:{run_id}", safe["url"] or f"https://github.com/{repo}/actions",
             safe, content_hash(safe), proposed_outcome=f"Investigate failed GitHub workflow {name}",
-            target_project=repo, alias_key=opportunity, candidate_type="github_workflow_failure",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_workflow_failure",
             confidence=0.75, raw_content_hash=content_hash(item), opportunity_key=opportunity,
             significance_hint="failed workflow observed",
-            expires_at=_historical_expiry(item.get("updated_at") or item.get("created_at")),
+            expires_at=expires_at,
         ))
         failures_by_name.setdefault(name.lower(), []).append(run_id)
 
@@ -559,7 +573,7 @@ def read_github_source(
         observations.append(SourceObservation(
             "github", opportunity, f"https://github.com/{repo}", safe, content_hash(safe),
             proposed_outcome=f"Investigate recurring project problem in {repo}: {key}",
-            target_project=repo, alias_key=opportunity, candidate_type="github_recurring_problem",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_recurring_problem",
             confidence=0.8, opportunity_key=opportunity,
             significance_hint="recurring open project problem observed",
         ))
@@ -584,7 +598,7 @@ def read_github_source(
             "github", f"github:{repo}:tree:{path}", f"https://github.com/{repo}/blob/{default_branch}/{path}",
             safe, content_hash(safe),
             proposed_outcome=f"Review dependency or configuration change in {repo}: {path}",
-            target_project=repo, alias_key=opportunity, candidate_type="github_dependency_change",
+            target_project=target_project, alias_key=opportunity, candidate_type="github_dependency_change",
             confidence=0.75, candidate_on="change_only", opportunity_key=opportunity,
             significance_hint="dependency or configuration object changed",
         ))
@@ -707,10 +721,13 @@ def read_web_source(
 
 
 def _git_output(root: Path, *args: str) -> str | None:
+    from .platform.windows_subprocess import headless_run_kwargs
+
     try:
         completed = subprocess.run(
             ["git", "-C", str(root), *args], capture_output=True,
             check=False, timeout=15, text=False,
+            **headless_run_kwargs(),
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -934,7 +951,13 @@ def read_project_source(
         directory, depth = queue.popleft()
         dirs_seen += 1
         try:
-            entries = sorted(os.scandir(directory), key=lambda item: item.name.lower())
+            entries = sorted(
+                os.scandir(directory),
+                key=lambda item: (
+                    0 if item.name.lower() in _SOURCE_DIR_PRIORITY else 1,
+                    item.name.lower(),
+                ),
+            )
         except OSError:
             continue
         for entry in entries:
@@ -1045,6 +1068,11 @@ def read_world_source(
             "SYSTEM_OBSERVATION", "OWNER_AUTHORITY", "REPOSITORY_AUTHORITY",
         }
         candidate_authority = verified and trusted_authority and bool(evidence)
+        if (
+            not candidate_authority
+            and not bool(spec.config.get("include_unverified_signals", True))
+        ):
+            continue
         safe = {
             key: signal.get(key) for key in (
                 "signal_id", "signal_kind", "state", "salience", "title", "summary",
@@ -1095,11 +1123,14 @@ def read_world_source(
             "SELECT * FROM world_knowledge_gaps WHERE resolved = 0 "
             "ORDER BY blocking DESC, updated_at DESC LIMIT ?", (fact_limit,),
         ).fetchall()]
-        patterns = [dict(row) for row in connection.execute(
-            "SELECT * FROM world_patterns WHERE occurrences >= ? "
-            "ORDER BY occurrences DESC, last_seen DESC LIMIT ?",
-            (max(2, int(spec.config.get("failure_occurrences", 2))), fact_limit),
-        ).fetchall()]
+        patterns = (
+            [dict(row) for row in connection.execute(
+                "SELECT * FROM world_patterns WHERE occurrences >= ? "
+                "ORDER BY occurrences DESC, last_seen DESC LIMIT ?",
+                (max(2, int(spec.config.get("failure_occurrences", 2))), fact_limit),
+            ).fetchall()]
+            if bool(spec.config.get("include_repeated_failures", True)) else []
+        )
 
     for entity in entities:
         try:
@@ -1112,7 +1143,14 @@ def read_world_source(
         stale = str(entity.get("state") or "") == "STALE" or bool(
             entity.get("stale_after") and str(entity["stale_after"]) <= now
         )
-        is_project = entity.get("entity_type") == "PROJECT"
+        entity_type = str(entity.get("entity_type") or "")
+        is_project = entity_type == "PROJECT"
+        if (
+            stale
+            and entity_type == "MISSION"
+            and not bool(spec.config.get("include_stale_mission_context", True))
+        ):
+            continue
         if not stale and not is_project:
             continue
         kind = "stale_assumption" if stale else "project_state"
@@ -1213,6 +1251,74 @@ def read_world_source(
             significance_hint="verified failure pattern repeated",
         ))
     return SourceReadResult("READY", tuple(observations[: limit + fact_limit * 4]))
+
+
+def read_vault_source(
+    spec: SourceSpec,
+    *,
+    database: FoundryDatabase,
+    stop_check: Callable[[], bool] | None = None,
+) -> SourceReadResult:
+    """Refresh the canonical vault index and expose a data-only snapshot.
+
+    Note text stays in the existing bounded mission-context retrieval path;
+    this observation carries only the indexed path/hash inventory.  The
+    global ``vault_files.rel_path`` projection cannot safely switch roots.
+    """
+    from .vault_indexer import latest_vault_sync_root, sync_vault
+
+    if stop_check and stop_check():
+        return SourceReadResult("BLOCKED", reason="stop requested")
+    root = Path(spec.source_identity).expanduser().resolve()
+    if not root.is_dir():
+        return SourceReadResult("BLOCKED", reason="configured vault root is unavailable")
+    indexed_root = latest_vault_sync_root(database)
+    if indexed_root is not None and indexed_root != root:
+        return SourceReadResult(
+            "BLOCKED",
+            reason="configured vault root differs from the indexed root",
+        )
+
+    report = sync_vault(
+        database,
+        root,
+        source_id=spec.source_id,
+        started_at=(
+            _iso(_utc(spec.config.get("now")))
+            if spec.config.get("now") else _iso(_utc())
+        ),
+        stop_check=stop_check,
+    )
+    if report.get("stopped") or (stop_check and stop_check()):
+        return SourceReadResult("BLOCKED", reason="stop requested during vault indexing")
+
+    with database.connect(readonly=True) as connection:
+        rows = [
+            [str(row[0]), str(row[1])]
+            for row in connection.execute(
+                "SELECT rel_path, content_sha256 FROM vault_files "
+                "WHERE status = 'ACTIVE' ORDER BY rel_path",
+            ).fetchall()
+        ]
+    inventory_hash = content_hash(rows)
+    payload = {
+        "active_file_count": len(rows),
+        "index_hash": inventory_hash,
+    }
+    observation = SourceObservation(
+        source_kind="vault",
+        source_identity=f"vault-index:{spec.source_id}",
+        source_ref=str(root),
+        payload=payload,
+        content_hash=content_hash(payload),
+        authority="DATA_ONLY",
+        candidate_type="vault_index",
+        candidate_on="never",
+        raw_content_hash=inventory_hash,
+        opportunity_key=f"vault-index:{spec.source_id}",
+        significance_hint="institutional knowledge index refreshed",
+    )
+    return SourceReadResult("READY", (observation,))
 
 
 def read_gmail_source(spec: SourceSpec) -> SourceReadResult:
@@ -1767,6 +1873,8 @@ def run_source_observation_cycle(
                 result = read_project_source(spec, stop_check=stop_check)
             elif spec.source_kind == "world":
                 result = read_world_source(spec, store=WorldSignalStore(db), stop_check=stop_check)
+            elif spec.source_kind == "vault":
+                result = read_vault_source(spec, database=db, stop_check=stop_check)
             else:
                 result = read_gmail_source(spec)
         except Exception as error:  # isolate one real-source failure

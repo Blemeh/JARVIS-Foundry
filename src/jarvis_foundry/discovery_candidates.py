@@ -19,6 +19,8 @@ import hashlib
 import math
 import sqlite3
 import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
 
 from .database import FoundryDatabase
@@ -412,23 +414,209 @@ def covered_objective(
     return _find_duplicate(db, canonicalize_statement(objective), connection=connection)
 
 
+_TERMINAL_FAILED_STATES = frozenset({"FAILED", "BLOCKED", "CANCELLED"})
+
+# Canonical recovery attempts per objective after terminal failure.
+# Exactly one: the original lineage plus one recovery.  A second terminal
+# failure re-covers the objective (stable WAIT, no loop) -- but see
+# ``_recovery_window_open``: exactly ONE further window is granted across
+# the objective's whole life when the live release has moved past every
+# terminal failure, because the executable contract under that release is
+# not the one that failed.  It is capped by total terminal failures
+# (``_RECOVERY_ATTEMPTS + 1``), so a stream of later releases can never
+# buy the same ineffective strategy a third attempt.
+_RECOVERY_ATTEMPTS = 1
+
+# Total terminal failures an objective may ever accumulate while still
+# being reconsiderable: the original allowance plus the single
+# release-scoped window.  Past this, no release transition reopens it.
+_MAX_TERMINAL_FAILURES = _RECOVERY_ATTEMPTS + 1
+
+
+def _live_release_activated_at(current: sqlite3.Connection) -> str | None:
+    """When the live release slot last moved, or None when unresolved."""
+    try:
+        row = current.execute(
+            "SELECT release_id, updated_at FROM release_slots "
+            "WHERE slot = 'live'").fetchone()
+    except sqlite3.Error:
+        return None
+    if row is None or not row[0] or not row[1]:
+        return None
+    return str(row[1])
+
+
+def _terminal_failure_after(value: Any, floor: str) -> bool:
+    """Whether a mission's terminal time falls at or after ``floor``.
+
+    An unparseable stamp counts as since-release: the recovery window must
+    never open on evidence the reader could not date.
+    """
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        origin = datetime.fromisoformat(str(floor).replace("Z", "+00:00"))
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        if origin.tzinfo is None:
+            origin = origin.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return True
+    return moment >= origin
+
+
+def _recovery_window_open(
+    *,
+    failed: int,
+    failed_since_release: int,
+    release_floor: str | None,
+) -> bool:
+    """Bounded recovery window for one canonical objective.
+
+    The original bound: exactly one terminal-failed lineage releases the
+    coverage lock once.  A second terminal failure re-covers the objective
+    so cycles cannot re-derive forever.
+
+    That re-cover must not be permanent across a release transition: the
+    failed mission ran on a different executable contract than the current
+    release ships, so when the live release has moved since EVERY terminal
+    failure the objective gets one more bounded reconsideration under the
+    new contract.  Two independent bounds keep that from becoming a retry
+    treadmill:
+
+    * ``failed_since_release == 0`` -- a failure recorded at or after the
+      live release's activation proves the current contract already had
+      its chance, so no window opens until a later release exists.
+    * ``failed <= _MAX_TERMINAL_FAILURES`` -- the release-scoped window is
+      grantable exactly ONCE in an objective's life (the second terminal
+      failure).  A third terminal failure re-covers permanently, however
+      many releases follow, so an unrelated later release can never buy
+      the same ineffective strategy another attempt.
+
+    No release evidence means no extra window; unparseable timestamps
+    count as since-release, so the window never opens on evidence the
+    reader could not date.
+    """
+    if failed <= 0:
+        return False
+    if failed <= _RECOVERY_ATTEMPTS:
+        return True
+    if failed > _MAX_TERMINAL_FAILURES:
+        return False
+    return release_floor is not None and failed_since_release == 0
+
+
+@dataclass(frozen=True, slots=True)
+class RecoveryWindow:
+    """Ledger truth behind one recovery decision (audit + the reopen receipt)."""
+
+    open: bool
+    failed: int
+    failed_since_release: int
+    release_floor: str | None
+
+
+def recovery_window_state(
+    current: sqlite3.Connection, canonical: str,
+) -> RecoveryWindow:
+    """Derive the bounded-recovery state for one canonical objective.
+
+    Both gates that must agree -- the duplicate-coverage release and the
+    terminal-item recovery reopen -- derive their answer from THIS
+    function, so they can never disagree about an objective's remaining
+    recovery budget.  Everything is read from ledger truth on every call:
+    restarts, replays and re-derivation cannot reset it.
+    """
+    failed = 0
+    failed_since_release = 0
+    floor = _live_release_activated_at(current)
+    for objective, state, updated_at in current.execute(
+            "SELECT objective, state, updated_at FROM missions "
+            "ORDER BY rowid").fetchall():
+        if canonicalize_statement(str(objective or "")) != canonical:
+            continue
+        if str(state or "").upper() not in _TERMINAL_FAILED_STATES:
+            continue
+        failed += 1
+        if floor is not None and _terminal_failure_after(updated_at, floor):
+            failed_since_release += 1
+    return RecoveryWindow(
+        open=_recovery_window_open(
+            failed=failed, failed_since_release=failed_since_release,
+            release_floor=floor),
+        failed=failed,
+        failed_since_release=failed_since_release,
+        release_floor=floor,
+    )
+
+
+def recovery_window_open(
+    current: sqlite3.Connection, canonical: str,
+) -> bool:
+    """The shared bounded-recovery rule, derived from ledger truth.
+
+    Both gates that must agree -- the duplicate-coverage release and the
+    terminal-item recovery reopen -- call THIS function, so they can never
+    disagree about an objective's remaining recovery budget.
+    """
+    return recovery_window_state(current, canonical).open
+
+
 def _find_duplicate(
     db: FoundryDatabase, canonical: str,
     *, connection: sqlite3.Connection | None = None,
 ) -> str | None:
+    """Duplicate coverage with a bounded terminal-failure release.
+
+    A candidate or mission covers a canonical objective — with one
+    exception: terminal failure releases the lock for exactly ONE canonical
+    recovery attempt.  Rationale (live 2026-09-30, mission-ecdb7918c2d4):
+    the covering mission failed on the product's own unsatisfiable
+    contract, the synthesis defect has since been repaired, and the
+    underlying problem is still real.  Treating that dead end as permanent
+    coverage parks the owning goal forever with no path back to work.
+
+    Bound (no loop possible):
+    * COMPLETE missions always cover — finished work is never re-derived.
+    * Terminal FAILED/BLOCKED/CANCELLED missions release coverage only
+      while the objective's bounded recovery window is open.  The window
+      is derived from ledger truth on every call — the one-recovery bound
+      plus the single release-scoped window in ``_recovery_window_open`` —
+      so restarts and replays cannot reset it, each failed recovery
+      re-covers the objective, and no later release can buy a third
+      attempt after the release-scoped window is spent.
+    * Consumed-history candidates (EXECUTED/SUPERSEDED/...) never cover;
+      only live NEW/SCORED candidates do — matching the selection scan.
+    """
     def find(current: sqlite3.Connection) -> str | None:
+        live_mission: str | None = None
+        complete_mission: str | None = None
+        for mission_id, objective, state in current.execute(
+                "SELECT mission_id, objective, state FROM missions "
+                "ORDER BY rowid").fetchall():
+            if canonicalize_statement(objective) != canonical:
+                continue
+            upper = str(state or "").upper()
+            if upper == "COMPLETE":
+                if complete_mission is None:
+                    complete_mission = str(mission_id)
+            elif upper not in _TERMINAL_FAILED_STATES and live_mission is None:
+                live_mission = str(mission_id)
+        if complete_mission is not None:
+            return complete_mission
+        if live_mission is not None:
+            return live_mission
+        # Recovery window open: the failed lineage(s) released the lock so
+        # the Executive can reconsider with the current executable contract.
+        if recovery_window_open(current, canonical):
+            return None
         row = current.execute(
             "SELECT candidate_id FROM candidates "
-            "WHERE objective_canonical = ? ORDER BY rowid LIMIT 1",
+            "WHERE objective_canonical = ? "
+            "AND status IN ('NEW', 'SCORED') "
+            "ORDER BY rowid LIMIT 1",
             (canonical,)).fetchone()
         if row:
-            return row[0]
-        # missions store RAW objectives — compare canonicalized in Python
-        for mission in current.execute(
-                "SELECT mission_id, objective FROM missions "
-                "ORDER BY rowid").fetchall():
-            if canonicalize_statement(mission[1]) == canonical:
-                return mission[0]
+            return str(row[0])
         return None
 
     if connection is not None:

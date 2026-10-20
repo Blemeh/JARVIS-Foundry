@@ -520,9 +520,12 @@ function missionEventRefs(event: FoundrySnapshot["timeline"][number], missionId:
   const refs: EntityRef[] = [];
   for (const raw of event.evidence_refs ?? []) {
     if (!raw.id || raw.id === missionId && raw.kind !== "mission") continue;
+    // No EntityKind fits a raw directive id, and emitting it as a
+    // timeline ref fabricates a broken event link. Drop it: the stage
+    // detail text carries the proven lineage instead.
     const kind = raw.kind === "agent_run" ? "agent"
       : raw.kind === "verification" ? "verdict"
-        : raw.kind === "directive" ? "timeline"
+        : raw.kind === "directive" ? null
           : raw.kind === "mission" ? "mission"
             : raw.kind === "evidence" ? "evidence"
               : raw.kind === "system" ? "system"
@@ -551,12 +554,14 @@ function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): Auto
     .flatMap((event) => missionEventRefs(event, missionId))
     .filter((ref, index, all) => all.findIndex((candidate) => candidate.kind === ref.kind && candidate.id === ref.id) === index);
   const state = String(mission?.state ?? "UNKNOWN").toUpperCase();
+  const isTerminal = ["COMPLETE", "COMPLETED", "BLOCKED", "FAILED", "HALTED", "CANCELLED", "CANCELED"].includes(state);
   const missionState: AutonomyLifecycleRecord["state"] =
     ["COMPLETE", "COMPLETED"].includes(state) ? "COMPLETE"
-      : ["BLOCKED", "FAILED", "HALTED", "CANCELLED", "CANCELED"].includes(state) ? "FAILED"
-        : ACTIVE_MISSION_STATES.has(state) ? "ACTIVE"
-          : STANDBY_MISSION_STATES.has(state) ? "PENDING"
-            : "UNKNOWN";
+      : state === "BLOCKED" ? "BLOCKED"
+        : ["FAILED", "HALTED", "CANCELLED", "CANCELED"].includes(state) ? "FAILED"
+          : ACTIVE_MISSION_STATES.has(state) ? "ACTIVE"
+            : STANDBY_MISSION_STATES.has(state) ? "PENDING"
+              : "UNKNOWN";
   const make = (
     key: string,
     label: string,
@@ -566,11 +571,35 @@ function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): Auto
     ids: string[],
   ): AutonomyLifecycleRecord => ({ key, label, state: lifecycleState, detail, refs, eventIds: ids });
 
-  const goal = snapshot.controls?.goals?.find((record) => {
-    const target = String(record.target ?? "GLOBAL");
-    return target === "GLOBAL" || target === missionId;
-  });
-  const goalId = goal?.directive_id ?? goal?.id;
+  // Canonical lineage: resolve the owner goal through the durable
+  // work-hierarchy join (mission -> objective -> goal), never by guessing
+  // the newest GLOBAL directive. A GLOBAL directive proves nothing about
+  // this mission; an unprovable link reports NOT RECORDED.
+  const hierarchy = snapshot.work_hierarchy;
+  const missionLink = hierarchy?.missions?.find((item) => item.mission_id === missionId);
+  const objectiveId = missionLink?.objective_id ?? null;
+  const objective = objectiveId
+    ? hierarchy?.objectives?.find((item) => item.objective_id === objectiveId)
+    : undefined;
+  const hierarchyGoalId = objective?.goal_id ?? null;
+  const causalGoal = hierarchyGoalId
+    ? hierarchy?.goals?.find((item) => item.goal_id === hierarchyGoalId)
+    : undefined;
+  const causalDirectiveId = causalGoal?.directive_id
+    ?? (typeof hierarchyGoalId === "string" && hierarchyGoalId.startsWith("goal:")
+      ? hierarchyGoalId.slice("goal:".length)
+      : null);
+  const causalDirective = causalDirectiveId
+    ? snapshot.controls?.goals?.find((record) => {
+      const id = (record.directive_id ?? record.id) as unknown;
+      return typeof id === "string" && id === causalDirectiveId;
+    })
+    : undefined;
+  const causalGoalText = typeof causalDirective?.exact_text === "string" && causalDirective.exact_text.trim()
+    ? causalDirective.exact_text as string
+    : typeof causalGoal?.label === "string" && causalGoal.label.trim()
+      ? causalGoal.label as string
+      : null;
   const goalEvents = eventIds("OWNER_GOAL");
   const planEvents = eventIds("PLAN");
   const workerEvents = eventIds("WORKER");
@@ -580,47 +609,109 @@ function lifecycleForMission(snapshot: FoundrySnapshot, missionId: string): Auto
   const repairEvents = eventIds("REPAIR_RETRY");
   const memoryEvents = eventIds("MEMORY");
   const briefingEvents = eventIds("OWNER_BRIEFING");
+
+  // Plan proof comes from durable joins (hierarchy actions, objective
+  // plan ids, mission step contracts), not from the bounded 200-event
+  // timeline window. Timeline events are supplementary refs only.
+  const missionSteps = snapshot.mission_steps.filter((s) => s.mission_id === missionId);
+  const hierarchyActions = (hierarchy?.actions ?? []).filter((a) => a.mission_id === missionId);
+  const objectivePlanIds = objective?.plan_ids ?? [];
+  const hasPlan = hierarchyActions.length > 0 || missionSteps.length > 0 || objectivePlanIds.length > 0;
+
   const completedWorker = workers.find((worker) => String(worker.status).toUpperCase() === "COMPLETED");
   const failedWorker = workers.find((worker) => ["FAILED", "CANCELLED"].includes(String(worker.status).toUpperCase()));
   const runningWorker = workers.find((worker) => String(worker.status).toUpperCase() === "RUNNING");
+  // Snapshot workers are bounded to the newest 100 runs while the ledger
+  // holds the full history. Historical worker proof (hierarchy linkage,
+  // evidence bundles with artifact hashes, independent verifier verdicts)
+  // proves a COMPLETE worker stage even after the run rows age out of the
+  // bounded window. Missing proof on a terminal mission is NOT RECORDED,
+  // never PENDING for impossible future work.
+  const hierarchyWorkerIds = missionLink?.worker_ids ?? [];
   const latestVerdict = verdicts[0];
   const hasArtifact = evidence.some((item) => Object.keys(item.artifact_hashes ?? {}).length > 0);
+  const hasHistoricalWorkerProof = Boolean(completedWorker)
+    || hierarchyWorkerIds.length > 0
+    || verdicts.length > 0
+    || (evidence.length > 0 && hasArtifact);
   const latestBriefing = snapshot.briefing_packet;
 
+  const ownerGoalState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : causalGoalText ? "COMPLETE" : "NOT RECORDED";
+  const planState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : hasPlan ? "COMPLETE" : "NOT RECORDED";
+  const workerState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : failedWorker ? "FAILED"
+      : hasHistoricalWorkerProof ? "COMPLETE"
+        : runningWorker ? "ACTIVE"
+          : isTerminal ? "NOT RECORDED" : "PENDING";
+  const actionState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : hasArtifact ? "COMPLETE" : isTerminal ? "NOT RECORDED" : "PENDING";
+  const evidenceState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : (evidence.length > 0 || (missionLink?.evidence_refs ?? []).length > 0) ? "COMPLETE"
+      : isTerminal ? "NOT RECORDED" : "PENDING";
+  const hierarchyVerdictIds = missionLink?.verdict_ids ?? [];
+  const verifierState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : latestVerdict?.status === "PASS" ? "COMPLETE"
+      : latestVerdict?.status === "FAIL" ? "FAILED"
+        : latestVerdict?.status === "STARTED" ? "ACTIVE"
+          : hierarchyVerdictIds.length > 0 ? "NOT RECORDED"
+            : isTerminal ? "NOT RECORDED" : "PENDING";
+  // A successful terminal mission that never needed repair reports
+  // NOT REQUIRED, not PENDING. Repair PENDING is reserved for an active
+  // mission whose verifier has failed and whose retry has not been recorded.
+  const repairState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : repairEvents.length > 0 ? "COMPLETE"
+      : state === "COMPLETE" || state === "COMPLETED" || latestVerdict?.status === "PASS" ? "NOT REQUIRED"
+        : latestVerdict?.status === "FAIL" && !isTerminal ? "PENDING"
+          : isTerminal ? "NOT RECORDED" : "NOT REQUIRED";
+  const memoryState: AutonomyLifecycleRecord["state"] = !mission
+    ? "UNKNOWN"
+    : snapshot.memory.some((item) => item.mission_id === missionId) ? "COMPLETE"
+      : isTerminal ? "NOT RECORDED" : "PENDING";
+
   return [
-    make("owner_goal", "Owner goal", goal || goalEvents.length ? "COMPLETE" : "UNKNOWN",
-      typeof goal?.exact_text === "string" ? goal.exact_text : goal ? "Recorded owner goal" : "No owner goal is recorded for this mission.",
-      lifecycleRef("timeline", goalId).concat(eventRefs("OWNER_GOAL")), goalEvents),
-    make("plan", "Plan", planEvents.length ? "COMPLETE" : mission ? "PENDING" : "UNKNOWN",
-      planEvents.length ? "Plan and mission admission are recorded in the ledger." : "No plan admission event is recorded.",
-      eventRefs("PLAN"), planEvents),
+    make("owner_goal", "Owner goal", ownerGoalState,
+      !mission ? "Mission record unavailable; owner lineage cannot be proven." : causalGoalText ?? "No causally linked owner goal is recorded for this mission; no unrelated goal is substituted.",
+      eventRefs("OWNER_GOAL"), goalEvents),
+    make("plan", "Plan", planState,
+      hasPlan ? "Plan and mission admission are recorded through the durable work hierarchy." : "No plan is recorded for this mission through the durable work hierarchy.",
+      eventRefs("PLAN"),
+      missionSteps.map((s) => String(s.last_event_id ?? "")).filter(Boolean).concat(planEvents)),
     make("mission", "Mission", missionState,
       mission ? `${state}${mission.next_action ? ` · next ${mission.next_action}` : ""}` : "Mission record unavailable.",
       lifecycleRef("mission", missionId).concat(lifecycleRef("timeline", mission?.last_event_id)),
       mission?.last_event_id ? [mission.last_event_id] : []),
-    make("worker", "Worker", failedWorker ? "FAILED" : completedWorker ? "COMPLETE" : runningWorker ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
-      failedWorker ? `Worker failure: ${failedWorker.failure_class ?? "UNKNOWN"}` : completedWorker ? "Worker run completed." : runningWorker ? "Worker run active." : "No worker run is recorded.",
-      workers.flatMap((worker) => lifecycleRef("agent", worker.run_id)).concat(eventRefs("WORKER")),
+    make("worker", "Worker", workerState,
+      failedWorker ? `Worker failure: ${failedWorker.failure_class ?? "UNKNOWN"}` : hasHistoricalWorkerProof ? "Worker run completed (durable run, hierarchy, evidence, or verifier proof)." : runningWorker ? "Worker run active." : isTerminal ? "No worker run is recorded for this terminal mission." : "No worker run is recorded yet.",
+      [...hierarchyWorkerIds.flatMap((id) => lifecycleRef("agent", id)), ...workers.flatMap((worker) => lifecycleRef("agent", worker.run_id))].concat(eventRefs("WORKER")),
       workerEvents.concat(workers.map((worker) => worker.last_event_id).filter((id): id is string => Boolean(id)))),
-    make("action_artifact", "Action / artifact", hasArtifact ? "COMPLETE" : actionEvents.some((id) => id) ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
-      hasArtifact ? "Artifact hash is recorded in an evidence bundle." : actionEvents.length ? "Effect/action event is recorded; completion is not yet evidenced." : "No action or artifact record is available.",
+    make("action_artifact", "Action / artifact", actionState,
+      hasArtifact ? "Artifact hash is recorded in an evidence bundle." : isTerminal ? "No action or artifact record is available for this terminal mission." : "No action or artifact record is available yet.",
       eventRefs("ACTION_ARTIFACT"), actionEvents),
-    make("evidence", "Evidence", evidence.length ? "COMPLETE" : mission ? "PENDING" : "UNKNOWN",
-      evidence.length ? `${evidence.length} evidence bundle${evidence.length === 1 ? "" : "s"} recorded.` : "No evidence bundle is recorded.",
-      evidence.flatMap((item) => lifecycleRef("evidence", item.bundle_id)).concat(eventRefs("EVIDENCE")),
+    make("evidence", "Evidence", evidenceState,
+      evidence.length ? `${evidence.length} evidence bundle${evidence.length === 1 ? "" : "s"} recorded.` : (missionLink?.evidence_refs ?? []).length ? "Evidence linkage is recorded in the durable work hierarchy." : isTerminal ? "No evidence bundle is recorded for this terminal mission." : "No evidence bundle is recorded yet.",
+      evidence.flatMap((item) => lifecycleRef("evidence", item.bundle_id)).concat((missionLink?.evidence_refs ?? []).flatMap((id) => lifecycleRef("evidence", id))).concat(eventRefs("EVIDENCE")),
       evidenceEvents.concat(evidence.map((item) => item.last_event_id).filter((id): id is string => Boolean(id)))),
-    make("verifier", "Verifier", latestVerdict?.status === "PASS" ? "COMPLETE" : latestVerdict?.status === "FAIL" ? "FAILED" : latestVerdict?.status === "STARTED" ? "ACTIVE" : mission ? "PENDING" : "UNKNOWN",
-      latestVerdict ? `${latestVerdict.status}${latestVerdict.findings ? ` · ${String(latestVerdict.findings)}` : ""}` : "No independent verifier verdict is recorded.",
-      verdicts.flatMap((item) => lifecycleRef("verdict", item.verdict_id)).concat(eventRefs("VERIFIER")),
+    make("verifier", "Verifier", verifierState,
+      latestVerdict ? `${latestVerdict.status}${latestVerdict.findings ? ` · ${String(latestVerdict.findings)}` : ""}` : hierarchyVerdictIds.length ? "Verifier linkage is recorded in the hierarchy but the verdict row is outside the bounded projection; outcome cannot be proven from this snapshot." : isTerminal ? "No independent verifier verdict is recorded for this terminal mission." : "No independent verifier verdict is recorded yet.",
+      verdicts.flatMap((item) => lifecycleRef("verdict", item.verdict_id)).concat(hierarchyVerdictIds.flatMap((id) => lifecycleRef("verdict", id))).concat(eventRefs("VERIFIER")),
       verifierEvents.concat(verdicts.map((item) => item.last_event_id).filter((id): id is string => Boolean(id)))),
-    make("repair_retry", "Repair / retry", repairEvents.length ? "COMPLETE" : latestVerdict?.status === "FAIL" ? "PENDING" : "PENDING",
-      repairEvents.length ? "Repair or retry lineage is recorded." : latestVerdict?.status === "FAIL" ? "Verifier failed; no repair event is recorded yet." : "No repair or retry is recorded.",
+    make("repair_retry", "Repair / retry", repairState,
+      repairEvents.length ? "Repair or retry lineage is recorded." : repairState === "NOT REQUIRED" ? "No repair was required for this mission." : latestVerdict?.status === "FAIL" && !isTerminal ? "Verifier failed; no repair event is recorded yet." : isTerminal ? "No repair or retry is recorded for this terminal mission." : "No repair or retry is recorded.",
       eventRefs("REPAIR_RETRY"), repairEvents),
-    make("memory", "Memory", snapshot.memory.some((item) => item.mission_id === missionId) ? "COMPLETE" : missionState === "COMPLETE" ? "UNKNOWN" : mission ? "PENDING" : "UNKNOWN",
-      snapshot.memory.some((item) => item.mission_id === missionId) ? "Mission-linked memory write is recorded." : "No mission-linked memory write is recorded.",
+    make("memory", "Memory", memoryState,
+      snapshot.memory.some((item) => item.mission_id === missionId) ? "Mission-linked memory write is recorded." : isTerminal ? "No mission-linked memory write is recorded for this terminal mission." : "No mission-linked memory write is recorded yet.",
       snapshot.memory.filter((item) => item.mission_id === missionId).flatMap((item) => lifecycleRef("memory", item.memory_id)).concat(eventRefs("MEMORY")),
       memoryEvents),
-    make("owner_briefing", "Owner briefing", latestBriefing ? "COMPLETE" : "UNKNOWN",
+    make("owner_briefing", "Owner briefing", latestBriefing ? "COMPLETE" : "NOT RECORDED",
       latestBriefing ? "Briefing packet projection is available." : "No briefing packet projection is available.",
       eventRefs("OWNER_BRIEFING"), briefingEvents),
   ];

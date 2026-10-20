@@ -1,0 +1,395 @@
+{
+  "lane": "B",
+  "branch": "candidate/purpose-recovery-ii-b-runtime-operations-20260917",
+  "base": "ddec34efc96b9a0154eb9821d6cc496ef76906a3",
+  "worktree": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917",
+  "classification_key": [
+    "REAL_AUTONOMOUS",
+    "REAL_BUT_MANUAL",
+    "WIRED_BUT_UNPROVEN",
+    "DEMO_ONLY",
+    "SOURCE_ONLY",
+    "PAPER_ONLY",
+    "MISSING",
+    "WRONG_PRODUCT",
+    "WAITING_FOR_PARALLEL_CONVERGENCE"
+  ],
+  "start_classification": "Classification measured on base ddec34efc96b before Lane B repairs. The final classification after repair is in 'final_classification'.",
+  "domains": [
+    {
+      "domain": "B1 mission-creates-capability-binding",
+      "required_product_behavior": "A selected mission/action intent resolves itself into the required capability or workflow without a developer or owner naming a recipe, with inputs bound from the mission and evidence, readiness checked, and honest failure when the intent cannot be realized.",
+      "classification": "REAL_BUT_MANUAL",
+      "source_components": [
+        "executive/portfolio_bridge.materialize_portfolio_selection",
+        "executive/autonomy.generate_missions_for_objective",
+        "mission/contracts.MissionStepContract",
+        "fabric/loop.select_capability (TaskIntent)",
+        "fabric/recipes/registry"
+      ],
+      "normal_runtime_entrypoint": "OwnerControlService GOAL -> executive.sync_owner_goals -> run_autonomy_cycle -> portfolio materialization -> MissionLoop",
+      "upstream_intent_contract": "objective metadata required recipe_id + recipe_params before this lane; no normalized intent contract existed",
+      "real_effect": "n/a (binding layer)",
+      "readback": "mission_step_contracts rows",
+      "verification": "mission loop verifier per contract; a step whose capability resolves to a Fabric action kind is certified by the runtime's own re-derived predicate (R6), never by a model verdict",
+      "recovery": "materialization blocked reason recorded",
+      "root_gap": "Capability binding worked only when the harness named the recipe (metadata.recipe_id) and hand-built recipe_params; cap.workflow.run was added to required capabilities only when recipe_id was present; the canonical Fabric intent resolver (TaskIntent/select_capability/run_intent) was exercised only by tests, never by the mission path.",
+      "repair": "mission/intent.py: normalized MissionIntent + deterministic need->workflow/action resolver with role-based input binding and honest GAP; recipes declare satisfied needs and parameter bind roles; portfolio materialization resolves intents when no recipe_id is supplied.",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json, focused tests 8/8, VERIFIER_ROUTING_REPAIR_PROOF.json (R6)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B2 workflow-run-product-runtime",
+      "required_product_behavior": "workflow.run is invoked by normal mission dispatch (not a callable API only), with typed parameter binding, checkpoint/resume, nested receipt verification, failure policy, no duplicate effects after restart.",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "source_components": [
+        "fabric/executors.workflow_run",
+        "fabric/recipes/runner.run_recipe",
+        "fabric/recipes/checkpoint.py",
+        "fabric/recipes/preflight.resolve_params"
+      ],
+      "normal_runtime_entrypoint": "MissionLoop step contract capability cap.workflow.run",
+      "upstream_intent_contract": "MissionStepContract.capability + instructions envelope",
+      "real_effect": "recipe step effects (browser, files, native, git)",
+      "readback": "nested receipts + effect journal",
+      "verification": "fabric verify_action workflow.run: nested receipts all VERIFIED; deterministic nested steps are re-derived by the runtime predicate (R6)",
+      "recovery": "recipe checkpoint + job journal",
+      "root_gap": "Normal dispatch worked only with a harness-authored recipe envelope; campaign-child reuse was proven, but a normal mission could not reach it without a developer naming the recipe.",
+      "repair": "resolver-selected recipe envelopes (B1); focused tests for binding + failure policy",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json + CAMPAIGN_CONTINUITY_PROOF.json + VERIFIER_ROUTING_REPAIR_PROOF.json (R6)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B3 digital-operator-selection-seam",
+      "required_product_behavior": "Normalized needs (read web, authenticated web, artifact, native verify, spreadsheet, local app, repository preserve) select the correct existing digital capability/workflow without exposing browser/UIA/Git internals to owner-level goals.",
+      "classification": "REAL_BUT_MANUAL",
+      "source_components": [
+        "fabric/recipes/builtins (v14.* recipes)",
+        "fabric/catalog.specs_for_action",
+        "fabric/loop.select_capability"
+      ],
+      "normal_runtime_entrypoint": "Executive objective -> mission contract -> Fabric",
+      "upstream_intent_contract": "needs vocabulary (defined in this lane)",
+      "real_effect": "n/a (selection layer)",
+      "readback": "resolution provenance in contract provenance + lane evidence",
+      "verification": "resolver unit tests + unscripted proof",
+      "recovery": "GAP resolution records a durable gap with resume target",
+      "root_gap": "selection required a recipe id; no normalized need vocabulary existed",
+      "repair": "need vocabulary + recipe need declarations + deterministic resolution",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json (recipe selected from needs only)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B4 browser-runtime",
+      "required_product_behavior": "browser.web.inspect/read/execute with session restore, auth, frames, popups, downloads, uploads, reauth, expiry, readback -- usable from a normal mission action.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "connectors/web_research.py",
+        "fabric/executors.py (browser.*)"
+      ],
+      "normal_runtime_entrypoint": "recipe step browser.web.read / browser.web.execute",
+      "upstream_intent_contract": "recipe parameters (source_url, site_origin, session state)",
+      "real_effect": "authenticated page read + interactive submit receipts",
+      "readback": "session.readback + effect journal",
+      "verification": "independent browser verify (MATCH on readback)",
+      "recovery": "session expiry -> reauth provider (proved in scenario A/E)",
+      "root_gap": "none at base; re-verify from a resolved mission intent",
+      "repair": "none expected; re-proof",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json + FAILURE_REPAIR_PROOF.json (expiry injection)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B5 windows-native-operator",
+      "required_product_behavior": "PID/create-time/executable identity, owned-window binding, focus, control selection, paste/type, file dialogs, Word native readback, artifact assert, stale-process handling, single-instance refusal -- usable from a mission.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "fabric/personal_operator.py",
+        "fabric/computer_operator.py"
+      ],
+      "normal_runtime_entrypoint": "recipe step desktop.open_artifact_and_assert",
+      "upstream_intent_contract": "recipe parameters (application, process_id, artifact)",
+      "real_effect": "native document opened and asserted in the owner application",
+      "readback": "native readback (_WwG) captured into evidence",
+      "verification": "independent native readback verify",
+      "recovery": "stale process -> close and reopen; owner app never adopted",
+      "root_gap": "none at base; re-verify from a resolved mission intent",
+      "repair": "none expected; re-proof",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json (native Word assert leg)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B6 artifact-general-work",
+      "required_product_behavior": "Mission intent becomes a real artifact (create/update, document/spreadsheet verbs, content readback, native verification path, safe file targeting, recipe bindings) without the harness building files.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "fabric/general_work.py",
+        "fabric/executors.py (file.*)"
+      ],
+      "normal_runtime_entrypoint": "recipe step file.write / file.read / artifact.* verbs",
+      "upstream_intent_contract": "recipe parameters (artifact_target, artifact_title)",
+      "real_effect": "owned-root artifact written with content",
+      "readback": "artifact hash + content readback",
+      "verification": "independent artifact readback",
+      "recovery": "idempotency keys per artifact target",
+      "root_gap": "none at base; re-verify from a resolved mission intent",
+      "repair": "none expected; re-proof",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json (artifact written + read back)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B7 cross-system-composition",
+      "required_product_behavior": "A normal mission composes browser -> extract -> artifact -> native verification -> Git effect through runtime-selected recipes, not by manual subsystem calls.",
+      "classification": "REAL_BUT_MANUAL",
+      "source_components": [
+        "fabric/recipes/builtins.v14.digital_operator.close",
+        "fabric/compose.py"
+      ],
+      "normal_runtime_entrypoint": "MissionLoop -> cap.workflow.run -> recipe runner",
+      "upstream_intent_contract": "needs profile (this lane)",
+      "real_effect": "full chain in one mission",
+      "readback": "nested receipts per step",
+      "verification": "workflow.run nested receipt verification + independent verifier",
+      "recovery": "on_failure policy per recipe step",
+      "root_gap": "chain required a developer-named recipe and developer-built params",
+      "repair": "B1 resolution; re-proof the chain from an intent",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json (browser->artifact->native->git)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B8 effect-truth-exactly-once",
+      "required_product_behavior": "intent hash / effect identity / STARTED / execution / readback / verification / COMPLETED-or-reconciled for consequential actions; crash after mutation, retry, restart, ambiguous provider, already-applied remote produce no duplicate effect and no false success.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "effects.py",
+        "fabric/loop.finalize_verified_effect"
+      ],
+      "normal_runtime_entrypoint": "every consequential Fabric action",
+      "upstream_intent_contract": "idempotency key per action payload",
+      "real_effect": "external state mutated once",
+      "readback": "readback + reconciliation state",
+      "verification": "verify MATCH/UNKNOWN; UNKNOWN never advances",
+      "recovery": "reconcile path",
+      "root_gap": "none at base; re-verify under crash/restart in this lane",
+      "repair": "none expected; re-proof",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json + FAILURE_REPAIR_PROOF.json duplicate counters 0",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B9 git-github-effects",
+      "required_product_behavior": "branch/commit/push/remote readback/push reconciliation/frozen-effect discovery/persisted recovery intent in the normal runtime; real GitHub write only where owner-authorized config exists (else honest refusal).",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "fabric/executors.py (git.*)",
+        "connectors/github_write.py"
+      ],
+      "normal_runtime_entrypoint": "recipe step git.commit / git.push / git.inspect",
+      "upstream_intent_contract": "recipe parameters (worktree, remote, branch, message)",
+      "real_effect": "commit + push to disposable remote with SHA equality",
+      "readback": "git rev-parse local/remote",
+      "verification": "SHA equality + effect journal",
+      "recovery": "push reconciliation on ambiguous remote state",
+      "root_gap": "none at base; re-verify; GitHub write stays owner-config-gated",
+      "repair": "none expected; re-proof",
+      "acceptance": "UNSCRIPTED_RUNTIME_PROOF.json (disposable remote SHA equality)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B10 missionloop-repair",
+      "required_product_behavior": "A failed action is repaired automatically: failure evidence -> repair path -> bounded repair action -> fresh execution -> independent verification -> continuation, without the owner saying try again.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "mission/loop.py (run_step, _repair_or_block)",
+        "roles/dispatcher.py"
+      ],
+      "normal_runtime_entrypoint": "MissionLoop RUNNING -> REPAIRING",
+      "upstream_intent_contract": "mission contract verification criteria",
+      "real_effect": "repaired artifact/effect",
+      "readback": "repair evidence + fresh verifier verdict",
+      "verification": "independent verifier on the repaired step; deterministic steps re-derived by the runtime predicate (R6)",
+      "recovery": "repair budget bounded; exhausted -> honest BLOCKED",
+      "root_gap": "none at base; re-verify with an injected real failure",
+      "repair": "none expected; re-proof",
+      "acceptance": "FAILURE_REPAIR_PROOF.json + CAMPAIGN_CONTINUITY_PROOF.json (failure_repaired_verified) + VERIFIER_ROUTING_REPAIR_PROOF.json (R6)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B11 campaigns-long-horizon",
+      "required_product_behavior": "objective -> children -> dependencies -> WAIT_FOR_RESOURCE -> capacity release -> wake exactly once -> failure/repair -> verifier -> next child -> checkpoint -> process loss -> rebuild -> continue -> terminal result, with zero duplicate missions/effects/continuations.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "executive/campaigns.py",
+        "executive/continuous.py"
+      ],
+      "normal_runtime_entrypoint": "Executive campaign runtime + startup resume pass",
+      "upstream_intent_contract": "campaign objective + child missions",
+      "real_effect": "child missions executed through MissionLoop",
+      "readback": "campaign projection from events",
+      "verification": "campaign acceptance + child verification",
+      "recovery": "checkpoint + startup_resume_pass (continue-once)",
+      "root_gap": "none at base; re-run in this lane with a process kill",
+      "repair": "none expected; re-proof",
+      "acceptance": "CAMPAIGN_CONTINUITY_PROOF.json (process loss continue-once, duplicates 0)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B12 campaign-child-workflow-run",
+      "required_product_behavior": "A campaign child binds to workflow.run through normal dispatch; outcome and receipts reconcile; terminal state follows canonical acceptance; repeat workflow does not deadlock; capability readiness updates correctly.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "executive/campaigns.py",
+        "mission/loop._reconcile_accepted_campaign_child"
+      ],
+      "normal_runtime_entrypoint": "campaign dispatch -> child mission contract",
+      "upstream_intent_contract": "child mission objective",
+      "real_effect": "child workflow executed once",
+      "readback": "child terminal state + receipts",
+      "verification": "independent verifier + campaign reconcile",
+      "recovery": "stranded RUNNING child reconciled after verified PASS",
+      "root_gap": "none at base (repaired 2026-09-16); re-verify",
+      "repair": "none expected; re-proof",
+      "acceptance": "CAMPAIGN_CONTINUITY_PROOF.json (campaign_child_workflow_passed)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B13 real-capability-gap-detection",
+      "required_product_behavior": "A mission that reaches a real capability gap declares it durably with objective lineage, required semantic capability, evidence of absence, constraints, and resume target -- without a developer creating the gap.",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "source_components": [
+        "fabric/loop.select_capability/record_gap",
+        "fabric/gap_bridge.py",
+        "capability_requirements.py"
+      ],
+      "normal_runtime_entrypoint": "Fabric selection/gap bridge inside a mission",
+      "upstream_intent_contract": "mission required capability/need",
+      "real_effect": "gap record + WAIT + wake",
+      "readback": "fabric.capability_gap.* events",
+      "verification": "catalog state after acquisition",
+      "recovery": "wake fires exactly once, resumes the original objective",
+      "root_gap": "gap detection existed, but the intent->capability path never produced a natural gap from a high-level mission; gap creation was a developer action in prior proofs.",
+      "repair": "intent resolution emits a GAP resolution with lineage + resume target",
+      "acceptance": "SELF_EXPANSION_PROOF.json (gap from a mission requirement)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B14 self-expansion-mcp",
+      "required_product_behavior": "mission blocked on a real gap -> catalog/reuse search -> candidate discovery -> isolated trial -> verifier -> probation registration -> wake the exact original objective -> use the new capability -> continue; failed trial disables the capability; no second MCP backend.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "self_expansion.py",
+        "fabric/expansion.py",
+        "fabric/gap_bridge.py",
+        "mcp_backend/"
+      ],
+      "normal_runtime_entrypoint": "Gap bridge expansion port (bounded)",
+      "upstream_intent_contract": "gap record with needed action",
+      "real_effect": "capability registered PROBATION then verified",
+      "readback": "capability.registered + verification",
+      "verification": "independent trial verification before probation wake",
+      "recovery": "failed trial -> disable + honest block",
+      "root_gap": "none at base; re-prove from a naturally detected gap",
+      "repair": "none expected; re-proof",
+      "acceptance": "SELF_EXPANSION_PROOF.json (acquire -> verified -> same objective resumes)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B15 provider-resilience",
+      "required_product_behavior": "preferred provider outage -> retry -> fallback provider -> WAIT_PROVIDER -> local independent work -> recovery -> exact mission resume; provider failure never erases mission truth.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "roles/router.py",
+        "resilience/",
+        "workers/"
+      ],
+      "normal_runtime_entrypoint": "Role dispatch through the canonical router",
+      "upstream_intent_contract": "role manifest",
+      "real_effect": "no lost mission; fallback or honest WAIT",
+      "readback": "agent run events with failure_class",
+      "verification": "terminal events clear failure state",
+      "recovery": "WAIT_PROVIDER + resume",
+      "root_gap": "none at base; re-verify through the existing test seam",
+      "repair": "none expected; re-proof",
+      "acceptance": "PROVIDER_STOP_PROOF.json (26 provider/stop tests green)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B16 process-restart-durability",
+      "required_product_behavior": "Supervisor/runtime process kill -> fresh process reconstructs -> active mission/campaign truth restored -> no duplicate action/effect -> same objective continues.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "supervisor/",
+        "executive/campaigns.startup_resume_pass",
+        "fabric/recipes/checkpoint.py"
+      ],
+      "normal_runtime_entrypoint": "fresh process startup",
+      "upstream_intent_contract": "durable event ledger",
+      "real_effect": "continuation without duplicate effects",
+      "readback": "ledger rebuild + duplicate counters",
+      "verification": "reconciled counters from the ledger",
+      "recovery": "continue-once; a verification pass resumed after the frozen binding drifted refuses honestly (BLOCKED + the ledger's reason) instead of raising EventConflict out of the loop (R7)",
+      "root_gap": "none at base; re-verify in this lane",
+      "repair": "none expected; re-proof",
+      "acceptance": "CAMPAIGN_CONTINUITY_PROOF.json + PROVIDER_STOP_PROOF.json + VERIFIER_ROUTING_REPAIR_PROOF.json (R7 binding drift)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B17 stop-pause-resume",
+      "required_product_behavior": "STOP blocks new consequential effects; queued work stops per canonical semantics; active controllable action freezes or interrupts honestly; restart keeps STOP; RESUME reorients before work; no duplicate effect; STOP never routes through the LLM.",
+      "classification": "REAL_AUTONOMOUS",
+      "source_components": [
+        "control/estop.py",
+        "control/broker.py",
+        "owner_controls.py"
+      ],
+      "normal_runtime_entrypoint": "Owner STOP/PAUSE/RESUME through OwnerControlService + sentinel",
+      "upstream_intent_contract": "owner directive",
+      "real_effect": "dispatch refused while stopped",
+      "readback": "STOP sentinel + control events",
+      "verification": "no new effects while stopped",
+      "recovery": "RESUME reorientation",
+      "root_gap": "none at base; re-verify",
+      "repair": "none expected; re-proof",
+      "acceptance": "PROVIDER_STOP_PROOF.json (scenario E 12/12)",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B18 command-center-runtime-truth",
+      "required_product_behavior": "Command Center shows truthful durable runtime facts: current mission/campaign, worker/action state, failures/repairs, verified outcome, effects, WAIT/blocker, release/provider/health, owner attention items.",
+      "classification": "WIRED_BUT_UNPROVEN",
+      "source_components": [
+        "command_center.py",
+        "command_center_work.py",
+        "ui/command-center"
+      ],
+      "normal_runtime_entrypoint": "Command Center API over the durable event ledger",
+      "upstream_intent_contract": "mergeable projection contract (lane A decision truth)",
+      "real_effect": "n/a (projection)",
+      "readback": "API payloads from candidate runtime",
+      "verification": "contract tests + real candidate data probe",
+      "recovery": "projection rebuild from events",
+      "root_gap": "needs verification that every required runtime fact is projected from real candidate data",
+      "repair": "recorded per verification result",
+      "acceptance": "COMMAND_CENTER_PROOF.md (real candidate data, 8/8) + 34 CC tests",
+      "final_classification": "REAL_AUTONOMOUS"
+    },
+    {
+      "domain": "B19 notifications-briefings",
+      "required_product_behavior": "Attention routing from durable events: no duplicate spam, preference respected, in-app notification works, native toast if the environment permits, an OS-toast failure never corrupts state; briefing generated from durable facts.",
+      "classification": "REAL_BUT_MANUAL",
+      "source_components": [
+        "windows_toast.py",
+        "briefing_items.py",
+        "briefings.py"
+      ],
+      "normal_runtime_entrypoint": "Attention items from durable events -> toast router",
+      "upstream_intent_contract": "attention item projection",
+      "real_effect": "in-app toast emitted once per attention identity",
+      "readback": "toast store + delivery result",
+      "verification": "dedupe proof",
+      "recovery": "toast failure isolated from state",
+      "root_gap": "native winotify toast was never exercised (package not installed)",
+      "repair": "install the optional backend in the lane venv and prove a real OS toast, or record the honest environment limit",
+      "acceptance": "in-app toast/dedupe/preference proven; native winotify toast NOT_TESTED (backend absent)",
+      "final_classification": "REAL_AUTONOMOUS"
+    }
+  ]
+}

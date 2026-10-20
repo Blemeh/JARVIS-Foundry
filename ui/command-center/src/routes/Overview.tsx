@@ -1,3 +1,4 @@
+import "../styles/owner-summary.css";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -276,7 +277,7 @@ export function OverviewContent(data: OverviewData) {
             sourceMode === "SIMULATED"
               ? "Preview fixture; no production state or effect is represented."
               : sourceMode === "DEGRADED"
-                ? "Canonical runtime truth is connected with degraded health; ordinary owner effects remain gated."
+                ? "Runtime has operational issues. Owner commands remain available and canonical owner controls enforce their authority."
                 : "Canonical runtime state is unavailable; values fail closed."
           }</span>
         </div>
@@ -339,6 +340,7 @@ export function OverviewContent(data: OverviewData) {
         </div>
       </section>
 
+      <details className="owner-inspection"><summary>Inspect current work lifecycle</summary>
       <ol className="rm-lifecycle" aria-label="Autonomous work lifecycle">
         {lifecycle.map((label, index) => (
           <li key={label} className={lifecycleClass(index)}>
@@ -346,7 +348,7 @@ export function OverviewContent(data: OverviewData) {
             <small>{lifecycleStatus(index)}</small>
           </li>
         ))}
-      </ol>
+      </ol></details>
 
       <section className={`rm-attention ${linkedOwnerAction ? "rm-attention--open" : ""}`} aria-labelledby="attention-title">
         <div className="rm-attention-icon">{linkedOwnerAction ? <CircleAlert size={19} aria-hidden="true" /> : <CheckCircle2 size={19} aria-hidden="true" />}</div>

@@ -9,6 +9,7 @@ from typing import Callable, Mapping, Any
 
 from ..database import FoundryDatabase
 from ..effects import effect_state
+from ..platform.windows_subprocess import headless_run_kwargs
 from ..v3_git import GitEffectAdapter, ls_remote_head, preflight_identity
 from .contract import ConnectorSpec
 
@@ -79,6 +80,7 @@ class GitConnector:
             ["git", "-C", str(worktree), *args],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=60, check=False,
+            **headless_run_kwargs(),
         )
         if result.returncode != 0:
             raise GitConnectorError(result.stderr.strip() or "git command failed")
@@ -167,6 +169,7 @@ class GitConnector:
         staged = subprocess.run(
             ["git", "-C", str(owned), "diff", "--cached", "--quiet"],
             capture_output=True, text=True, timeout=60, check=False,
+            **headless_run_kwargs(),
         )
         if staged.returncode == 0:
             raise GitConnectorError("changes produced no Git diff")
@@ -217,6 +220,7 @@ class GitConnector:
         staged = subprocess.run(
             ["git", "-C", str(owned), "diff", "--cached", "--quiet"],
             capture_output=True, text=True, timeout=60, check=False,
+            **headless_run_kwargs(),
         )
         if staged.returncode == 0:
             raise GitConnectorError("named paths produced no Git diff")
@@ -251,6 +255,7 @@ class GitConnector:
             ["git", "-C", str(owned), "diff", "HEAD"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=60, check=False,
+            **headless_run_kwargs(),
         )
         if patch.returncode != 0:
             raise GitConnectorError(patch.stderr.strip() or "git diff failed")

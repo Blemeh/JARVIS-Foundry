@@ -1,0 +1,153 @@
+{
+  "checks": {
+    "attention_or_wait_surface_present": true,
+    "current_missions_projected": true,
+    "effects_projected": true,
+    "health_or_release_surface_present": true,
+    "real_mission_identity_matches_ledger": true,
+    "snapshot_built_from_durable_events": true,
+    "truthful_env_flags_not_simulated": true,
+    "verified_outcome_projected": true
+  },
+  "effects_in_ledger": [
+    {
+      "action_key": "effect:e73e642783e92b31a28207fcf48824a5d71de130fea44a7fe1b7027aca33896a",
+      "kind": "file.write",
+      "status": "COMPLETED",
+      "target_ref": "research/lane-b-unscripted-close.txt"
+    },
+    {
+      "action_key": "effect:4f4827f2a37a53534cd7e18289f46688b5fd276bd88c37cb9305a13eac8bf6f7",
+      "kind": "desktop.open_artifact_and_assert",
+      "status": "COMPLETED",
+      "target_ref": "research/lane-b-unscripted-close.txt"
+    },
+    {
+      "action_key": "effect:efe1be1fce45f9e73962124d2a6fa775db69549913fc6b98c6a83587b6c733b9",
+      "kind": "desktop.close",
+      "status": "COMPLETED",
+      "target_ref": "desktop.close"
+    },
+    {
+      "action_key": "effect:eb1259024812574d7b3ac8b1f14c6626526849b32279890aea41abfbd9184e5d",
+      "kind": "git.commit",
+      "status": "COMPLETED",
+      "target_ref": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\unscripted\\run\\project"
+    },
+    {
+      "action_key": "v3-git:lane-b-close-1:push",
+      "kind": "git.push",
+      "status": "COMPLETED",
+      "target_ref": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\unscripted\\run\\remote.git"
+    },
+    {
+      "action_key": "effect:d8bb1ae2ec3ae6ee23c0f56f74a952073435044aeabdefbe90029b700ec4dd5f",
+      "kind": "workflow.run",
+      "status": "COMPLETED",
+      "target_ref": "workflow.run"
+    },
+    {
+      "action_key": "effect:99ad3f52aef51bca3ef59f0a0d60edea8f2fd9883f3be3ee4f9474ea3eb6c0bc",
+      "kind": "file.write",
+      "status": "COMPLETED",
+      "target_ref": "research/lane-b-repair-close.txt"
+    },
+    {
+      "action_key": "effect:8693958c8915f4957e3cedbd5c4edc29c56c0254b532b6dd1e7219db706a13c2",
+      "kind": "desktop.open_artifact_and_assert",
+      "status": "COMPLETED",
+      "target_ref": "research/lane-b-repair-close.txt"
+    },
+    {
+      "action_key": "effect:5c68942ed36f11354d39a29fa5f1e4713dbb3a93adfe1a961094bda56d801579",
+      "kind": "desktop.close",
+      "status": "COMPLETED",
+      "target_ref": "desktop.close"
+    },
+    {
+      "action_key": "effect:13dbca6c5403d6c798b835f821b837414553933dc9d07bf1e1c523862b599876",
+      "kind": "git.commit",
+      "status": "COMPLETED",
+      "target_ref": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\unscripted\\run\\project"
+    },
+    {
+      "action_key": "v3-git:lane-b-close-2:push",
+      "kind": "git.push",
+      "status": "COMPLETED",
+      "target_ref": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\unscripted\\run\\remote.git"
+    },
+    {
+      "action_key": "effect:30b752c5bfc62958b4d3980e32d2225a7635fbf1c5ce953f02267ee862ec08b0",
+      "kind": "workflow.run",
+      "status": "COMPLETED",
+      "target_ref": "workflow.run"
+    }
+  ],
+  "missions_in_ledger": [
+    {
+      "mission_id": "mission-295b67e2f080",
+      "objective": "Research the supplied authenticated local source, prepare a concise artifact, verify it in the native application, and preserve the finished result in the disposable repository.",
+      "state": "COMPLETE"
+    },
+    {
+      "mission_id": "mission-b2e967202d5b",
+      "objective": "Research the supplied authenticated local source, prepare a concise artifact, verify it in the native application, and preserve the finished result in the disposable repository.",
+      "state": "COMPLETE"
+    }
+  ],
+  "passed": true,
+  "runtime_database": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\unscripted\\run\\foundry.db",
+  "schema": "jarvis.purpose-recovery-ii.lane-b.command-center-proof.v1",
+  "snapshot_top_level_keys": [
+    "briefing_l10n",
+    "briefing_packet",
+    "briefings",
+    "candidates",
+    "capability_fabric",
+    "controls",
+    "costs",
+    "decision_queue",
+    "discovery",
+    "effect_truth",
+    "evidence",
+    "evolution_truth",
+    "executive",
+    "generated_at",
+    "health",
+    "memory",
+    "mission_steps",
+    "missions",
+    "owner_context",
+    "owner_directives",
+    "portfolio",
+    "procedures",
+    "recovery",
+    "release_identity",
+    "releases_canaries_rollbacks",
+    "resources",
+    "result_traceability",
+    "source_of_truth",
+    "stop",
+    "supervisor",
+    "system_state",
+    "systems",
+    "timeline",
+    "vault",
+    "verification",
+    "voice",
+    "work_hierarchy",
+    "workers",
+    "world_intelligence"
+  ],
+  "source": "real disposable candidate runtime (unscripted proof run)",
+  "verifications_in_ledger": [
+    {
+      "status": "PASS",
+      "verdict_id": "verdict-v2-b79a0b70d3c6eb2c3356605c"
+    },
+    {
+      "status": "PASS",
+      "verdict_id": "verdict-v2-f3f6c97b27609c70aa5ee2d0"
+    }
+  ]
+}

@@ -56,6 +56,7 @@ from jarvis_foundry.owner_context import (
 )
 from jarvis_foundry.owner_controls import OwnerControlService, sign_command
 from jarvis_foundry.reconcile import reconcile
+from jarvis_foundry.migrations import SCHEMA_VERSION
 
 
 NOW = "2026-09-04T18:00:00Z"
@@ -1811,7 +1812,9 @@ def run_proof(
         "worktree_clean_before_output": source["dirty"] is False,
     }
     checks = {
-        "01_schema_v40": schema == 40,
+        # Key name is historical and is recorded in committed evidence
+        # receipts; the comparison tracks the current schema.
+        "01_schema_v40": schema == SCHEMA_VERSION,
         "02_three_real_projects_projected": {
             item["project_id"] for item in direct_projection["projects"]
         } == {"jarvis", "leadgen", "operatoros"},

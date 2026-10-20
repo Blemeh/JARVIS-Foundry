@@ -224,7 +224,11 @@ def _autonomous_wip(database: FoundryDatabase) -> int | None:
         return None
     return sum(
         objective.status in {"ACTIVE", "RUNNING", "BLOCKED", "WAITING"}
-        and str(objective.owner_authority or "owner").lower() != "owner"
+        and not (
+            objective.objective_id.startswith("owner-goal:")
+            or str(objective.owner_authority or "owner").strip().lower()
+            in {"owner", "local-owner"}
+        )
         for objective in state.objectives.values()
     )
 
@@ -289,6 +293,24 @@ def _research_factors(
             confidence = max(0.0, min(1.0, value)) if isfinite(value) else None
     except (TypeError, ValueError, OverflowError):
         confidence = None
+    stance = str(evidence.get("stance") or evidence.get("verdict") or "").upper()
+    contradicting = bool(evidence.get("contradicting")) or stance in {
+        "CONTRADICTING", "CONTRADICTED",
+    }
+    supporting = bool(evidence.get("supporting")) or stance in {
+        "SUPPORTING", "SUPPORT",
+    }
+    conflicting = bool(evidence.get("conflicting")) or (supporting and contradicting)
+    if contradicting and not supporting:
+        quality = min(quality, 0.15)
+        confidence = 0.05 if confidence is None else min(confidence, 0.12)
+    elif conflicting:
+        quality = min(quality, 0.35)
+        confidence = 0.25 if confidence is None else min(confidence, 0.35)
+    elif supporting:
+        quality = max(quality, 0.75)
+        if confidence is None:
+            confidence = 0.72
     return quality, confidence, {
         "status": status,
         "research_id": research.get("research_id"),
@@ -296,6 +318,11 @@ def _research_factors(
         "source_ref": research.get("source_ref"),
         "content_hash": content_hash or None,
         "authority": evidence.get("authority"),
+        "stance": stance or None,
+        "contradicting": contradicting,
+        "supporting": supporting,
+        "conflicting": conflicting,
+        "provenance": evidence.get("provenance") or evidence.get("source_ref"),
     }
 
 
@@ -372,8 +399,20 @@ def score_candidate_for_executive(
     freshness_raw, freshness_kind = _weight("freshness", None)
     goal_fit = 0.0
     owner_priority = 0.0
+    target_project = str(
+        _context_value(row, "target_project", "project_id", "target_system") or ""
+    )
+    candidate_type = str(row.get("candidate_type") or "")
     if goals:
-        fits = [goal_alignment_score(g, objective) for g in goals]
+        fits = [
+            goal_alignment_score(
+                g,
+                objective,
+                candidate_type=candidate_type,
+                target_project=target_project,
+            )
+            for g in goals
+        ]
         goal_fit = max(fits) if fits else 0.0
         best_idx = fits.index(goal_fit) if fits else 0
         compared = [goals[best_idx].goal_id] if goals else []

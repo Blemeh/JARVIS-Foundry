@@ -1,0 +1,61 @@
+{
+  "schema": "jarvis.lane-b.adversarial-verdict.v1",
+  "subject_commit": "8f8909f7ed7eb55ced124dc6e8059fd031108435",
+  "verdict": "PASS",
+  "checks": {
+    "subject_commit_frozen_at_review_start": "MATCH",
+    "worktree_no_src_or_tests_modification_beyond_commit": "MATCH",
+    "repair_diff_read_and_adversarially_enumerated": "MATCH",
+    "regression_file_result": "MATCH",
+    "p4a_re_derivation_vs_claim": "MATCH",
+    "p4b_undecided_receipt_not_hijacked": "MATCH",
+    "p4c_marker_without_reverified_match_cannot_authorize": "MATCH",
+    "p4d_unbacked_model_pass_refused": "MATCH",
+    "p5_subject_guard_break_attempt_declined": "MATCH",
+    "r7_binding_drift_refusal_via_executed_regression_test": "MATCH",
+    "boundary_no_push_local_evidence": "MATCH",
+    "live_hermes_home_no_jarvis_source_changes": "MATCH",
+    "live_hermes_home_full_immutability": "UNKNOWN",
+    "extra_p6_redispatched_same_run_id_is_exception_free": "MISMATCH"
+  },
+  "findings": [
+    "F1 boundary: the worktree was NOT frozen during review. HEAD was 8f8909f at review start, but an external process committed c4fd21371cd3b23a79c962ec8314396534c05a60 ('LANE B evidence: verifier-routing repair (R6), binding-drift refusal (R7), proofs re-run at the certified head') on top of it at 2026-09-18T10:49:20+02:00 (reflog) while this review was running. The new commit touches only var/purpose-recovery-ii-20260917/... (git diff --name-only 8f8909f c4fd213 -- src tests is empty; no non-var files). src/ and tests/ bytes are identical to 8f8909f before and after (git diff 8f8909f -- src tests empty). The frozen subject commit 8f8909f itself is intact and remains the parent of HEAD.",
+    "F2 robustness (extra probe p6b): canonical_verifier_dispatch appends fabric.canonical_verification_observed under idempotency key 'fabric.canonical_verification_observed:{run_id}:{verdict}'. After a successful certification, a NEW fabric.spine.result receipt (different receipt_id/effect_id) plus a re-dispatch of the SAME run_id re-derived MATCH and raised EventConflict('idempotency conflict for fabric.canonical_verification_observed:adv-run-subject-a:MATCH') out of the helper - observed escaping canonical_verifier_dispatch. The R7 catch in mission/loop.py wraps only capture_binding, so this seam is not converted there. No false PASS results: the original observation is preserved and the duplicate append is refused. Production reachability not established (builder attempts mint new run ids f'{run_id}-verify'; verifier-reuse logic exists at mission/loop.py:1928).",
+    "F3 subject guard is key-shape dependent (code-level): the declared-vs-claimed divergence check compares only keys present in BOTH sides (_SPINE_SUBJECT_KEYS = path/target/source_ref/worktree). For the materialized hash mission both sides use 'path', and divergence IS declined (p5: declared .../evidence.bin vs receipt .../other.bin -> dispatch None, no observation recorded; positive control with the declared subject IS certified). Residual: if a contract's declared JSON names the subject under a different key than the receipt's observed, no comparison happens, and for hash.file.sha256 the verifier re-derives from claimed['path'], so certification would follow the receipt's own path. NOT exercised end-to-end (needs a contract whose declared payload uses another key).",
+    "F4 blank refs disable divergence detection (code-level): _same_subject returns True when either side is blank. For hash.file.sha256 an absent claimed path fails closed (KeyError -> UNKNOWN -> decline), but verifiers that default a missing path to owned_root (e.g. dir.list uses Path(claimed.get('path') or owned_root)) could verify the root instead of the declared subject. Not demonstrated end-to-end.",
+    "F5 defensive depth (code-level): MissionLoop._pass_requires_jarvis_predicate returns None immediately for ANY non-None jarvis_predicate without re-checking the value against CANONICAL_PREDICATE_EVIDENCE; the single production call site (mission/loop.py:2248-2251) passes only _jarvis_predicate_satisfied() output (the constant or None), verified by grep.",
+    "F6 semantics: when the canonical predicate is present, the acceptance rule skips the path-shaped artifact checks entirely (including declared expected_artifacts beyond the certified action subject). This is the documented intent ('stronger artifact predicate'); no false success demonstrated.",
+    "F7 core claims verified: a model-produced verdict cannot authorize a deterministic step - _jarvis_predicate_satisfied requires provider == 'fabric' AND the runtime-written marker AND 'verified:MATCH' in evidence; a model-provider result carrying both marker strings is refused (p4c), a fabric result whose re-derivation did not MATCH is refused (p4c: verified:MISMATCH and marker-without-verified both -> None), and with no predicate the refusal string 'model PASS is not backed by a JARVIS-owned artifact predicate' is returned (p4d). The re-derivation is from reality, not the claim (p4a: wrong sha256 -> MISMATCH, real digest -> MATCH).",
+    "F8 integrity: sha256 of all five files on disk matches VERIFIER_ROUTING_REPAIR_PROOF.json source_changes exactly (5/5). git-show blob hashes differ only by EOL normalization (core.autocrlf=true; ls-files --eol shows i/lf w/crlf attr/text eol=crlf), and git diff 8f8909f -- src tests is empty, so the reviewed content is the frozen content.",
+    "F9 R7: the binding-drift refusal is covered by the executed regression test test_reality_divergence_after_the_receipt_does_not_pass (asserts outcome != PASSED, reason contains 'frozen verification binding changed', verdict BLOCKED) - it passed; NOT independently reproduced by my own harness.",
+    "F10 live Hermes home: C:/Users/b/AppData/Local/hermes is not a git repository and contains no jarvis_foundry source tree (find -maxdepth 4); files modified since 2026-09-17 there are Hermes state files (history, caches, update/backup artifacts, auth.json). No evidence of source changes there; full state-file-level non-modification cannot be proven from read-only inspection."
+  ],
+  "fabrication_risks": [
+    "Trust boundary is the event ledger: a fabric.spine.result receipt whose recorded observation matches reality would be certified - the re-derivation validates the recorded observation against the filesystem, not against who wrote the event. Models do not author fabric.spine.result as far as observed; an actor able to append arbitrary spine results could fabricate a certification (demonstrated only in the negative cases, which decline).",
+    "Mixed-key declared/claimed subject divergence (F3) could let a receipt for subject B be certified when the declared payload names A under a different key; unverified end-to-end.",
+    "Blank subject refs disable the divergence check (F4); fails closed for the verified action kind, not proven for all action kinds.",
+    "p6b: a re-dispatched verification run can surface an uncaught EventConflict (control-plane exception) at the canonical-observation append; no false verdict results, but a resume could raise instead of refusing - same failure class as the R7 bug, different seam.",
+    "No probe produced a false PASS: every negative case (absent receipt, UNKNOWN receipt, divergent subject, model marker forgery, marker without re-derived MATCH, unbacked model PASS) declined or failed closed."
+  ],
+  "commands": [
+    "git -C C:/temp/JARVIS/purpose-recovery-ii-b-runtime-operations-20260917 rev-parse HEAD -> 8f8909f7ed7eb55ced124dc6e8059fd031108435 (review start); later -> c4fd21371cd3b23a79c962ec8314396534c05a60 after the external evidence commit",
+    "git -C <wt> show --stat 8f8909f -> fabric/adapter.py +246, fabric/loop.py +51, fabric/model.py +7, mission/loop.py +133, tests/foundry/test_purpose_recovery_ii_b_verifier_routing.py +341; 5 files, +748/-30",
+    "git -C <wt> status --porcelain -> 21 entries all under var/purpose-recovery-ii-20260917/lane-b/; git status --porcelain -- src tests -> empty; git diff 8f8909f --stat -- src tests -> empty (later: tree clean at c4fd213)",
+    ".venv/Scripts/python.exe -m pytest tests/foundry/test_purpose_recovery_ii_b_verifier_routing.py -q --no-header -> '........ [100%]', PYTEST_EXIT=0; -v -> '8 passed in 50.44s'",
+    "<wt>/.venv/Scripts/python.exe C:/Users/b/AppData/Local/Temp/adv_probe/probe_8f8909f.py -> p4a wrong_sha=MISMATCH real_sha=MATCH; p4b absent_receipt_decline=true unknown_receipt_dispatch_none=true runs_with_recorded_observation=[]; p5 declared_path=...evidence.bin receipt_path=...other.bin dispatch_none=true subject_b_recorded_anywhere=false; p5_positive_control certified=true provider=fabric marker=true verified_match=true jarvis_predicate=verification:canonical-fabric-predicate recorded=[['adv-run-subject-a','MATCH','...evidence.bin']]; p4c model_with_marker=null fabric_mismatch=null fabric_no_reverified=null genuine=marker; p4d refusal='model PASS is not backed by a JARVIS-owned artifact predicate' predicate_backed_returns_none=true; p6 rerun_same_receipt_raised=null, new_receipt_same_run_raised='EventConflict: idempotency conflict for fabric.canonical_verification_observed:adv-run-subject-a:MATCH'",
+    "sha256sum <5 files> -> 624e78c7... model.py, 5f5f175a... fabric/loop.py, 774e3045... adapter.py, 66f8b2cc... mission/loop.py, 15d52d99... test file -> 5/5 match proof source_changes",
+    "git -C <wt> rev-parse 8f8909f^ -> 8f9aee3336b0a20fd5c227d4a5f262f22da66285; merge-base --is-ancestor ddec34ef... 8f8909f -> true; rev-list --count ddec34ef...HEAD -> 6",
+    "git -C <wt> rev-parse --abbrev-ref --symbolic-full-name @{u} -> fatal: no upstream configured for branch 'candidate/purpose-recovery-ii-b-runtime-operations-20260917'; for-each-ref refs/remotes/origin | grep -i purpose -> only origin/remaster/post-v7-purpose (no remote ref for this branch); log --branches --not --remotes lists 8f8909f and c4fd213 as local-only",
+    "git -C <wt> diff --name-only 8f8909f c4fd213 -- src tests -> empty; git diff --name-only 8f8909f c4fd213 | grep -v '^var/' -> empty",
+    "git -C <wt> ls-files --eol <files> -> i/lf w/crlf attr/text eol=crlf; git config core.autocrlf -> true",
+    "find C:/Users/b/AppData/Local/hermes -maxdepth 4 -type d -name jarvis_foundry -> (none); git -C C:/Users/b/AppData/Local/hermes rev-parse --is-inside-work-tree -> fatal: not a git repository"
+  ],
+  "could_not_verify": [
+    "Whether any commit in this branch was pushed to origin: network contact with origin was prohibited; local evidence only (no upstream configured, no remote-tracking ref for this branch, both tip commits listed by 'log --branches --not --remotes').",
+    "R7 (binding-drift refusal) independently reproduced end-to-end by my own harness: it is covered only by the subject's own executed regression test plus diff inspection.",
+    "Full immutability of C:/Users/b/AppData/Local/hermes (no jarvis_foundry source there and not a git repo; state-file-level non-modification cannot be proven read-only).",
+    "The mixed-key subject-guard escape (F3) end-to-end: would require a mission contract whose declared payload names the subject under a different key than the receipt's observed.",
+    "Whether the p6b EventConflict can actually escape MissionLoop on a real resume (demonstrated at the helper boundary only).",
+    "Whole-mission 'no model verdict consumed' at full scale: helper-level probes plus the subject's 8-test regression suite were run; no independent full mission replay was built."
+  ]
+}

@@ -86,7 +86,7 @@ def test_v38_to_v39_to_v40_preserves_queue_and_rejection_history(tmp_path):
         }
 
     database = FoundryDatabase(database.path)
-    assert database.initialize() == SCHEMA_VERSION == 40
+    assert database.initialize() == SCHEMA_VERSION == 41
     candidate = database.row("candidates", "candidate_id", "candidate-a2")
     assert json.loads(str(candidate["evidence_json"])) == [
         {"observation_id": "observation-a2", "authority": "DATA_ONLY"},
@@ -113,7 +113,7 @@ def test_v38_to_v39_to_v40_preserves_queue_and_rejection_history(tmp_path):
     with database.connect(readonly=True) as connection:
         assert [row[0] for row in connection.execute(
             "SELECT version FROM schema_migrations ORDER BY version"
-        )] == list(range(1, 41))
+        )] == list(range(1, SCHEMA_VERSION + 1))
         indexes = {
             row[0] for row in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'index'"
@@ -145,7 +145,7 @@ def test_v38_to_v39_to_v40_preserves_queue_and_rejection_history(tmp_path):
     } <= indexes
     # A second reopen is a no-op: no duplicate authority or migration row.
     database = FoundryDatabase(database.path)
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     with database.connect(readonly=True) as connection:
         assert connection.execute(
             "SELECT COUNT(*) FROM schema_migrations WHERE version IN (39, 40)"

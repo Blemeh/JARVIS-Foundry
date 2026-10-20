@@ -445,7 +445,7 @@ def test_package_truth_matches_built_archives_to_source(
     )
     install = tmp_path / "install.log"
     install.write_text(
-        json.dumps({"schema": 40, "imports": "PASS"}) + "\n",
+        json.dumps({"schema": 41, "imports": "PASS"}) + "\n",
         encoding="utf-8",
     )
     artifacts = [

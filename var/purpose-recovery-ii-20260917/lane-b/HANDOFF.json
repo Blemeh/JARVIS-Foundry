@@ -1,0 +1,130 @@
+{
+  "schema": "jarvis.purpose-recovery-ii.lane-b.handoff.v1",
+  "lane": "B — RUNTIME / OPERATIONS",
+  "goal": "PARALLEL GOAL B — RUNTIME OPERATIONS (execution fabric, digital operator, campaigns, self-expansion, effect truth, resilience, owner-visible runtime)",
+  "branch": "candidate/purpose-recovery-ii-b-runtime-operations-20260917",
+  "worktree": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917",
+  "base": "ddec34efc96b9a0154eb9821d6cc496ef76906a3",
+  "base_tree": "7c8b4e5c4915fb411a55cbe1aa852d6886129a91",
+  "head": "4e7b8c969342e94e02331b5e3cf3c122fa431f7f",
+  "head_note": "Certified source commit for this lane (evidence commit follows it). Commit subject carries LANE B.",
+  "head_short": "4e7b8c9",
+  "status": "LANE_B_SOURCE_CANDIDATE_COMPLETE_INDEPENDENTLY_VERIFIED",
+  "live_boundary": {
+    "live_jarvis": "NOT TOUCHED",
+    "main": "NOT MERGED",
+    "origin": "NOT PUSHED",
+    "release_activation": "NONE",
+    "live_db": "NOT MUTATED",
+    "scheduler": "UNCHANGED",
+    "provider_routing": "UNCHANGED",
+    "lane_a_worktree": "NOT TOUCHED"
+  },
+  "matrix_counts": {
+    "REAL_AUTONOMOUS": 19,
+    "REAL_BUT_MANUAL": 0,
+    "WIRED_BUT_UNPROVEN": 0,
+    "DEMO_ONLY": 0,
+    "SOURCE_ONLY": 0,
+    "PAPER_ONLY": 0,
+    "MISSING": 0,
+    "WRONG_PRODUCT": 0,
+    "WAITING_FOR_PARALLEL_CONVERGENCE": 0,
+    "note": "Counts are post-repair final classifications over the 19 owned domains in REALITY_MATRIX.json; the open items in GAP_BACKLOG.json `open` are sub-domain gaps with recorded evidence (native toast, owner-gated live targets, gap-bridge wake, Lane-A convergence)."
+  },
+  "fixes": [
+    "R1 normalized mission intent -> deterministic capability/workflow resolution with role-based input binding (mission/intent.py, recipe needs + bind declarations, portfolio materialization wiring)",
+    "R2 one-time projection of registered-resource capability readiness into the durable capability plane (control/capabilities + control/registration + run_autonomy_cycle)",
+    "R3 browser reauthentication seam plumbed through the Fabric adapter into the mission dispatch path",
+    "R4 truthful post-recovery browser read receipt (re-read the requested target on the recovered session)",
+    "R5 unrealizable intents no longer strand a READY mission: plan step failed with the missing cap.* requirement, mission BLOCKED with a resume instruction, Executive bounded retry resumes",
+    "R6 mission verifier routing for deterministic local actions: the verifier session re-runs the canonical JARVIS predicate over the step's recorded fabric.spine.result receipt instead of asking a model to judge a deterministic effect; the re-derived predicate satisfies the acceptance rule and the effective answerer is recorded beside the routed provider",
+    "R7 binding drift on a resumed verification pass: refused honestly (BLOCKED with the ledger's reason) instead of propagating the ledger's EventConflict out of MissionLoop"
+  ],
+  "proofs": {
+    "UNSCRIPTED_RUNTIME_PROOF.json": "PASS 11/11 re-run at the certified head — high-level intent only, runtime selected v14.digital_operator.close, bound 19 roles, browser->artifact->native Word->git, remote SHA equality, 0 duplicate effect starts",
+    "FAILURE_REPAIR_PROOF.json": "PASS 8/8 re-run at the certified head — injected session expiry was a real failure (canonical action refused with session_expired), recovered through the runtime reauth seam, artifact from the authenticated page, 0 duplicate effect starts",
+    "SELF_EXPANSION_PROOF.json": "PASS 9/9 re-run at the certified head — gap from a real mission requirement, runtime acquisition with focused verification, same objective resumed, and the resumed mission now PASSES certified by the runtime's own predicate (resumed_mission_verified_by_jarvis_predicate); repair_lineage reads the pre-repair receipt back from Git (5c78b2a: BLOCKED + 2 FAIL verdicts)",
+    "CAMPAIGN_CONTINUITY_PROOF.json": "PASS re-run at the certified head — campaign child workflow.run, resource WAIT + single wake, failure->repair->verified, process loss continue-once, duplicates {mission,effect,continuation,false_success} = 0",
+    "PROVIDER_STOP_PROOF.json": "PASS re-run at the certified head — scenario E (stop persists across reopen, canonical revoke clears stop, resume completes work, no orphaned STARTED at terminal) + 26 provider/stop tests green",
+    "COMMAND_CENTER_PROOF.md": "PASS re-run at the certified head over real candidate runtime data + 34 Command Center tests green",
+    "VERIFIER_ROUTING_REPAIR_PROOF.json": "PASS 12/12 — A/B discrimination (seam patched out = BLOCKED with the predicate refusal; seam present = PASSED with verification:canonical-fabric-predicate / verifier_answered_by: fabric), binding-drift before/after, and the R6/R7 source hashes computed at write time"
+  },
+  "current_failing_proof": null,
+  "known_open_items": [
+    "Native Windows toast NOT_TESTED (winotify backend absent); in-app toast/dedupe/suppression proven",
+    "Real GitHub writes / third-party authenticated sites remain owner-gated live-only",
+    "Gap-bridge wake path not exercised end-to-end (the self-expansion resume ran through the Executive's bounded retry)"
+  ],
+  "conflict_files": [
+    "src/jarvis_foundry/executive/autonomy.py",
+    "src/jarvis_foundry/executive/portfolio_bridge.py",
+    "src/jarvis_foundry/fabric/adapter.py",
+    "src/jarvis_foundry/fabric/executors.py",
+    "src/jarvis_foundry/fabric/loop.py",
+    "src/jarvis_foundry/fabric/model.py",
+    "src/jarvis_foundry/fabric/recipes/model.py",
+    "src/jarvis_foundry/fabric/recipes/builtins.py",
+    "src/jarvis_foundry/fabric/recipes/registry.py",
+    "src/jarvis_foundry/mission/loop.py",
+    "src/jarvis_foundry/control/capabilities.py",
+    "src/jarvis_foundry/control/registration.py",
+    "src/jarvis_foundry/mission/intent.py (new)"
+  ],
+  "new_event_types": [
+    "portfolio.intent_unresolved",
+    "fabric.canonical_verification_observed"
+  ],
+  "db_schema_changes": [],
+  "tests": {
+    "lane_focused": "tests/foundry/test_purpose_recovery_ii_b_intent_binding.py — 8/8",
+    "lane_verifier_routing": "tests/foundry/test_purpose_recovery_ii_b_verifier_routing.py — 8/8 (probe/logs/verifier_routing_tests.txt)",
+    "focused_regression": "89 passed (lane tests + v14_v16_convergence + v14_workflow_composition + v12_campaign_runtime + effects) — completed exit 0 (probe/logs/focused_regression.txt)",
+    "most_sensitive_suites": "56 passed (v8_executive_autonomy, owner_goal_execution_spine, v7_cross_lane_wiring, post4_integration, registration, capability_states) — completed exit 0 (probe/logs/most_sensitive.txt)",
+    "verifier_and_workforce_surfaces": "146 passed (verifier binding/truth/orchestrator, mission loop, v13 workforce contracts/gateway/boundaries, independent verifier, lineage, recovery) — completed exit 0 (probe/logs/r6r7_verifier_surfaces.txt)",
+    "command_center": "34 passed (logs/command_center_tests.txt)",
+    "provider_stop": "26 passed (logs/provider_stop_tests.txt)",
+    "compileall": "clean at the repair head (probe/logs/compileall.txt)",
+    "git_diff_check": "clean (probe/logs/git_diff_check.txt; CRLF line-ending notices only)",
+    "note": "Two deadline-based tests (test_supervisor_owns_command_center_and_continues_goal_without_prompts: 30s budget, ~15.5s nominal; test_disposable_multi_fault_proof_script: 90s subprocess budget) failed once each under machine load and pass in isolation and in the clean re-runs recorded in probe/logs/. They are load-sensitive by construction, not failing logic. The broad affected re-run at this head is recorded separately (logs/broad_affected_files_8f8909f.txt + logs/broad_affected_tests_8f8909f.txt) and uses the broadest import rule (117 files)."
+  },
+  "next_action": "Lane B is source-complete, independently verified (PASS on 8f8909f and on the hardened snapshot 4e7b8c9) and the broad affected sweep is COMPLETE at the frozen product head. Next: the semantic convergence step with Lane A head 76f3a2c6221e9ff238142794aedbf4afe22911ec before any promotion.",
+  "integration_contract": "var/purpose-recovery-ii-20260917/lane-b/INTEGRATION_CONTRACT.json",
+  "repair_proof": "var/purpose-recovery-ii-20260917/lane-b/VERIFIER_ROUTING_REPAIR_PROOF.json",
+  "adversarial_reviews": [
+    {
+      "artifact": "probe/ADVERSARIAL_VERDICT_8f8909f.json",
+      "subject": "8f8909f",
+      "verdict": "PASS",
+      "note": "findings F2/F3/F4/F5 repaired in 4e7b8c9"
+    },
+    {
+      "artifact": "probe/ADVERSARIAL_VERDICT_4e7b8c9.json",
+      "subject": "4e7b8c9",
+      "verdict": "PASS",
+      "note": "each repaired finding confirmed by the reviewer's own reproduction; reviewed src/tests byte-identical to the subject commit"
+    }
+  ],
+  "broad_sweep": {
+    "schema": "jarvis.purpose-recovery-ii.lane-b.broad-sweep.v1",
+    "status": "BROAD_SWEEP_COMPLETE",
+    "product_head": "4e7b8c969342e94e02331b5e3cf3c122fa431f7f",
+    "evidence_tip_at_sweep": "03e10a108398c623560e70ea872e4e8b074a73dc",
+    "command": "python -m pytest <117 files> -v -p no:cacheprovider --no-header --durations=10",
+    "file_list": "logs/broad_affected_files_8f8909f.txt",
+    "files": 117,
+    "collected": 1435,
+    "passed": 1434,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "xfailed": 0,
+    "exit_code": 0,
+    "elapsed_seconds": 5641,
+    "pytest_seconds": 5639.11,
+    "pytest_summary": "================ 1434 passed, 1 skipped in 5639.11s (1:33:59) ================",
+    "log": "var/purpose-recovery-ii-20260917/lane-b/logs/broad_sweep_4e7b8c9.txt",
+    "interruptions": "none: a single uninterrupted invocation of the whole 117-file list, with no other test or build process running during it",
+    "source_changed_by_sweep": false
+  }
+}

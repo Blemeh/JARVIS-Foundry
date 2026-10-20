@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -87,6 +88,28 @@ def _porcelain_path(line: str) -> str | None:
 
 _CACHE_SEGMENTS = ("__pycache__", ".pytest_cache", ".mypy_cache")
 _CONTROL_FILES = (RESULT_FILENAME,)
+_OWNER_GOAL_RECEIPT = re.compile(
+    r"\.jarvis/owner-goals/[0-9a-f]{10}/(?:plan|outcome)\.md"
+)
+
+
+def _expected_owner_goal_receipts(
+    contract: WorkerStepContract,
+) -> frozenset[str]:
+    """Return only explicitly expected JARVIS owner-goal control receipts."""
+    return frozenset(
+        normalized
+        for rel in contract.expected_artifacts
+        if _OWNER_GOAL_RECEIPT.fullmatch(
+            normalized := rel.replace("\\", "/"))
+    )
+
+
+def _is_expected_owner_goal_receipt(
+    rel: str,
+    expected_receipts: frozenset[str],
+) -> bool:
+    return rel.replace("\\", "/") in expected_receipts
 
 
 def _is_machine_cache(rel: str) -> bool:
@@ -123,6 +146,13 @@ class BeforeState:
     changed_files: tuple[str, ...]
     file_hashes: dict[str, str] = field(default_factory=dict)
     captured_at: str = field(default_factory=isoformat)
+    # Every path git reported dirty at capture, before any accounting
+    # filter, plus the bytes recorded for each.  Scope containment uses
+    # these to attribute observed changes to THIS run: a path already dirty
+    # at capture and byte-identical now was not mutated by the worker and
+    # must not be condemned (see ``EvidenceReconciler.reconcile``).
+    raw_changed_files: tuple[str, ...] = field(default_factory=tuple)
+    raw_file_hashes: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,21 +202,44 @@ class EvidenceReconciler:
     def capture_before(self, contract: WorkerStepContract) -> BeforeState:
         root = contract.working_root.resolve()
         changed = git_changed_files(root)
+        expected_receipts = _expected_owner_goal_receipts(contract)
         meaningful = tuple(
-            rel for rel in changed if not _is_control_file(rel))
-        hashes: dict[str, str] = {}
-        for rel in meaningful:
+            rel for rel in changed
+            if not _is_control_file(rel)
+            and not _is_expected_owner_goal_receipt(rel, expected_receipts))
+        # Record the bytes of EVERY dirty path, not only the meaningful
+        # ones: scope containment proves a capture-listed path unchanged
+        # before exempting it, so a receipt or cache that is already dirty
+        # must carry its capture bytes too.  ``file_hashes`` keeps its
+        # existing meaning (the claim-accounting baseline); the raw map is
+        # used only by containment attribution, and it additionally
+        # requires a REAL regular file -- a symlink has no stable bytes of
+        # its own (reading one yields the target's), so a swapped-in link
+        # must never be able to prove itself "unchanged" and waive the
+        # resolved-path containment check.
+        claim_hashes: dict[str, str] = {}
+        raw_hashes: dict[str, str] = {}
+        for rel in changed:
             path = root / rel
-            if path.is_file():
-                try:
-                    hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
-                except OSError:
-                    continue
+            if not path.is_file():
+                continue
+            try:
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            except OSError:
+                continue
+            claim_hashes[rel] = digest
+            if not path.is_symlink():
+                raw_hashes[rel] = digest
         return BeforeState(
             head=git_head(root),
             diff_hash=git_diff_hash(root),
             changed_files=meaningful,
-            file_hashes=hashes,
+            file_hashes={
+                rel: claim_hashes[rel] for rel in meaningful
+                if rel in claim_hashes
+            },
+            raw_changed_files=changed,
+            raw_file_hashes=raw_hashes,
         )
 
     def reconcile(
@@ -205,6 +258,7 @@ class EvidenceReconciler:
         mismatches: list[str] = []
         containment: list[str] = []
         unrecorded: list[str] = []
+        expected_receipts = _expected_owner_goal_receipts(contract)
 
         try:
             observed_head = git_head(root)
@@ -216,20 +270,40 @@ class EvidenceReconciler:
         observed_changed = git_changed_files(root)
         meaningful_changed = tuple(
             rel for rel in observed_changed
-            if not _is_machine_cache(rel) and not _is_control_file(rel))
+            if not _is_machine_cache(rel)
+            and not _is_control_file(rel)
+            and not _is_expected_owner_goal_receipt(
+                rel, expected_receipts))
         observed_changed = tuple(
             rel for rel in observed_changed if not _is_control_file(rel))
         if delta_baseline is not None:
             delta_baseline = tuple(
-                rel for rel in delta_baseline if not _is_control_file(rel))
+                rel for rel in delta_baseline
+                if not _is_control_file(rel)
+                and not _is_expected_owner_goal_receipt(
+                    rel, expected_receipts))
 
         if envelope.worker_status != "COMPLETED":
             mismatches.append(
                 f"worker did not complete (status={envelope.worker_status}, "
                 f"exit_state={envelope.exit_state})")
 
-        # Scope: every observed change must stay inside allowed paths and
-        # never inside forbidden paths.
+        # Scope: every attributable observed change must stay inside allowed
+        # paths and never inside forbidden paths.
+        #
+        # Containment is judged on THIS run's own delta, exactly like claim
+        # reconciliation below.  A registered worktree legitimately carries
+        # untracked files from earlier missions (control receipts,
+        # prescribed exhaust, prior unverified output).  When a pre-existing
+        # path sits under a forbidden prefix it used to fail EVERY later run
+        # on that resource -- with an EMPTY mismatch list, which the mission
+        # bridge classifies as ``evidence_mismatch`` -- so a wholly correct
+        # mission burned its entire repair budget (live 2026-10-04,
+        # mission-4646c7023b05: ``docs/evidence/windows-ci-fix-20260930.md``,
+        # produced by the previous day's mission, condemned three correct
+        # attempts).  A capture-listed path is exempt ONLY when its recorded
+        # bytes are proven byte-identical now; anything unreadable,
+        # unhashable, or changed remains attributable and still condemns.
         allowed_roots = [
             self._resolve_scope_path(root, path)
             for path in (contract.allowed_paths or (root,))
@@ -238,7 +312,17 @@ class EvidenceReconciler:
             self._resolve_scope_path(root, path)
             for path in contract.forbidden_paths
         ]
-        for rel in observed_changed:
+        scope_population = observed_changed
+        baseline = tuple(dict.fromkeys(
+            (*before.raw_changed_files, *(delta_baseline or ()))))
+        if baseline:
+            baseline_set = set(baseline)
+            scope_population = tuple(
+                rel for rel in observed_changed
+                if rel not in baseline_set
+                or not self._unchanged_since_capture(
+                    root / rel, before.raw_file_hashes.get(rel)))
+        for rel in scope_population:
             path = (root / rel).resolve()
             if not any(self._is_within(path, base) for base in allowed_roots):
                 containment.append(f"{rel} escapes allowed scope")
@@ -250,7 +334,10 @@ class EvidenceReconciler:
 
         # Claimed changes must match observed reality (B3 false-success rule:
         # claim "done" with no real change is a mismatch).
-        claimed = set(envelope.files_changed)
+        claimed = {
+            rel for rel in envelope.files_changed
+            if not _is_expected_owner_goal_receipt(rel, expected_receipts)
+        }
         observed_set = set(meaningful_changed)
         if delta_baseline is not None:
             # Delta mode: the worker is accountable for files it added or
@@ -297,7 +384,7 @@ class EvidenceReconciler:
                     "claimed files_changed disagree with observed worktree "
                     "diff "
                     f"(claimed={sorted(claimed)}, "
-                    f"observed={sorted(observed_changed)})")
+                    f"observed={sorted(observed_set)})")
 
         # Diff hash honesty: a claimed diff hash must match the observed one.
         if envelope.diff_hash and envelope.diff_hash != observed_diff_hash:
@@ -416,6 +503,25 @@ class EvidenceReconciler:
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    def _unchanged_since_capture(path: Path, recorded: str | None) -> bool:
+        """True only when the capture recorded bytes and they still match.
+
+        ``recorded is None`` (never captured, or captured as a non-regular
+        file) fails closed, and so does a path that is no longer a regular
+        file: content equality through a symlink proves nothing about the
+        path the containment check would resolve.
+        """
+        if recorded is None:
+            return False
+        if path.is_symlink() or not path.is_file():
+            return False
+        try:
+            current = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return False
+        return current == recorded
 
     @staticmethod
     def _resolve_scope_path(root: Path, path: Path) -> Path:

@@ -11,7 +11,7 @@ import pytest
 from jarvis_foundry.database import FoundryDatabase
 from jarvis_foundry.executive.autonomy import (
     create_objective, build_plan, set_objective_status, rank_objectives,
-    rebuild_executive_state, update_objective,
+    rebuild_executive_state, update_objective, coordinate_objectives,
 )
 from jarvis_foundry.executive.continuous import (
     WakeCondition, create_wake, rebuild_wake_state, is_wake_due, due_wakes,
@@ -19,6 +19,8 @@ from jarvis_foundry.executive.continuous import (
     schedule_wait_for_capability, blocker_for, run_continuous_cycle,
     continuous_snapshot, clear_wakes_for_objective, record_strategy_attempt,
     recent_strategies, is_retry_loop, auto_wake_for_blocked,
+    schedule_wait_for_owner,
+    reconcile_owner_wakes,
 )
 from jarvis_foundry.clock import isoformat
 
@@ -55,6 +57,78 @@ def test_v9_02_blocked_then_alternate(tmp_path):
     update_objective(db, "high", {"dependencies": ("missing",)})
     rows = rank_objectives(db)
     assert rows[0].objective_id == "low" and rows[0].eligible
+
+
+def test_owner_wait_does_not_outrank_ready_objective(tmp_path):
+    db = _db_with_resource(tmp_path)
+    create_objective(db, "Blocked owner work", objective_id="blocked", priority=3.0, resource_id="r1")
+    create_objective(db, "Ready owner work", objective_id="ready", priority=1.0, resource_id="r1")
+    wake = schedule_wait_for_owner(db, "blocked", reason="owner direction required")
+
+    rows = rank_objectives(db)
+    parked = next(row for row in rows if row.objective_id == "blocked")
+    assert not parked.eligible
+    assert any("WAIT_FOR_OWNER" in blocker for blocker in parked.blockers)
+    assert coordinate_objectives(db).selected_objective_id == "ready"
+
+    from jarvis_foundry.executive.continuous import trigger_wake
+    trigger_wake(db, wake["wake_id"], reason="owner direction received")
+    assert coordinate_objectives(db).selected_objective_id == "ready"
+    assert reconcile_owner_wakes(db) == [wake["wake_id"]]
+
+
+def test_owner_wait_ignores_unrelated_directive_and_repairs_old_tick(tmp_path):
+    from jarvis_foundry.events import Event
+    from jarvis_foundry.executive.continuous import trigger_wake
+
+    db = _db_with_resource(tmp_path)
+    create_objective(db, "Blocked owner work", objective_id="blocked", priority=3.0, resource_id="r1")
+    create_objective(db, "Ready owner work", objective_id="ready", priority=1.0, resource_id="r1")
+    wake = schedule_wait_for_owner(db, "blocked", reason="owner direction required")
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "other", "command_type": "ADD_CONSTRAINT", "target": "GLOBAL", "authenticated": True, "exact_text": "unrelated constraint"},
+        source_type="owner", source_id="test", idempotency_key="other-directive",
+    ))
+    assert wake["wake_id"] not in tick_wakes(db)
+    assert coordinate_objectives(db).selected_objective_id == "ready"
+
+    trigger_wake(db, wake["wake_id"], reason="wake condition satisfied")
+    assert reconcile_owner_wakes(db) == [wake["wake_id"]]
+    assert rebuild_wake_state(db)[wake["wake_id"]]["status"] == "ACTIVE"
+    assert coordinate_objectives(db).selected_objective_id == "ready"
+    set_objective_status(db, "blocked", "WAITING", reason="still awaiting exact owner direction")
+
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "resolution", "command_type": "ADD_CONSTRAINT", "target": "blocked", "authenticated": True, "exact_text": "resolution"},
+        source_type="owner", source_id="test", idempotency_key="resolution-directive",
+    ))
+    assert wake["wake_id"] in tick_wakes(db)
+    assert coordinate_objectives(db).selected_objective_id == "blocked"
+
+    second = schedule_wait_for_owner(db, "blocked", reason="a new owner decision is required")
+    assert second["wake_id"] == wake["wake_id"]
+    assert second["status"] == "ACTIVE"
+    assert wake["wake_id"] not in tick_wakes(db)
+    assert coordinate_objectives(db).selected_objective_id == "ready"
+    db.append(Event.create(
+        "owner_directive.recorded",
+        {"directive_id": "second-resolution", "command_type": "ADD_CONSTRAINT", "target": "blocked", "authenticated": True, "exact_text": "second resolution"},
+        source_type="owner", source_id="test", idempotency_key="second-resolution-directive",
+    ))
+    assert wake["wake_id"] in tick_wakes(db)
+    assert coordinate_objectives(db).selected_objective_id == "blocked"
+
+
+def test_waiting_objective_without_release_does_not_outrank_ready_work(tmp_path):
+    db = _db_with_resource(tmp_path)
+    create_objective(db, "Old waiting work", objective_id="waiting", priority=3.0, resource_id="r1")
+    create_objective(db, "Fresh ready work", objective_id="ready", priority=1.0, resource_id="r1")
+    set_objective_status(db, "waiting", "WAITING", reason="no useful action yet")
+    assert coordinate_objectives(db).selected_objective_id == "ready"
+    waiting = next(row for row in rank_objectives(db) if row.objective_id == "waiting")
+    assert "objective_waiting" in waiting.blockers
 
 # 4-5. Dependency resolves, original resumes via wake
 def test_v9_04_dep_resumes(tmp_path):

@@ -35,7 +35,21 @@ from .runtime import (
     probe_artifact,
     validate_schema,
 )
-from .worker_bridge import GeneratedWorkerAdapter
+
+
+def __getattr__(name: str):
+    """Load the optional worker bridge only when callers request it.
+
+    Artifact runtime imports run in a dependency-minimal isolated environment.
+    Importing the package must not eagerly load Hermes/OpenHands worker adapters
+    and their optional provider dependencies.
+    """
+
+    if name == "GeneratedWorkerAdapter":
+        from .worker_bridge import GeneratedWorkerAdapter
+
+        return GeneratedWorkerAdapter
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "ADAPTER_PROTOCOL", "ARTIFACT_VERSION", "DESCRIPTOR_VERSION",

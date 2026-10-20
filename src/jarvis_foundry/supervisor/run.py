@@ -339,7 +339,7 @@ def main(argv: list[str] | None = None) -> int:
             getattr(authority, "provider_settings_pool", ())
             or (authority.provider_settings,)),
         resilience=_resilience_coordinator(
-            database, getattr(args, "worker_loop_config", None)),
+            database, authority.worker_yaml),
         command_center_port=getattr(args, "command_center_port", None),
         owner_secret_path=getattr(args, "owner_secret_path", None),
     )

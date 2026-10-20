@@ -1375,6 +1375,23 @@ def test_workforce_duration_and_cost_are_shared_with_verifier(tmp_path):
     assert package.deadline in builder.instructions
 
 
+def test_verifier_prompt_requires_one_concrete_verdict_line(tmp_path):
+    database, repository, policy, router = mission_fixture(tmp_path)
+    adapter = FakeHermesAdapter(working_root=repository)
+    loop = MissionLoop(database, router, adapter, policy=policy)
+
+    outcome = loop.run_step(
+        **step_kwargs(expected_artifacts=("result.txt",)),
+    )
+
+    assert outcome.outcome == PASSED
+    verifier = next(item for item in adapter.received if item.role == "verifier")
+    assert "choose exactly one verdict" in verifier.instructions
+    assert "VERDICT: PASS" in verifier.instructions
+    assert "PASS | FAIL | BLOCKED | NOT_TESTED" not in verifier.instructions
+    assert "do not list the alternatives" in verifier.instructions
+
+
 def test_workforce_verifier_preserves_immutable_required_test_identity(
     tmp_path,
     monkeypatch,

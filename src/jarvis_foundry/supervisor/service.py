@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping
@@ -14,6 +15,7 @@ from ..reconcile import inspect as inspect_ledger
 from ..reconcile import reconcile
 from ..runtime.authority import ALLOWED_TRUST_STATES
 from ..runtime.provider_config import ProviderConfigError, ProviderSettings
+from .authority import SUPERVISOR_CONTROLLER
 from .control import (
     RuntimeControlRequest,
     current_process_identity,
@@ -35,6 +37,45 @@ if TYPE_CHECKING:
     from ..resilience import ResilienceCoordinator
 
 WORKER_LOOP_RUN_ID = "worker-loop"
+
+#: Idle backoff between Supervisor-spawned worker-loop ticks when nothing
+#: actionable changed. Heartbeats run every ~12s and a --once child with no
+#: dispatchable work exits in ~1-2s, so an unconditional spawn produces
+#: ~5 idle processes/minute of pure churn (live 2026-09-30: 2600+ WAITING
+#: cycles, zero dispatches). The backoff only applies when the ledger shows
+#: no actionable change since the last spawn; any new mission, directive,
+#: objective, wake, recovery resume, or resume-candidate mission spawns
+#: immediately. Cooldown expiry is the liveness backstop (a cycle at least
+#: every few minutes), so no deadlock is possible.
+WORKER_SPAWN_IDLE_COOLDOWN_SECONDS = 300.0
+
+#: Ledger event vocabulary that may make worker execution newly worthwhile.
+#: Anything else (heartbeats, cycle starts, idle episodes, trust reports)
+#: never justifies a spawn by itself. Recovery resumes are covered by the
+#: mission.% prefix; pure file-config flips emit no event and rely on the
+#: cooldown backstop (bounded stall, no deadlock).
+WORKER_SPAWN_TRIGGER_PREFIXES = (
+    "mission.",
+    "portfolio.",
+    "campaign.",
+    "owner_directive.",
+    "owner.command_recorded",
+    "command_center.",
+    "scheduler.item_fired",
+    "delegation.intent_admitted",
+    "initiative.",
+    "discovery.",
+    "executive.mission_requested",
+    "executive.decision_materialized",
+    "executive.next_selection_requested",
+    "executive.objective_created",
+    "executive.objective_updated",
+    "executive.objective_status_changed",
+    "executive.standing_intent_recorded",
+    "executive.wake_triggered",
+    "executive.next_action_scheduled",
+    "provider.readiness_observed",
+)
 
 
 class Supervisor:
@@ -78,6 +119,9 @@ class Supervisor:
             if owner_secret_path is not None else
             Path(self.database.path).resolve().parent / "owner-control.key")
         self._command_center = None
+        self._evolution_control = None
+        self._last_worker_spawn_at: float | None = None
+        self._last_worker_spawn_seq: int | None = None
 
     def _release_id(self) -> str | None:
         """Return only an explicitly supplied release identity.
@@ -158,6 +202,21 @@ class Supervisor:
         if self.started:
             return "FROZEN" if self.estop.active() else "RUNNING"
         self.database.initialize()
+        from .evolution_control import (
+            EvolutionControl,
+            SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID,
+            recorded_evolution_mode,
+        )
+
+        self._evolution_control = EvolutionControl(
+            self.database,
+            mode=recorded_evolution_mode(
+                self.database, source_type="supervisor",
+                source_id=SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID),
+            source_id=SUPERVISOR_EVOLUTION_INTAKE_SOURCE_ID,
+            stop_path=self.estop.path,
+            production_runtime=True,
+        )
         self._reclaim_stale_supervisor_lease()
         request = latest_request(self.database)
         if request is not None and request_is_stale(request):
@@ -400,6 +459,12 @@ class Supervisor:
                     f"supervisor.degraded:{self.instance_id}:lease_lost:{self._start_generation}"),
             ))
             raise
+        # A worker-loop child is a one-shot process, but a slow provider call
+        # can keep it alive well beyond the controller's initial lease. Renew
+        # the owned process lease while the exact child is still live so the
+        # reaper remains a bound on abandoned workers rather than a runtime cap.
+        if self.workers.status(WORKER_LOOP_RUN_ID).alive:
+            self.workers.heartbeat(WORKER_LOOP_RUN_ID)
         reaped = self.workers.reap()
         request = latest_request(self.database)
         if request is not None and request.action in {"STOP", "RESTART"}:
@@ -464,7 +529,63 @@ class Supervisor:
             idempotency_key=key,
         ))
         self.resilience_tick(metrics=resilience_metrics)
+        self._record_trust_gate_report()
+        self._record_evolution_discovery()
         return "RUNNING"
+
+    def _record_evolution_discovery(self) -> None:
+        """Run bounded V6 intake only when the durable Supervisor gate is active."""
+        control = self._evolution_control
+        if control is None or self.estop.active():
+            return
+        if control.refresh_recorded_mode() != "active":
+            return
+
+        window = control.next_discovery_window()
+        try:
+            control.run_discovery_window(
+                window=window,
+                controller=SUPERVISOR_CONTROLLER,
+            )
+        except Exception as error:  # noqa: BLE001 - discovery cannot kill heartbeat
+            try:
+                control.record_discovery_failure(
+                    window=window,
+                    error_class=type(error).__name__,
+                    controller=SUPERVISOR_CONTROLLER,
+                )
+            except Exception:  # noqa: BLE001 - telemetry cannot widen heartbeat failure
+                pass
+
+    def _record_trust_gate_report(self) -> None:
+        """Publish only observations derived by the active Supervisor."""
+        if self.estop.active():
+            return
+        try:
+            from ..trust import record_live_supervisor_gate_report
+
+            record_live_supervisor_gate_report(
+                self.database,
+                stop_path=self.estop.path,
+            )
+        except Exception as error:  # noqa: BLE001 - evidence collection cannot stop heartbeat
+            try:
+                self.database.append(Event.create(
+                    "trust.gate_report_failed",
+                    {
+                        "instance_id": self.instance_id,
+                        "generation": self._start_generation,
+                        "error_class": type(error).__name__,
+                    },
+                    source_type="supervisor",
+                    source_id=self.instance_id,
+                    idempotency_key=(
+                        f"trust.gate_report_failed:{self.instance_id}:"
+                        f"{self._start_generation}:{type(error).__name__}"
+                    ),
+                ))
+            except Exception:  # noqa: BLE001 - reporting must never widen heartbeat failure
+                pass
 
     def resilience_tick(self, *, metrics: Mapping[str, Any] | None = None) -> Any:
         """Run the bounded resilience coordinator without widening heartbeat failure.
@@ -532,9 +653,23 @@ class Supervisor:
                 if latest:
                     event = latest[0]
                     payload = event.payload if isinstance(event.payload, dict) else {}
+                    # Only a heartbeat with the SAME payload material may be
+                    # coalesced.  A reap heartbeat carries an extra
+                    # reaped_workers field, so reusing its key for a plain
+                    # heartbeat would pair one idempotency key with two
+                    # different payload hashes and raise EventConflict, which
+                    # the heartbeat loop counts as a failure.  Five in a row
+                    # stop the daemon cleanly and exclude the whole UTC day from
+                    # a proving window (live 2026-09-14: events #241076,
+                    # #241079, #241081, #241086).  A key may only be reused when
+                    # it came from a heartbeat of the same material, so a reap
+                    # heartbeat never anchors a plain one; the caller then falls
+                    # through to a fresh bucket key.
+                    same_material = bool(payload.get("reaped_workers")) == bool(reaped)
                     if (
                         str(payload.get("instance_id") or "") == self.instance_id
                         and int(payload.get("generation") or -1) == self._start_generation
+                        and same_material
                     ):
                         elapsed = (
                             utc_now() - parse(event.recorded_at)
@@ -687,6 +822,26 @@ class Supervisor:
             except Exception:  # noqa: BLE001 — never let the record itself raise
                 pass
 
+    def _worker_spawn_triggered_since(self, sequence: int) -> bool:
+        """Whether actionable ledger events postdate a spawn sequence."""
+        try:
+            likes = [prefix for prefix in WORKER_SPAWN_TRIGGER_PREFIXES
+                     if prefix.endswith(".")]
+            equals = [prefix for prefix in WORKER_SPAWN_TRIGGER_PREFIXES
+                      if not prefix.endswith(".")]
+            clauses = ([f"event_type LIKE ?" for _ in likes]
+                       + [f"event_type = ?" for _ in equals])
+            params = [prefix + "%" for prefix in likes] + equals
+            with self.database.connect(readonly=True) as connection:
+                row = connection.execute(
+                    f"SELECT MAX(sequence) FROM events WHERE sequence > ? "
+                    f"AND ({' OR '.join(clauses)})",
+                    (sequence, *params),
+                ).fetchone()
+        except Exception:  # noqa: BLE001 - gate fails closed, backstop covers
+            return False
+        return row is not None and row[0] is not None
+
     def _maybe_spawn_worker_loop(self) -> None:
         """Optional fail-closed companion: spawn ``worker_loop --once``.
 
@@ -695,6 +850,15 @@ class Supervisor:
         The child is registered with WorkerController so STOP/terminate_all
         applies. Heartbeat never waits on the child. Loop logic stays in
         ``runtime.worker_loop`` / ``v3_loop`` — not inside ``heartbeat()``.
+
+        Idle backoff: heartbeats run every ~12s while an idle --once child
+        exits in ~1-2s, so an unconditional spawn churns ~5 processes/min
+        with zero work. A spawn is skipped only when all hold: a previous
+        spawn exists, the cooldown has not elapsed, and no actionable
+        ledger change postdates the pre-spawn baseline. Anything
+        actionable — or cooldown expiry as the liveness backstop —
+        spawns immediately. Recovery resumes emit mission.* events, so a
+        resumed mission re-arms the spawn on the next heartbeat.
         """
         if not self.spawn_worker_loop:
             return
@@ -715,6 +879,22 @@ class Supervisor:
         status = self.workers.status(WORKER_LOOP_RUN_ID)
         if status.alive:
             return
+        # Idle backoff gate: spawn immediately on first boot (no spawn
+        # memory), on cooldown expiry (liveness backstop), or on any
+        # actionable ledger change. Otherwise the previous idle tick
+        # already proved there is nothing to do; skip and let heartbeats
+        # carry on. Recovery resumes emit mission.* events, so a resumed
+        # mission re-arms the spawn on the next heartbeat; an instantly
+        # crashing child therefore costs one spawn per cooldown, not one
+        # per heartbeat.
+        now = time.monotonic()
+        if (self._last_worker_spawn_at is not None
+                and self._last_worker_spawn_seq is not None
+                and now - self._last_worker_spawn_at
+                < WORKER_SPAWN_IDLE_COOLDOWN_SECONDS
+                and not self._worker_spawn_triggered_since(
+                    self._last_worker_spawn_seq)):
+            return
         home = Path(self.database.path).resolve().parent
         from ..platform.windows_subprocess import background_python_executable
         command = [
@@ -723,6 +903,16 @@ class Supervisor:
         ]
         if self.worker_loop_config is not None:
             command.extend(["--config", str(self.worker_loop_config)])
+        # Baseline BEFORE spawning (fail-open): concurrent actionable
+        # events admitted here re-arm the next spawn rather than being
+        # absorbed into the new baseline and lost.
+        try:
+            with self.database.connect(readonly=True) as connection:
+                row = connection.execute(
+                    "SELECT MAX(sequence) FROM events").fetchone()
+            spawn_baseline = int(row[0]) if row and row[0] is not None else 0
+        except Exception:  # noqa: BLE001 - baseline failure never blocks work
+            spawn_baseline = 0
         try:
             self.workers.spawn(
                 WORKER_LOOP_RUN_ID, command, cwd=home,
@@ -733,6 +923,8 @@ class Supervisor:
             self._record_worker_loop_activation_blocked(
                 phase="launch", error=error)
             return
+        self._last_worker_spawn_at = time.monotonic()
+        self._last_worker_spawn_seq = spawn_baseline
 
     def _record_worker_loop_activation_blocked(
         self, *, phase: str, error: BaseException,

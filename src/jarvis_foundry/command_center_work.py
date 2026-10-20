@@ -65,6 +65,42 @@ def _explicit_context(
     return project_id, project_label, program_id, program_label
 
 
+def _synthesize_misrouted_goal_rows(
+    objective_by_id: Mapping[str, Mapping[str, Any]],
+    goal_rows: list[dict[str, Any]],
+    goal_by_directive: dict[str, str],
+) -> None:
+    """Expose the directive behind a repaired outcome routing.
+
+    Objectives admitted from outcome-shaped DELEGATE directives (provenance
+    marker ``misrouted_outcome_delegate``, single source in
+    ``executive.autonomy``) reference a directive absent from the GOAL-only
+    goals input.  Without a synthesized row their mission linkage would
+    resolve to no goal and the mission page would report NOT RECORDED for
+    a proven relationship.  The label reuses the objective text, which
+    equals the directive's exact text at admission; nothing is inferred.
+    """
+    for objective_id, objective in sorted(objective_by_id.items()):
+        provenance = _mapping(objective.get("provenance"))
+        if provenance.get("admitted_as") != "misrouted_outcome_delegate":
+            continue
+        directive_id = _text(provenance.get("directive_id"))
+        if not directive_id or directive_id in goal_by_directive:
+            continue
+        goal_id = f"goal:{directive_id}"
+        goal_by_directive[directive_id] = goal_id
+        metadata = _mapping(objective.get("metadata"))
+        goal_rows.append({
+            "goal_id": goal_id,
+            "directive_id": directive_id,
+            "label": _text(objective.get("objective")) or directive_id,
+            "status": "ACTIVE",
+            "target": _text(metadata.get("target")) or "GLOBAL",
+            "source_event_id": _text(provenance.get("event_id")),
+            "objective_ids": [],
+        })
+
+
 def project_work_hierarchy(
     *,
     autonomy: Mapping[str, Any] | None,
@@ -135,6 +171,7 @@ def project_work_hierarchy(
             "source_event_id": _text(goal.get("last_event_id") or goal.get("event_id")),
             "objective_ids": [],
         })
+    _synthesize_misrouted_goal_rows(objective_by_id, goal_rows, goal_by_directive)
 
     projects: dict[str, dict[str, Any]] = {}
     programs: dict[str, dict[str, Any]] = {}

@@ -15,6 +15,7 @@ MAX_PATTERN_PENALTY = 0.30
 PENALTY_PER_FAILURE = 0.05
 REPAIR_BURDEN_PENALTY = 0.04
 SUCCESS_BONUS_CAP = 0.10
+LOW_VALUE_PENALTY = 0.12
 
 NEGATIVE_OUTCOMES = frozenset({"FAILED", "FAILED_VERIFICATION", "FAIL"})
 NEUTRAL_OUTCOMES = frozenset({
@@ -81,6 +82,25 @@ def rebuild_calibration(database: FoundryDatabase) -> CalibrationState:
             )
         elif outcome == "PASSED":
             state.success_counts[canonical] = state.success_counts.get(canonical, 0) + 1
+            actual = payload.get("actual") if isinstance(payload.get("actual"), dict) else {}
+            try:
+                realized = actual.get("value_realized")
+                predicted = actual.get("value_predicted")
+                if (
+                    realized is not None and predicted is not None
+                    and float(realized) + 0.15 < float(predicted)
+                ):
+                    state.pattern_adjustments[pattern_key] = min(
+                        MAX_PATTERN_PENALTY,
+                        state.pattern_adjustments.get(pattern_key, 0.0) + LOW_VALUE_PENALTY,
+                    )
+                    if source:
+                        state.source_adjustments[source] = min(
+                            MAX_SOURCE_PENALTY,
+                            state.source_adjustments.get(source, 0.0) + LOW_VALUE_PENALTY,
+                        )
+            except (TypeError, ValueError, OverflowError):
+                pass
         elif outcome in NEUTRAL_OUTCOMES:
             pass  # recorded but does not punish worker/candidate quality
         if repairs > 0 and outcome == "FAILED":
@@ -90,6 +110,84 @@ def rebuild_calibration(database: FoundryDatabase) -> CalibrationState:
                     state.source_adjustments.get(source, 0.0) + repairs * REPAIR_BURDEN_PENALTY,
                 )
     return state
+
+
+def merge_predicted_vs_actual(
+    database: FoundryDatabase,
+    actual: dict[str, Any] | None,
+    *,
+    decision_id: str = "",
+    candidate_id: str = "",
+) -> dict[str, Any]:
+    """Attach predicted vs actual fields the Executive can later consume."""
+    merged = dict(actual or {})
+    prediction: dict[str, Any] = {}
+    if decision_id or candidate_id:
+        for event in database.events(
+            readonly=True,
+            event_types=("executive.prediction_recorded",),
+            newest_first=True,
+            limit=80,
+        ):
+            payload = event.payload if isinstance(event.payload, dict) else {}
+            if decision_id and str(payload.get("decision_id") or "") == decision_id:
+                prediction = dict(payload.get("prediction") or {})
+                break
+            if candidate_id and str(payload.get("candidate_id") or "") == candidate_id:
+                prediction = dict(payload.get("prediction") or {})
+                break
+    if prediction:
+        if merged.get("value_predicted") is None:
+            merged["value_predicted"] = prediction.get("expected_value")
+        if merged.get("effort_predicted") is None:
+            merged["effort_predicted"] = prediction.get("expected_effort")
+        if merged.get("risk_predicted") is None:
+            merged["risk_predicted"] = prediction.get("expected_risk")
+    outcome = _normalize_outcome(str(merged.get("outcome") or ""))
+    if merged.get("value_realized") is None and outcome == "FAILED":
+        merged["value_realized"] = 0.0
+    if merged.get("risk_actual") is None:
+        if outcome == "FAILED":
+            merged["risk_actual"] = "HIGH"
+        elif outcome == "PASSED":
+            merged["risk_actual"] = "LOW"
+    if merged.get("effort_actual") is None and merged.get("repair_count") is not None:
+        try:
+            merged["effort_actual"] = float(merged.get("repair_count") or 0)
+        except (TypeError, ValueError):
+            pass
+    return merged
+
+
+def record_outcome_measurement(
+    database: FoundryDatabase,
+    *,
+    decision_id: str,
+    candidate_id: str,
+    mission_id: str,
+    actual: dict[str, Any],
+    outcome: str,
+    source_id: str = "executive",
+) -> str:
+    from ..events import Event, EventConflict
+
+    event = Event.create(
+        "executive.outcome_measured",
+        {
+            "decision_id": decision_id,
+            "candidate_id": candidate_id,
+            "mission_id": mission_id,
+            "actual": actual,
+            "outcome": _normalize_outcome(outcome),
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"executive.outcome_measured:{decision_id or mission_id}:{candidate_id}",
+    )
+    try:
+        return str(database.append(event)[0])
+    except EventConflict:
+        return ""
 
 
 def record_calibration(

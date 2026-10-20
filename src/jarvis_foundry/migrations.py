@@ -5,7 +5,7 @@ import sqlite3
 from .v4_schema import ensure_v4_tables
 
 
-SCHEMA_VERSION = 40
+SCHEMA_VERSION = 41
 
 MIGRATIONS: dict[int, str] = {
     1: """
@@ -1574,6 +1574,35 @@ MIGRATIONS: dict[int, str] = {
           AND pass_number IS NOT NULL;
     CREATE INDEX IF NOT EXISTS research_queue_candidate_input
         ON research_queue(candidate_id, input_hash, status);
+    """,
+    41: """
+    -- Wave 1A self-expansion delivery: a mission step contract records the
+    -- Fabric capabilities (cap.*) the plan step it executes DECLARED as
+    -- required.  The value is resolved from the selected work item's metadata
+    -- and the plan step it declares, i.e. before the mission exists.
+    --
+    -- The column is EXCLUDED from the contract's canonical payload, so every
+    -- stored contract_hash stays valid and pre-change rows load unchanged.
+    --
+    -- It carries a CONSTANT default rather than being left nullable: the
+    -- projection rebuilds this column deterministically as canonical_json(())
+    -- == '[]' for every contract that declares nothing, so a migrated row left
+    -- at NULL would make reconcile() report an inconsistency on any existing
+    -- database until something rebuilt its projections - and nothing in the
+    -- product rebuilds the live database.  Same convention as the additive
+    -- column at migration 40.
+    --
+    -- HAZARD, recorded deliberately rather than left implicit: this body was
+    -- CORRECTED IN PLACE on this branch (an earlier revision of the same commit
+    -- shipped the nullable, default-less ALTER).  A database that already
+    -- recorded version 41 from that revision will never run this body again, so
+    -- its column stays NULL and reconcile() stays inconsistent until something
+    -- rebuilds its projections.  No released deployment can hold that state -
+    -- this branch is unmerged and unpushed - but any future repair must be a NEW
+    -- migration that heals an existing NULL column, never another edit of this
+    -- body.
+    ALTER TABLE mission_step_contracts
+        ADD COLUMN required_capabilities_json TEXT NOT NULL DEFAULT '[]';
     """,
 }
 

@@ -144,6 +144,50 @@ def test_partially_ready_is_still_non_executable(tmp_path: Path) -> None:
     assert "cap.file.write" in result.blocked_capabilities
 
 
+def test_registered_project_reads_are_qualifiable_without_claiming_ready(
+    tmp_path: Path,
+) -> None:
+    database = _database(tmp_path)
+    before = database.event_count()
+
+    result = resolve_capability_requirements(
+        database,
+        _candidate("candidate-project-drift", "project_drift"),
+    )
+
+    assert result.readiness is RequirementReadiness.PARTIALLY_READY
+    assert result.executable is True
+    assert result.recommended_disposition == "QUALIFY_FIRST_USE"
+    assert set(result.required_capability_ids) == {
+        "cap.git.inspect", "cap.git.diff",
+    }
+    assert set(result.qualification_required_capability_ids) == set(
+        result.required_capability_ids
+    )
+    assert all(not item.usable and item.state == "UNKNOWN" for item in result.capability_evidence)
+    assert all(
+        item.qualification_scope == "REGISTERED_PROJECT_READ_ONLY"
+        for item in result.capability_evidence
+    )
+    assert result.blocked_capabilities == ()
+    assert database.event_count() == before
+
+
+def test_build_unknown_capabilities_stay_blocked(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+
+    result = resolve_capability_requirements(
+        database,
+        _candidate("candidate-build-first-use", "tracked_work"),
+        proposed_target={"kind": "local_repository", "operation": "modify"},
+    )
+
+    assert result.executable is False
+    assert result.recommended_disposition == "DEFER"
+    assert result.qualification_required_capability_ids == ()
+    assert "cap.file.write" in result.blocked_capabilities
+
+
 def test_read_only_project_profile_blocks_mutating_candidate(tmp_path: Path) -> None:
     database = _database(tmp_path)
     _ready(database, *LOCAL_REQUIREMENTS)

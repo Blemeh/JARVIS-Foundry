@@ -31,7 +31,7 @@ from jarvis_foundry.runtime.worker_loop import run_cycle
 
 def _database(tmp_path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "continuous.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     digest = "a" * 64
     seed_owner_context(
         database,

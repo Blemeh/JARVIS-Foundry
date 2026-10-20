@@ -1,0 +1,25 @@
+{
+  "proof_id": "lane-a-unscripted-20260917",
+  "kind": "ISOLATED_PRODUCT_PATH",
+  "owner_intent": "Keep improving my active projects while I'm away. Find what is worth improving among my registered projects and take the best next step.",
+  "not_a_demo_driver": true,
+  "entrypoint": "jarvis_foundry.executive.intelligence.run_executive_intelligence_cycle",
+  "canonical_selector": "ExecutiveDecisionService.evaluate_a2",
+  "observation": "initiative_a2.run_initiative_a2_cycle over registered git resources",
+  "expected_chain": [
+    "reconstruct standing intent",
+    "inventory registered projects",
+    "observe real TODOs",
+    "generate candidates",
+    "reject weak style-only work",
+    "select reliability improvement",
+    "record why / alternatives / next"
+  ],
+  "test": "tests/foundry/test_purpose_recovery_ii_lane_a.py::test_unscripted_cycle_discovers_rejects_and_selects_across_projects",
+  "result": "PASS",
+  "notes": [
+    "Fixture repos contain real tracked TODOs; the harness does not pass a task id to the selector.",
+    "Downstream MissionLoop/Fabric execution is Goal B; this proof stops at Executive selection + decision truth.",
+    "A bounded execution substitute is not used to claim Goal B capability."
+  ]
+}

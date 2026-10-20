@@ -27,12 +27,30 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from dataclasses import replace
 from typing import Any, Iterable, Mapping
 
 from ..control.broker import emergency_stop_reason, matching_veto_reason
+from ..control.capabilities import (
+    BLOCKING_STATES as _BLOCKING_CAPABILITY_STATES,
+    capability_state_recorded,
+    latest_capability_state as _latest_capability_state,
+    set_capability_state,
+)
 from ..database import FoundryDatabase
 from ..events import Event, EventConflict
+from ..fabric.catalog import get_spec, observed_readiness
 from ..mission.contracts import MissionStepContract, record_step_contract
+from ..mission.intent import (
+    ACTIONS as INTENT_ACTIONS,
+    BLOCKED as INTENT_BLOCKED,
+    GAP as INTENT_GAP,
+    WORKFLOW as INTENT_WORKFLOW,
+    MissionIntent,
+    MissionIntentError,
+    MissionResolution,
+    resolve_mission_intent,
+)
 from ..operations.procedure import (
     OperationError,
     OperationStep,
@@ -49,26 +67,15 @@ def latest_capability_state(
     capability: str,
 ) -> dict[str, Any] | None:
     """Return the newest durable capability.state_changed for the pair."""
-    with database.connect(readonly=True) as connection:
-        row = connection.execute(
-            "SELECT payload_json, source_id FROM events "
-            "WHERE event_type = 'capability.state_changed' "
-            "AND json_extract(payload_json, '$.resource_id') = ? "
-            "AND json_extract(payload_json, '$.capability') = ? "
-            "ORDER BY sequence DESC LIMIT 1",
-            (resource_id, capability),
-        ).fetchone()
-    if row is None:
+    latest = _latest_capability_state(database, resource_id, capability)
+    if latest is None:
         return None
-    raw = row["payload_json"]
-    payload = json.loads(raw) if isinstance(raw, str) else dict(raw or {})
     return {
-        "state": str(payload.get("state") or ""),
-        "source_id": str(row["source_id"] or ""),
+        "state": str(latest.get("state") or ""),
+        "source_id": str(latest.get("source_id") or ""),
     }
 
 
-_BLOCKING_CAPABILITY_STATES = frozenset({"STOPPED", "VETOED", "DEGRADED"})
 _READY_CAPABILITY_STATES = frozenset({"READY", "ACTIVE"})
 
 
@@ -167,12 +174,933 @@ def _materialization_for_decision(
     database: FoundryDatabase,
     decision_id: str,
 ) -> str | None:
-    for event in reversed(database.events()):
-        if event.event_type == "portfolio.selection_materialized" \
-                and str(event.payload.get("decision_id") or "") == decision_id:
+    for event in database.events(
+        event_types=("portfolio.selection_materialized",),
+        newest_first=True,
+    ):
+        if str(event.payload.get("decision_id") or "") == decision_id:
             mission_id = str(event.payload.get("mission_id") or "")
             return mission_id or None
     return None
+
+
+def _intent_token(value: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char in "-_." else "-" for char in str(value))
+    return cleaned.strip("-.")[:80] or "intent"
+
+
+def _owner_goal_intent(
+    *,
+    mission_id: str,
+    resource_id: str,
+    objective: str,
+    metadata: Mapping[str, Any],
+) -> tuple[MissionIntent | None, str]:
+    block = metadata.get("intent")
+    if not isinstance(block, Mapping):
+        return None, "owner goal carries no normalized intent block"
+    try:
+        intent = MissionIntent.from_mapping(
+            block,
+            intent_id=f"owner-goal:{mission_id}",
+            resource_id=resource_id,
+            objective=objective,
+            source="owner-goal-admission",
+        )
+    except MissionIntentError as error:
+        return None, f"owner goal intent is invalid: {error}"
+    return intent, ""
+
+
+def _declared_fabric_capabilities(
+    database: FoundryDatabase,
+    metadata: Mapping[str, Any],
+) -> tuple[str, ...]:
+    """Fabric capabilities the selected work item DECLARED as required.
+
+    Goal section 3.  Two declared sources, both available at materialization
+    time and both written by the runtime itself:
+
+    * the work item metadata (``generate_missions_for_objective`` copies the
+      plan step's ``required_capabilities`` onto the item before the mission
+      exists), and
+    * the ACTIVE plan step the item declares - ``executive_objective_id`` and
+      ``executive_step_id`` name it explicitly, so this is a declared
+      correspondence, never a guessed mapping between the plan namespace and
+      the contract namespace.
+
+    The second source matters because the runtime only discovers some
+    requirements while materializing: ``_record_unrealizable_intent`` attaches
+    the missing ``cap.*`` to the plan step, and the work item metadata written
+    before that attempt is then stale.  Reading the plan step as well is what
+    keeps the requirement the gap/resume machinery actually acquired identical
+    to the requirement the mission records.
+
+    Only canonical ``cap.*`` ids the Fabric Catalog can prove are returned: a
+    legacy resource capability keeps its existing compatibility path, and an
+    unknown ``cap.*`` stays the honest gap owned by the capability bridge.
+    """
+
+    declared: list[Any] = []
+    raw = metadata.get("required_capabilities") or ()
+    if isinstance(raw, (list, tuple)):
+        declared.extend(raw)
+    objective_id = str(metadata.get("executive_objective_id") or "")
+    step_id = str(metadata.get("executive_step_id") or "")
+    if objective_id and step_id:
+        try:
+            from .autonomy import active_plan
+
+            plan = active_plan(database, objective_id)
+        except Exception:  # noqa: BLE001 - an unreadable plan is not a refusal
+            plan = None
+        if plan is not None:
+            for step in plan.steps:
+                if step.step_id == step_id:
+                    declared.extend(step.required_capabilities)
+    ordered: list[str] = []
+    for item in declared:
+        capability_id = str(item or "").strip()
+        if not capability_id.startswith("cap."):
+            continue
+        if get_spec(database, capability_id) is None:
+            continue
+        if capability_id not in ordered:
+            ordered.append(capability_id)
+    return tuple(ordered)
+
+
+def _bind_resolution_capabilities(
+    database: FoundryDatabase,
+    resource_id: str,
+    capability_ids: Iterable[str],
+    *,
+    source_id: str,
+    resolution: MissionResolution | None = None,
+    objective_id: str = "",
+) -> None:
+    """Bind Catalog-proven runtime capabilities onto the mission resource.
+
+    The mission step gate requires the capability to be declared for the
+    resource.  Recording the canonical ``capability.state_changed`` binding here
+    is what removes the developer-supplied driver step from the normal path: for
+    a resolved intent the resolver already proved the Catalog registration, and
+    for a DECLARED plan-step requirement (goal section 3) the gap/resume
+    machinery already proved it by acquiring the capability.
+    """
+    for capability_id in capability_ids:
+        spec = get_spec(database, capability_id)
+        if spec is None:
+            continue
+        if capability_state_recorded(database, resource_id, capability_id):
+            # The binding is recorded once per (resource, capability); the
+            # per-mission resolution lineage lives in the contract provenance.
+            continue
+        readiness = observed_readiness(database, capability_id)
+        trust = str(getattr(readiness, "trust_state", "") or "")
+        state = "DISCOVERED" if trust == "DISABLED" else "READY"
+        evidence: dict[str, Any] = {
+            "source": (
+                "mission-intent-resolution" if resolution is not None
+                else "declared-plan-step-requirement"
+            ),
+            "catalog_state": str(getattr(readiness, "state", "") or ""),
+            "catalog_trust": trust,
+            "catalog_version": spec.version,
+        }
+        if resolution is not None:
+            evidence["intent_id"] = resolution.intent_id
+            evidence["resolution_kind"] = resolution.kind
+        else:
+            evidence["objective_id"] = str(objective_id or "")
+        set_capability_state(
+            database,
+            resource_id,
+            capability_id,
+            state,
+            source_id=source_id,
+            evidence=evidence,
+        )
+
+
+def _action_target(
+    payload: Mapping[str, Any], *, intent_id: str, index: int,
+) -> str:
+    candidate = str(payload.get("target") or "")
+    if candidate and not candidate.startswith("/") and ":" not in candidate.split("/")[0]:
+        parts = [part for part in candidate.replace("\\", "/").split("/") if part not in ("", ".")]
+        if parts and ".." not in parts:
+            return "/".join(parts)
+    return f".jarvis/intents/{_intent_token(intent_id)}/step-{index:02d}"
+
+
+def _materialize_intent_action_plan(
+    database: FoundryDatabase,
+    *,
+    mission_id: str,
+    resource_id: str,
+    objective: str,
+    decision_id: str,
+    item_id: str,
+    kind: str,
+    resolution: MissionResolution,
+    provenance: Mapping[str, Any],
+    source_id: str,
+    required_capabilities: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Materialize a resolved action plan as ordered immutable contracts."""
+    contracts: list[MissionStepContract] = []
+    for index, action in enumerate(resolution.actions, start=1):
+        action_kind = str(action.get("action_kind") or "").strip()
+        capability_id = str(action.get("capability_id") or f"cap.{action_kind}")
+        payload = dict(action.get("payload") or {})
+        target = _action_target(payload, intent_id=resolution.intent_id, index=index)
+        criteria = tuple(resolution.provenance.get("success_criteria") or ()) if isinstance(
+            resolution.provenance.get("success_criteria"), (list, tuple)) else ()
+        contract = MissionStepContract(
+            mission_id=mission_id,
+            step_id=f"{index:02d}-action",
+            version=1,
+            resource_id=resource_id,
+            capability=capability_id,
+            target_relative_path=target,
+            instructions=json.dumps(payload, ensure_ascii=True, sort_keys=True),
+            expected_effects=(
+                f"{action_kind} executes once inside the registered resource",
+                f"{action_kind} result is independently verified",
+            ),
+            rollback={
+                "method": "revert registered-resource effects of this action step",
+                "reversible": True,
+            },
+            risk_class="C1",
+            verification_criteria=tuple(criteria) or (
+                f"{action_kind} completes and is independently verified",
+            ),
+            expected_artifacts=(),
+            forbidden_paths=(),
+            required_capabilities=required_capabilities,
+            recorded_by="supervisor",
+            source="owner-goal-intent-resolution",
+            provenance={
+                **dict(provenance),
+                "need": action.get("need"),
+                "action_kind": action_kind,
+            },
+        )
+        record_step_contract(database, contract)
+        contracts.append(contract)
+    _bind_resolution_capabilities(
+        database, resource_id,
+        (contract.capability for contract in contracts),
+        source_id=source_id, resolution=resolution,
+    )
+    database.append(Event.create(
+        "portfolio.selection_materialized",
+        {
+            "decision_id": decision_id,
+            "item_id": item_id,
+            "kind": kind,
+            "mission_id": mission_id,
+            "contract_ids": [contract.contract_id for contract in contracts],
+            "intent_id": resolution.intent_id,
+            "resolution": resolution.as_dict(),
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+    ))
+    return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
+
+
+def _record_unrealizable_intent(
+    database: FoundryDatabase,
+    *,
+    objective_id: str,
+    mission_id: str,
+    missing_capability_ids: tuple[str, ...],
+    next_action: str,
+    source_id: str,
+) -> None:
+    """Fail the attempt honestly and release the mission for the retry path.
+
+    A mission whose intent cannot be realized must not stay stranded in READY:
+    its attempt failed, the required capabilities are recorded on the plan step
+    (so the canonical gap/WAIT/expansion bridge owns them), and the Executive's
+    bounded retry is what resumes the same objective once the capability
+    exists.
+    """
+    from ..events import Event as _Event
+
+    from .autonomy import PlanRecord as _PlanRecord, active_plan
+
+    plan = active_plan(database, objective_id)
+    if plan is not None:
+        updated_steps = []
+        for step in plan.steps:
+            required = tuple(dict.fromkeys(
+                (*step.required_capabilities, *missing_capability_ids)))
+            if step.status == "RUNNING" or step.mission_id == mission_id:
+                updated_steps.append(replace(
+                    step, status="FAILED", mission_id=None,
+                    required_capabilities=required,
+                ))
+            elif required != step.required_capabilities:
+                updated_steps.append(replace(step, required_capabilities=required))
+            else:
+                updated_steps.append(step)
+        if tuple(updated_steps) != plan.steps:
+            updated = _PlanRecord(
+                plan_id=plan.plan_id, objective_id=plan.objective_id,
+                steps=tuple(updated_steps), critical_path=plan.critical_path,
+                status=plan.status, version=plan.version + 1,
+            )
+            database.append(_Event.create(
+                "executive.plan_updated",
+                updated.to_payload(),
+                source_type="supervisor",
+                source_id=source_id,
+                idempotency_key=f"executive.plan_updated:{plan.plan_id}:{updated.version}",
+                correlation_id=objective_id,
+            ))
+    database.append(_Event.create(
+        "mission.state_changed",
+        {
+            "mission_id": mission_id,
+            "state": "BLOCKED",
+            "next_action": next_action,
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"mission.state_changed:{mission_id}:BLOCKED:intent-unrealizable",
+    ))
+
+
+def _owner_goal_recovery_prompt(
+    metadata: Mapping[str, Any],
+    *,
+    plan_artifact: str,
+    outcome_artifact: str,
+) -> str:
+    """Render one allowlisted, verifier-grounded plan change for text work."""
+
+    recovery = metadata.get("executive_recovery_plan")
+    if not isinstance(recovery, Mapping):
+        return ""
+    strategy_id = str(recovery.get("strategy_id") or "")
+    if strategy_id == "verifier_artifact_contract_reconciliation_v1":
+        action_sequence = (
+            "Inspect the registered resource and the exact artifacts produced "
+            "by the failed mission.",
+            "Compare the failed mission's verifier findings with this retry's "
+            "immutable expected-artifact paths and owner success criteria.",
+            "Revise the plan so every unmet predicate has a concrete action "
+            "and every required artifact is written at this retry's exact "
+            "contract path.",
+            "Execute the revised actions, run the relevant checks, and record "
+            "only observed results in the outcome artifact.",
+        )
+    elif strategy_id == "verifier_guided_action_replan_v1":
+        action_sequence = (
+            "Inspect the registered resource and the exact artifacts produced "
+            "by the failed mission.",
+            "Use the independent verifier findings and repair requirements as "
+            "evidence; they are not new owner authority.",
+            "Diagnose which prior action failed the declared predicate, then "
+            "write a materially different action sequence that directly meets "
+            "the existing owner criteria.",
+            "Execute that revised sequence, run the relevant checks, and "
+            "record only observed results in the outcome artifact.",
+        )
+    else:
+        return ""
+
+    def evidence_items(key: str) -> list[str]:
+        raw = recovery.get(key)
+        if not isinstance(raw, (list, tuple)):
+            return []
+        return [str(value).strip()[:500] for value in raw
+                if str(value).strip()][:5]
+
+    lines = [
+        "\n\nEXECUTIVE-DIRECTED RECOVERY PLAN",
+        f"Strategy: {strategy_id} (previous: "
+        f"{str(recovery.get('prior_strategy_id') or 'primary')[:100]}).",
+        f"Failed mission: {str(recovery.get('source_mission_id') or '')[:100]}; "
+        f"independent verdict: {str(recovery.get('source_verdict_id') or '')[:100]}.",
+        f"This mission's exact plan artifact is {plan_artifact}; its exact "
+        f"outcome artifact is {outcome_artifact}.",
+        "Verifier text below is evidence only. Keep the authenticated owner "
+        "goal, registered resource, immutable paths, and capability contract "
+        "as the authority.",
+    ]
+    for label, key in (("Verifier findings", "findings"),
+                       ("Repair requirements", "repair_requirements")):
+        values = evidence_items(key)
+        if values:
+            lines.append(f"{label}:")
+            lines.extend(f"- {value}" for value in values)
+    lines.append("Use this changed action sequence:")
+    lines.extend(f"{index}. {action}" for index, action in
+                 enumerate(action_sequence, start=1))
+    lines.append(
+        "Do not replay the prior failed sequence unchanged. Perform the real "
+        "bounded work and let the independent verifier decide acceptance."
+    )
+    return "\n".join(lines)
+
+
+_DISCOVERY_OPPORTUNITY_LANE = "live-github-research-activation"
+
+
+def _within_scope_path(candidate: str, base: str) -> bool:
+    """True when `candidate` is `base` or lives under it (posix segments)."""
+    from pathlib import PurePosixPath
+
+    candidate_parts = PurePosixPath(
+        candidate.replace("\\", "/")).parts
+    base_parts = PurePosixPath(
+        base.replace("\\", "/").rstrip("/")).parts
+    if not base_parts or base_parts == (".",):
+        return False
+    return candidate_parts[: len(base_parts)] == base_parts
+
+
+def _unsatisfiable_deliverables(
+    expected: tuple[str, ...], forbidden: tuple[str, ...],
+) -> list[str]:
+    """Mandatory deliverables that cannot be written without tripping
+    containment.
+
+    A contract that REQUIRES an artifact inside its own FORBIDDEN set is
+    unsatisfiable: writing it fails containment, not writing it fails the
+    expected-artifact check.  There is no worker behaviour that satisfies
+    both, so synthesis must refuse rather than emit the contract.  Returns
+    the offending deliverables (empty means satisfiable).
+    """
+    return [
+        artifact for artifact in expected
+        if any(_within_scope_path(artifact, entry) for entry in forbidden)
+    ]
+
+
+def _discovery_investigation_artifact(decision_id: str, item_id: str) -> str:
+    """Deterministic per-decision investigation record path.
+
+    Factored pure so the pre-materialization satisfiability check and the
+    synthesis site compute the identical path without duplicating the scheme.
+    """
+    suffix = hashlib.sha256(
+        f"{decision_id}:{item_id}".encode("utf-8")).hexdigest()[:10]
+    return f".jarvis/discovery/investigation-{suffix}.md"
+
+# Executable-contract synthesis templates for autonomous discovery items.
+# Each template turns a typed opportunity (problem + evidence + exact
+# resource binding) into a bounded investigate-then-fix mission. Research is
+# structurally first: the plan step must record findings BEFORE the execute
+# step chooses an implementation, so research evidence always influences the
+# decision. No template => fail closed (never a generic build mission).
+_DISCOVERY_CONTRACT_TEMPLATES = {
+    "MISSING_TEST": {
+        "target": ".github/workflows/ci.yml",
+        "forbidden": ("src/", "tests/", "docs/", "releases/",
+                      ".jarvis/", "var/"),
+        "risk_class": "C1",
+        "rollback": {"method": "delete_file", "reversible": True},
+        "plan_focus": (
+            "Determine the repository's canonical test command (pyproject, "
+            "tox/pytest config, existing workflow archaeology via git log), "
+            "the Python version(s) in use, and the cheapest runner that can "
+            "execute it. Record: exact command, expected duration, files "
+            "read (with hashes), and any uncertainty that changes the "
+            "implementation choice."),
+        "execute_focus": (
+            "Create a minimal default-branch CI workflow that runs the "
+            "investigated test command on push and pull requests. Workflow "
+            "file only: do not modify source, tests, or docs to satisfy CI. "
+            "Validate YAML parses, then run the workflow's exact test "
+            "command locally and record exit code plus output hash."),
+        "acceptance": (
+            ".github/workflows/ci.yml exists on the worktree",
+            "workflow YAML parses and triggers on the default branch",
+            "the workflow's test command passes locally with recorded evidence",
+            "no file outside .github/workflows/ was modified",
+        ),
+        "artifacts": (".github/workflows/ci.yml",),
+    },
+    "CI_FAILURE": {
+        "target": ".github/workflows",
+        "forbidden": ("src/", "docs/", "releases/", ".jarvis/", "var/"),
+        "risk_class": "C2",
+        "rollback": {"method": "git_checkout", "reversible": True},
+        "plan_focus": (
+            "Fetch the failing workflow run's logs and configuration with "
+            "available read tools. Identify the failing step, the exact "
+            "error, and whether the root cause lies in workflow definition, "
+            "test code, or product source. Record logs hashes, the causal "
+            "chain, and the minimal fix shape. If logs are unreachable, "
+            "record the blocker honestly and stop."),
+        "execute_focus": (
+            "Apply the minimal fix inside the allowed scope (workflow "
+            "definition and tests). If the proven root cause lies in product "
+            "source outside the allowed scope, STOP: record the scoped "
+            "follow-up proposal with evidence instead of widening scope. "
+            "Re-run the affected checks locally and record exit codes."),
+        "acceptance": (
+            "failing step identified with log evidence recorded",
+            "minimal fix applied inside the allowed scope, or scoped "
+            "follow-up recorded when the cause lies outside it",
+            "affected checks re-run locally with recorded evidence",
+            "no file outside the allowed scope was modified",
+        ),
+        "artifacts": (),
+    },
+    "MAINTENANCE": {
+        "target": ".jarvis/discovery/",
+        "forbidden": ("src/", "tests/", "docs/", "releases/",
+                      ".github/", "var/"),
+        "risk_class": "C1",
+        "rollback": {"method": "delete_file", "reversible": True},
+        "plan_focus": (
+            "Verify current repository state against the stale-repo claim: "
+            "recent pushes, open issues/PRs, releases, and any profile or "
+            "registration change. Record what is actually stale versus what "
+            "resumed on its own."),
+        "execute_focus": (
+            "Write a decision record recommending resume, archive, or "
+            "deliberate keep, with evidence for each alternative and the "
+            "cheapest next check. No code changes: this is a bounded "
+            "assessment, not an implementation."),
+        "acceptance": (
+            "repository state re-verified against the stale claim",
+            "resume/archive/keep recommendation recorded with evidence",
+            "no code or configuration file was modified",
+        ),
+        "artifacts": (),
+    },
+}
+
+
+def _is_discovery_opportunity(item: Mapping[str, Any]) -> bool:
+    provenance = item.get("provenance")
+    if not isinstance(provenance, Mapping):
+        return False
+    if str(provenance.get("source_lane") or "") != _DISCOVERY_OPPORTUNITY_LANE:
+        return False
+    return bool(str(provenance.get("opportunity_kind") or "").strip()
+                and str(provenance.get("problem_statement") or "").strip())
+
+
+def _discovery_block_reason(item: Mapping[str, Any]) -> str:
+    provenance = item.get("provenance")
+    lane = provenance.get("source_lane") if isinstance(provenance, Mapping) \
+        else None
+    kind = provenance.get("opportunity_kind") if isinstance(
+        provenance, Mapping) else None
+    return (f"discovery opportunity cannot be safely scoped: lane={lane} "
+            f"kind={kind} resource={item.get('resource_id')}")
+
+
+def _discovery_contract_satisfiability_block(
+    item: Mapping[str, Any], *, decision_id: str, item_id: str,
+) -> str | None:
+    """Fail-closed pre-check: the contracts synthesis WILL build must be
+    workable.
+
+    Mirrors the synthesis site exactly — same template, same deterministic
+    investigation path, same per-step forbidden sets — and refuses with an
+    exact reason when any step mandates a deliverable inside its own
+    forbidden set.  Checked BEFORE any mission row exists so a refusal
+    leaves no dangling shell behind.
+    """
+    provenance = item.get("provenance")
+    kind = provenance.get("opportunity_kind") if isinstance(
+        provenance, Mapping) else None
+    template = _DISCOVERY_CONTRACT_TEMPLATES.get(str(kind or ""))
+    if template is None:
+        return None  # unknown kinds are refused by _discovery_scope_block
+    investigation_artifact = _discovery_investigation_artifact(
+        decision_id, item_id)
+    plan_forbidden = tuple(
+        path for path in template["forbidden"] if path != ".jarvis/")
+    plan_offenders = _unsatisfiable_deliverables(
+        (investigation_artifact,), plan_forbidden)
+    if plan_offenders:
+        return (
+            "discovery contract unsatisfiable: plan step mandates "
+            f"{plan_offenders} inside its forbidden paths")
+    execute_offenders = _unsatisfiable_deliverables(
+        tuple(template["artifacts"]), tuple(template["forbidden"]))
+    if execute_offenders:
+        return (
+            "discovery contract unsatisfiable: execute step mandates "
+            f"{execute_offenders} inside its forbidden paths")
+    return None
+
+
+def _discovery_scope_block(
+    database: FoundryDatabase, item: Mapping[str, Any],
+) -> str | None:
+    """Fail-closed pre-check shared by the synthesis path.
+
+    Returns the exact blocked reason when the opportunity cannot be safely
+    scoped or bound, else None. Checked BEFORE any mission row is created so
+    a refusal leaves no dangling shell behind.
+    """
+    provenance = item.get("provenance")
+    kind = provenance.get("opportunity_kind") if isinstance(
+        provenance, Mapping) else None
+    if _DISCOVERY_CONTRACT_TEMPLATES.get(str(kind or "")) is None:
+        return _discovery_block_reason(item)
+    bound_resource = str(item.get("resource_id") or "")
+    try:
+        bound_row = database.row("resources", "resource_id", bound_resource)
+    except Exception:  # noqa: BLE001 — registry unreadable, fail closed
+        bound_row = None
+    if not bound_resource or bound_row is None:
+        repository = provenance.get("repository") if isinstance(
+            provenance, Mapping) else None
+        return (f"discovery opportunity resource binding {bound_resource!r} "
+                f"for {repository} is not a registered resource")
+    return None
+
+
+def _bind_declared_discovery_mission(
+    database: FoundryDatabase,
+    *,
+    declared_objective_id: str,
+    mission_id: str,
+    item_metadata: Mapping[str, Any],
+    evidence_refs: Sequence[str] = (),
+    source_id: str = "v7-portfolio-bridge",
+) -> dict[str, Any]:
+    """Bind a discovery mission to the Executive step that declared it.
+
+    A discovery item whose metadata carries ``executive_objective_id`` and
+    ``executive_step_id`` was authored BY the Executive plan for a real,
+    executable scope the Executive could not address directly.  The materialized
+    mission is that step's work — but the step's ``mission_id`` linkage is the
+    only thing that lets failure reconciliation (``observe_mission_outcome``)
+    and verifier-guided REPLAN (``_verifier_recovery_plan``) see it.  Without
+    this binding, a mission that exhausts its repairs leaves its owning
+    objective's plan step with no mission linkage at all, and recovery can
+    never engage: exactly what stranded
+    ``owner-goal:owner-c4dbe49e2dd7b49e11583655`` after mission-ecdb7918c2d4
+    (plan step ``execute`` BLOCKED, ``mission_id: None``).
+
+    Binding is deliberately narrow:
+
+    * Only the step the item DECLARED is bound.  Nothing without an explicit
+      ``executive_step_id`` is ever linked — undeclared items stay pure
+      portfolio work with no Executive lineage claims.
+    * The step's dependency truth is untouched: status, evidence_refs and
+      attempted_strategies change only through the existing step transitions.
+    * The mission's new executable scope is genuine changed evidence for a
+      scope-blocked step, so it emits the ``executive-scope`` signal event the
+      waiting step's ``WAIT_FOR_SIGNAL`` wake is actually waiting on.  One
+      binding produces exactly one signal event (idempotent on the mission),
+      so no wake-generation loop is possible.
+    """
+    result: dict[str, Any] = {"bound": False}
+    objective_id = str(declared_objective_id or "").strip()
+    from .autonomy import (
+        CONTRACT_SCOPE_MARKER,
+        active_plan as _active_plan,
+        bind_mission_to_step as _bind_step,
+    )
+
+    if not objective_id:
+        return result
+    step_id = str(item_metadata.get("executive_step_id") or "").strip()
+    step_source = "declared"
+    if not step_id:
+        # The feed declares the objective but no step.  Fall back to the
+        # uniquely scope-blocked step: a step carrying the missing-contract
+        # marker IS the declared scope by construction (the Executive
+        # parked it awaiting exactly this kind of executable scope).
+        # Zero or several such steps → refuse rather than guess.
+        try:
+            scope_plan = _active_plan(database, objective_id)
+        except Exception:  # noqa: BLE001 — fail closed
+            return {**result, "reason": "no readable active plan"}
+        if scope_plan is None:
+            return {**result,
+                    "reason": "no active plan for declared objective"}
+        marked = [
+            s for s in scope_plan.steps
+            if CONTRACT_SCOPE_MARKER in tuple(s.evidence_refs or ())
+            and s.status == "BLOCKED"
+        ]
+        if len(marked) != 1:
+            return {**result, "reason": (
+                "no unique scope-blocked step to bind: "
+                f"found {len(marked)}")}
+        step_id = marked[0].step_id
+        step_source = "scope-marker"
+    try:
+        plan = _active_plan(database, objective_id)
+    except Exception:  # noqa: BLE001 — fail closed, never bind partially
+        return {**result, "reason": "no readable active plan"}
+    if plan is None:
+        return {**result, "reason": "no active plan for declared objective"}
+    target = next((s for s in plan.steps if s.step_id == step_id), None)
+    if target is None:
+        return {**result, "reason": "declared step is not on the active plan"}
+    if target.mission_id and str(target.mission_id) != mission_id:
+        # Keep-first: the step already owns a mission.  A second declaring
+        # item must not silently orphan the first mission from
+        # observe_mission_outcome / _verifier_recovery_plan by overwriting
+        # the linkage.  The new mission stands on its own as portfolio work;
+        # it simply gains no Executive lineage.
+        return {**result, "reason": (
+            f"step already bound to {target.mission_id}; "
+            "keeping the first binding")}
+    try:
+        bound = _bind_step(
+            database, objective_id, step_id, mission_id,
+            controller="supervisor",
+        )
+    except Exception as error:  # noqa: BLE001 — never strand the mission
+        return {**result, "reason": f"bind failed: {type(error).__name__}"}
+    result = {
+        "bound": True,
+        "objective_id": objective_id,
+        "step_id": step_id,
+        "step_source": step_source,
+        "mission_id": mission_id,
+        "step_status": bound.status,
+        "previous_evidence_refs": list(target.evidence_refs or ()),
+    }
+    # Genuine changed evidence: this step either had no executable scope or a
+    # scope that produced failure.  A fresh materialized mission carrying its
+    # declared scope IS the recovery condition — emit the exact signal the
+    # scope-parked wake resolves on.  The idempotency key ties the signal to
+    # the one mission, so replays and restarts produce no duplicates.
+    #
+    # The event TYPE carries a dotted suffix (`.materialized`) because the
+    # ledger requires every type to contain a dot, while the parked wake
+    # resolves by SQL prefix (`event_type LIKE 'signal%'` in is_wake_due):
+    # the type still starts with the exact `executive-scope:{oid}:{step}`
+    # string the wake waits on.
+    try:
+        from ..events import Event
+
+        signal = f"executive-scope:{objective_id}:{step_id}"
+        database.append(Event.create(
+            f"{signal}.materialized",
+            {
+                "objective_id": objective_id,
+                "step_id": step_id,
+                "mission_id": mission_id,
+                "kind": "executable_scope_materialized",
+                "signal": signal,
+                "evidence_refs": list(evidence_refs or []),
+            },
+            source_type="supervisor",
+            source_id=source_id or "v7-portfolio-bridge",
+            idempotency_key=f"executive-scope-signal:{mission_id}",
+        ))
+        result["signal_event"] = signal
+    except Exception as error:  # noqa: BLE001 — binding stands without the signal
+        result["signal_error"] = f"{type(error).__name__}"
+    return result
+
+
+def _materialize_discovery_opportunity(
+    database: FoundryDatabase,
+    *,
+    decision_id: str,
+    item: Mapping[str, Any],
+    item_id: str,
+    kind: str,
+    mission_id: str,
+    caller_resource_id: str,
+    capability: str,
+    source_id: str,
+    declared_capabilities: list[str],
+    declared_objective_id: str,
+) -> dict[str, Any]:
+    """Synthesize the executable contract for one discovery opportunity."""
+    blocked = _discovery_scope_block(database, item)
+    if blocked is not None:
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": blocked}
+    provenance = dict(item.get("provenance") or {})
+    opp_kind = str(provenance.get("opportunity_kind") or "")
+    problem = str(provenance.get("problem_statement") or "")
+    repository = str(provenance.get("repository") or "")
+    template = _DISCOVERY_CONTRACT_TEMPLATES[opp_kind]
+    bound_resource = str(item.get("resource_id") or "")
+    # The investigate step writes exactly one record under .jarvis/discovery/
+    # (tolerated exhaust, worker-mission precedent), so its forbidden set is
+    # the template scope minus that artifact home — never unbounded.
+    plan_forbidden = tuple(
+        path for path in template["forbidden"] if path != ".jarvis/")
+    investigation_artifact = _discovery_investigation_artifact(
+        decision_id, item_id)
+    common_provenance = {
+        "decision_id": decision_id,
+        "portfolio_item_id": item_id,
+        "portfolio_class": kind,
+        "opportunity_kind": opp_kind,
+        "repository": repository,
+        "problem_statement": problem,
+        "why_now": provenance.get("why_now"),
+        "duplicate_key": provenance.get("duplicate_key"),
+        "bound_resource_id": bound_resource,
+        "caller_resource_id": caller_resource_id,
+    }
+    plan = MissionStepContract(
+        mission_id=mission_id,
+        step_id="discovery-plan",
+        version=1,
+        resource_id=bound_resource,
+        capability=capability,
+        target_relative_path=investigation_artifact,
+        instructions=(
+            f"Discovery opportunity {opp_kind} on {repository}. Problem: "
+            f"{problem}\nINVESTIGATE FIRST — record findings in "
+            f"{investigation_artifact} before choosing any implementation: "
+            f"{template['plan_focus']} State remaining uncertainties "
+            f"explicitly; they determine whether the execute step may "
+            f"proceed or must stop with a scoped follow-up."
+        ),
+        expected_effects=(f"{investigation_artifact} exists",),
+        rollback={"method": "delete_file", "reversible": True},
+        risk_class="C1",
+        verification_criteria=(
+            f"{investigation_artifact} exists",
+            "record states evidence, findings, and uncertainties",
+        ),
+        expected_artifacts=(investigation_artifact,),
+        forbidden_paths=plan_forbidden,
+        required_capabilities=declared_capabilities,
+        recorded_by="supervisor",
+        source="portfolio-discovery",
+        provenance={**common_provenance, "step_role": "investigate"},
+    )
+    execute_target = str(template["target"])
+    if opp_kind == "MAINTENANCE":
+        decision_suffix = investigation_artifact.rsplit(
+            "investigation-", 1)[-1].removesuffix(".md")
+        execute_target = f"{execute_target}decision-{decision_suffix}.md"
+    execute = MissionStepContract(
+        mission_id=mission_id,
+        step_id="discovery-execute",
+        version=1,
+        resource_id=bound_resource,
+        capability=capability,
+        target_relative_path=execute_target,
+        instructions=(
+            f"Discovery opportunity {opp_kind} on {repository}. Problem: "
+            f"{problem}\nRead {investigation_artifact} first and follow its "
+            f"conclusion: {template['execute_focus']} Do not commit or push; "
+            f"capabilities for remote effects are not granted to this step. "
+            f"Leave a complete outcome record with commands, exit codes, "
+            f"and content hashes so the next Executive decision can own the "
+            f"result."
+        ),
+        expected_effects=tuple(template["acceptance"][:1]),
+        rollback=dict(template["rollback"]),
+        risk_class=str(template["risk_class"]),
+        verification_criteria=tuple(template["acceptance"]),
+        # The investigation record is the PLAN step's deliverable, not this
+        # step's.  This step READS it (see instructions).  Listing it again
+        # here made the execute contract unsatisfiable: the artifact lives
+        # under .jarvis/, which this step's own forbidden_paths covers, so
+        # writing it failed containment while not writing it failed the
+        # expected-artifact check.  Live incident 2026-09-30:
+        # mission-ecdb7918c2d4, 3/3 verifier FAIL on
+        # "expected artifacts missing:
+        # .jarvis/discovery/investigation-579a0fa1ce.md".
+        #
+        # This step must only PRODUCE its own template artifacts. Every
+        # unrelated forbidden path stays forbidden; the artifact home is not
+        # opened up.  Satisfiability of this exact pair is enforced BEFORE
+        # the mission shell exists (_discovery_contract_satisfiability_block),
+        # so reaching here with an offender is an internal inconsistency.
+        expected_artifacts=tuple(template["artifacts"]),
+        forbidden_paths=tuple(template["forbidden"]),
+        required_capabilities=declared_capabilities,
+        recorded_by="supervisor",
+        source="portfolio-discovery",
+        provenance={**common_provenance, "step_role": "implement",
+                    "reads_artifact": investigation_artifact},
+    )
+    _bind_resolution_capabilities(
+        database, bound_resource, declared_capabilities,
+        source_id=source_id, objective_id=declared_objective_id,
+    )
+    # The item is now owned by this mission: stamp consumption BEFORE any
+    # contract exists, through the EXISTING item lifecycle, so reselection
+    # can never materialize the same opportunity twice. The stamps are
+    # strict — a stamp failure blocks (the item stays OPEN and retryable)
+    # instead of dispatching an unstamped duplicate risk. No automatic
+    # reopen exists: the mission_id linkage below is what an explicit
+    # recovery decision uses to reopen via set_work_status.
+    from ..evolution.executive_portfolio import (
+        set_work_status,
+        update_work_item,
+    )
+    try:
+        update_work_item(database, item_id, {"mission_id": mission_id},
+                         source_id=source_id)
+        set_work_status(database, item_id, "CONSUMED",
+                        reason=f"materialized:{mission_id}",
+                        source_id=source_id)
+    except Exception as error:  # noqa: BLE001 — stay OPEN and retryable
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": (
+                    f"discovery consumption stamp failed for {item_id}: "
+                    f"{error}"[:200])}
+    try:
+        record_step_contract(database, plan)
+        record_step_contract(database, execute)
+    except Exception as error:  # noqa: BLE001 — reopen, never strand
+        # The mission shell exists but holds no contract. Reopen the item
+        # so a NEW decision can retry cleanly; a stuck CONSUMED with a
+        # contract-less mission would be unrecoverable by selection.
+        try:
+            set_work_status(database, item_id, "OPEN",
+                            reason=f"contracts failed for {mission_id}: "
+                            f"{error}"[:160],
+                            source_id=source_id)
+        except Exception:  # noqa: BLE001 — best effort after failure
+            pass
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": (
+                    f"discovery contract recording failed for {item_id}: "
+                    f"{error}"[:200])}
+    database.append(Event.create(
+        "portfolio.selection_materialized",
+        {
+            "decision_id": decision_id,
+            "item_id": item_id,
+            "kind": kind,
+            "mission_id": mission_id,
+            "contract_ids": [plan.contract_id, execute.contract_id],
+            "opportunity_kind": opp_kind,
+            "repository": repository,
+            "bound_resource_id": bound_resource,
+            "caller_resource_id": caller_resource_id,
+        },
+        source_type="supervisor",
+        source_id=source_id,
+        idempotency_key=f"portfolio.selection_materialized:{decision_id}",
+    ))
+    executed_binding = _bind_declared_discovery_mission(
+        database,
+        declared_objective_id=declared_objective_id,
+        mission_id=mission_id,
+        item_metadata=dict(item.get("metadata") or {}),
+        evidence_refs=tuple(
+            str(value) for value in (item.get("evidence_refs") or ())
+            if isinstance(value, str) and value.strip()),
+        source_id=source_id,
+    )
+    return {"materialized": True, "mission_id": mission_id,
+            "objective_binding": executed_binding,
+            "blocked_reason": None}
 
 
 def materialize_portfolio_selection(
@@ -193,11 +1121,110 @@ def materialize_portfolio_selection(
     item_id = str(item.get("item_id") or "")
     decision_id = str(decision.get("decision_id") or "")
     objective = str(item.get("objective") or decision.get("reason") or kind)
+    # Goal section 3: the Fabric capabilities the selected work item DECLARED
+    # as required.  ``generate_missions_for_objective`` wrote them from the plan
+    # step BEFORE this mission existed, so they are the earliest authoritative
+    # source on the normal path.  Only Catalog-proven ``cap.*`` ids qualify.
+    item_metadata = dict(item.get("metadata") or {})
+    item_evidence_refs = tuple(
+        str(value) for value in (item.get("evidence_refs") or ())
+        if isinstance(value, str) and value.strip())
+    item_provenance = item.get("provenance")
+    if not isinstance(item_provenance, Mapping):
+        item_provenance = {}
+    declared_capabilities = _declared_fabric_capabilities(database, item_metadata)
+    declared_objective_id = str(item_metadata.get("executive_objective_id") or "")
 
     blocked = _stop_or_veto(database)
     if blocked:
+        # ``owner_control_blocked`` marks this refusal as NOT a judgement about
+        # the work: STOP/veto is a temporary owner state, and a caller that
+        # spends a bounded recovery budget on a refusal must never charge it to
+        # owner control.  The selector already WAITs first when owner control is
+        # active at cycle start, so this only covers the window between a SELECT
+        # and this call.
         return {"materialized": False, "mission_id": None,
-                "blocked_reason": blocked}
+                "blocked_reason": blocked, "owner_control_blocked": True}
+
+    # Discovery refusals happen BEFORE any mission row exists: a blocked
+    # opportunity must not leave a dangling PLANNED shell behind.
+    if kind in ("MAINTENANCE", "REPAIR") and _is_discovery_opportunity(item):
+        scope_block = _discovery_scope_block(database, item)
+        if scope_block is not None:
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": scope_block}
+        # Satisfiability is refused here too, before the shell exists: a
+        # contract that mandates a deliverable inside its own forbidden set
+        # can never be worked (live 2026-09-30, mission-ecdb7918c2d4).  The
+        # check mirrors exactly what synthesis will build — same template,
+        # same deterministic artifact path, same forbidden sets — so a
+        # refusal here means synthesis could not have produced a workable
+        # contract either.
+        contract_block = _discovery_contract_satisfiability_block(
+            item, decision_id=str(decision.get("decision_id") or ""),
+            item_id=str(item.get("item_id") or ""))
+        if contract_block is not None:
+            return {"materialized": False, "mission_id": None,
+                    "blocked_reason": contract_block}
+        # The mission, its contracts, and its correlation bind the
+        # opportunity's EXACT registered resource — never the caller's.
+        # Contract validation rejects resource mismatch, so a multi-repo
+        # estate would otherwise crash after creating a dangling shell.
+        # The original caller is preserved for provenance below.
+        caller_resource_before_override = resource_id
+        resource_id = str(item.get("resource_id") or "")
+
+    if kind == "IMPROVEMENT":
+        metadata = dict(item.get("metadata") or {})
+        improvement_id = str(metadata.get("improvement_id") or "").strip()
+        reason = (
+            "V6 implementation is blocked: this materializer has no typed "
+            "repository/base/path/workload binding to isolated Workforce "
+            "and MissionLoop evidence; refusing the generic report mission"
+        )
+        if improvement_id:
+            try:
+                from ..evolution import binding as _binding
+            except ImportError:
+                # Binding machinery absent on this runtime (e.g. a release
+                # predating the V6 convergence branch): keep the original
+                # refusal rather than crashing materialization.
+                _binding = None  # type: ignore[assignment]
+            if _binding is None:
+                reason = f"{reason} (binding machinery unavailable)"
+            else:
+                try:
+                    return _binding.materialize_bound_improvement(
+                        database,
+                        item_id=item_id,
+                        decision_id=decision_id,
+                        improvement_id=improvement_id,
+                        objective=objective,
+                        source_id=source_id,
+                    )
+                except _binding.ImprovementBindingError as error:
+                    reason = f"{reason} (binding check: {error})"
+            database.append(Event.create(
+                "improvement.implementation_blocked",
+                {
+                    "improvement_id": improvement_id,
+                    "required_binding": [
+                        "registered repository identity",
+                        "exact base commit and isolated Workforce package",
+                        "enforceable allowed paths and required tests",
+                        "hash-pinned runnable workload",
+                        "accepted mission, verifier, and terminal commit evidence",
+                        "immutable release evaluation, promotion, and rollback link",
+                    ],
+                    "reason": reason,
+                },
+                source_type="supervisor",
+                source_id="v6-implementation-gate",
+                idempotency_key=(
+                    f"improvement.implementation_blocked:{improvement_id}"),
+            ))
+        return {"materialized": False, "mission_id": None,
+                "blocked_reason": reason}
 
     if kind == "CANDIDATE":
         candidate_id = str(item.get("candidate_id") or "")
@@ -219,7 +1246,12 @@ def materialize_portfolio_selection(
             "blocked_reason": result.get("blocked_reason"),
         }
 
-    if kind in ("ACTIVE_MISSION", "REPAIR"):
+    # Discovery-fed lane items synthesize FRESH missions below; they must
+    # never enter the existing-mission repair track (they carry no
+    # mission_id by construction — feed registers opportunities, not
+    # repairs — so the repair branch would refuse them as unrepairable).
+    if kind in ("ACTIVE_MISSION", "REPAIR") \
+            and not _is_discovery_opportunity(item):
         mission_id = str(item.get("mission_id") or "")
         if not mission_id:
             return {"materialized": False, "mission_id": None,
@@ -320,6 +1352,8 @@ def materialize_portfolio_selection(
                 confidence=item.get("confidence"),
                 reversibility=item.get("reversibility"),
                 requires_verifier=bool(item.get("requires_verifier", True)),
+                evidence_refs=item_evidence_refs,
+                provenance=item_provenance,
                 metadata=dict(item.get("metadata") or {}),
                 source_type="supervisor",
                 source_id=source_id,
@@ -417,8 +1451,11 @@ def materialize_portfolio_selection(
         ))
         return {"materialized": True, "mission_id": mission_id, "blocked_reason": None}
 
+    lane_fresh_mission = (
+        kind == "REPAIR" and _is_discovery_opportunity(item))
     if kind not in ("MAINTENANCE", "RESEARCH", "UNKNOWN", "IMPROVEMENT",
-                    "INCIDENT", "NEW_MISSION", "OWNER_GOAL"):
+                    "INCIDENT", "NEW_MISSION", "OWNER_GOAL") \
+            and not lane_fresh_mission:
         return {"materialized": False, "mission_id": None,
                 "blocked_reason": f"unsupported portfolio class {kind!r}"}
 
@@ -439,6 +1476,8 @@ def materialize_portfolio_selection(
             confidence=item.get("confidence"),
             reversibility=item.get("reversibility"),
             requires_verifier=bool(item.get("requires_verifier", True)),
+            evidence_refs=item_evidence_refs,
+            provenance=item_provenance,
             metadata=dict(item.get("metadata") or {}),
             source_type="supervisor",
             source_id=source_id,
@@ -474,6 +1513,9 @@ def materialize_portfolio_selection(
             "acceptance_criteria": acceptance,
             "next_action": f"execute: {objective}",
             "created_from": f"portfolio:{item_id}",
+            "portfolio_item_id": item_id,
+            "evidence_refs": list(item_evidence_refs),
+            "provenance": dict(item_provenance),
         },
         source_type="supervisor",
         source_id=source_id,
@@ -499,7 +1541,7 @@ def materialize_portfolio_selection(
     # Both steps stay under the canonical MissionLoop and ordered immutable
     # contracts; no parallel mission engine or manual continuation is added.
     if kind == "OWNER_GOAL":
-        metadata = dict(item.get("metadata") or {})
+        metadata = item_metadata
         recipe_id = str(metadata.get("recipe_id") or "").strip()
         provenance = {
             "decision_id": decision_id,
@@ -507,6 +1549,119 @@ def materialize_portfolio_selection(
             "portfolio_class": kind,
             "goal_id": metadata.get("goal_id"),
         }
+        if not recipe_id and isinstance(metadata.get("intent"), Mapping):
+            # Normal path: the owner goal carries a normalized intent (needs +
+            # supplied inputs).  The runtime resolves the workflow/action plan
+            # itself; no recipe id and no recipe-shaped parameter block is
+            # required from the caller.
+            intent, intent_error = _owner_goal_intent(
+                mission_id=mission_id,
+                resource_id=resource_id,
+                objective=objective,
+                metadata=metadata,
+            )
+            if intent is None:
+                database.append(Event.create(
+                    "portfolio.intent_unresolved",
+                    {
+                        "decision_id": decision_id,
+                        "item_id": item_id,
+                        "mission_id": mission_id,
+                        "reason": intent_error,
+                    },
+                    source_type="supervisor",
+                    source_id=source_id,
+                    idempotency_key=f"portfolio.intent_unresolved:{decision_id}",
+                ))
+                return {"materialized": False, "mission_id": None,
+                        "blocked_reason": intent_error}
+            resolution = resolve_mission_intent(database, intent)
+            provenance = {
+                **provenance,
+                "intent_id": intent.intent_id,
+                "intent_needs": list(intent.needs),
+                "resolution": resolution.as_dict(),
+            }
+            if resolution.kind == INTENT_GAP:
+                _record_unrealizable_intent(
+                    database,
+                    objective_id=str(metadata.get("executive_objective_id") or ""),
+                    mission_id=mission_id,
+                    missing_capability_ids=tuple(
+                        f"cap.{action}" if not str(action).startswith("cap.") else str(action)
+                        for action in (resolution.missing or ())
+                    ),
+                    next_action=(
+                        "resume: " + resolution.reason
+                        + " -- retry once the capability is registered"
+                    ),
+                    source_id=source_id,
+                )
+                database.append(Event.create(
+                    "portfolio.intent_unresolved",
+                    {
+                        "decision_id": decision_id,
+                        "item_id": item_id,
+                        "mission_id": mission_id,
+                        "intent_id": intent.intent_id,
+                        "intent_needs": list(intent.needs),
+                        "gap": dict(resolution.gap or {}),
+                        "reason": resolution.reason,
+                    },
+                    source_type="supervisor",
+                    source_id=source_id,
+                    idempotency_key=f"portfolio.intent_unresolved:{decision_id}",
+                ))
+                return {"materialized": False, "mission_id": None,
+                        "blocked_reason": resolution.reason}
+            if resolution.kind == INTENT_BLOCKED:
+                _record_unrealizable_intent(
+                    database,
+                    objective_id=str(metadata.get("executive_objective_id") or ""),
+                    mission_id=mission_id,
+                    missing_capability_ids=(),
+                    next_action=(
+                        "resume: " + resolution.reason
+                        + " -- retry once the intent supplies those inputs"
+                    ),
+                    source_id=source_id,
+                )
+                database.append(Event.create(
+                    "portfolio.intent_unresolved",
+                    {
+                        "decision_id": decision_id,
+                        "item_id": item_id,
+                        "mission_id": mission_id,
+                        "intent_id": intent.intent_id,
+                        "missing_inputs": list(resolution.missing),
+                        "reason": resolution.reason,
+                    },
+                    source_type="supervisor",
+                    source_id=source_id,
+                    idempotency_key=f"portfolio.intent_unresolved:{decision_id}",
+                ))
+                return {"materialized": False, "mission_id": None,
+                        "blocked_reason": resolution.reason}
+            if resolution.kind == INTENT_ACTIONS:
+                return _materialize_intent_action_plan(
+                    database,
+                    mission_id=mission_id,
+                    resource_id=resource_id,
+                    objective=objective,
+                    decision_id=decision_id,
+                    item_id=item_id,
+                    kind=kind,
+                    resolution=resolution,
+                    provenance=provenance,
+                    source_id=source_id,
+                    required_capabilities=declared_capabilities,
+                )
+            recipe_id = str(resolution.recipe_id or "")
+            metadata = {**metadata, "recipe_params": dict(resolution.params)}
+            _bind_resolution_capabilities(
+                database, resource_id, ("cap.workflow.run",),
+                source_id=source_id, resolution=resolution,
+            )
         if recipe_id:
             params = dict(metadata.get("recipe_params") or {})
             artifact = str(
@@ -550,6 +1705,7 @@ def materialize_portfolio_selection(
                 ),
                 expected_artifacts=(artifact,),
                 forbidden_paths=(),
+                required_capabilities=declared_capabilities,
                 recorded_by="supervisor",
                 source="owner-goal-admission",
                 provenance={**provenance, "recipe_id": recipe_id},
@@ -581,6 +1737,23 @@ def materialize_portfolio_selection(
             if str(value).strip())
         objective_criteria = success or (
             f"the registered resource satisfies the owner objective: {objective}",)
+        recovery_prompt = _owner_goal_recovery_prompt(
+            metadata,
+            plan_artifact=plan_name,
+            outcome_artifact=outcome_name,
+        )
+        recovery = metadata.get("executive_recovery_plan")
+        if recovery_prompt and isinstance(recovery, Mapping):
+            provenance = {
+                **provenance,
+                "executive_recovery": {
+                    "strategy_id": str(recovery.get("strategy_id") or ""),
+                    "source_mission_id": str(
+                        recovery.get("source_mission_id") or ""),
+                    "source_verdict_id": str(
+                        recovery.get("source_verdict_id") or ""),
+                },
+            }
         plan = MissionStepContract(
             mission_id=mission_id,
             step_id="01-plan",
@@ -594,6 +1767,7 @@ def materialize_portfolio_selection(
                 f"Create {plan_name} with a concise executable plan, the current-state "
                 "observations that justify it, explicit verification criteria, risks, "
                 "rollback, and the next useful action. Do not claim the goal is complete."
+                + recovery_prompt
             ),
             expected_effects=(f"{plan_name} contains an evidence-aware execution plan",),
             rollback={"method": "delete_file", "reversible": True},
@@ -605,6 +1779,7 @@ def materialize_portfolio_selection(
             ),
             expected_artifacts=(plan_name,),
             forbidden_paths=(),
+            required_capabilities=declared_capabilities,
             recorded_by="supervisor",
             source="owner-goal-admission",
             provenance=provenance,
@@ -623,6 +1798,7 @@ def materialize_portfolio_selection(
                 "checks. Finally create " + outcome_name + " containing the changes, "
                 "commands/checks and observed results, remaining uncertainty, rollback, "
                 "and whether each owner success criterion is satisfied."
+                + recovery_prompt
             ),
             expected_effects=(
                 f"the registered resource is changed to satisfy: {objective}",
@@ -638,9 +1814,18 @@ def materialize_portfolio_selection(
             ),
             expected_artifacts=(outcome_name,),
             forbidden_paths=(),
+            required_capabilities=declared_capabilities,
             recorded_by="supervisor",
             source="owner-goal-admission",
             provenance=provenance,
+        )
+        # The declared plan-step requirements are bound onto the mission's
+        # resource through the existing capability-state seam, so the
+        # requirement the gap/resume machinery owns is selectable by the
+        # mission that executes this step - not merely recorded beside it.
+        _bind_resolution_capabilities(
+            database, resource_id, declared_capabilities,
+            source_id=source_id, objective_id=declared_objective_id,
         )
         record_step_contract(database, plan)
         record_step_contract(database, execute)
@@ -660,6 +1845,23 @@ def materialize_portfolio_selection(
         ))
         return {"materialized": True, "mission_id": mission_id,
                 "blocked_reason": None}
+
+    # Autonomous discovery opportunities carry an exact resource binding and a
+    # typed problem statement. They materialize as REAL investigate-then-fix
+    # missions under the canonical MissionLoop — never as report stubs.
+    # Kinds without a synthesis template fail closed with an exact reason.
+    if kind in ("MAINTENANCE", "REPAIR") and _is_discovery_opportunity(item):
+        # NOTE: the item below was already chosen by value/readiness/risk
+        # scoring; this branch only synthesizes HOW it executes.
+        return _materialize_discovery_opportunity(
+            database, decision_id=decision_id, item=item, item_id=item_id,
+            kind=kind, mission_id=mission_id,
+            caller_resource_id=caller_resource_before_override,
+            capability=capability,
+            source_id=source_id,
+            declared_capabilities=declared_capabilities,
+            declared_objective_id=declared_objective_id,
+        )
 
     # Unique artifact per decision: a shared name plus deterministic
     # content would collapse every mission's evidence delta to empty
@@ -691,14 +1893,19 @@ def materialize_portfolio_selection(
         ),
         expected_artifacts=(artifact_name,),
         forbidden_paths=(),
+        required_capabilities=declared_capabilities,
         recorded_by="supervisor",
         source="portfolio",
         provenance={
             "decision_id": decision_id,
             "portfolio_item_id": item_id,
             "portfolio_class": kind,
-            "incident_id": item.get("metadata", {}).get("incident_id"),
+            "incident_id": item_metadata.get("incident_id"),
         },
+    )
+    _bind_resolution_capabilities(
+        database, resource_id, declared_capabilities,
+        source_id=source_id, objective_id=declared_objective_id,
     )
     record_step_contract(database, contract)
     database.append(Event.create(

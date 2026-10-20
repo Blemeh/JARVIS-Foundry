@@ -1,0 +1,30 @@
+{
+  "checks": {
+    "canonical_revoke_clears_stop": true,
+    "mission_materialized": true,
+    "no_consequential_effects_during_pause": true,
+    "no_orphaned_started_at_terminal": true,
+    "objective_lineage_intact": true,
+    "owner_goal_admitted": true,
+    "pause_applied": true,
+    "pause_blocks_missionloop": true,
+    "resume_clears_pause": true,
+    "resume_completes_work": true,
+    "stop_file_persists": true,
+    "stop_survives_reopen": true
+  },
+  "extra_mission_contract_after_stop": false,
+  "mission_id": "mission-4f56f63cf761",
+  "objective_id": "owner-goal:owner-8294c027872531e6aa26d1d1",
+  "passed": true,
+  "paused_outcome": "BLOCKED",
+  "paused_reason": "PAUSE directive owner-8467e551bf48e68ba61fff23 is active",
+  "resumed_outcome": "PASSED",
+  "schema": "jarvis.interrupt.integrated-acceptance.v1",
+  "started_effects": [
+    "effect:75d5447f878d35e674882705cf363c8d6e7a576e67462aec3ff0b108128003eb",
+    "effect:66ccf2596cad14db5a483476c2495b55a26a2588c7c1e36d2afc22c89b159d6d"
+  ],
+  "stop_reason_after_restart": "emergency stop marker is present",
+  "stop_reason_before_restart": "emergency stop marker is present"
+}

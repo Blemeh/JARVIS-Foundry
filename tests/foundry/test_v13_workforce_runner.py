@@ -184,6 +184,8 @@ def test_sealed_runner_executes_canonical_package_in_owned_subprocess(
             "enabled: true",
             "status: ACTIVE",
             "lab_scripted_hermes: true",
+            "hermes:",
+            "  allow_data_training_tiers_noninteractive: true",
             f"runtime_state_root: {tmp_path / 'runtime'}",
             "verification:",
             "  max_repairs: 1",
@@ -255,6 +257,8 @@ def test_sealed_runner_preserves_gateway_pid_authority_during_nested_work(
             "lab_scripted_hermes: true",
             "lab_crash_after_write: true",
             "lab_crash_step_id: step-sealed-runner",
+            "hermes:",
+            "  allow_data_training_tiers_noninteractive: true",
             f"runtime_state_root: {tmp_path / 'runtime'}",
             "",
         ]),
@@ -514,7 +518,8 @@ def test_sealed_runner_rejects_superseded_attempt_identity(
     ))
     config = tmp_path / "worker.yaml"
     config.write_text(
-        "enabled: true\nstatus: ACTIVE\n",
+        "enabled: true\nstatus: ACTIVE\nlab_scripted_hermes: true\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n",
         encoding="utf-8",
     )
 
@@ -541,7 +546,8 @@ def test_sealed_runner_cannot_rebind_after_initial_attempt_validation(
     )
     config = tmp_path / "worker.yaml"
     config.write_text(
-        "enabled: true\nstatus: ACTIVE\n",
+        "enabled: true\nstatus: ACTIVE\nlab_scripted_hermes: true\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n",
         encoding="utf-8",
     )
     executed: list[str] = []
@@ -1143,7 +1149,8 @@ def test_stale_sealed_runner_cannot_admit_its_own_replacement(
     )
     config = tmp_path / "worker.yaml"
     config.write_text(
-        "enabled: true\nstatus: ACTIVE\n",
+        "enabled: true\nstatus: ACTIVE\nlab_scripted_hermes: true\n"
+        "hermes:\n  allow_data_training_tiers_noninteractive: true\n",
         encoding="utf-8",
     )
 

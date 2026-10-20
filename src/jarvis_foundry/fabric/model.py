@@ -95,6 +95,13 @@ class VerifyVerdict(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+# Evidence marker a verifier session emits only when the canonical JARVIS
+# predicate re-derived the step's verdict itself (see ``fabric/adapter.py``).
+# It is written by the runtime, never taken from model text, so an acceptance
+# gate may treat it as proof of a JARVIS-owned predicate rather than a claim.
+CANONICAL_PREDICATE_EVIDENCE = "verification:canonical-fabric-predicate"
+
+
 _SEMVER = __import__("re").compile(r"^\d+\.\d+\.\d+$")
 _IDENTITY = __import__("re").compile(r"^[A-Za-z][A-Za-z0-9_.:/-]*$")
 
@@ -293,6 +300,8 @@ class TaskIntent:
     unattended: bool = True
     preferred: str | None = None
     constraints: tuple[str, ...] = ()
+    resource_id: str | None = None
+    resource_capability: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "task_id", _identity(self.task_id, "task_id"))
@@ -304,6 +313,17 @@ class TaskIntent:
         object.__setattr__(
             self, "constraints", tuple(_text(item, "constraint") for item in self.constraints)
         )
+        if (self.resource_id is None) != (self.resource_capability is None):
+            raise FabricError(
+                "resource_id and resource_capability must be supplied together"
+            )
+        if self.resource_id is not None:
+            object.__setattr__(self, "resource_id", _identity(self.resource_id, "resource_id"))
+            object.__setattr__(
+                self,
+                "resource_capability",
+                _identity(self.resource_capability, "resource_capability"),
+            )
 
 
 @dataclass(frozen=True, slots=True)

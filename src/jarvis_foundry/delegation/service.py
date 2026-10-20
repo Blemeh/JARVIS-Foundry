@@ -470,6 +470,22 @@ class DelegationService:
             values.extend(str(value).strip() for value in scope_ids if str(value).strip())
         return tuple(dict.fromkeys(values))
 
+    @staticmethod
+    def _exact_referent_objective_ids(
+        intent: DelegationIntent,
+        record: OwnerDirectiveRecord,
+    ) -> tuple[str, ...]:
+        # Similarity-resolved referents are candidates, never proof: binding
+        # an acting delegation to the top text-overlap match attaches one
+        # directive authority to another directive work (observed live).
+        # Acting modes bind only verbatim-named objectives.
+        text = str(record.exact_text or "")
+        return tuple(dict.fromkeys(
+            value
+            for value in DelegationService._referent_objective_ids(intent)
+            if value and value in text
+        ))
+
     def _executive_binding(
         self,
         intent: DelegationIntent,
@@ -493,7 +509,11 @@ class DelegationService:
                     if record.target and record.target != "GLOBAL"
                     else None
                 ),
-                *self._referent_objective_ids(intent),
+                *(
+                    self._exact_referent_objective_ids(intent, record)
+                    if intent.mode in (DelegationMode.HANDLE, DelegationMode.TAKE_OVER)
+                    else self._referent_objective_ids(intent)
+                ),
             )
             if value
         ))
@@ -508,6 +528,128 @@ class DelegationService:
                 "EXECUTIVE_OBJECTIVE_REQUIRED",
                 "delegation is waiting for the referenced Executive objective",
             )
+        # Standing continuation: a standing directive binds to its own
+        # directive-scoped children, never to the global objective pool.
+        # This breaks the circular "Executive needs an objective to decide
+        # which objective to create" logic: the standing goal itself is
+        # sufficient authority for the Executive to derive the next child.
+        try:
+            from ..executive.standing_intent import standing_directive_kind as _standing_kind
+            _directive_is_standing = _standing_kind(
+                str(record.exact_text or ""),
+                metadata=dict(record.metadata or {}),
+            ) == "STANDING"
+        except Exception:
+            _directive_is_standing = False
+        if _directive_is_standing and not requested_objective_ids:
+            same_directive_active = [
+                objective
+                for objective in state.objectives.values()
+                if str((objective.provenance or {}).get("directive_id") or "") == record.directive_id
+                and objective.status not in _TERMINAL_OBJECTIVE_STATUSES
+            ]
+            same_directive_completed = [
+                objective
+                for objective in state.objectives.values()
+                if str((objective.provenance or {}).get("directive_id") or "") == record.directive_id
+                and objective.status == "COMPLETED"
+            ]
+            if len(same_directive_active) == 1:
+                objectives = same_directive_active
+            elif len(same_directive_active) > 1:
+                return None, _AdmissionRefusal(
+                    "EXECUTIVE_OBJECTIVE_REQUIRED",
+                    "standing directive has multiple active children; explicit Executive step binding is required",
+                )
+            elif same_directive_completed:
+                # Prior completed child, no active child: the Executive must
+                # derive the next bounded child from standing authority.
+                return None, _AdmissionRefusal(
+                    "STANDING_FOLLOWUP_REQUIRED",
+                    "standing directive awaits Executive follow-up child; no active child exists",
+                )
+            # else: no children at all yet -> fall through to global logic
+            # so the initial admission path is preserved.
+            if len(same_directive_active) == 1:
+                    objective = same_directive_active[0]
+                    # Jump to plan/step binding below with the scoped objective.
+                    explicit_plan_id = (
+                        str(metadata.get("plan_id") or "").strip()
+                        or str(context.get("plan_id") or "").strip()
+                    )
+                    plans = [
+                        plan
+                        for plan in state.plans.values()
+                        if plan.objective_id == objective.objective_id
+                        and plan.status == "ACTIVE"
+                    ]
+                    if explicit_plan_id:
+                        plans = [plan for plan in plans if plan.plan_id == explicit_plan_id]
+                    elif require_newer_plan_than:
+                        plans = [
+                            plan for plan in plans
+                            if plan.plan_id != require_newer_plan_than
+                        ]
+                    from ..executive.autonomy import active_plan as _active_plan_for_standing
+                    _plan_for_standing = max(
+                        plans,
+                        key=lambda value: (value.version, value.updated_at, value.plan_id),
+                        default=None,
+                    )
+                    if _plan_for_standing is None:
+                        return None, _AdmissionRefusal(
+                            (
+                                "EXECUTIVE_REPLAN_REQUIRED"
+                                if require_newer_plan_than
+                                else "EXECUTIVE_PLAN_REQUIRED"
+                            ),
+                            (
+                                "delegation is waiting for an Executive-authored replacement plan"
+                                if require_newer_plan_than
+                                else "delegation is waiting for an Executive-authored active plan"
+                            ),
+                        )
+                    plan = _plan_for_standing
+                    explicit_step_id = (
+                        str(metadata.get("step_id") or "").strip()
+                        or str(context.get("step_id") or "").strip()
+                    )
+                    eligible = [
+                        step
+                        for step in plan.steps
+                        if step.status.upper() not in {
+                            "COMPLETE",
+                            "COMPLETED",
+                            "FAILED",
+                            "CANCELLED",
+                            "SKIPPED",
+                            "SUPERSEDED",
+                        }
+                    ]
+                    if explicit_step_id:
+                        eligible = [
+                            step for step in eligible if step.step_id == explicit_step_id
+                        ]
+                    if len(eligible) != 1:
+                        reason = (
+                            "delegation is waiting for an Executive-authored executable step"
+                            if not eligible
+                            else "delegation requires an explicit Executive step binding"
+                        )
+                        return None, _AdmissionRefusal(
+                            "EXECUTIVE_STEP_REQUIRED",
+                            reason,
+                        )
+                    step = eligible[0]
+                    mission_ids = tuple(
+                        value for value in (step.mission_id,) if value
+                    )
+                    return _ExecutiveBinding(
+                        objective=objective,
+                        plan=plan,
+                        step_ids=(step.step_id,),
+                        mission_ids=mission_ids,
+                    ), _AdmissionRefusal("", "")
         if not requested_objective_ids:
             objectives = [
                 objective
@@ -1479,6 +1621,144 @@ class DelegationService:
             return self._admit_redirect(intent, prior=prior, record=record)
         return self._admit(intent, record=record)
 
+    def _dissolve_stale_method_mismatch(
+        self,
+        existing: DelegationIntent,
+        *,
+        record: OwnerDirectiveRecord,
+    ) -> DelegationIntent | None:
+        """Supersede a stale false method-route interrogation without owner input.
+
+        A parked METHOD_GOAL_MISMATCH whose goal text requests no method can
+        never be answered by the owner (both options are vacuous).  When
+        current inference finds no ambiguity at all, the question was never
+        genuine: record the dissolve on the same intent identity (READY
+        status, dissolved codes in rationale) and let admission proceed.
+        Any remaining ambiguity keeps replaying ASKING untouched.
+        """
+        try:
+            intent, _context = self._inferred(record)
+        except Exception:
+            return None
+        if intent.decision == DelegationDecision.ASK or intent.ambiguities:
+            return None
+        dissolved = sorted({
+            ambiguity.code
+            for ambiguity in existing.ambiguities
+            if ambiguity.code == "METHOD_GOAL_MISMATCH"
+        })
+        if not dissolved:
+            return None
+        cleared = replace(
+            intent,
+            status=DelegationIntentStatus.READY,
+            updated_at=isoformat(),
+            rationale_labels=tuple(dict.fromkeys((
+                *intent.rationale_labels,
+                "STALE_FALSE_AMBIGUITY_DISSOLVED",
+                *(f"DISSOLVED_{code}" for code in dissolved),
+            ))),
+        )
+        self.database.append(Event.create(
+            "delegation.intent_updated",
+            {
+                "intent_id": cleared.intent_id,
+                "intent": cleared.to_payload(),
+                "reason": (
+                    "stale false method-route interrogation dissolved under "
+                    "current inference; no owner clarification was provided "
+                    f"or needed: {', '.join(dissolved)}"
+                ),
+            },
+            source_type="supervisor",
+            source_id="delegation-engine",
+            correlation_id=record.correlation_id,
+            causation_id=record.event_id,
+            idempotency_key=(
+                f"delegation.intent_updated:{cleared.intent_id}:"
+                f"ambiguity-dissolved:{existing.updated_at}"
+            ),
+        ))
+        return cleared
+
+    def _dissolve_false_similarity_binding(
+        self,
+        existing: DelegationIntent,
+        *,
+        record: OwnerDirectiveRecord,
+    ) -> DelegationIntent | None:
+        # An ADMITTED binding to another directive objective, with no exact
+        # referent anywhere in this directive, is a similarity artifact, not
+        # owner intent. Dissolve the binding (keep the intent, clear the
+        # claimed work) so admission re-resolves honestly. Redirect bindings
+        # and same-directive work are never touched.
+        if existing.status != DelegationIntentStatus.ADMITTED:
+            return None
+        if existing.mode not in (DelegationMode.HANDLE, DelegationMode.TAKE_OVER):
+            return None
+        bound = str(existing.resulting_objective_id or "").strip()
+        if not bound:
+            return None
+        labels = set(existing.rationale_labels or ())
+        if "AUTHENTICATED_REDIRECT" in labels:
+            return None
+        text = str(record.exact_text or "")
+        metadata = dict(record.metadata or {})
+        context = dict(metadata.get("context") or {})
+        target = str(record.target or "").strip()
+        exact = {
+            str(metadata.get("objective_id") or "").strip(),
+            str(context.get("objective_id") or "").strip(),
+            target if target and target != "GLOBAL" else "",
+            bound if bound and bound in text else "",
+        }
+        exact.discard("")
+        if bound in exact:
+            return None
+        try:
+            objective = rebuild_executive_state(self.database).objectives.get(bound)
+        except Exception:
+            return None
+        if objective is None:
+            return None
+        if str(objective.provenance.get("directive_id") or "") == record.directive_id:
+            return None
+        cleared = replace(
+            existing,
+            status=DelegationIntentStatus.READY,
+            resulting_objective_id=None,
+            resulting_plan_id=None,
+            resulting_step_ids=(),
+            resulting_mission_ids=(),
+            updated_at=isoformat(),
+            rationale_labels=tuple(dict.fromkeys((
+                *existing.rationale_labels,
+                "FALSE_SIMILARITY_BINDING_DISSOLVED",
+            ))),
+        )
+        self.database.append(Event.create(
+            "delegation.intent_updated",
+            {
+                "intent_id": cleared.intent_id,
+                "intent": cleared.to_payload(),
+                "reason": (
+                    "similarity-resolved binding dissolved: bound objective "
+                    f"{bound} belongs to another directive and this directive "
+                    "names no exact referent; no owner clarification was "
+                    "provided or needed",
+                ),
+            },
+            source_type="supervisor",
+            source_id="delegation-engine",
+            correlation_id=record.correlation_id,
+            causation_id=record.event_id,
+            idempotency_key=(
+                f"delegation.intent_updated:{cleared.intent_id}:"
+                f"similarity-dissolved:{existing.updated_at}"
+            ),
+        ))
+        return cleared
+
     def _process_directive_once(self, directive_id: str) -> DelegationOutcome:
         record = self._directive(directive_id)
         if record.state != "ACTIVE":
@@ -1526,6 +1806,7 @@ class DelegationService:
                     "EXECUTIVE_PLAN_REQUIRED",
                     "EXECUTIVE_REPLAN_REQUIRED",
                     "EXECUTIVE_STEP_REQUIRED",
+                    "STANDING_FOLLOWUP_REQUIRED",
                 }:
                     ready = replace(
                         existing,
@@ -1534,10 +1815,25 @@ class DelegationService:
                             value
                             for value in existing.rationale_labels
                             if not value.startswith("EXECUTIVE_")
+                            and value != "STANDING_FOLLOWUP_REQUIRED"
                         ),
                         updated_at=isoformat(),
                     )
                     outcome = self._admit(ready, record=record)
+                    return replace(outcome, replayed=True)
+            if existing.status == DelegationIntentStatus.AWAITING_CLARIFICATION:
+                dissolved = self._dissolve_stale_method_mismatch(
+                    existing, record=record,
+                )
+                if dissolved is not None:
+                    outcome = self._admit(dissolved, record=record)
+                    return replace(outcome, replayed=True)
+            if existing.status == DelegationIntentStatus.ADMITTED:
+                unbound = self._dissolve_false_similarity_binding(
+                    existing, record=record,
+                )
+                if unbound is not None:
+                    outcome = self._admit(unbound, record=record)
                     return replace(outcome, replayed=True)
             return DelegationOutcome(
                 directive_id=directive_id,
@@ -1848,6 +2144,7 @@ class DelegationService:
                     "EXECUTIVE_PLAN_REQUIRED",
                     "EXECUTIVE_REPLAN_REQUIRED",
                     "EXECUTIVE_STEP_REQUIRED",
+                    "STANDING_FOLLOWUP_REQUIRED",
                 }:
                     ready = replace(
                         existing,
@@ -1856,6 +2153,7 @@ class DelegationService:
                             value
                             for value in existing.rationale_labels
                             if not value.startswith("EXECUTIVE_")
+                            and value != "STANDING_FOLLOWUP_REQUIRED"
                         ),
                         updated_at=isoformat(),
                     )

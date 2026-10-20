@@ -83,6 +83,42 @@ describe("RealJarvisRuntimeAdapter", () => {
     vi.unstubAllGlobals();
   });
 
+  it("bounds stalled network requests even when fetch ignores abort", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+      const client = new RealJarvisRuntimeAdapter();
+      const result = expect(client.listMissions()).rejects.toThrow("timed out");
+      await vi.advanceTimersByTimeAsync(15_000);
+      await result;
+      expect(client.connection.source).toBe("DISCONNECTED");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not let a secondary forensic failure disconnect a healthy snapshot", async () => {
+    const client = new RealJarvisRuntimeAdapter();
+    await client.listMissions();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("error", { status: 503 })));
+    await expect(client.getForensicRecord("mission", "missing")).rejects.toThrow();
+    expect(client.connection.connected).toBe(true);
+  });
+
+
+  it("preserves a durable owner receipt when the following snapshot refresh fails", async () => {
+    const client = new RealJarvisRuntimeAdapter();
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo, init?: RequestInit) => {
+      if (String(input).endsWith("/command-center")) return new Response("offline", { status: 503 });
+      return originalFetch(input, init);
+    }));
+    const result = await client.submitOwnerGoal("Provide a briefing", "TELL_ME");
+    expect(result.accepted).toBe(true);
+    expect(result.directiveId).toBe("d-1");
+    expect(client.connection.connected).toBe(false);
+  });
+
   it("reads live snapshot without mock fallback", async () => {
     const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
     expect(client.source).toBe("LIVE");
@@ -396,7 +432,7 @@ describe("RealJarvisRuntimeAdapter", () => {
     const client = new RealJarvisRuntimeAdapter({ apiBase: "/api", pollMs: 60000 });
     const result = await client.getAutonomy("rejected");
     expect(result.status).toBe("EMPTY");
-    expect(client.connection.connected).toBe(true);
+    expect(client.connection.connected).toBe(false);
   });
 
   it("submits typed voice text through the Command Center voice-text seam", async () => {

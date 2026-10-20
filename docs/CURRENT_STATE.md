@@ -6,29 +6,249 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Wednesday, September 16, 2026 for isolated integrated
-product acceptance on
-`candidate/jarvis-integrated-acceptance-20260916` (product
-`0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, receipts
-`e9a8e34f60330399d7220fe8230491dc326b880a`). This candidate is source-only:
-it does not merge `main`, push, promote, install, retarget live CURRENT/PREVIOUS,
-mutate the live database, or change Scheduler/Supervisor/provider/trust.
-It is built from Goal 01 convergence HEAD
-`15a25536348d87be53ff115033c5012192d988be`. Live V10 and the frozen execution
-pointer remain unchanged. Historical live A4/Prompt 3 notes below are retained
-as live-surface history, not as a promotion claim for this candidate.
+Last reconciled: Monday, September 28, 2026 for V7 READINESS + LIVE PROOF
+(stale capability-declaration repair, autonomous mission materialization,
+GitHub issue effect with provider-side reconciliation, desktop observation
+evidence, STOP drill), live on the release below at reconciliation time.
 
-ISOLATED ACCEPTANCE CANDIDATE: ACCEPTED_FOR_LIVE_PROMOTION / SOURCE ONLY
-ISOLATED ACCEPTANCE BRANCH:    candidate/jarvis-integrated-acceptance-20260916
-ISOLATED ACCEPTANCE PRODUCT:   0bfdfa851f6c3f4d0203d1e75216967587ecc4d6
-ISOLATED ACCEPTANCE RECEIPTS:  e9a8e34f60330399d7220fe8230491dc326b880a
-ISOLATED ACCEPTANCE HANDOFF:   var/integrated-acceptance-20260916/HANDOFF.json
-ISOLATED CONVERGENCE CANDIDATE: V14+V15+V16 COMPLETE / SOURCE ONLY
-ISOLATED CANDIDATE BRANCH:     candidate/v14-v16-max-semantic-convergence-20260916
-ISOLATED CANDIDATE PRODUCT:    5e0c6fa9d048e270b91f2d59b8a16bd567a22dfb
-ISOLATED CANDIDATE HANDOFF:    var/convergence-20260916/HANDOFF.json
-LIVE UNCHANGED:                YES
+## Current canonical and live state — 2026-09-28 (V7 READINESS + LIVE PROOF)
 
+DOCUMENTATION STATE BASE SHA: `962e663a7e2c870b946f4d6d883979c035c302e7`
+
+CURRENT/CANDIDATE SCHEMA: v41
+
+The SHA above is the immediate parent of this docs-only reconciliation
+commit, as required by `scripts/doc_staleness_check.py`. The live install at
+reconciliation time was built from
+`01fa151b5de6680fa41a46651bc5123f97b37fd8` (tree
+`db4aad6aa4a691dbee312a2ccb575990fe7a9ef7`,
+release `rel-01fa151b5de6-69c547fe`, schema 41): installed CURRENT, manifest,
+canonical source, origin/main and runtime all identify that commit with parity
+PASS, release authority CONSISTENT, STOP clear (after a completed freeze/thaw
+drill), Supervisor RUNNING singleton with a fresh heartbeat, worker-loop
+config carrying --spawn-worker-loop --worker-loop-config, and trust
+SUSPENDED.
+
+V7 readiness defect (root-caused, not bypassed): registration declares
+initial capability readiness once and the plane projects declarations
+first-write-only, so Sep-25 PROBING evidence for
+resource-jarvis-canonical/write_registered_worktree_files kept gating
+portfolio eligibility after the worktree moved on (clean at eae64dd).
+Repair (candidate branch, 3 commits): `refresh_git_resource_readiness`
+re-inspects the stored checkout and records fresh evidence only on change;
+incident-owned BLOCKING states are never overwritten; mission baselines
+untouched; the continuous cycle refreshes (max 2/cycle) only when no mission
+materialized; prescribed `.jarvis` exhaust is tolerated by name in dirt
+assessment (rename-out/sibling/nested edges fail closed). Targeted tests
+11/11 green on the repo interpreter (10 readiness + rename edges,
+registration, capability states, v9 continuous executive adjacent runs
+green); independent reviews PASS with zero open P0/P1 (full, focused,
+micro).
+
+Proven live on release `01fa151b5de6`: 20:13:37 UTC refresh flipped
+PROBING→READY with baseline 1db307f→eae64dd preserved in history; ranking
+flipped ineligible→eligible (0.404); portfolio SELECT materialized
+mission-842974eb5321, mission-94203aa46a67, retry mission-90563ccdd343,
+mission-bcea5e74189b and mission-dc7b2729d9e4 with zero owner "continue".
+mission-bcea5e74189b COMPLETE with verifier PASS+PASS: autonomous diagnosis
+(`.jarvis/owner-goals/37070afc86/diagnosis.md`, ledger/source/remote
+evidence with sequence numbers) reached the decision and became GitHub
+issue #1 (OPEN, provider-side content reconciled, exactly one issue, no
+duplicates), with outcome/learning (world+memory observations),
+next-action wake, consumption, and a fresh truthful WAIT decision after.
+Desktop observation ran live twice with full before/after evidence
+(window enumeration, capture, hash-verified scratch cycle, verified
+cleanup, provider discipline); both missions BLOCKED on mission
+bookkeeping (a circular owner success criterion since corrected by owner
+redirect, and a stale artifact-path binding recorded as follow-up), while
+independent verifiers confirmed the re-checkable operation state. A
+15-minute builder TIMEOUT produced evidence_mismatch FAIL (not PASS),
+mission BLOCKED, no duplicate effects. STOP drill: sentinel froze the
+Supervisor (FROZEN, CC truthful) and removal resumed cycles via lease
+reclaim with no new lineage. No synthetic work, no manual ledger edits,
+no manual READY promotion, no second authority at any layer.
+
+## Current canonical and live state — 2026-09-28 (V6 FINAL CLOSURE)
+
+DOCUMENTATION STATE BASE SHA: `daf18effc8ecde7b6363d6d75c3d60aeabd495c2`
+
+The SHA above is the immediate parent of this final docs-only reconciliation
+commit, as required by `scripts/doc_staleness_check.py`. It names the V6
+closure matrix commit. The live install at reconciliation time was built from
+`49d32b24c62714fabb2a213eb24e8727b789b373` (tree
+`97f27d6d082832bef1fb8ab2dc04c6f8e8500e26`,
+release `rel-49d32b24c627-cefa8502`, schema 41): installed CURRENT, manifest,
+canonical source, and runtime all identified that commit with parity PASS,
+release authority CONSISTENT, STOP clear, Supervisor RUNNING singleton with a
+fresh heartbeat, and trust SUSPENDED.
+
+V6 FINAL CLOSURE was proven live with no second Executive, loop, authority,
+or synthetic truth: bound improvement -> MissionLoop worker change ->
+independent verifier PASS -> JARVIS-owned candidate commit (no operator
+packaging) -> risk gate -> immutable release -> live activation ->
+measurement -> KEEP, with real rollback authority already proven.
+Proof M1d `mission-2a61cbbd51af` (disposable improvement-626216429cf8, R1,
+baseline `4527894e55e63e838c5cde661abb5c841ed7502e`, scope
+probe.py/probe_test.py): 01-plan PASS with the prescribed plan file,
+02-execute change left uncommitted per the order rule, independent verifier
+PASS `verdict-v2-951ae87f17007a586081c371` (fresh session), JARVIS loop
+commit `1123d89b1bdbacfb5c9c3c192e88c7dc54c4ff7d` (probe.py only), candidate
+envelope RECORDED (tree `1e59e6a4218a7b8d34cf096f3b478b88a9f58026`, producer
+run-6284c5098f1e), mission COMPLETE, required tests 3/3 green, zero operator
+git. Fail-closed M2c `mission-50e8c3cbaa24` (rogue.py planted
+post-materialization): verifier PASS, then the seam refused before any effect
+claim (`refusing commit: worktree holds changes outside the bound scope:
+rogue.py`), mission BLOCKED, HEAD unchanged, zero candidates. Replay is
+idempotent (single commit plus single envelope); legacy missions keep the
+unbounded path; unbound improvements fail closed. Independent reviews PASS
+(seam 14/14, lineage/claim/tolerance 39/39, order/claim-filter 40/40).
+Goal Resilience remains frozen. The prior vertical-loop proof
+(improvement-1ae00eb761f0, 4.94s to 0.008s, KEEP, rollback drill, learning
+CONFIRMED) is reused unchanged; full detail lives in the CAPABILITY_MATRIX
+V6 sections. Publication was a single authorized non-force fast-forward of
+`main` (`09e6388..49d32b2` plus these docs commits).
+
+## Current canonical and live state — 2026-09-25
+
+The canonical product source is commit
+`db913bdcd23438fa1b9cc51395e4e08d31719a3b` on `main`, with tree
+`271cba7df5b7059839c49446ec5d2c18d6c9248e`. The immutable release is
+`rel-db913bdcd234-7b4b1ce8`, built from that exact commit and tree with schema
+41. Installed `CURRENT`, the release manifest, canonical source, and runtime
+all identify that commit; `PREVIOUS` is `4159264d2875f4795c3fa668e742c3d0ce0c5635`.
+The single authorized non-force fast-forward publication includes this final
+docs-only reconciliation, whose source parent is the product commit above.
+
+The live health endpoint returned `OK`, ready, not degraded, release `VALID`,
+parity `MATCH`, schema 41, and a fresh Supervisor heartbeat at
+2026-09-25 06:29:16 UTC. STOP was clear and trust remains `SUSPENDED`. The
+service-owned process tree has one Supervisor (PID 22048), created at
+2026-09-25 01:24:45 local time, with one hidden Python wrapper and the
+Task-Scheduler-launched `wscript.exe` headless entry point. The task is enabled
+and Running with `MultipleInstances=IgnoreNew`. Its minute-trigger result
+`0x800710E0` maps to a refused request; with the same healthy singleton still
+owning port 8767 and fresh heartbeats, this is consistent with an ignored
+overlapping trigger, not a Supervisor restart. Task Scheduler Operational
+history is disabled.
+
+The authoritative Windows launch path is already headless: the task invokes
+`wscript.exe //B //Nologo`, the Supervisor uses `pythonw.exe`, and worker
+subprocesses use `CREATE_NO_WINDOW`, `STARTF_USESHOWWINDOW`, and `SW_HIDE` via
+`headless_popen_kwargs`. No JARVIS `cmd.exe` appeared in the recorded process
+ancestry. A 12-second visible-console sample found no visible console windows,
+so the reported desktop flicker was not reproduced and its visible source is
+not established by that sample. No launch semantics were changed.
+
+The only configured provider route is OpenCode Go
+`opencode_go/muse-spark-1.3-contributor`. Provider resilience and alternative
+model/provider fallbacks are disabled; owner policy rejects Use Credit/balance
+fallback, and the owner confirmed the OpenCode Go “Use balance” toggle is OFF.
+The authenticated owner policy permits this Contributor training-data tier.
+The JARVIS dispatch/accounting gate reserves conservatively, fails closed, and
+caps this sustained-autonomy run at $1.00. At 2026-09-25 06:29 UTC, its ledger
+recorded $0.338500 across 93 settled requests, with no open or held reservation
+and $0.661500 remaining. This is JARVIS usage accounting, not a claim about a
+provider dashboard’s delayed final billing.
+
+Authenticated owner directive `owner-a0d2b90624a94968dd324025` produced
+mission `mission-f9cba19f530e`. Its plan and execution steps each completed a
+Builder and independent Verifier run; verification was accepted, evidence was
+created, and the portfolio outcome was `PASSED`. The registered worktree has
+only the requested tracked one-line removal in
+`scripts/phase2_independent_verifier.py`; pinned Ruff 0.16.5 F401 checking and
+`python -m py_compile` both pass. The mission completed at 2026-09-25 06:24:14
+UTC. Its next-action wake was scheduled and consumed by the live loop. The
+subsequent continuous-observation/initiative cycle returned `WAIT` because no
+other eligible work was found; the worker loop remains enabled and the
+Supervisor continues heartbeating. No synthetic work was created.
+
+The repo/provider-focused check `tests/foundry/test_provider_spend.py` passed
+all 10 tests. Provider dispatches observed for the live mission used only the
+authorized OpenCode Go/Muse route. No STOP, trust, or broad Wave-2 gate was
+advanced by this state reconciliation.
+
+## Historical Wave 2 candidate record — superseded for current truth
+
+The sections below preserve dated candidate and prior-runtime evidence. Their
+statements describe the state at the time recorded; where they differ from
+the current canonical/live facts above, the current record above governs.
+
+WAVE2 CANONICAL CONVERGENCE CANDIDATE (source only, isolated worktree):
+WAVE2 CANDIDATE BRANCH:        candidate/wave2-canonical-convergence-20260920
+WAVE2 PRODUCT HEAD:            fc4a7b99f707b20df1d97f610f5c0993d6819a6f
+WAVE2 PRODUCT TREE:            2499b00dd6fbea5753ff23a2e251fbe709358c69
+WAVE2 IMMUTABLE RELEASE:       rel-fc4a7b99f707-95c4527d
+WAVE2 RELEASE MANIFEST SHA:    2eb20661fcef88a9dfad5b67ce542c1341f6829483d56c6696d61c92d7d8d7a1
+WAVE2 CANDIDATE SCHEMA:        v41
+WAVE2 EVIDENCE ROOT:           var/jarvis-wave2-canonical-convergence-20260920/
+WAVE2 FINAL A ARCHIVE:         var/jarvis-wave2-canonical-convergence-20260920/final_cert/archived/final_a_closure_20260924T005345Z/
+WAVE2 A INDEPENDENT REVIEW:    A_FINAL_INDEPENDENT_REVIEW_fc4a7b99.json — PASS
+WAVE2 A END-TO-END PATH:       PROVEN — candidate-only; live promotion not performed
+
+PREEXISTING CLOSED GATES: B, C, D, E, F, G, H, and runtime identity retain
+their recorded closure. The product fix parses a strict Hermes verdict from
+stderr only when stdout has no verdict, preserving stdout authority and the
+missing-result safeguards. Focused adapter tests passed. The frozen broad run
+reported 3,578 passed, 2 failed, and 2 skipped; both failures were the
+documentation-state pin checks, which ran before this final docs-only pin.
+After this pin, the documentation staleness check and its focused tests pass.
+
+COMMIT EFFECT: P0-C was reproduced through the normal commit-effect API in a
+provider-free fixture. The old combined `<base>..<head>` argument was parsed as
+a path by Git on Windows at the observed long worktree path; separate revision
+arguments plus `--` succeeded. The mutation had created a commit before
+metadata failure caused a false FAILED journal terminal, and retry created no
+duplicate commit. The repair is in `src/jarvis_foundry/mission/commit.py` and
+`tests/foundry/test_verification_loop.py`.
+
+FINAL A: Provider preflight passed for `opencode_go/deepseek-v4.1-flash` using
+the immutable candidate release and release-bound worker configuration. The
+single clean Supervisor/runtime lifecycle created mission
+`mission-0329b25a4dab` from the active owner objective. Steps `01-plan` and
+`02-execute` each received a provider-backed verifier PASS, one `ACCEPT`, and
+one completed Git commit effect. The commits were `73d1dc57781deb174069deb1f29907a84ee2235c`
+from base `2887ab7824a3c2bb5e22006eaf8ca949176c2bc9`, then
+`8dcd6e18cd9bdc8899c7e6616de2328aacd07655` from the first commit. The mission
+reached `COMPLETE`; `mission.completed` recorded `PASSED`; finalization recorded
+`mission_completion=PASSED`, `outcome=SUCCEEDED`, and verifier status `PASS`.
+
+Exactly one objective-bound next-action wake,
+`next-action:mission-0329b25a4dab`, was scheduled and consumed as due by
+`continuous:0-c262d130`. The Supervisor-spawned worker cycle recorded a fresh
+SELECT decision and created successor mission `mission-33b031e78f3c`, which
+entered execution and verification. The successor was still in its own
+verification when the bounded candidate runtime was stopped for evidence
+capture; it is not counted as a completed mission or as part of the A PASS.
+
+The immutable original A receipt is preserved and reports `passed=false` with
+three harness check failures. Its checks assumed one verifier/commit for the
+whole mission and interpreted the finalized `SUCCEEDED` status as the
+`PASSED` mission outcome. The archived ledger shows two verified steps and the
+explicit `mission_completion=PASSED` field. Independent reviewer
+`a_final_independent_review_fc4a7b99.py` re-derived the full lifecycle from the
+read-only snapshot, process census, release manifest, and live-boundary probes;
+its result is `PASS`, `A_GATE_STATUS=PROVEN`, with zero failed checks.
+
+The archived snapshot contains 436 events, passes SQLite integrity checking,
+and all 21 files listed in its raw-evidence manifest match their hashes. The
+first archiver invocation refused the census because its path included a run
+suffix while the receipt referenced the unsuffixed census. The source snapshot
+was preserved and archived after the run. During manual packaging the arm-file
+path was reused, so the archive manifest's arm timestamp describes that
+post-run packaging invocation. The exact A driver source was reconstructed and
+matches the SHA recorded in the original receipt; its pre-Supervisor arm guard
+and successful Supervisor launch verify that the run's original archiver
+passed its readiness gate. This archival provenance detail does not change the
+raw lifecycle verdict.
+
+Final broad regression: 3,578 passed, 2 documentation-staleness failures, and
+2 skipped; no product-code failures. The final documentation pin is the only
+tracked change after the product release head. `scripts/doc_staleness_check.py`
+and `tests/foundry/test_doc_staleness_check.py` pass on the final docs-only
+commit.
+
+Historical isolated acceptance and convergence entries below describe earlier
+candidate heads; they are not the current Wave 2 verdict or a promotion claim.
 Last previously reconciled: Sunday, September 13, 2026 for the bounded A4 proving-driver
 repair that followed the Prompt 3 provider recovery (see the next paragraph),
 and for the validation-only
@@ -107,14 +327,157 @@ unverified completions, zero unbounded loops, and zero unreconciled
 ambiguous effects. Evidence: `A4_RESULT_PASS.json` and `bundle-a4r7` under
 `C:\temp\JARVIS-Prompt3Cont-20260914\e-a4`.
 
-DOCUMENTATION STATE BASE SHA: `e9a8e34f60330399d7220fe8230491dc326b880a`
+DOCUMENTATION STATE BASE SHA: `db913bdcd23438fa1b9cc51395e4e08d31719a3b`
 
-The SHA above is the immediate parent of this final docs-only reconciliation
-commit, as required by `scripts/doc_staleness_check.py`. It names the isolated
-acceptance receipts commit, not a live install. Product repair remains
-`0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`. The next owner-authorized action
-for this candidate is `docs/agent/workflows/promotion.md`; this pin does not
-perform that promotion.
+The SHA above was, at its own reconciliation commit, the immediate-parent
+docs-only pin required by `scripts/doc_staleness_check.py`. It named the Wave 2
+product head described in the surrounding paragraphs at that time, not a live
+install; the current live pin is the 2026-09-28 section at the top of this
+document. The following paragraphs retain the separate historical Purpose Recovery II
+review for branch
+`candidate/purpose-recovery-ii-canonical-convergence-20260918` in
+`C:\temp\JARVIS\purpose-recovery-ii-canonical-convergence-20260918`
+(product tree `2cc97c923deae83dc4480df772301232e1e0d538`). Its old status note
+is retained as history, not as the current Wave 2 pin.
+
+The Purpose Recovery II head documented in that earlier reconciliation was
+a REVERT, and the reason is worth stating plainly: it removes the
+section-3 contract change (`MissionStepContract.required_capabilities` and
+`_bound_step_capabilities`) because the independent review of `6502c12` found
+that change was wrong twice over — it added a field to the hash-anchored
+canonical payload without carrying it through the `mission_step_contracts`
+projection, so `latest_contract()` raised *projected contract hash mismatch* for
+every stored row including pre-existing ones and the worker loop turned that into
+a blocked mission; and in the real sequence the mission is bound to the plan step
+only AFTER materialization (`autonomy.py:2477` vs `:2489`), so the recorded
+contracts carried `required_capabilities=[]` anyway. The pin proved the helper,
+not the delivery. Section 3 is therefore OPEN with its blocker recorded, not
+approximated.
+
+That historical head also carried the repairs to the two proof-level and one
+source finding
+from the review of `47fda68`: `fresh_context_followed_the_wake` is bound to the
+consuming cycle's `cycle_id` and requires a NEW decision in that cycle (the
+reviewer's `mut_noreeval` defeat no longer works), the completion receipt's
+status comparison is EXACT text so it refuses the case-variants the projection
+refuses, and the STOP checks assert `started`, require the canonical STOP text,
+and count connector invocations rather than file existence.
+
+That session executed the owner's 0→100 master goal of 2026-09-18 on top of the
+reviewed product head `7d8672f`, and built the four production callers the goal
+named as missing:
+
+* **research → wake** (`executive/continuous.py`): `bridge_research_completions`
+  creates exactly one `WAIT_FOR_SIGNAL` wake per completed research id, bound to
+  the objective that owns the candidate and never to an objective that does not
+  exist; `consume_research_wakes` is the identity-bearing consumer; and
+  `record_research_wake_continuation` binds the consumed wake to the cycle's
+  fresh context and decision. Measured on the real candidate ledger: the wake is
+  created, consumed with a consumer identity and the exact completion event
+  (sequence 131), and the product scorer ranks the frozen candidate set
+  **+0.0196 composite higher with the findings than without them**.
+* **capability expansion production caller** (`fabric/expansion_resolver.py`,
+  `executive/autonomy.py`, `runtime/config.py`, `runtime/worker_loop.py`): a
+  durable bridge gap is now dispatched automatically. Measured end-to-end on the
+  product path: gap → engine discovery → adapter built → isolated trial in its
+  own venv → independent verification PASS → `fabric.capability.registered` →
+  same-objective wake → gap `RESUMED` → mission materialized, plus a canonical
+  dispatch of the acquired capability.
+* **campaign creation caller** (`executive/campaigns.py`,
+  `runtime/worker_loop.py`): `campaign_warrant` + `ensure_warranted_campaign`
+  decide and create the campaign the objective's own plan warrants, through the
+  unchanged `create_campaign`. Measured: one campaign created by the worker loop
+  and continued across a real subprocess restart, with no second campaign.
+* **Command Center owner truth** (`command_center.py`): `learned` is no longer
+  empty (it reports the newest calibration and whether it is decision-linked),
+  `latest_wait_diagnosis` exposes the authoritative current wait, and
+  `runtime_identity` reports the runtime that wrote the ledger beside the
+  installed release pointer. Measured read-only against a byte-identical copy of
+  the candidate DB: all twelve owner questions answerable, DB hash unchanged.
+
+The NUL-value fix at `7d8672f` was independently reviewed during this session and
+PASSED (`REVIEW_G_7d8672f.json`): zero escapes for the whole hostile-root
+battery, zero unsafe PASSes, no evidence widening or suppression; seven residual
+findings recorded, four of them pre-existing unguarded sibling sites.
+
+### Repair round 2 — the final review of `bd47279` failed, and the defects are repaired
+
+The required final adversarial review of this session's product head `bd47279`
+ran in an independent session and returned **FAIL**
+(`ADVERSARIAL_REVIEW_FINAL.json`). It confirmed the research bridge's wake
+cardinality, binding, deferral and replay behaviour, the resolver's tier/id/
+locator/callable declines, the expansion caller's fail-closed STOP handling, the
+opt-in config gate, all five campaign claims, the Command Center projections, the
+executor refactor and the two touched test files — and then named four defects
+and six checks in the session's own receipts that a mutation could defeat:
+
+* a cycle named wake ids that do not exist (every `research_bridged` row's
+  `wake_id` was merged into `triggered_wakes`); the merge is now
+  `_triggered_research_wakes()`, gated on the wake projection;
+* the resolver certified a declaration whose tracked file is absent from the
+  checkout; `_declared_source_present()` now resolves the declaration;
+* a FAILED research attempt counted as a durable completion; the receipt lookup
+  now requires `status = 'COMPLETED'`;
+* a colliding consumption receipt was swallowed; it is now recorded as
+  `executive.research_wake_consumption_skipped` and returned to the caller;
+* `_dispatch_capability_expansion` took a `stop_path` it never used (removed);
+* and the six vacuous checks in the proofs were rewritten as measurements
+  (Executive-state lookup for the bound objective, pinned wake-less unbound
+  completions, a scorer check that says what it measures, a dispatch receipt
+  that must carry a resumed/waiting gap, a post-restart continuation event after
+  a recorded sequence boundary, a re-evaluated warrant predicate, and Command
+  Center provenance checks that resolve their identifiers in the ledger).
+
+Evidence: `REPAIR_ROUND2_PROBE.json` re-runs every counterexample the review
+reported — none reproduces on the repaired tree, each arm keeping a positive
+control — while `PREFIX_PROBE_RESULT.json` (extracted `bd47279` tree) shows all
+four reproducing there. Seven pins live in
+`tests/foundry/test_purpose_recovery_ii_repair_round2.py`; the focused ladder is
+`PYTEST_EXIT=0` (`logs/focused_repair_round2.txt`), and the four proof drivers
+were re-run at the repaired head so each artifact's `source_identity` names it
+(`logs/proofs_at_repaired_head.txt`).
+
+### Repair round 3 — the review of `862b745` passed every claim and failed the two defects the repairs introduced
+
+That review (`ADVERSARIAL_REVIEW_REPAIRED_862b745.json`) returned **PASS** for
+all seven claims — the wake-existence gate, the declared-source check, the
+status-filtered receipt, the removed parameter, the reported colliding
+consumption, the six rewritten checks, and "no unintended widening or narrowing"
+— and **FAIL** overall for two defects the repairs themselves created:
+
+* the skip receipt added by R12 was appended to the list the cycle hands to
+  `record_research_wake_continuation`, which wrote `executive.research_wake_continued`
+  for a wake whose consumption was *skipped* — one false record per cycle. The
+  recorder now drops receipts with `consumed is False` before writing anything;
+* `projections.py` seals a completion that carries no status as `COMPLETED`,
+  while the round-2 receipt query demanded an explicit `COMPLETED`, so such a
+  completion produced a wake the consumer could never release. The query default
+  now mirrors the projection (`COALESCE(status, 'COMPLETED')`).
+
+Both repairs carry discriminating pins (they fail on an extracted `862b745`
+tree, `C:/temp/ROUND3_PREFIX_862b745`) and the round-3 focused ladder records
+`HEAD=`/`TREE=`/`DIRTY=` markers (`logs/focused_round3.txt`), which closes the
+labelling observation the same review raised about the round-2 log. Recorded and
+not repaired: the wake-existence gate still advertises an
+existing-but-never-triggered research wake, and six residual defeat paths in the
+rewritten checks remain as the review listed them.
+
+Verdict for this session: `CONVERGENCE_PARTIAL_BLOCKED`. Still open — **no
+independent review of the round-3 head `2edd0a0`** (an older verdict never
+certifies a newer head: both `bd47279` and `862b745` were reviewed and both
+verdicts were spent on repairs), no broad `tests/foundry` receipt (the one
+attempt was aborted at ~40% and mixed the pre- and post-repair sources, so it is
+tombstoned and certifies nothing), the Supervisor-spawned (Level 5) boundary for
+the research leg, the resumed mission's own execution leg (it reached BLOCKED in
+the isolated proof home), and the in-flight STOP and exactly-once attempt-2
+receipts.
+Handoff and evidence live under
+`var/purpose-recovery-ii-convergence-20260918/` in that worktree. Product repair
+remains `0bfdfa851f6c3f4d0203d1e75216967587ecc4d6`, carried forward from the
+previous pin; this session did not touch the live install, its database, its
+worker routing or its scheduler. The next owner-authorized action for this
+candidate is `docs/agent/workflows/promotion.md`; this pin does not perform that
+promotion.
 
 ## Repair-path scope fix (2026-09-15)
 
@@ -180,8 +543,8 @@ FRESH PROVIDER PROBE:          PASS (opencode_go / deepseek-v4.1-flash)
 FRESH A3:                      PASS (one bounded, independently verified candidate)
 FRESH A4:                      PARTIAL (6/6 fault points; two end-state findings open)
 48H TRUST WINDOW:              NOT_STARTED
-CURRENT/CANDIDATE SCHEMA:     v40 (canonical source candidate only)
-LIVE SCHEMA:                  v38
+CURRENT/CANDIDATE SCHEMA:     v41 (at this 2026-09-06 historical snapshot; canonical source candidate only)
+LIVE SCHEMA:                  v38 (at this 2026-09-06 historical snapshot; superseded by live v41)
 V2 KNOWLEDGE SCHEMA:          v35 (historical additive migration)
 V3 DISCOVERY/BUILDING SCHEMA: v36 (historical additive migration)
 v34 live baseline:            historical predecessor retained for migration proof
@@ -909,15 +1272,10 @@ documentation staleness check must remain green.
 
 ## Next authorized action
 
-The normal Git merge of the exact verified repair is complete: local `main`
-and `origin/main` carry this reconciliation commit, and the pinned SHA above
-names the source state it describes. The next authorized action is one fresh
-independent promotion preflight against that exact final canonical source,
-with live production strictly read-only. Live deployment, CURRENT/PREVIOUS
-changes, Supervisor retargeting, live database migration, provider probing,
-trust restoration, Prompt 3, or V14 remain unauthorized here. After the fresh
-preflight's report is recorded, stop.
-
-No fresh provider run, genuine cold V11 A3 flagship, immediate A4 campaign, or
-separately guarded 48-hour runner was started by this repair. Source
-promotion does not close those gates or grant production trust.
+Keep the canonical worker loop enabled under the existing STOP, owner-policy,
+route, and $1.00 provider-spend controls. The current owner mission and its
+next-action wake completed, and the fresh Executive/initiative cycle returned
+WAIT because it found no further eligible work. Continue only when normal
+owner/standing-intent or source-discovery mechanisms present legitimate work;
+do not manufacture a workload. Keep trust `SUSPENDED` and do not reopen Wave 2
+or unrelated historical gates.

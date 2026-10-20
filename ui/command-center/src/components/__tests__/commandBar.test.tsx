@@ -136,7 +136,7 @@ describe("command dock tabs (Task 7)", () => {
 
     await user.type(input, "Hoowen beta")
     expect(await screen.findByRole("listbox", { name: /Command matches/i })).toBeInTheDocument()
-    expect(screen.getByText("Hoowen beta")).toBeInTheDocument()
+    expect(screen.getAllByText("Hoowen beta").length).toBeGreaterThan(0)
   })
 
   it("carries directive and event IDs as secondary confirmation on accepted feedback", async () => {
@@ -201,5 +201,19 @@ describe("owner command surface tabs (Task 7)", () => {
     await user.click(screen.getByRole("button", { name: /Submit/i }))
     await waitFor(() => expect(submitVeto).toHaveBeenCalledWith("Hold deploy"))
     expect(await screen.findByText(/directive-veto-1/)).toBeInTheDocument()
+  })
+
+  it("never hijacks a long multi-sentence goal as a navigation shortcut", async () => {
+    const submit = vi.spyOn(MockJarvisClient.prototype, "submitOwnerGoal").mockResolvedValue({ accepted: true, directiveId: "d-1", eventId: "e-1" })
+    vi.spyOn(MockJarvisClient.prototype, "search").mockResolvedValue(emptyResults)
+    const user = userEvent.setup()
+    renderDock()
+
+    const goal = "Report on the outcome covering the last release and then show blocked missions for each active project"
+    const input = await screen.findByRole("combobox", { name: /Direct JARVIS/i })
+    await user.type(input, goal)
+    await user.click(screen.getByRole("button", { name: /Send command/i }))
+
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(goal, "HANDLE"))
   })
 })

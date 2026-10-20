@@ -1,0 +1,176 @@
+{
+  "acquisition": {
+    "capability_id": "cap.hash.file.sha256",
+    "claimed": "COMPLETED",
+    "gap_records_after": [
+      {
+        "candidate_path": null,
+        "detail": "intent owner-goal:mission-4c1d579bc3a4 requires hash.file.sha256; no registered capability realizes it in this runtime",
+        "gap_id": "gap.intent.owner-goal:mission-4c1d579bc3a4.hash-file-sha256",
+        "missing": "tool",
+        "needed_action": "hash.file.sha256",
+        "status": "DETECTED"
+      },
+      {
+        "candidate_path": null,
+        "detail": "I understand the task but cannot currently perform hash.file.sha256",
+        "gap_id": "gap.missing.hash-file-sha256",
+        "missing": "tool",
+        "needed_action": "hash.file.sha256",
+        "status": "DETECTED"
+      },
+      {
+        "candidate_path": null,
+        "detail": "no registered sha256 hasher",
+        "gap_id": "gap.9cabfd7956f5",
+        "missing": "script",
+        "needed_action": "hash.file.sha256",
+        "status": "SPECIFIED"
+      },
+      {
+        "candidate_path": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\self_expansion\\run\\project\\fabric-candidates\\gap.9cabfd7956f5\\tool.py",
+        "detail": "script registered after focused test",
+        "gap_id": "gap.9cabfd7956f5",
+        "missing": "script",
+        "needed_action": "hash.file.sha256",
+        "status": "REGISTERED"
+      }
+    ],
+    "observed_sha256": "f00c399f413d2bb6b1b05ccb297d0e2da02a637a934979ad0b2e7677ca0fbad1",
+    "verified": "MATCH"
+  },
+  "canonical_verification": {
+    "evidence": {
+      "jarvis_predicate": "verification:canonical-fabric-predicate",
+      "verifier_answered_by": "fabric"
+    },
+    "observations": [
+      {
+        "action_kind": "hash.file.sha256",
+        "capability_id": "cap.hash.file.sha256",
+        "declared": {
+          "path": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\self_expansion\\run\\project\\evidence.bin"
+        },
+        "effect_id": "effect:17d654a86a06388ae6c7c817636178527486d47fe6d03e069d304b6b38622177",
+        "mission_id": "mission-40c070124518",
+        "predicate": "canonical-fabric-predicate",
+        "receipt_id": "receipt:effect:17d654a86a06388ae6c7c817636178527486d47fe6d03e069d304b6b38622177:attempt:1",
+        "reverified": "MATCH",
+        "run_id": "run-3b83d2f8cd11-verify",
+        "step_id": "01-action",
+        "subject_ref": "C:\\temp\\JARVIS\\purpose-recovery-ii-b-runtime-operations-20260917\\var\\purpose-recovery-ii-20260917\\lane-b\\self_expansion\\run\\project\\evidence.bin"
+      }
+    ]
+  },
+  "capability_outcomes": [
+    {
+      "at": "2026-09-18T09:18:41.744656Z",
+      "capability_id": "cap.hash.file.sha256",
+      "consecutive_failures": 0,
+      "last_outcome": "SUCCESS",
+      "note": "",
+      "state": "READY",
+      "success": true,
+      "verified": "MATCH"
+    },
+    {
+      "at": "2026-09-18T09:18:55.651024Z",
+      "capability_id": "cap.hash.file.sha256",
+      "consecutive_failures": 0,
+      "last_outcome": "SUCCESS",
+      "note": "",
+      "state": "READY",
+      "success": true,
+      "verified": "MATCH"
+    }
+  ],
+  "checks": {
+    "computed_digest_matches_independent_digest": true,
+    "gap_carries_the_required_action": true,
+    "mission_bound_the_acquired_action": true,
+    "no_false_success": true,
+    "resumed_action_verified_against_external_digest": true,
+    "resumed_mission_verified_by_jarvis_predicate": true,
+    "runtime_acquired_capability": true,
+    "runtime_detected_gap_without_materializing": true,
+    "same_objective_resumed": true
+  },
+  "expected_digest": "f00c399f413d2bb6b1b05ccb297d0e2da02a637a934979ad0b2e7677ca0fbad1",
+  "gap_detected_by_runtime": {
+    "cycle_reason": "no registered capability for required action hash.file.sha256",
+    "cycle_status": "BLOCKED",
+    "gaps": [
+      {
+        "candidate_path": null,
+        "detail": "intent owner-goal:mission-4c1d579bc3a4 requires hash.file.sha256; no registered capability realizes it in this runtime",
+        "gap_id": "gap.intent.owner-goal:mission-4c1d579bc3a4.hash-file-sha256",
+        "missing": "tool",
+        "needed_action": "hash.file.sha256",
+        "status": "DETECTED"
+      }
+    ],
+    "intent_unresolved": [
+      {
+        "decision_id": "portfolio-executive:lane-b-expansion-cycle-1",
+        "gap": {
+          "candidate_path": null,
+          "detail": "intent owner-goal:mission-4c1d579bc3a4 requires hash.file.sha256; no registered capability realizes it in this runtime",
+          "gap_id": "gap.intent.owner-goal:mission-4c1d579bc3a4.hash-file-sha256",
+          "missing": "tool",
+          "needed_action": "hash.file.sha256",
+          "status": "DETECTED"
+        },
+        "intent_id": "owner-goal:mission-4c1d579bc3a4",
+        "intent_needs": [
+          "compute.file_hash"
+        ],
+        "item_id": "owner-goal:owner-df31d82687ec06cc76b59230",
+        "mission_id": "mission-4c1d579bc3a4",
+        "reason": "no registered capability for required action hash.file.sha256"
+      }
+    ],
+    "materialized": false
+  },
+  "goal_text": "Compute and record the integrity digest of the supplied evidence file.",
+  "objective_id": "owner-goal:owner-df31d82687ec06cc76b59230",
+  "passed": true,
+  "repair_lineage": {
+    "repairs": [
+      "R6 verifier routing: the mission verifier step for a step whose contract capability resolves to a Fabric action kind is answered by the canonical JARVIS predicate over the recorded receipt (fabric/adapter.py canonical_verifier_dispatch + fabric/loop.py canonical_predicate_verdict), and the acceptance rule 'Model PASS is insufficient: JARVIS must see an artifact predicate' accepts that re-derived predicate as the predicate (mission/loop.py).",
+      "R7 binding drift: a pass resumed after the frozen binding drifted is refused honestly (BLOCKED with the ledger's own reason) instead of propagating the ledger's EventConflict out of the loop."
+    ],
+    "supersedes": {
+      "commit": "c4fd21371cd3b23a79c962ec8314396534c05a60",
+      "mission_outcome": "PASSED",
+      "verdicts": [
+        {
+          "evidence_json": "{\"artifact_hashes\":{},\"binding_hash\":\"e7924b74c25647b35c9d5e7dd74d05ca17cbfee290c1547b10b3ee3c6f03f814\",\"binding_schema\":\"verifier-binding-v1\",\"builder_run_id\":\"run-5f62e6ebc30d\",\"context_manifest_hash\":\"33fd8e3fd4ac15896e893bbbaa3bd52b08e1012bd19066ad19eac50f44231098\",\"context_manifest_id\":\"\",\"diff_hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"fabrication_review\":\"performed\",\"jarvis_predicate\":\"verification:canonical-fabric-predicate\",\"target\":\"C:\\\\temp\\\\JARVIS\\\\purpose-recovery-ii-b-runtime-operations-20260917\\\\var\\\\purpose-recovery-ii-20260917\\\\lane-b\\\\self_expansion\\\\run\\\\project\\\\.jarvis\\\\intents\\\\owner-goal-mission-b71bd0c89cf7\\\\step-01\",\"verifier_answered_by\":\"fabric\",\"verifier_run_id\":\"run-5f62e6ebc30d-verify\",\"verifier_session_id\":\"run-5f62e6ebc30d-verify\"}",
+          "status": "PASS",
+          "subject_id": "01-action",
+          "verdict": "PASS",
+          "verdict_id": "verdict-v2-59288299ab86ae1cae96fed6"
+        }
+      ]
+    }
+  },
+  "required_action": "hash.file.sha256",
+  "required_need": "compute.file_hash",
+  "resume": {
+    "contract_capability": "cap.hash.file.sha256",
+    "contract_step": "01-action",
+    "cycle_status": "MISSION_MATERIALIZED",
+    "materialized": true,
+    "mission_id": "mission-40c070124518",
+    "mission_outcome": "PASSED",
+    "verdicts": [
+      {
+        "evidence_json": "{\"artifact_hashes\":{},\"binding_hash\":\"0a54ee83b5d319e5dfffd1f9fec13a5caaae88c8c296287f373466ea16576825\",\"binding_schema\":\"verifier-binding-v1\",\"builder_run_id\":\"run-3b83d2f8cd11\",\"context_manifest_hash\":\"466bf6fa01f771995c0a7f7834a7f387629e6541fa0123770287ec3fa49da6bf\",\"context_manifest_id\":\"\",\"diff_hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"fabrication_review\":\"performed\",\"jarvis_predicate\":\"verification:canonical-fabric-predicate\",\"target\":\"C:\\\\temp\\\\JARVIS\\\\purpose-recovery-ii-b-runtime-operations-20260917\\\\var\\\\purpose-recovery-ii-20260917\\\\lane-b\\\\self_expansion\\\\run\\\\project\\\\.jarvis\\\\intents\\\\owner-goal-mission-40c070124518\\\\step-01\",\"verifier_answered_by\":\"fabric\",\"verifier_run_id\":\"run-3b83d2f8cd11-verify\",\"verifier_session_id\":\"run-3b83d2f8cd11-verify\"}",
+        "status": "PASS",
+        "subject_id": "01-action",
+        "verdict": "PASS",
+        "verdict_id": "verdict-v2-0afa98c017c88a28a432f0cb"
+      }
+    ]
+  },
+  "schema": "jarvis.purpose-recovery-ii.lane-b.self-expansion-proof.v1"
+}

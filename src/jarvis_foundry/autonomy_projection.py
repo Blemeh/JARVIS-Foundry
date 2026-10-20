@@ -22,6 +22,12 @@ MAX_CANDIDATE_SCAN = 200
 MAX_TIMELINE = 100
 MAX_SOURCE_SCAN = 256
 MAX_EVENT_SCAN = 500
+MAX_ESCALATION_SCAN = 500
+MAX_OWNER_ACTIONS = 20
+MAX_OWNER_ACTION_OPTIONS = 12
+MAX_OWNER_ACTION_TEXT = 1_200
+MAX_OWNER_ACTION_OPTION_TEXT = 240
+MAX_OWNER_ACTION_ID = 240
 MAX_DETAIL_ITEMS = 24
 
 # These are additive read contracts.  They deliberately remain optional: A3
@@ -49,6 +55,8 @@ _TIMELINE_TYPES = (
     "executive.objective_created",
     "executive.objective_recorded",
     "executive.candidate_admitted",
+    "executive.escalation_opened",
+    "executive.escalation_resolved",
     "mission.created",
     "mission.step_contract_recorded",
     "mission.step_started",
@@ -89,6 +97,12 @@ def _bounded_list(value: Any, limit: int = MAX_DETAIL_ITEMS) -> list[Any]:
     if not isinstance(value, (list, tuple)):
         return []
     return list(value[:max(0, int(limit))])
+
+
+def _owner_action_text(value: Any, limit: int, fallback: str = "") -> str:
+    if value is None:
+        return fallback
+    return str(value)[:limit]
 
 
 def _find_mapping(value: Any, keys: tuple[str, ...], *, depth: int = 0) -> dict[str, Any] | None:
@@ -211,6 +225,16 @@ def _in_rows(connection: sqlite3.Connection, table: str, key: str,
 
 def _empty(reason: str, generated_at: str) -> dict[str, Any]:
     unavailable = {"value": None, "status": "UNAVAILABLE"}
+    owner_action_unavailable = {
+        "value": None,
+        "status": "UNAVAILABLE",
+        "items": [],
+        "count": 0,
+        "open_count": None,
+        "scan_truncated": False,
+        "items_truncated": False,
+        "scan_limit": MAX_ESCALATION_SCAN,
+    }
     return {
         "schema": AUTONOMY_PROJECTION_SCHEMA,
         "status": "UNAVAILABLE",
@@ -220,7 +244,8 @@ def _empty(reason: str, generated_at: str) -> dict[str, Any]:
             "state": "UNAVAILABLE", "cycle_id": None, "stage": None,
             "last_observation_cycle": None, "next_wake": None,
             "wait_reason": None, "wait_boundary": None,
-            "wait_reason_code": None, "owner_action": unavailable,
+            "wait_reason_code": None,
+            "owner_action": owner_action_unavailable,
             "active_wip": unavailable,
         },
         "funnel": {
@@ -350,6 +375,81 @@ def _event_records(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         records.append({**row, "payload": payload})
     return records
+
+
+def _owner_action_projection(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Project the latest bounded state of Executive escalations."""
+    truncated = len(rows) > MAX_ESCALATION_SCAN
+    latest: list[dict[str, Any]] = []
+    open_count = 0
+    seen: set[str] = set()
+    for row in rows[:MAX_ESCALATION_SCAN]:
+        payload = _json(row.get("payload_json"), {})
+        if not isinstance(payload, dict):
+            continue
+        escalation_id = str(payload.get("escalation_id") or "")
+        if not escalation_id or escalation_id in seen:
+            continue
+        seen.add(escalation_id)
+        state = str(
+            payload.get("status")
+            or ("RESOLVED" if row.get("event_type") == "executive.escalation_resolved" else "OPEN")
+        ).upper()
+        if state != "OPEN":
+            continue
+        open_count += 1
+        if len(latest) >= MAX_OWNER_ACTIONS:
+            continue
+        options = [
+            _owner_action_text(option, MAX_OWNER_ACTION_OPTION_TEXT)
+            for option in _bounded_list(
+                payload.get("options"), MAX_OWNER_ACTION_OPTIONS
+            )
+            if isinstance(option, str) and option
+        ]
+        created_at = payload.get("created_at")
+        latest.append({
+            "escalation_id": _owner_action_text(
+                escalation_id, MAX_OWNER_ACTION_ID
+            ),
+            "objective_id": (
+                _owner_action_text(
+                    payload.get("objective_id"), MAX_OWNER_ACTION_ID
+                ) or None
+            ),
+            "decision": _owner_action_text(
+                payload.get("decision"), MAX_OWNER_ACTION_TEXT,
+                "Owner decision needed",
+            ),
+            "why": _owner_action_text(payload.get("why"), MAX_OWNER_ACTION_TEXT),
+            "recommendation": _owner_action_text(
+                payload.get("recommendation"), MAX_OWNER_ACTION_TEXT
+            ),
+            "options": options,
+            "delay_consequence": (
+                _owner_action_text(
+                    payload.get("delay_consequence"), MAX_OWNER_ACTION_TEXT
+                ) or None
+            ),
+            "created_at": (
+                _owner_action_text(created_at, 64) if created_at else None
+            ),
+            "event_id": _owner_action_text(
+                row.get("event_id"), MAX_OWNER_ACTION_ID
+            ) or None,
+        })
+    items_truncated = open_count > MAX_OWNER_ACTIONS
+    status = "PARTIAL" if truncated or items_truncated else "AVAILABLE"
+    return {
+        "value": latest[0] if latest else None,
+        "status": status,
+        "items": latest,
+        "count": len(latest),
+        "open_count": open_count,
+        "scan_truncated": truncated,
+        "items_truncated": items_truncated,
+        "scan_limit": MAX_ESCALATION_SCAN,
+    }
 
 
 def _matching_payload(
@@ -1023,6 +1123,10 @@ def _event_stage(event_type: str, payload: dict[str, Any]) -> str | None:
         return outcome if outcome in {"REJECTED", "ELIGIBLE"} else None
     if event_type.startswith("executive.objective") or event_type == "executive.candidate_admitted":
         return "OBJECTIVE"
+    if event_type in {
+        "executive.escalation_opened", "executive.escalation_resolved",
+    }:
+        return "OWNER_ACTION"
     if event_type == "mission.created" or event_type.startswith("mission.step_") \
             or event_type.startswith("agent_run."):
         return "BUILD"
@@ -1280,6 +1384,14 @@ def build_autonomy_projection(
                     "WHERE event_type IN ('executive.calibration_recorded', 'world.calibration_recorded') "
                     "ORDER BY sequence DESC LIMIT 200",
                 )
+                escalation_rows = _rows(
+                    connection,
+                    "SELECT event_id, event_type, occurred_at, payload_json "
+                    "FROM events WHERE event_type IN "
+                    "('executive.escalation_opened', 'executive.escalation_resolved') "
+                    "ORDER BY sequence DESC LIMIT ?",
+                    (MAX_ESCALATION_SCAN + 1,),
+                )
                 recent_event_rows = _rows(
                     connection,
                     "SELECT sequence, event_id, event_type, occurred_at, payload_json "
@@ -1448,6 +1560,7 @@ def build_autonomy_projection(
     source_projection = _latest_sources(source_rows, _source_event_details(event_records))
     source_digest = _source_digest_projection(source_rows, event_records, cycle)
     learning = _learning_projection(calibration_events, outcome_rows)
+    owner_action = _owner_action_projection(escalation_rows)
     funnel = {
         "observed": metric("observations_recorded"),
         "generated": metric("raw_candidates_generated"),
@@ -1478,7 +1591,7 @@ def build_autonomy_projection(
             current_candidate["judgment"].get("reason_code")
             if current_candidate else None
         ),
-        "owner_action": {"value": None, "status": "UNAVAILABLE"},
+        "owner_action": owner_action,
         "active_wip": {
             "value": executing if bridge_present else None,
             "status": "AVAILABLE" if bridge_present else "UNAVAILABLE",
@@ -1515,6 +1628,8 @@ def build_autonomy_projection(
             "timeline_limit": timeline_limit,
             "source_scan_limit": MAX_SOURCE_SCAN,
             "event_scan_limit": MAX_EVENT_SCAN,
+            "owner_action_scan_limit": MAX_ESCALATION_SCAN,
+            "owner_action_limit": MAX_OWNER_ACTIONS,
         },
     }
 

@@ -12,12 +12,18 @@ const kindIcon = {
   pass: ShieldCheck,
 } as const;
 
-const statusVariant: Record<LineageNode["status"], "PASS" | "FAIL" | "ACTIVE" | "PENDING"> = {
+const statusVariant: Record<LineageNode["status"], LineageNode["status"]> = {
   PASS: "PASS",
   FAIL: "FAIL",
   ACTIVE: "ACTIVE",
   PENDING: "PENDING",
+  BLOCKED: "BLOCKED",
+  "NOT REQUIRED": "NOT REQUIRED",
+  "NOT RECORDED": "NOT RECORDED",
 };
+
+const statusClass = (status: LineageNode["status"]): string =>
+  status.toLowerCase().replace(/\s+/g, "-");
 
 export function Lineage({ nodes }: { nodes: LineageNode[] }) {
   return (
@@ -25,7 +31,7 @@ export function Lineage({ nodes }: { nodes: LineageNode[] }) {
       {nodes.map((n, i) => {
         const Icon = kindIcon[n.kind];
         return (
-          <li key={n.id} className={`lineage-node lineage-node-${n.status.toLowerCase()}`}>
+          <li key={n.id} className={`lineage-node lineage-node-${statusClass(n.status)}`}>
             <div className="lineage-node-head">
               <span className="lineage-node-icon" aria-hidden="true">
                 <Icon size={14} />

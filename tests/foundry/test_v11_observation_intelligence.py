@@ -24,11 +24,15 @@ from jarvis_foundry.world_model.gaps import WorldKnowledgeGapStore
 from jarvis_foundry.world_model.patterns import WorldPatternStore
 from jarvis_foundry.world_model.relationships import WorldRelationshipStore
 from jarvis_foundry.world_model.signals import WorldSignalStore
+from jarvis_foundry.executive.intelligence import (
+    _with_default_world_context_source,
+    project_roots_from_sources,
+)
 
 
 def _db(tmp_path) -> FoundryDatabase:
     database = FoundryDatabase(tmp_path / "observation-intelligence.db")
-    assert database.initialize() == 40
+    assert database.initialize() == 41
     return database
 
 
@@ -298,6 +302,70 @@ def test_world_model_intelligence_separates_epistemic_and_capability_gaps(tmp_pa
                 if item.payload["kind"] == "unresolved_unknown"]
     assert {row["gap_domain"] for row in gap_rows} == {"EPISTEMIC", "FABRIC_CAPABILITY"}
     assert next(row for row in gap_rows if row["gap_id"] == "gap-capability")["epistemic_gap"] is False
+
+
+def test_default_executive_source_includes_world_context_without_promoting_history(tmp_path):
+    database = _db(tmp_path)
+    source_root = tmp_path / "project"
+    source_root.mkdir()
+    project = SourceSpec(
+        "project:jarvis", "project", str(source_root),
+        config={"root": str(source_root), "project_id": "jarvis"},
+    )
+    sources = _with_default_world_context_source((project,))
+    world = next(source for source in sources if source.source_kind == "world")
+
+    assert [source.source_kind for source in sources] == ["project", "world"]
+    assert _with_default_world_context_source(sources) == sources
+    assert project_roots_from_sources(sources) == {"jarvis": str(source_root)}
+
+    WorldEntityStore(database).record(
+        "MISSION", "old mission summary", entity_id="mission-old",
+        state="STALE", authority="SYSTEM_OBSERVATION",
+        provenance={"verified": True},
+    )
+    patterns = WorldPatternStore(database)
+    patterns.record("MISSION_FAILURE", "old mission failed", evidence=["mission-old"], confidence=0.8)
+    patterns.record("MISSION_FAILURE", "old mission failed", evidence=["mission-old-2"], confidence=0.8)
+    WorldSignalStore(database).record(
+        "OPPORTUNITY", "Current owner verified opportunity",
+        summary="A current action is explicitly authorized.",
+        affected_entities=["project:jarvis"], evidence=["owner-evidence:current"],
+        provenance={"verified": True, "authority": "OWNER_AUTHORITY"},
+        recommended_action="Inspect the current registered project's active objective.",
+    )
+    WorldSignalStore(database).record(
+        "FOLLOW_UP", "Unverified historical context",
+        evidence=["old-record:context"],
+        provenance={"authority": "DATA_ONLY"},
+        recommended_action="Do not use unverified historical context as new work.",
+    )
+
+    result = read_world_source(world, store=WorldSignalStore(database))
+    candidates = [item for item in result.observations if item.candidate_on == "always"]
+    assert [(item.candidate_type, item.proposed_outcome) for item in candidates] == [
+        ("world_signal", "Inspect the current registered project's active objective."),
+    ]
+    assert all(item.payload.get("kind") != "stale_assumption" for item in candidates)
+    assert not any(item.candidate_type == "world_stale_assumption" for item in result.observations)
+    assert not any(item.candidate_type == "world_repeated_failure" for item in result.observations)
+    assert not any(
+        item.payload.get("title") == "Unverified historical context"
+        for item in result.observations
+    )
+
+    _start(database, "world-context")
+    cycle = run_source_observation_cycle(
+        database, "world-context", sources, now=datetime(2026, 9, 2, tzinfo=timezone.utc),
+    )
+    assert cycle["candidates_created"] == 1
+    assert database.count("candidates") == 1
+    with database.connect(readonly=True) as connection:
+        executable_events = connection.execute(
+            "SELECT COUNT(*) FROM events WHERE event_type IN "
+            "('mission.created','executive.objective_recorded','effect.requested')"
+        ).fetchone()[0]
+    assert executable_events == 0
 
 
 def test_digest_correlates_related_sources_without_duplicate_candidate(tmp_path):

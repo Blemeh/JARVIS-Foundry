@@ -351,6 +351,15 @@ _EXECUTION_CONTROL_FIELDS = {
     "stop_scope",
     "timeout_ms",
     "timeout_s",
+    # Loop/run/worker identity: a retry, a new cycle, a process restart or a
+    # campaign resume of the SAME intended mutation must reconcile to ONE
+    # consequential effect identity.  These fields describe who is executing,
+    # never what is being changed, so two attempts of one effect must hash
+    # identically.  Only the id hash is affected; the request still carries the
+    # original payload.
+    "loop_id",
+    "run_id",
+    "instance_id",
 }
 
 

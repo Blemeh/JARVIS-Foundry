@@ -38,7 +38,7 @@ def test_four_real_decision_proofs_use_canonical_boundaries(
     proof = json.loads(output.read_text(encoding="utf-8"))
 
     assert proof["contract"] == "jarvis.v13.world-intelligence-proof.v1"
-    assert proof["schema"] == 40
+    assert proof["schema"] == 41
     assert set(proof["proofs"]) == {"A", "B", "C", "D"}
     assert RESEARCH_DOSSIER_CONTRACT == DOSSIER_CONTRACT
 
