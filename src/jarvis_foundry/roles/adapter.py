@@ -165,7 +165,11 @@ class FakeHermesAdapter:
         text = manifest.instructions or ""
         marker = " named report.md"
         if marker in text:
-            token = text.split(marker, 1)[0].split()[-1]
+            # The target may contain spaces (e.g. a checkout under
+            # "Documents\My Project"), so take everything after the
+            # "target directory" phrase rather than the last whitespace token.
+            located = re.search(r"target directory (.+?)" + re.escape(marker), text, re.S)
+            token = (located.group(1) if located else text.split(marker, 1)[0].split()[-1]).strip()
             dests.append(Path(token) / "report.md")
         for path in dests:
             path.parent.mkdir(parents=True, exist_ok=True)
