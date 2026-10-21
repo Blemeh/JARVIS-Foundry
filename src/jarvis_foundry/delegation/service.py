@@ -813,6 +813,41 @@ class DelegationService:
             ),
         )
 
+    def _already_blocked_identically(
+        self,
+        intent_id: str,
+        *,
+        reason_code: str,
+        reason: str,
+        objective_id: str | None,
+        plan_id: str | None,
+        step_ids: Sequence[str],
+        mission_ids: Sequence[str],
+    ) -> bool:
+        """True when the intent's latest delegation event is this exact block.
+
+        Conservative by construction: only the newest ``delegation.*`` event of
+        *this* intent counts, and only an identical ``intent_blocked`` suppresses
+        a write. Any other transition in between (admitted, updated, ...) makes
+        the next block a genuine new event.
+        """
+        for event in self.database.events(
+            event_type_prefixes=("delegation.",), newest_first=True, limit=400,
+        ):
+            payload = event.payload if isinstance(event.payload, dict) else {}
+            if payload.get("intent_id") != intent_id:
+                continue
+            if event.event_type != "delegation.intent_blocked":
+                return False
+            return (
+                payload.get("reason_code") == reason_code
+                and payload.get("reason") == reason
+                and (payload.get("objective_id") or None) == (objective_id or None)
+                and (payload.get("plan_id") or None) == (plan_id or None)
+                and list(payload.get("step_ids") or []) == list(step_ids)
+                and list(payload.get("mission_ids") or []) == list(mission_ids)
+            )
+        return False
     def _block(
         self,
         intent: DelegationIntent,
@@ -837,6 +872,28 @@ class DelegationService:
         )
         updated_at = transition_at or intent.updated_at
         transition = transition_identity or intent.updated_at
+        if self._already_blocked_identically(
+            intent.intent_id,
+            reason_code=reason_code,
+            reason=reason,
+            objective_id=effective_objective_id,
+            plan_id=effective_plan_id,
+            step_ids=effective_step_ids,
+            mission_ids=effective_mission_ids,
+        ):
+            # Re-evaluating a waiting directive every cycle used to append a new
+            # identical block each time (its key embeds a fresh timestamp), so a
+            # single stalled intent wrote thousands of events and buried the one
+            # owner clarification. Only a *state change* is a new transition.
+            return DelegationOutcome(
+                directive_id=record.directive_id,
+                status="BLOCKED",
+                reason=reason,
+                intent_id=intent.intent_id,
+                objective_id=effective_objective_id,
+                plan_id=effective_plan_id,
+                step_ids=effective_step_ids,
+            )
         self.database.append(Event.create(
             "delegation.intent_blocked",
             {

@@ -636,3 +636,57 @@ def test_execution_generation_uses_only_executive_authored_step(
     assert len(requests) == 1
     assert requests[0]["step_id"] == step_ids[0]
     assert database.event_count(event_type="executive.plan_created") == 1
+
+def test_reevaluating_a_waiting_directive_writes_one_block_event(tmp_path: Path) -> None:
+    """A stalled intent must not append an identical block every cycle.
+
+    Live evidence: one waiting delegation wrote 3,301 ``delegation.intent_blocked``
+    events (a fresh timestamp in the key made each one unique) while the owner was
+    asked for clarification once.
+    """
+    database = _database(tmp_path)
+    directive_id = _apply(
+        database,
+        "DELEGATE",
+        "Handle the release objective",
+        directive_id="delegate-await-dedupe",
+        metadata={"context": {"objective_id": "executive-objective:missing"}},
+    )
+    service = DelegationService(database)
+    outcomes = [service.process_directive(directive_id) for _ in range(5)]
+
+    assert {outcome.status for outcome in outcomes} == {"WAITING_FOR_EXECUTIVE_PLAN"}
+    assert database.event_count(event_type="delegation.intent_blocked") == 1
+
+
+def test_a_changed_block_reason_is_a_new_transition(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    objective_id = "executive-objective:await-reason-change"
+    directive_id = _apply(
+        database,
+        "DELEGATE",
+        "Handle the release objective",
+        directive_id="delegate-await-reason-change",
+        metadata={"context": {"objective_id": objective_id}},
+    )
+    service = DelegationService(database)
+    service.process_directive(directive_id)
+    service.process_directive(directive_id)
+    assert database.event_count(event_type="delegation.intent_blocked") == 1
+
+    # The Executive now has the objective but no plan yet: a different reason.
+    create_objective(
+        database,
+        "Release objective awaiting Executive planning",
+        objective_id=objective_id,
+        source_id="test-executive-planner",
+    )
+    waiting = service.process_directive(directive_id)
+    service.process_directive(directive_id)
+
+    assert waiting.status == "WAITING_FOR_EXECUTIVE_PLAN"
+    reasons = [
+        event.payload["reason_code"]
+        for event in database.events(event_types=("delegation.intent_blocked",))
+    ]
+    assert reasons == ["EXECUTIVE_OBJECTIVE_REQUIRED", "EXECUTIVE_PLAN_REQUIRED"]
