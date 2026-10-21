@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,31 @@ DEFAULT_PREFS = {
     "notification_routing": MODE_IN_APP_TOAST,
 }
 
+
+#: Only owner-actionable classes interrupt the owner with a popup. UNKNOWN/INFORM
+#: items stay in the in-app queue. (Internal telemetry once produced ~4,100 toasts in
+#: twelve hours because every new queue item toasted once, whatever its class.)
+TOASTABLE_CLASSIFICATIONS = frozenset({
+    "DECISION_REQUIRED",
+    "BLOCKED_EXTERNAL_DEPENDENCY",
+    "OWNER_VETO_ACTIVE",
+})
+#: A popup announces something *new*; an older backlog is shown in the queue panel
+#: instead of arriving as a burst of notifications after a restart or promotion.
+TOAST_MAX_AGE = timedelta(hours=48)
+
+
+def toast_worthy(item: dict[str, Any], *, now: datetime | None = None) -> bool:
+    if str(item.get("classification") or "") not in TOASTABLE_CLASSIFICATIONS:
+        return False
+    opened = str(item.get("opened_at") or "")
+    try:
+        stamp = datetime.fromisoformat(opened.replace("Z", "+00:00"))
+    except ValueError:
+        return True  # age unknown: never silently hold back a possibly important item
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return (now or datetime.now(timezone.utc)) - stamp <= TOAST_MAX_AGE
 
 def prefs_path(runtime_home: str | Path) -> Path:
     return Path(runtime_home).expanduser().resolve() / PREFS_NAME
@@ -83,11 +109,14 @@ def deliver_open_attention_toasts(
     adapter: WindowsToastAdapter | None = None,
     mode: str,
     store_path: str | Path | None,
+    now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     router = AttentionToastRouter(adapter, mode=mode, store_path=store_path)
     results: list[dict[str, Any]] = []
     for item in items or []:
         if not isinstance(item, dict):
+            continue
+        if not toast_worthy(item, now=now):
             continue
         try:
             results.append(toast_result_payload(router.emit(item)))

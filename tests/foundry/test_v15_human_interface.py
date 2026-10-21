@@ -237,3 +237,34 @@ def test_command_center_voice_text_prefs_and_attention_toasts(tmp_path: Path) ->
         assert last["results"][0]["attention_id"] == "attention:cc-1"
     finally:
         server.close()
+
+def test_only_fresh_owner_actionable_items_toast(tmp_path: Path) -> None:
+    from datetime import datetime, timezone
+
+    from jarvis_foundry.owner_ui import deliver_open_attention_toasts
+
+    now = datetime(2026, 10, 21, 12, 0, tzinfo=timezone.utc)
+
+    def item(queue_id: str, classification: str, opened_at: str) -> dict:
+        return {"queue_id": queue_id, "classification": classification, "summary": queue_id, "opened_at": opened_at}
+
+    adapter = _MemoryToast()
+    items = [
+        item("fresh-decision", "DECISION_REQUIRED", "2026-10-21T09:00:00Z"),
+        item("fresh-veto", "OWNER_VETO_ACTIVE", "2026-10-21T08:00:00Z"),
+        item("unknown-noise", "UNKNOWN", "2026-10-21T11:59:00Z"),
+        item("inform-only", "INFORM", "2026-10-21T11:59:00Z"),
+        item("stale-decision", "DECISION_REQUIRED", "2026-09-28T21:40:00Z"),
+        item("ageless-decision", "DECISION_REQUIRED", ""),
+    ]
+    results = deliver_open_attention_toasts(
+        items, adapter=adapter, mode=MODE_IN_APP_TOAST, store_path=tmp_path / "seen.json", now=now,
+    )
+    expected = ["ageless-decision", "fresh-decision", "fresh-veto"]  # unknown age is never held back
+    assert sorted(attention for _t, _b, attention in adapter.shown) == expected
+    assert {r["attention_id"] for r in results} == set(expected)
+    again = deliver_open_attention_toasts(
+        items, adapter=adapter, mode=MODE_IN_APP_TOAST, store_path=tmp_path / "seen.json", now=now,
+    )
+    assert {r["status"] for r in again} == {"DEDUPED"}
+    assert len(adapter.shown) == 3
