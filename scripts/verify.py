@@ -206,12 +206,13 @@ def _node_tool(relative: str, *args: str) -> list[str]:
     return ["node", str(UI / "node_modules" / relative), *args]
 
 
-def run_ui_lane() -> LaneResult:
+def run_ui_lane(scratch: Path) -> LaneResult:
     started = time.monotonic()
     if not (UI / "node_modules").exists():
         return LaneResult("ui", False, 0.0,
                           "ui/command-center/node_modules missing; run `npm ci` there first")
     env = _node_env()
+    env.update(TEMP=str(scratch), TMP=str(scratch), TMPDIR=str(scratch))
     steps = [
         ("typecheck", _node_tool("typescript/bin/tsc", "-b", "--noEmit")),
         ("lint", _node_tool("eslint/bin/eslint.js", "src", "e2e", "--max-warnings", "0")),
@@ -270,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
             lanes.append(run_docs_lane(scratch))
         if args.lane in ("all", "ui"):
             print("== ui", flush=True)
-            lanes.append(run_ui_lane())
+            lanes.append(run_ui_lane(scratch))
         if args.lane in ("all", "python"):
             print(f"== python ({args.jobs} jobs, {args.timeout:.0f}s per file)", flush=True)
             lanes.append(run_python_lane(args.jobs, args.timeout, args.match, scratch))
