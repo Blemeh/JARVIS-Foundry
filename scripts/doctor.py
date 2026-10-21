@@ -241,7 +241,7 @@ def check_live_install() -> list[Finding]:
             detail.append(
                 f"{len(stale)} release(s) are neither CURRENT nor PREVIOUS (the rollback target); "
                 "they are immutable, rebuildable history. The product has no retention policy; "
-                "pruning is an owner decision on the live install.")
+                "preview with `python scripts/prune_releases.py`; deleting is an owner decision on the live install.")
     findings = [Finding("live", WARN if behind.isdigit() and int(behind) > 0 else OK,
                         "installed release lags main" if behind.isdigit() and int(behind) > 0 else "installed release matches main",
                         detail + ["promotion requires an explicit owner goal (docs/agent/workflows/promotion.md)"])]
