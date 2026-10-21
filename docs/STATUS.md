@@ -183,7 +183,11 @@ Real defects found while building a trustworthy baseline:
    cycle starts. On the live ledger the queue goes from 100 junk items to 14
    escalations plus the one stalled delegation. Not live until a release is
    promoted. This also cleans the daily briefing, which counted `UNKNOWN` as an
-   exception.
+   exception. The same flood drove notifications: the toast router fires once per *new*
+   queue item, and its seen-store records about 4,100 toasts emitted between
+   2026-10-05 23:38 and 2026-10-06 11:30, 3,597 of them `project_context_resolved`
+   telemetry (owner routing is `in-app-toast`) - roughly twelve hours of "UNKNOWN:
+   AVAILABLE" popups, a likely trigger for the owner-experience rescue.
 New tooling: **`scripts/verify.py`** — one command for the health check
 (`--lane python|ui|docs|all`). It isolates each test file with a timeout, redirects
 the live-machine environment, and prints attributable failure lines.
