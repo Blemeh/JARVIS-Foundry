@@ -94,3 +94,4 @@ evidence-v10-a-golden-journey-1*.json
 /pytest-of-*/
 /tmp*/
 .cursor/
+/out/

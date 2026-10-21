@@ -19,7 +19,7 @@ Command Center for the owner. About 190k lines of Python under `src/jarvis_found
 | Thing | State |
 | --- | --- |
 | `origin/main` | Contains the owner-experience redesign merged with all of main's backend work. |
-| Installed live release | `CURRENT` = `4cac1948…` (the release built *before* the redesign). The two Supervisor launcher processes and worker loop were running when checked on 2026-10-21. **Not touched** by this work. Health/trust was not read. |
+| Installed live release | `CURRENT` = `4cac1948…` (the release built *before* the redesign). The `JARVIS-Foundry-Supervisor` task was Running and its launcher/worker processes were alive when checked on 2026-10-21. **Not touched** by this work. Health/trust was not read. |
 | Gap between them | Everything on main after `4cac1948` (the redesigned Command Center, the fixes below) is **not live** until a release is promoted via `docs/agent/workflows/promotion.md`, which needs an explicit owner goal. |
 
 ## Which document to believe
@@ -110,6 +110,9 @@ real reconciliation of `CURRENT_STATE.md`.
   hygiene/verification.
 * **Promote the redesign?** The redesigned Command Center and the fixes above are
   on main but not in the running release.
-* **Stale scheduled tasks.** `JARVIS-Codex-V9-Lane1-Resume` and `…Lane3-Resume`
-  still point at `C:\temp\JARVIS-Codex-AutoResume`. They look like leftovers of an
-  old multi-lane experiment; disabling them is a one-line owner decision.
+* **Leftover scheduled tasks (clutter only).** Eight old tasks
+  (`JARVIS-Codex-V9-Lane1/Lane3-Resume`, the four `…Proving-Window-Monitor*`
+  tasks, `JARVIS-Foundry-Worker-Loop`, `JARVIS-Prompt4-M11-Trust-Monitor`) are
+  all **Disabled**, so nothing runs from them; they can be deleted at leisure.
+  The live tasks are `JARVIS-Foundry-Supervisor` (Running) and `Hermes_Gateway`
+  (Ready).
