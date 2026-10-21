@@ -238,16 +238,13 @@ def build_owner_attention_queue(
             source_event_ids.add(stateful.source_event_id)
     objective_status: dict[str, str] = {}
     if any(item.source_event_type == "executive.escalation_opened" for item in items):
-        # Only the objective status events (a few hundred), not a full Executive
-        # rebuild, which cost ~0.6 s per queue build and the queue is built twice per
-        # Command Center snapshot.
+        # Replay the objective events (a few hundred) instead of a full Executive
+        # rebuild (~0.6 s per queue build, and the queue is built twice per Command
+        # Center snapshot). Status-bearing events (created/updated/status_changed/
+        # progress_recorded) replayed in ledger order reproduce the Executive's own
+        # objective status exactly (verified 43/43 on the live ledger).
         for event in database.events(
-            readonly=True,
-            event_types=(
-                "executive.objective_created",
-                "executive.objective_updated",
-                "executive.objective_status_changed",
-            ),
+            readonly=True, event_type_prefixes=("executive.objective",),
         ):
             payload = event.payload if isinstance(event.payload, dict) else {}
             objective_id, status = payload.get("objective_id"), payload.get("status")
