@@ -141,25 +141,36 @@ def _last_failure_line(output: str) -> str:
     return text[:220]
 
 
+def _kill_tree(process: subprocess.Popen) -> None:
+    """Kill ``process`` and every descendant (scratch venvs, git, pip trials)."""
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                       capture_output=True, check=False)
+    else:  # pragma: no cover - the project targets Windows
+        process.kill()
+
+
 def run_one_test_file(py: str, path: Path, timeout: float, env: dict[str, str]) -> FileResult:
     started = time.monotonic()
     cmd = [py, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--tb=line", str(path)]
+    process = subprocess.Popen(
+        cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace",
+    )
     try:
-        completed = subprocess.run(
-            cmd, cwd=ROOT, env=env, capture_output=True, text=True,
-            timeout=timeout, encoding="utf-8", errors="replace",
-        )
-    except subprocess.TimeoutExpired as expired:
-        out = (expired.stdout or b"")
-        text = out.decode("utf-8", "replace") if isinstance(out, bytes) else str(out)
+        output, _ = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_tree(process)
+        try:
+            output, _ = process.communicate(timeout=15)
+        except subprocess.TimeoutExpired:
+            output = ""
         return FileResult(path.name, "TIMEOUT", time.monotonic() - started,
-                          f"exceeded {timeout:.0f}s; {_last_failure_line(text)}".strip("; "))
+                          f"exceeded {timeout:.0f}s; {_last_failure_line(output or '')}".strip("; "))
     seconds = time.monotonic() - started
-    if completed.returncode == 0:
+    if process.returncode == 0:
         return FileResult(path.name, "PASS", seconds)
-    return FileResult(path.name, "FAIL", seconds,
-                      _last_failure_line(completed.stdout + "\n" + completed.stderr))
-
+    return FileResult(path.name, "FAIL", seconds, _last_failure_line(output))
 
 def run_python_lane(jobs: int, timeout: float, matches: list[str], scratch: Path) -> LaneResult:
     started = time.monotonic()
