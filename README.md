@@ -42,6 +42,19 @@ pytest
 
 Running the daemon changes local host state. Read [`docs/governance/AUTONOMY_MANDATE.md`](docs/governance/AUTONOMY_MANDATE.md) and [`docs/operations/EMERGENCY_STOP_AND_RECOVERY.md`](docs/operations/EMERGENCY_STOP_AND_RECOVERY.md) before enabling it.
 
+## Health checks
+
+```powershell
+python scripts/verify.py                 # python + ui + docs lanes (per-file timeouts, hermetic env)
+python scripts/verify.py --lane ui       # command center: typecheck, lint, tests, build
+python scripts/verify.py --lane python --match campaign
+python scripts/doctor.py                 # read-only machine/project drift report
+```
+
+`verify.py` runs each test file in its own process so a hung file cannot stall the
+run or hide other results, and it redirects `LOCALAPPDATA`/`HERMES_HOME` so tests can
+never touch the live install. `doctor.py` reports git/worktree sprawl, installed-release
+lag, user-PATH leaks, leftover scratch and stale docs.
 ## Repository map
 
 - `src/jarvis_foundry/` - autonomy kernel, Supervisor, ledger, workers, and CLI
@@ -58,6 +71,7 @@ JARVIS is active local research and development. The authoritative status, evide
 ## Start here
 
 - [`docs/architecture/00_READ_FIRST.md`](docs/architecture/00_READ_FIRST.md) - architecture entry point
+- [`docs/STATUS.md`](docs/STATUS.md) - short, reconciled "where are we" (read this first)
 - [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) - current status and evidence
 - [`docs/governance/`](docs/governance/) - autonomy and capability rules
 - [`docs/evidence/`](docs/evidence/) - gate reports and verification records
