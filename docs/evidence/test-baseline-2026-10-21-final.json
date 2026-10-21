@@ -2,2233 +2,2233 @@
   {
     "lane": "python",
     "ok": false,
-    "seconds": 2184.0939977997914,
-    "summary": "342 passed, 27 failed, 2 timed out of 371 files",
+    "seconds": 2360.9127877997234,
+    "summary": "343 passed, 27 failed, 1 timed out of 371 files",
     "files": [
       {
         "name": "test_account_activation.py",
         "status": "PASS",
-        "seconds": 12.952910399995744,
+        "seconds": 12.917165299877524,
         "detail": ""
       },
       {
         "name": "test_action_broker.py",
         "status": "PASS",
-        "seconds": 14.244323499966413,
+        "seconds": 15.599311000201851,
         "detail": ""
       },
       {
         "name": "test_action_policy.py",
         "status": "PASS",
-        "seconds": 23.41397050023079,
+        "seconds": 36.86110020009801,
         "detail": ""
       },
       {
         "name": "test_activation_continuity.py",
         "status": "PASS",
-        "seconds": 2.293236500117928,
+        "seconds": 2.29062859993428,
         "detail": ""
       },
       {
         "name": "test_adapter_verdict.py",
         "status": "PASS",
-        "seconds": 4.45454390021041,
+        "seconds": 4.436794199980795,
         "detail": ""
       },
       {
         "name": "test_adversarial_matrix.py",
         "status": "PASS",
-        "seconds": 7.212188999634236,
+        "seconds": 7.268261100165546,
         "detail": ""
       },
       {
         "name": "test_artifacts.py",
         "status": "PASS",
-        "seconds": 1.5397196998819709,
+        "seconds": 1.612737899646163,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_containment_delta.py",
         "status": "PASS",
-        "seconds": 22.440295200329274,
+        "seconds": 35.97983430000022,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_contract_defects.py",
         "status": "PASS",
-        "seconds": 27.596893099602312,
+        "seconds": 38.381171400193125,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_d4_binding.py",
         "status": "PASS",
-        "seconds": 33.633562800008804,
+        "seconds": 47.90970959980041,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_duplicate_release.py",
         "status": "PASS",
-        "seconds": 25.971455899998546,
+        "seconds": 41.791349300183356,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_failed_status_window.py",
         "status": "PASS",
-        "seconds": 73.95888609997928,
+        "seconds": 98.2065941998735,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_feed_reopen.py",
         "status": "PASS",
-        "seconds": 16.881684700027108,
+        "seconds": 24.79817429976538,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_open_item_consumption.py",
         "status": "PASS",
-        "seconds": 46.725118999835104,
+        "seconds": 53.92486139992252,
         "detail": ""
       },
       {
         "name": "test_autonomy_recovery_reopen_selectable.py",
         "status": "PASS",
-        "seconds": 26.463877700269222,
+        "seconds": 31.997935499995947,
         "detail": ""
       },
       {
         "name": "test_browser_connector.py",
         "status": "PASS",
-        "seconds": 3.361399100162089,
+        "seconds": 3.9260884998366237,
         "detail": ""
       },
       {
         "name": "test_builder_hardening.py",
         "status": "PASS",
-        "seconds": 4.301126299891621,
+        "seconds": 6.246729999780655,
         "detail": ""
       },
       {
         "name": "test_candidate_supersession.py",
         "status": "PASS",
-        "seconds": 3.3280119001865387,
+        "seconds": 4.022724399808794,
         "detail": ""
       },
       {
         "name": "test_canonical_hybrid_gate.py",
         "status": "PASS",
-        "seconds": 33.70298880012706,
+        "seconds": 26.511918799951673,
         "detail": ""
       },
       {
         "name": "test_capability_broker.py",
         "status": "PASS",
-        "seconds": 5.3116549998521805,
+        "seconds": 6.80545759992674,
         "detail": ""
       },
       {
         "name": "test_capability_states.py",
         "status": "PASS",
-        "seconds": 15.838495200034231,
+        "seconds": 14.111935500055552,
         "detail": ""
       },
       {
         "name": "test_cli.py",
         "status": "PASS",
-        "seconds": 4.431769500020891,
+        "seconds": 4.0358756999485195,
         "detail": ""
       },
       {
         "name": "test_cli_path_setup.py",
         "status": "PASS",
-        "seconds": 7.270645100157708,
+        "seconds": 7.756380199920386,
         "detail": ""
       },
       {
         "name": "test_command_center_discovery.py",
         "status": "PASS",
-        "seconds": 9.787757100071758,
+        "seconds": 11.135579199995846,
         "detail": ""
       },
       {
         "name": "test_command_center_health.py",
         "status": "PASS",
-        "seconds": 5.085872699972242,
+        "seconds": 6.575975599698722,
         "detail": ""
       },
       {
         "name": "test_command_center_restart_reconciliation.py",
         "status": "PASS",
-        "seconds": 6.727482100017369,
+        "seconds": 7.912277299910784,
         "detail": ""
       },
       {
         "name": "test_command_center_ui_bridge.py",
         "status": "PASS",
-        "seconds": 15.485722800251096,
+        "seconds": 16.504373100120574,
         "detail": ""
       },
       {
         "name": "test_communication_contracts.py",
         "status": "PASS",
-        "seconds": 1.7482597003690898,
+        "seconds": 1.5221887999214232,
         "detail": ""
       },
       {
         "name": "test_connector_activation.py",
         "status": "PASS",
-        "seconds": 7.127447000239044,
+        "seconds": 7.627708100248128,
         "detail": ""
       },
       {
         "name": "test_connector_contract.py",
         "status": "PASS",
-        "seconds": 1.5021111997775733,
+        "seconds": 1.5911022000946105,
         "detail": ""
       },
       {
         "name": "test_connector_evidence.py",
         "status": "PASS",
-        "seconds": 1.4613658003509045,
+        "seconds": 1.5861806999891996,
         "detail": ""
       },
       {
         "name": "test_connector_lineage.py",
         "status": "PASS",
-        "seconds": 2.3547433000057936,
+        "seconds": 2.1113233999349177,
         "detail": ""
       },
       {
         "name": "test_connector_operations.py",
         "status": "PASS",
-        "seconds": 2.4042572998441756,
+        "seconds": 2.473721200134605,
         "detail": ""
       },
       {
         "name": "test_connector_resources.py",
         "status": "PASS",
-        "seconds": 1.6876758998259902,
+        "seconds": 1.9189931000582874,
         "detail": ""
       },
       {
         "name": "test_connector_safety.py",
         "status": "PASS",
-        "seconds": 2.2473494997248054,
+        "seconds": 3.05824499996379,
         "detail": ""
       },
       {
         "name": "test_connectors.py",
         "status": "PASS",
-        "seconds": 7.263554000295699,
+        "seconds": 7.581470400094986,
         "detail": ""
       },
       {
         "name": "test_console_events.py",
         "status": "PASS",
-        "seconds": 5.8906906000338495,
+        "seconds": 6.0077124000526965,
         "detail": ""
       },
       {
         "name": "test_consolidation.py",
         "status": "PASS",
-        "seconds": 5.149315000046045,
+        "seconds": 5.2078507002443075,
         "detail": ""
       },
       {
         "name": "test_correlation.py",
         "status": "PASS",
-        "seconds": 5.933773200027645,
+        "seconds": 5.882960899733007,
         "detail": ""
       },
       {
         "name": "test_crash_recovery.py",
         "status": "PASS",
-        "seconds": 3.2821831996552646,
+        "seconds": 3.320651799906045,
         "detail": ""
       },
       {
         "name": "test_cross_schema_rollback_controller.py",
         "status": "PASS",
-        "seconds": 59.68141660001129,
+        "seconds": 64.58095269976184,
         "detail": ""
       },
       {
         "name": "test_database_connection_lifecycle.py",
         "status": "PASS",
-        "seconds": 2.021410800050944,
+        "seconds": 2.3791137002408504,
         "detail": ""
       },
       {
         "name": "test_delegate_outcome_routing.py",
         "status": "PASS",
-        "seconds": 9.522572600282729,
+        "seconds": 9.66169590037316,
         "detail": ""
       },
       {
         "name": "test_delivery_boundary.py",
         "status": "PASS",
-        "seconds": 5.845388999674469,
+        "seconds": 5.328853900078684,
         "detail": ""
       },
       {
         "name": "test_directive_model_routing.py",
         "status": "PASS",
-        "seconds": 5.444912400096655,
+        "seconds": 4.778528199996799,
         "detail": ""
       },
       {
         "name": "test_discovery_candidates.py",
         "status": "PASS",
-        "seconds": 5.1394442999735475,
+        "seconds": 5.007679000031203,
         "detail": ""
       },
       {
         "name": "test_discovery_monitors.py",
         "status": "PASS",
-        "seconds": 4.389082399662584,
+        "seconds": 4.351667200215161,
         "detail": ""
       },
       {
         "name": "test_doctor_script.py",
         "status": "PASS",
-        "seconds": 1.9216341003775597,
+        "seconds": 1.604109300300479,
         "detail": ""
       },
       {
         "name": "test_effects.py",
         "status": "PASS",
-        "seconds": 17.447336100041866,
+        "seconds": 19.000070199836046,
         "detail": ""
       },
       {
         "name": "test_event_store.py",
         "status": "PASS",
-        "seconds": 7.843820599839091,
+        "seconds": 9.841678199823946,
         "detail": ""
       },
       {
         "name": "test_evolution_acceptance.py",
         "status": "PASS",
-        "seconds": 24.728389999829233,
+        "seconds": 26.319782000035048,
         "detail": ""
       },
       {
         "name": "test_evolution_bad_candidate.py",
         "status": "PASS",
-        "seconds": 4.579777700360864,
+        "seconds": 5.366064100060612,
         "detail": ""
       },
       {
         "name": "test_evolution_benchmark.py",
         "status": "PASS",
-        "seconds": 5.235379800200462,
+        "seconds": 5.94978249957785,
         "detail": ""
       },
       {
         "name": "test_evolution_builder.py",
         "status": "PASS",
-        "seconds": 10.925270800013095,
+        "seconds": 12.453660300001502,
         "detail": ""
       },
       {
         "name": "test_evolution_canary.py",
         "status": "PASS",
-        "seconds": 9.13304269965738,
+        "seconds": 9.244191699661314,
         "detail": ""
       },
       {
         "name": "test_evolution_cycle.py",
         "status": "PASS",
-        "seconds": 27.07969080004841,
+        "seconds": 29.546473500318825,
         "detail": ""
       },
       {
         "name": "test_evolution_detector.py",
         "status": "PASS",
-        "seconds": 11.012911499943584,
+        "seconds": 10.98187190014869,
         "detail": ""
       },
       {
         "name": "test_evolution_discover.py",
         "status": "PASS",
-        "seconds": 5.565282199997455,
+        "seconds": 5.0099420002661645,
         "detail": ""
       },
       {
         "name": "test_evolution_disposable_canary.py",
         "status": "PASS",
-        "seconds": 4.375355000142008,
+        "seconds": 4.512845499906689,
         "detail": ""
       },
       {
         "name": "test_evolution_disposable_loop.py",
         "status": "PASS",
-        "seconds": 6.265771499834955,
+        "seconds": 7.03477260004729,
         "detail": ""
       },
       {
         "name": "test_evolution_eligibility.py",
         "status": "PASS",
-        "seconds": 7.8714989996515214,
+        "seconds": 8.379791799932718,
         "detail": ""
       },
       {
         "name": "test_evolution_feedback.py",
         "status": "PASS",
-        "seconds": 4.935545600019395,
+        "seconds": 5.016426600050181,
         "detail": ""
       },
       {
         "name": "test_evolution_harness.py",
         "status": "PASS",
-        "seconds": 5.0925590000115335,
+        "seconds": 5.434467100072652,
+        "detail": ""
+      },
+      {
+        "name": "test_evolution_lab.py",
+        "status": "PASS",
+        "seconds": 25.611769499722868,
         "detail": ""
       },
       {
         "name": "test_evolution_measurement.py",
         "status": "PASS",
-        "seconds": 5.623511099722236,
+        "seconds": 6.661457600072026,
         "detail": ""
       },
       {
         "name": "test_evolution_plan.py",
         "status": "PASS",
-        "seconds": 3.2641055998392403,
+        "seconds": 4.527621099725366,
         "detail": ""
       },
       {
         "name": "test_evolution_promote.py",
         "status": "PASS",
-        "seconds": 64.71235770033672,
+        "seconds": 67.68227740004659,
         "detail": ""
       },
       {
         "name": "test_evolution_records.py",
         "status": "PASS",
-        "seconds": 5.209962300024927,
+        "seconds": 6.219119700137526,
         "detail": ""
       },
       {
         "name": "test_evolution_registry.py",
         "status": "PASS",
-        "seconds": 9.020921799819916,
+        "seconds": 9.535241900011897,
         "detail": ""
       },
       {
         "name": "test_evolution_restore.py",
         "status": "PASS",
-        "seconds": 8.914975400082767,
+        "seconds": 9.184871399775147,
         "detail": ""
       },
       {
         "name": "test_evolution_selector.py",
         "status": "PASS",
-        "seconds": 1.4765023002400994,
+        "seconds": 1.390974000096321,
         "detail": ""
       },
       {
         "name": "test_evolution_shadow.py",
         "status": "PASS",
-        "seconds": 7.6838337001390755,
+        "seconds": 8.430169599596411,
         "detail": ""
       },
       {
         "name": "test_evolution_verify.py",
         "status": "PASS",
-        "seconds": 8.115099600050598,
+        "seconds": 7.558954000007361,
         "detail": ""
       },
       {
         "name": "test_exactly_once_resume.py",
         "status": "PASS",
-        "seconds": 15.88731380039826,
+        "seconds": 16.528881300240755,
         "detail": ""
       },
       {
         "name": "test_exec_coherence_repair.py",
         "status": "PASS",
-        "seconds": 57.81730780005455,
+        "seconds": 70.37998460000381,
         "detail": ""
       },
       {
         "name": "test_executive_campaign_planning.py",
         "status": "PASS",
-        "seconds": 29.14842169964686,
+        "seconds": 34.80434390017763,
         "detail": ""
       },
       {
         "name": "test_executive_intelligence.py",
         "status": "PASS",
-        "seconds": 124.53449729969725,
+        "seconds": 156.1521314997226,
         "detail": ""
       },
       {
         "name": "test_executive_project_context.py",
         "status": "PASS",
-        "seconds": 4.8889052998274565,
+        "seconds": 6.318715500179678,
         "detail": ""
       },
       {
         "name": "test_f13_injection_data.py",
         "status": "PASS",
-        "seconds": 2.4482185998931527,
+        "seconds": 2.5968562001362443,
         "detail": ""
       },
       {
         "name": "test_f5_network_outage.py",
         "status": "PASS",
-        "seconds": 8.606025600340217,
+        "seconds": 9.593636100180447,
         "detail": ""
       },
       {
         "name": "test_f6_provider_outage.py",
         "status": "PASS",
-        "seconds": 7.747398099862039,
+        "seconds": 8.470356400124729,
         "detail": ""
       },
       {
         "name": "test_factory_scenarios.py",
         "status": "PASS",
-        "seconds": 8.675624799914658,
+        "seconds": 10.622444100212306,
         "detail": ""
       },
       {
         "name": "test_filesystem_connector.py",
         "status": "PASS",
-        "seconds": 1.431412999983877,
+        "seconds": 1.8684573001228273,
         "detail": ""
       },
       {
         "name": "test_fresh_agent_continuity.py",
         "status": "PASS",
-        "seconds": 5.068264300003648,
+        "seconds": 5.719975700136274,
         "detail": ""
       },
       {
         "name": "test_github_research_connector.py",
         "status": "PASS",
-        "seconds": 1.9099817001260817,
+        "seconds": 2.033853200264275,
         "detail": ""
       },
       {
         "name": "test_goal1_stop_ownership.py",
         "status": "PASS",
-        "seconds": 20.48974179988727,
+        "seconds": 23.379219099879265,
         "detail": ""
       },
       {
         "name": "test_goal3_structural_closure.py",
         "status": "PASS",
-        "seconds": 5.763604400213808,
+        "seconds": 6.685352299828082,
         "detail": ""
       },
       {
         "name": "test_goal_deliverable_admission.py",
         "status": "PASS",
-        "seconds": 3.9152877000160515,
+        "seconds": 3.528152999933809,
         "detail": ""
       },
       {
         "name": "test_headless_supervisor.py",
         "status": "PASS",
-        "seconds": 1.5037644999101758,
+        "seconds": 1.7460166001692414,
         "detail": ""
       },
       {
         "name": "test_hermes_env_sync.py",
         "status": "PASS",
-        "seconds": 1.3053815998136997,
+        "seconds": 1.649761499837041,
         "detail": ""
       },
       {
         "name": "test_http_connector.py",
         "status": "PASS",
-        "seconds": 4.724546300247312,
+        "seconds": 4.598175100050867,
         "detail": ""
       },
       {
         "name": "test_hybrid_memory_compiler.py",
         "status": "PASS",
-        "seconds": 13.51603229995817,
+        "seconds": 15.122406700160354,
         "detail": ""
       },
       {
         "name": "test_hybrid_memory_lifecycle.py",
         "status": "PASS",
-        "seconds": 10.006544900126755,
+        "seconds": 10.310992499813437,
         "detail": ""
       },
       {
         "name": "test_hybrid_memory_migration.py",
         "status": "PASS",
-        "seconds": 13.660162300337106,
+        "seconds": 14.362530900165439,
         "detail": ""
       },
       {
         "name": "test_hybrid_memory_recall_blocks.py",
         "status": "PASS",
-        "seconds": 7.9142940999008715,
+        "seconds": 8.479678800329566,
         "detail": ""
       },
       {
         "name": "test_hybrid_memory_verifier_repairs.py",
         "status": "PASS",
-        "seconds": 9.103650300297886,
+        "seconds": 9.586161500308663,
         "detail": ""
       },
       {
         "name": "test_hybrid_memory_versioning.py",
         "status": "PASS",
-        "seconds": 21.06076000025496,
+        "seconds": 24.260013099759817,
         "detail": ""
       },
       {
         "name": "test_import_smoke.py",
         "status": "PASS",
-        "seconds": 3.222391299903393,
+        "seconds": 3.0791610996238887,
         "detail": ""
       },
       {
         "name": "test_integrated_rollback.py",
         "status": "PASS",
-        "seconds": 8.790350399911404,
+        "seconds": 8.94973610015586,
         "detail": ""
       },
       {
         "name": "test_jarvis_setup.py",
         "status": "PASS",
-        "seconds": 2.4535626000724733,
+        "seconds": 2.2452528001740575,
         "detail": ""
       },
       {
         "name": "test_knowledge_claims.py",
         "status": "PASS",
-        "seconds": 9.778214099816978,
+        "seconds": 9.846850500442088,
         "detail": ""
       },
       {
         "name": "test_knowledge_entities.py",
         "status": "PASS",
-        "seconds": 3.9910431997850537,
+        "seconds": 3.839437899645418,
         "detail": ""
       },
       {
         "name": "test_knowledge_ingestion.py",
         "status": "PASS",
-        "seconds": 4.951726199593395,
+        "seconds": 5.4068146999925375,
         "detail": ""
       },
       {
         "name": "test_knowledge_records.py",
         "status": "PASS",
-        "seconds": 7.767886199988425,
+        "seconds": 8.376155899837613,
         "detail": ""
       },
       {
         "name": "test_knowledge_retrieval.py",
         "status": "PASS",
-        "seconds": 5.672917700372636,
+        "seconds": 5.99606930045411,
         "detail": ""
       },
       {
         "name": "test_knowledge_snapshots.py",
         "status": "PASS",
-        "seconds": 4.25654730014503,
+        "seconds": 4.333265000022948,
         "detail": ""
       },
       {
         "name": "test_knowledge_v35_durability.py",
         "status": "PASS",
-        "seconds": 6.597812199965119,
+        "seconds": 6.171066399663687,
         "detail": ""
       },
       {
         "name": "test_lease_renewal.py",
         "status": "PASS",
-        "seconds": 4.567508200183511,
+        "seconds": 4.257596800103784,
         "detail": ""
       },
       {
         "name": "test_live_ingestion.py",
         "status": "PASS",
-        "seconds": 9.789622799959034,
+        "seconds": 8.703612700104713,
         "detail": ""
       },
       {
         "name": "test_materialization_lookup.py",
         "status": "PASS",
-        "seconds": 3.694603099953383,
+        "seconds": 3.8075238997116685,
         "detail": ""
       },
       {
         "name": "test_migrations.py",
         "status": "PASS",
-        "seconds": 2.5110310995951295,
+        "seconds": 2.864281099755317,
         "detail": ""
       },
       {
         "name": "test_mission_contract.py",
         "status": "PASS",
-        "seconds": 33.28460039990023,
+        "seconds": 38.75359300011769,
         "detail": ""
       },
       {
         "name": "test_mission_loop.py",
         "status": "PASS",
-        "seconds": 246.32398350024596,
+        "seconds": 308.92822640016675,
         "detail": ""
       },
       {
         "name": "test_monitor_loop.py",
         "status": "PASS",
-        "seconds": 4.25771509995684,
+        "seconds": 4.388613999821246,
         "detail": ""
       },
       {
         "name": "test_monitor_poll_integrity.py",
         "status": "PASS",
-        "seconds": 8.237045499961823,
+        "seconds": 8.939913500100374,
         "detail": ""
       },
       {
         "name": "test_new_project_lifecycle.py",
         "status": "PASS",
-        "seconds": 4.485959300305694,
+        "seconds": 4.331958499737084,
         "detail": ""
       },
       {
         "name": "test_obsidian_mirror.py",
         "status": "PASS",
-        "seconds": 5.383043100126088,
+        "seconds": 5.050088900141418,
         "detail": ""
       },
       {
         "name": "test_obsidian_rollback.py",
         "status": "PASS",
-        "seconds": 3.8021419998258352,
+        "seconds": 4.122222900390625,
         "detail": ""
       },
       {
         "name": "test_obsidian_write.py",
         "status": "PASS",
-        "seconds": 3.1034136000089347,
+        "seconds": 4.225697600282729,
         "detail": ""
       },
       {
         "name": "test_overnight_release_factory.py",
         "status": "PASS",
-        "seconds": 1.5184828997589648,
+        "seconds": 1.6872535003349185,
         "detail": ""
       },
       {
         "name": "test_owner_lineage_invariant.py",
         "status": "PASS",
-        "seconds": 1.4085562997497618,
+        "seconds": 1.7227444001473486,
         "detail": ""
       },
       {
         "name": "test_path_boundaries.py",
         "status": "PASS",
-        "seconds": 12.640523900277913,
+        "seconds": 17.56669900007546,
         "detail": ""
       },
       {
         "name": "test_perception.py",
         "status": "PASS",
-        "seconds": 5.278890700079501,
+        "seconds": 5.665483999997377,
         "detail": ""
       },
       {
         "name": "test_pipeline.py",
         "status": "PASS",
-        "seconds": 17.007300999946892,
+        "seconds": 16.699715400114655,
         "detail": ""
       },
       {
         "name": "test_portfolio_discovery_bridge.py",
         "status": "PASS",
-        "seconds": 73.20930470013991,
+        "seconds": 124.81875440012664,
         "detail": ""
       },
       {
         "name": "test_post4_adversarial.py",
         "status": "PASS",
-        "seconds": 14.189769699703902,
+        "seconds": 18.572839500382543,
         "detail": ""
       },
       {
         "name": "test_post4_integration.py",
         "status": "PASS",
-        "seconds": 18.422927800100297,
+        "seconds": 26.65428789984435,
         "detail": ""
       },
       {
         "name": "test_postv7_cross_lane_wiring.py",
         "status": "PASS",
-        "seconds": 6.442777800373733,
+        "seconds": 6.190486899577081,
         "detail": ""
       },
       {
         "name": "test_procedural_learning.py",
         "status": "PASS",
-        "seconds": 15.679415800143033,
+        "seconds": 15.525318400003016,
         "detail": ""
       },
       {
         "name": "test_project_context.py",
         "status": "PASS",
-        "seconds": 58.06680570030585,
+        "seconds": 104.97038730001077,
         "detail": ""
       },
       {
         "name": "test_project_discovery.py",
         "status": "PASS",
-        "seconds": 3.3645100998692214,
+        "seconds": 3.614986399654299,
         "detail": ""
       },
       {
         "name": "test_projection_monotonic.py",
         "status": "PASS",
-        "seconds": 2.7720598997548223,
+        "seconds": 3.0964116998948157,
         "detail": ""
       },
       {
         "name": "test_prompt1_m2_kernel.py",
         "status": "PASS",
-        "seconds": 79.00170199992135,
+        "seconds": 107.40189950028434,
         "detail": ""
       },
       {
         "name": "test_prompt2_m3_release.py",
         "status": "PASS",
-        "seconds": 4.461470200214535,
+        "seconds": 4.181861700024456,
         "detail": ""
       },
       {
         "name": "test_prompt2_m5_recovery.py",
         "status": "PASS",
-        "seconds": 17.12156459968537,
+        "seconds": 26.41347200004384,
         "detail": ""
       },
       {
         "name": "test_prompt3_capability_restoration.py",
         "status": "PASS",
-        "seconds": 12.061236099805683,
+        "seconds": 23.514932200312614,
         "detail": ""
       },
       {
         "name": "test_provider_config.py",
         "status": "PASS",
-        "seconds": 12.79882730031386,
+        "seconds": 13.240327100269496,
         "detail": ""
       },
       {
         "name": "test_provider_spend.py",
         "status": "PASS",
-        "seconds": 7.226064200047404,
+        "seconds": 6.864033400081098,
         "detail": ""
       },
       {
         "name": "test_purpose_recovery_ii_b_intent_binding.py",
         "status": "PASS",
-        "seconds": 51.61661039991304,
+        "seconds": 44.37114690011367,
         "detail": ""
       },
       {
         "name": "test_purpose_recovery_ii_b_verifier_routing.py",
         "status": "PASS",
-        "seconds": 57.161071500275284,
+        "seconds": 62.596136899665,
         "detail": ""
       },
       {
         "name": "test_purpose_recovery_ii_lane_a.py",
         "status": "PASS",
-        "seconds": 169.64544040011242,
+        "seconds": 166.47073669964448,
+        "detail": ""
+      },
+      {
+        "name": "test_purpose_recovery_ii_lane_a_product_path.py",
+        "status": "PASS",
+        "seconds": 2.207771399989724,
         "detail": ""
       },
       {
         "name": "test_purpose_recovery_ii_repair_round2.py",
         "status": "PASS",
-        "seconds": 6.516587099991739,
+        "seconds": 6.5707305003888905,
         "detail": ""
       },
       {
         "name": "test_readiness_refresh.py",
         "status": "PASS",
-        "seconds": 54.848120799753815,
+        "seconds": 43.694704400375485,
         "detail": ""
       },
       {
         "name": "test_reconcile.py",
         "status": "PASS",
-        "seconds": 6.685639800038189,
+        "seconds": 6.994008600246161,
         "detail": ""
       },
       {
         "name": "test_recovery_concurrency_safety.py",
         "status": "PASS",
-        "seconds": 2.5181839000433683,
+        "seconds": 2.666445500217378,
         "detail": ""
       },
       {
         "name": "test_registered_github_discovery.py",
         "status": "PASS",
-        "seconds": 2.8288849000819027,
+        "seconds": 2.015313799958676,
         "detail": ""
       },
       {
         "name": "test_registration.py",
         "status": "PASS",
-        "seconds": 19.662822399754077,
+        "seconds": 15.18821689998731,
         "detail": ""
       },
       {
         "name": "test_release_authority.py",
         "status": "PASS",
-        "seconds": 2.847381700295955,
+        "seconds": 2.1349037000909448,
         "detail": ""
       },
       {
         "name": "test_release_packaging_assets.py",
         "status": "PASS",
-        "seconds": 1.7401837999932468,
+        "seconds": 1.4679661998525262,
         "detail": ""
       },
       {
         "name": "test_release_retention.py",
         "status": "PASS",
-        "seconds": 2.504058700054884,
+        "seconds": 2.3663166002370417,
         "detail": ""
       },
       {
         "name": "test_research_contract.py",
         "status": "PASS",
-        "seconds": 4.065889099612832,
+        "seconds": 4.4193849000148475,
         "detail": ""
       },
       {
         "name": "test_research_queue.py",
         "status": "PASS",
-        "seconds": 4.8045177003368735,
+        "seconds": 5.989227899815887,
         "detail": ""
       },
       {
         "name": "test_role_dispatch.py",
         "status": "PASS",
-        "seconds": 302.1771363001317,
+        "seconds": 383.7982533997856,
         "detail": ""
       },
       {
         "name": "test_role_gateway_kill.py",
         "status": "PASS",
-        "seconds": 6.195250200107694,
+        "seconds": 7.006240600254387,
         "detail": ""
       },
       {
         "name": "test_role_manifest.py",
         "status": "PASS",
-        "seconds": 1.693040099926293,
+        "seconds": 1.774919499643147,
         "detail": ""
       },
       {
         "name": "test_role_reaper.py",
         "status": "PASS",
-        "seconds": 9.328381899744272,
+        "seconds": 9.489770099986345,
         "detail": ""
       },
       {
         "name": "test_role_routing.py",
         "status": "PASS",
-        "seconds": 2.216974299866706,
+        "seconds": 2.001118200365454,
         "detail": ""
       },
       {
         "name": "test_rollback_activation_lease_reclaim.py",
         "status": "PASS",
-        "seconds": 6.641115300357342,
+        "seconds": 8.915585600305349,
         "detail": ""
       },
       {
         "name": "test_runtime_control.py",
         "status": "PASS",
-        "seconds": 14.991339300293475,
+        "seconds": 24.94175839982927,
         "detail": ""
       },
       {
         "name": "test_runtime_diagnostics.py",
         "status": "PASS",
-        "seconds": 3.8248216998763382,
+        "seconds": 11.263180099893361,
         "detail": ""
       },
       {
         "name": "test_runtime_identity.py",
         "status": "PASS",
-        "seconds": 1.8872241000644863,
+        "seconds": 3.0222319001331925,
         "detail": ""
       },
       {
         "name": "test_runtime_worker_loop.py",
         "status": "PASS",
-        "seconds": 49.92845429992303,
+        "seconds": 42.397186000365764,
         "detail": ""
       },
       {
         "name": "test_scoped_owner_controls.py",
         "status": "PASS",
-        "seconds": 19.622388300020248,
+        "seconds": 16.47246740013361,
         "detail": ""
       },
       {
         "name": "test_scoring_context.py",
         "status": "PASS",
-        "seconds": 8.653395799919963,
+        "seconds": 4.461155999917537,
         "detail": ""
       },
       {
         "name": "test_shadow_experiment.py",
         "status": "PASS",
-        "seconds": 8.078168999869376,
+        "seconds": 3.706320600118488,
         "detail": ""
       },
       {
         "name": "test_software_context.py",
         "status": "PASS",
-        "seconds": 8.538708600215614,
+        "seconds": 7.13932630000636,
         "detail": ""
       },
       {
         "name": "test_software_writeback.py",
         "status": "PASS",
-        "seconds": 7.952172299847007,
+        "seconds": 7.196221000049263,
         "detail": ""
       },
       {
         "name": "test_standing_goal_continuation.py",
         "status": "PASS",
-        "seconds": 16.763685999903828,
+        "seconds": 20.095248099882156,
         "detail": ""
       },
       {
         "name": "test_superseded_commit_claim.py",
         "status": "PASS",
-        "seconds": 2.538664299994707,
+        "seconds": 2.7504055998288095,
         "detail": ""
       },
       {
         "name": "test_supervisor.py",
         "status": "PASS",
-        "seconds": 11.563348299823701,
+        "seconds": 11.537203500047326,
         "detail": ""
       },
       {
         "name": "test_supervisor_heartbeat_idempotency.py",
         "status": "PASS",
-        "seconds": 2.062740500085056,
+        "seconds": 2.5327451997436583,
         "detail": ""
       },
       {
         "name": "test_supervisor_loop_resilience.py",
         "status": "PASS",
-        "seconds": 4.470082500018179,
+        "seconds": 4.2739300997927785,
         "detail": ""
       },
       {
         "name": "test_supervisor_recovery.py",
         "status": "PASS",
-        "seconds": 15.06521619996056,
+        "seconds": 15.976474600378424,
         "detail": ""
       },
       {
         "name": "test_supervisor_v6_discovery.py",
         "status": "PASS",
-        "seconds": 11.153000500053167,
+        "seconds": 10.126438200008124,
         "detail": ""
       },
       {
         "name": "test_support_semantics.py",
         "status": "PASS",
-        "seconds": 10.46498930035159,
+        "seconds": 14.741826800163835,
         "detail": ""
       },
       {
         "name": "test_system_registry.py",
         "status": "PASS",
-        "seconds": 6.58089160034433,
+        "seconds": 6.1999940001405776,
         "detail": ""
       },
       {
         "name": "test_terminal_claim_closure.py",
         "status": "PASS",
-        "seconds": 3.2703081998042762,
+        "seconds": 2.873632200062275,
         "detail": ""
       },
       {
         "name": "test_trust_lifecycle.py",
         "status": "PASS",
-        "seconds": 7.577914400026202,
+        "seconds": 6.985431099776179,
         "detail": ""
       },
       {
         "name": "test_v10_a_web_research.py",
         "status": "PASS",
-        "seconds": 15.321118200197816,
+        "seconds": 17.21193449990824,
         "detail": ""
       },
       {
         "name": "test_v10_b_local_artifacts.py",
         "status": "PASS",
-        "seconds": 23.323561999946833,
+        "seconds": 24.410501400008798,
         "detail": ""
       },
       {
         "name": "test_v10_exit_audit.py",
         "status": "PASS",
-        "seconds": 16.81823470024392,
+        "seconds": 21.65504250023514,
         "detail": ""
       },
       {
         "name": "test_v10_exit_browser.py",
         "status": "PASS",
-        "seconds": 8.488055400084704,
+        "seconds": 12.359640900045633,
         "detail": ""
       },
       {
         "name": "test_v10_shared_contract.py",
         "status": "PASS",
-        "seconds": 34.29279330000281,
+        "seconds": 36.324133599642664,
         "detail": ""
       },
       {
         "name": "test_v11_a2_discovery_sources.py",
         "status": "PASS",
-        "seconds": 6.412188500165939,
+        "seconds": 11.412089599762112,
         "detail": ""
       },
       {
         "name": "test_v11_a2_initiative.py",
         "status": "PASS",
-        "seconds": 117.50682079978287,
+        "seconds": 141.97051500016823,
         "detail": ""
       },
       {
         "name": "test_v11_a2_judgment.py",
         "status": "PASS",
-        "seconds": 5.320930999703705,
+        "seconds": 5.9481804999522865,
         "detail": ""
       },
       {
         "name": "test_v11_a2_persistence.py",
         "status": "PASS",
-        "seconds": 2.4950266000814736,
+        "seconds": 3.1822780002839863,
         "detail": ""
       },
       {
         "name": "test_v11_a3_initiative_bridge.py",
         "status": "PASS",
-        "seconds": 320.97463919967413,
+        "seconds": 364.0992465997115,
         "detail": ""
       },
       {
         "name": "test_v11_a4_durability.py",
         "status": "PASS",
-        "seconds": 168.4610546999611,
+        "seconds": 191.4376624999568,
         "detail": ""
       },
       {
         "name": "test_v11_backend_stack_integration.py",
         "status": "PASS",
-        "seconds": 20.288148100022227,
+        "seconds": 23.33022279990837,
         "detail": ""
       },
       {
         "name": "test_v11_capability_requirements.py",
         "status": "PASS",
-        "seconds": 116.72996440017596,
+        "seconds": 127.76913149980828,
         "detail": ""
       },
       {
         "name": "test_v11_command_center_autonomy.py",
         "status": "PASS",
-        "seconds": 13.861652299761772,
+        "seconds": 9.688980900216848,
         "detail": ""
       },
       {
         "name": "test_v11_continuous_observation.py",
         "status": "PASS",
-        "seconds": 110.63992950040847,
+        "seconds": 123.13793080020696,
         "detail": ""
       },
       {
         "name": "test_v11_observation_intelligence.py",
         "status": "PASS",
-        "seconds": 10.071365900337696,
+        "seconds": 10.11330490000546,
         "detail": ""
       },
       {
         "name": "test_v11_outcome_learning.py",
         "status": "PASS",
-        "seconds": 17.83500269986689,
+        "seconds": 16.427874099928886,
         "detail": ""
       },
       {
         "name": "test_v11_research_intelligence.py",
         "status": "PASS",
-        "seconds": 3.9724327996373177,
+        "seconds": 3.3554786001332104,
         "detail": ""
       },
       {
         "name": "test_v12_adapter_factory.py",
         "status": "PASS",
-        "seconds": 31.388983299955726,
+        "seconds": 37.61367850005627,
         "detail": ""
       },
       {
         "name": "test_v12_campaign_runtime.py",
         "status": "PASS",
-        "seconds": 69.2541726003401,
+        "seconds": 78.14237879961729,
         "detail": ""
       },
       {
         "name": "test_v12_capability_solution_discovery.py",
         "status": "PASS",
-        "seconds": 41.48854749975726,
+        "seconds": 47.269446100108325,
         "detail": ""
       },
       {
         "name": "test_v12_endurance_convergence.py",
         "status": "PASS",
-        "seconds": 65.16747590014711,
+        "seconds": 74.36151020042598,
         "detail": ""
       },
       {
         "name": "test_v12_gap_resume_bridge.py",
         "status": "PASS",
-        "seconds": 38.27655160007998,
+        "seconds": 35.78692990029231,
         "detail": ""
       },
       {
         "name": "test_v12_irreversible_gmail.py",
         "status": "PASS",
-        "seconds": 5.70031449990347,
+        "seconds": 6.162005300167948,
         "detail": ""
       },
       {
         "name": "test_v12_mcp_backend.py",
         "status": "PASS",
-        "seconds": 86.10650449991226,
+        "seconds": 94.6970846997574,
         "detail": ""
       },
       {
         "name": "test_v12_provider_resilience.py",
         "status": "PASS",
-        "seconds": 31.795959800016135,
+        "seconds": 36.151659899856895,
         "detail": ""
       },
       {
         "name": "test_v13_browser_download.py",
         "status": "PASS",
-        "seconds": 7.976938500069082,
+        "seconds": 8.490635499823838,
         "detail": ""
       },
       {
         "name": "test_v13_browser_upload_wait.py",
         "status": "PASS",
-        "seconds": 16.934320299886167,
+        "seconds": 19.372568999882787,
         "detail": ""
       },
       {
         "name": "test_v13_chief_of_staff.py",
         "status": "PASS",
-        "seconds": 46.61909889988601,
+        "seconds": 44.78032469982281,
         "detail": ""
       },
       {
         "name": "test_v13_chief_of_staff_lifecycle.py",
         "status": "PASS",
-        "seconds": 7.865257100202143,
+        "seconds": 7.7130964002572,
         "detail": ""
       },
       {
         "name": "test_v13_chief_of_staff_verifier.py",
         "status": "PASS",
-        "seconds": 17.54008510010317,
+        "seconds": 20.19190109986812,
         "detail": ""
       },
       {
         "name": "test_v13_command_center_owner_context.py",
         "status": "PASS",
-        "seconds": 25.574289800133556,
+        "seconds": 22.405055100098252,
         "detail": ""
       },
       {
         "name": "test_v13_command_center_work.py",
         "status": "PASS",
-        "seconds": 1.7564449002966285,
+        "seconds": 1.3714145999401808,
         "detail": ""
       },
       {
         "name": "test_v13_computer_operator_fabric.py",
         "status": "PASS",
-        "seconds": 44.888162000104785,
+        "seconds": 44.47077090013772,
         "detail": ""
       },
       {
         "name": "test_v13_delegation_adversarial.py",
         "status": "PASS",
-        "seconds": 8.106870100367814,
+        "seconds": 8.047300700098276,
         "detail": ""
       },
       {
         "name": "test_v13_delegation_calibration.py",
         "status": "PASS",
-        "seconds": 2.3175441999919713,
+        "seconds": 2.415281899739057,
         "detail": ""
       },
       {
         "name": "test_v13_delegation_contracts.py",
         "status": "PASS",
-        "seconds": 3.715806799940765,
+        "seconds": 3.7152931997552514,
         "detail": ""
       },
       {
         "name": "test_v13_delegation_e2e.py",
         "status": "PASS",
-        "seconds": 2.466443399898708,
+        "seconds": 2.924370300024748,
         "detail": ""
       },
       {
         "name": "test_v13_delegation_inference.py",
         "status": "PASS",
-        "seconds": 5.853524600155652,
+        "seconds": 6.086608100216836,
         "detail": ""
       },
       {
         "name": "test_v13_delegation_service.py",
         "status": "PASS",
-        "seconds": 13.331420799717307,
+        "seconds": 14.74543400015682,
         "detail": ""
       },
       {
         "name": "test_v13_final_personal_executive_convergence.py",
         "status": "PASS",
-        "seconds": 49.14697299990803,
+        "seconds": 62.490257599856704,
         "detail": ""
       },
       {
         "name": "test_v13_final_personal_executive_verifier.py",
         "status": "PASS",
-        "seconds": 54.45162109984085,
+        "seconds": 74.15187490032986,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_fabric.py",
         "status": "PASS",
-        "seconds": 119.36113539990038,
+        "seconds": 127.17174579994753,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_files.py",
         "status": "PASS",
-        "seconds": 1.7022394998930395,
+        "seconds": 2.1615325999446213,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_ledger.py",
         "status": "PASS",
-        "seconds": 2.9854562003165483,
+        "seconds": 3.4343988997861743,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_materialization.py",
         "status": "PASS",
-        "seconds": 209.8681542999111,
+        "seconds": 228.13752009999007,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_model.py",
         "status": "PASS",
-        "seconds": 2.261724299751222,
+        "seconds": 2.448704000096768,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_planner.py",
         "status": "PASS",
-        "seconds": 2.8490409003570676,
+        "seconds": 3.9862791998311877,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_verification.py",
         "status": "PASS",
-        "seconds": 6.747754900250584,
+        "seconds": 7.108615899924189,
         "detail": ""
       },
       {
         "name": "test_v13_general_work_workforce_integration.py",
         "status": "PASS",
-        "seconds": 128.21998139983043,
+        "seconds": 148.46760159963742,
         "detail": ""
       },
       {
         "name": "test_v13_independent_verifier.py",
         "status": "PASS",
-        "seconds": 1.428317999932915,
+        "seconds": 1.8632256998680532,
         "detail": ""
       },
       {
         "name": "test_v13_local_artifacts.py",
         "status": "PASS",
-        "seconds": 5.202015100046992,
+        "seconds": 5.514615900348872,
         "detail": ""
       },
       {
         "name": "test_v13_operator_safety.py",
         "status": "PASS",
-        "seconds": 2.0379266003146768,
+        "seconds": 2.3404077999293804,
         "detail": ""
       },
       {
         "name": "test_v13_owner_context.py",
         "status": "PASS",
-        "seconds": 9.34839740023017,
+        "seconds": 9.618615300394595,
         "detail": ""
       },
       {
         "name": "test_v13_personal_operator.py",
         "status": "PASS",
-        "seconds": 2.98577529983595,
+        "seconds": 3.0190984001383185,
         "detail": ""
       },
       {
         "name": "test_v13_personal_operator_fabric.py",
         "status": "PASS",
-        "seconds": 49.20164239965379,
+        "seconds": 49.12571660010144,
         "detail": ""
       },
       {
         "name": "test_v13_repair_path_scope.py",
         "status": "PASS",
-        "seconds": 2.2014758000150323,
+        "seconds": 2.67717929976061,
         "detail": ""
       },
       {
         "name": "test_v13_research_decision.py",
         "status": "PASS",
-        "seconds": 4.74165160022676,
+        "seconds": 5.087420800235122,
         "detail": ""
       },
       {
         "name": "test_v13_research_dossier.py",
         "status": "PASS",
-        "seconds": 1.4262848002836108,
+        "seconds": 1.809045699890703,
         "detail": ""
       },
       {
         "name": "test_v13_windows_operator.py",
         "status": "PASS",
-        "seconds": 1.21633780002594,
+        "seconds": 1.506656200159341,
         "detail": ""
       },
       {
         "name": "test_v13_worker_boundaries.py",
         "status": "PASS",
-        "seconds": 11.557232299819589,
+        "seconds": 15.11269890004769,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_commander.py",
         "status": "PASS",
-        "seconds": 56.949599999934435,
+        "seconds": 71.69735050015152,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_contracts.py",
         "status": "PASS",
-        "seconds": 6.743252799846232,
+        "seconds": 6.991152399685234,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_convergence.py",
         "status": "PASS",
-        "seconds": 255.4829639000818,
+        "seconds": 288.4070218997076,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_gateway.py",
         "status": "PASS",
-        "seconds": 196.8783654998988,
+        "seconds": 199.282284299843,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_lineage.py",
         "status": "PASS",
-        "seconds": 13.954364399891347,
+        "seconds": 10.082098399754614,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_observation.py",
         "status": "PASS",
-        "seconds": 69.35064030019566,
+        "seconds": 79.3063201000914,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_recovery.py",
         "status": "PASS",
-        "seconds": 166.15472309989855,
+        "seconds": 211.55233249999583,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_runner.py",
         "status": "PASS",
-        "seconds": 281.6611331002787,
-        "detail": ""
-      },
-      {
-        "name": "test_v13_workforce_steering.py",
-        "status": "PASS",
-        "seconds": 688.4783731000498,
+        "seconds": 325.90336170000955,
         "detail": ""
       },
       {
         "name": "test_v13_workforce_suitability.py",
         "status": "PASS",
-        "seconds": 3.419137400109321,
+        "seconds": 4.698083700146526,
         "detail": ""
       },
       {
         "name": "test_v13_world_intelligence_proof.py",
         "status": "PASS",
-        "seconds": 22.706271899864078,
+        "seconds": 31.929144099820405,
         "detail": ""
       },
       {
         "name": "test_v13_world_intelligence_verifier.py",
         "status": "PASS",
-        "seconds": 78.48531699972227,
+        "seconds": 80.37713790033013,
         "detail": ""
       },
       {
         "name": "test_v13_world_research_handoff.py",
         "status": "PASS",
-        "seconds": 3.4918380002491176,
+        "seconds": 4.47954409988597,
         "detail": ""
       },
       {
         "name": "test_v14_browser_operator.py",
         "status": "PASS",
-        "seconds": 38.40443979995325,
+        "seconds": 44.17131849983707,
         "detail": ""
       },
       {
         "name": "test_v14_v16_convergence.py",
         "status": "PASS",
-        "seconds": 27.42853769985959,
+        "seconds": 30.368969699833542,
         "detail": ""
       },
       {
         "name": "test_v14_windows_operator_lane2.py",
         "status": "PASS",
-        "seconds": 7.337832000106573,
+        "seconds": 6.612976899836212,
         "detail": ""
       },
       {
         "name": "test_v14_workflow_composition.py",
         "status": "PASS",
-        "seconds": 88.2818394000642,
+        "seconds": 96.79129800014198,
         "detail": ""
       },
       {
         "name": "test_v15_human_interface.py",
         "status": "PASS",
-        "seconds": 4.5849272003397346,
+        "seconds": 5.223185299895704,
         "detail": ""
       },
       {
         "name": "test_v3_discovery_cycle.py",
         "status": "PASS",
-        "seconds": 54.070524599868804,
+        "seconds": 59.66815929999575,
         "detail": ""
       },
       {
         "name": "test_v3_hard_core.py",
         "status": "PASS",
-        "seconds": 7.8214743998833,
+        "seconds": 9.80950600001961,
         "detail": ""
       },
       {
         "name": "test_v3_hard_e2e.py",
         "status": "PASS",
-        "seconds": 83.57991310022771,
+        "seconds": 76.69327210029587,
         "detail": ""
       },
       {
         "name": "test_v3_loop.py",
         "status": "PASS",
-        "seconds": 22.052578799892217,
+        "seconds": 25.892222499940544,
         "detail": ""
       },
       {
         "name": "test_v3_operational_bounds.py",
         "status": "PASS",
-        "seconds": 6.608500900212675,
+        "seconds": 10.309588899835944,
         "detail": ""
       },
       {
         "name": "test_v3_operational_closure.py",
         "status": "PASS",
-        "seconds": 121.1463117999956,
+        "seconds": 148.69265959970653,
         "detail": ""
       },
       {
         "name": "test_v3_operational_reliability.py",
         "status": "PASS",
-        "seconds": 9.61037680041045,
+        "seconds": 11.750759500078857,
         "detail": ""
       },
       {
         "name": "test_v3_outcomes.py",
         "status": "PASS",
-        "seconds": 6.232582100201398,
+        "seconds": 8.631807799916714,
         "detail": ""
       },
       {
         "name": "test_v3_projections.py",
         "status": "PASS",
-        "seconds": 3.947813400067389,
+        "seconds": 4.442438800353557,
         "detail": ""
       },
       {
         "name": "test_v3_resources.py",
         "status": "PASS",
-        "seconds": 2.5547939999960363,
+        "seconds": 2.5868970998562872,
         "detail": ""
       },
       {
         "name": "test_v3_scoring.py",
         "status": "PASS",
-        "seconds": 5.750078999903053,
+        "seconds": 5.656111400108784,
         "detail": ""
       },
       {
         "name": "test_v3_smoke.py",
         "status": "PASS",
-        "seconds": 17.803958900272846,
+        "seconds": 21.683457999955863,
         "detail": ""
       },
       {
         "name": "test_v3_teams.py",
         "status": "PASS",
-        "seconds": 3.6291498001664877,
+        "seconds": 2.7248383997939527,
         "detail": ""
       },
       {
         "name": "test_v4_briefing_items.py",
         "status": "PASS",
-        "seconds": 4.1425184002146125,
+        "seconds": 4.253451600205153,
         "detail": ""
       },
       {
         "name": "test_v4_briefing_packet.py",
         "status": "PASS",
-        "seconds": 3.040329699870199,
+        "seconds": 3.66441690037027,
         "detail": ""
       },
       {
         "name": "test_v4_command_center.py",
         "status": "PASS",
-        "seconds": 7.492978099733591,
+        "seconds": 7.778945100028068,
         "detail": ""
       },
       {
         "name": "test_v4_control_state.py",
         "status": "PASS",
-        "seconds": 3.7393322996795177,
+        "seconds": 4.541954600252211,
         "detail": ""
       },
       {
         "name": "test_v4_decision_queue.py",
         "status": "PASS",
-        "seconds": 1.8754287003539503,
+        "seconds": 2.578059600200504,
         "detail": ""
       },
       {
         "name": "test_v4_hardening.py",
         "status": "PASS",
-        "seconds": 3.656070599798113,
+        "seconds": 3.4107117000967264,
         "detail": ""
       },
       {
         "name": "test_v4_owner_directives.py",
         "status": "PASS",
-        "seconds": 2.8675510003231466,
+        "seconds": 3.210642000194639,
         "detail": ""
       },
       {
         "name": "test_v4_owner_management.py",
         "status": "PASS",
-        "seconds": 6.723726300057024,
+        "seconds": 9.749835700262338,
         "detail": ""
       },
       {
         "name": "test_v4_traceability.py",
         "status": "PASS",
-        "seconds": 2.4877418000251055,
+        "seconds": 2.9505441999062896,
         "detail": ""
       },
       {
         "name": "test_v6_candidate_ownership.py",
         "status": "PASS",
-        "seconds": 74.07854939997196,
+        "seconds": 129.4135611001402,
         "detail": ""
       },
       {
         "name": "test_v6_execution_binding.py",
         "status": "PASS",
-        "seconds": 26.8347074999474,
+        "seconds": 42.81888119969517,
         "detail": ""
       },
       {
         "name": "test_v7_briefing.py",
         "status": "PASS",
-        "seconds": 4.144679800141603,
+        "seconds": 4.278739900328219,
         "detail": ""
       },
       {
         "name": "test_v7_busywork_retirement.py",
         "status": "PASS",
-        "seconds": 2.850033199880272,
+        "seconds": 3.018668600358069,
         "detail": ""
       },
       {
         "name": "test_v7_capabilities.py",
         "status": "PASS",
-        "seconds": 3.1193658001720905,
+        "seconds": 3.350056199822575,
         "detail": ""
       },
       {
         "name": "test_v7_command_center_truth.py",
         "status": "PASS",
-        "seconds": 1.8977143000811338,
+        "seconds": 2.643208600115031,
         "detail": ""
       },
       {
         "name": "test_v7_continuity.py",
         "status": "PASS",
-        "seconds": 16.23261190019548,
+        "seconds": 16.22930070012808,
         "detail": ""
       },
       {
         "name": "test_v7_cross_lane_wiring.py",
         "status": "PASS",
-        "seconds": 11.434125199913979,
+        "seconds": 11.364307300187647,
         "detail": ""
       },
       {
         "name": "test_v7_executive_portfolio.py",
         "status": "PASS",
-        "seconds": 8.316712399944663,
+        "seconds": 8.588599300011992,
         "detail": ""
       },
       {
         "name": "test_v7_minigates.py",
         "status": "PASS",
-        "seconds": 3.178610799834132,
+        "seconds": 3.6896403999999166,
         "detail": ""
       },
       {
         "name": "test_v7_new_project_class.py",
         "status": "PASS",
-        "seconds": 5.897177600301802,
+        "seconds": 8.474425899796188,
         "detail": ""
       },
       {
         "name": "test_v7_owner_families.py",
         "status": "PASS",
-        "seconds": 3.1007920000702143,
+        "seconds": 3.0579232000745833,
         "detail": ""
       },
       {
         "name": "test_v7_portfolio.py",
         "status": "PASS",
-        "seconds": 3.239627500064671,
+        "seconds": 3.1850952999666333,
         "detail": ""
       },
       {
         "name": "test_v7_resilience.py",
         "status": "PASS",
-        "seconds": 37.4641901999712,
+        "seconds": 39.01411639992148,
         "detail": ""
       },
       {
         "name": "test_v7_restore_sidecar_regression.py",
         "status": "PASS",
-        "seconds": 1.8445254997350276,
+        "seconds": 3.054459999781102,
         "detail": ""
       },
       {
         "name": "test_v7_scheduler.py",
         "status": "PASS",
-        "seconds": 5.602836700156331,
+        "seconds": 5.509064699988812,
         "detail": ""
       },
       {
         "name": "test_v7_stage_adversarial.py",
         "status": "PASS",
-        "seconds": 5.218819700181484,
+        "seconds": 5.078637599945068,
         "detail": ""
       },
       {
         "name": "test_v7_supervisor_adoption.py",
         "status": "PASS",
-        "seconds": 11.154517199844122,
+        "seconds": 12.647721299901605,
         "detail": ""
       },
       {
         "name": "test_v7b_composition_reuse_security.py",
         "status": "PASS",
-        "seconds": 1.8546461998485029,
+        "seconds": 2.348436899948865,
         "detail": ""
       },
       {
         "name": "test_v7b_deployment.py",
         "status": "PASS",
-        "seconds": 1.6579181998968124,
+        "seconds": 1.856287400238216,
         "detail": ""
       },
       {
         "name": "test_v7b_planning.py",
         "status": "PASS",
-        "seconds": 1.508557999972254,
+        "seconds": 2.137996200006455,
         "detail": ""
       },
       {
         "name": "test_v7b_procedure.py",
         "status": "PASS",
-        "seconds": 3.3185177999548614,
+        "seconds": 3.3226355998776853,
         "detail": ""
       },
       {
         "name": "test_v7b_services.py",
         "status": "PASS",
-        "seconds": 2.3750998000614345,
+        "seconds": 2.1450867000967264,
         "detail": ""
       },
       {
         "name": "test_v7b_targets.py",
         "status": "PASS",
-        "seconds": 1.6616281000897288,
+        "seconds": 1.9143758998252451,
         "detail": ""
       },
       {
         "name": "test_v7c_live_activation.py",
         "status": "PASS",
-        "seconds": 2.316910400055349,
+        "seconds": 2.5572927999310195,
         "detail": ""
       },
       {
         "name": "test_v8_executive_autonomy.py",
         "status": "PASS",
-        "seconds": 258.4682570002042,
+        "seconds": 321.91838119970635,
         "detail": ""
       },
       {
         "name": "test_v8_full_convergence.py",
         "status": "PASS",
-        "seconds": 41.440389200113714,
+        "seconds": 57.69065049989149,
         "detail": ""
       },
       {
         "name": "test_v8_operational_intelligence.py",
         "status": "PASS",
-        "seconds": 4.08704680018127,
+        "seconds": 5.319028900004923,
         "detail": ""
       },
       {
         "name": "test_v9_continuous_executive.py",
         "status": "PASS",
-        "seconds": 44.20240549976006,
+        "seconds": 51.75429269997403,
         "detail": ""
       },
       {
         "name": "test_v9_full_convergence.py",
         "status": "PASS",
-        "seconds": 24.184263300150633,
+        "seconds": 26.221476700156927,
         "detail": ""
       },
       {
         "name": "test_v9_stabilization.py",
         "status": "PASS",
-        "seconds": 6.332186799962074,
+        "seconds": 6.763918899931014,
         "detail": ""
       },
       {
         "name": "test_v9_world_intelligence.py",
         "status": "PASS",
-        "seconds": 25.20081670023501,
+        "seconds": 26.8145383996889,
         "detail": ""
       },
       {
         "name": "test_vault_discovery_runtime.py",
         "status": "PASS",
-        "seconds": 3.5142716001719236,
+        "seconds": 3.380372599698603,
         "detail": ""
       },
       {
         "name": "test_vault_indexer.py",
         "status": "PASS",
-        "seconds": 5.028915100265294,
+        "seconds": 5.647815200034529,
         "detail": ""
       },
       {
         "name": "test_vault_retrieval.py",
         "status": "PASS",
-        "seconds": 7.079672300256789,
+        "seconds": 6.763897099997848,
         "detail": ""
       },
       {
         "name": "test_verdict_justification.py",
         "status": "PASS",
-        "seconds": 1.9445103998295963,
+        "seconds": 1.6444199997931719,
         "detail": ""
       },
       {
         "name": "test_verification_loop.py",
         "status": "PASS",
-        "seconds": 61.47199200000614,
+        "seconds": 61.705263500101864,
         "detail": ""
       },
       {
         "name": "test_verification_planning.py",
         "status": "PASS",
-        "seconds": 1.6270477999933064,
+        "seconds": 1.5780168999917805,
         "detail": ""
       },
       {
         "name": "test_verifier_binding_hardening.py",
         "status": "PASS",
-        "seconds": 109.00005889963359,
+        "seconds": 105.01640939991921,
         "detail": ""
       },
       {
         "name": "test_verifier_orchestrator.py",
         "status": "PASS",
-        "seconds": 5.282821500208229,
+        "seconds": 5.841616900172085,
         "detail": ""
       },
       {
         "name": "test_verifier_truth.py",
         "status": "PASS",
-        "seconds": 27.80970950005576,
+        "seconds": 23.876971799880266,
         "detail": ""
       },
       {
         "name": "test_verify_script.py",
         "status": "PASS",
-        "seconds": 3.5220022001303732,
+        "seconds": 1.4669769001193345,
         "detail": ""
       },
       {
         "name": "test_wave1a_repair_round3.py",
         "status": "PASS",
-        "seconds": 8.376981599722058,
+        "seconds": 6.977262100204825,
         "detail": ""
       },
       {
         "name": "test_wave1a_self_expansion_delivery.py",
         "status": "PASS",
-        "seconds": 44.64243240002543,
+        "seconds": 41.19855420012027,
         "detail": ""
       },
       {
         "name": "test_wave1c_executive_decision.py",
         "status": "PASS",
-        "seconds": 3.9172943998128176,
+        "seconds": 4.98818020010367,
         "detail": ""
       },
       {
         "name": "test_wave2_campaign_children.py",
         "status": "PASS",
-        "seconds": 13.521158100105822,
+        "seconds": 13.893357300199568,
         "detail": ""
       },
       {
         "name": "test_wave2_command_center_identity.py",
         "status": "PASS",
-        "seconds": 5.330322900321335,
+        "seconds": 6.589338899590075,
         "detail": ""
       },
       {
         "name": "test_worker_adapters.py",
         "status": "PASS",
-        "seconds": 11.34382289974019,
+        "seconds": 11.749732999596745,
         "detail": ""
       },
       {
         "name": "test_worker_availability_recovery.py",
         "status": "PASS",
-        "seconds": 5.509278099983931,
+        "seconds": 6.1611965000629425,
         "detail": ""
       },
       {
         "name": "test_worker_context.py",
         "status": "PASS",
-        "seconds": 7.10883709974587,
+        "seconds": 7.13557290006429,
         "detail": ""
       },
       {
         "name": "test_worker_contracts.py",
         "status": "PASS",
-        "seconds": 2.750964699778706,
+        "seconds": 1.6311584999784827,
         "detail": ""
       },
       {
         "name": "test_worker_control.py",
         "status": "PASS",
-        "seconds": 39.44804889988154,
+        "seconds": 39.34404780017212,
         "detail": ""
       },
       {
         "name": "test_worker_evidence.py",
         "status": "PASS",
-        "seconds": 42.65344349993393,
+        "seconds": 63.70280000008643,
         "detail": ""
       },
       {
         "name": "test_worker_gate.py",
         "status": "PASS",
-        "seconds": 43.89065730012953,
+        "seconds": 64.88391980016604,
         "detail": ""
       },
       {
         "name": "test_worker_isolation.py",
         "status": "PASS",
-        "seconds": 2.0789866000413895,
+        "seconds": 1.620041100308299,
         "detail": ""
       },
       {
         "name": "test_worker_lab.py",
         "status": "PASS",
-        "seconds": 5.570102799683809,
+        "seconds": 6.601799299940467,
         "detail": ""
       },
       {
         "name": "test_worker_loop_lease_health.py",
         "status": "PASS",
-        "seconds": 2.945650599896908,
+        "seconds": 3.330763000063598,
         "detail": ""
       },
       {
         "name": "test_worker_loop_stranded_mission_recovery.py",
         "status": "PASS",
-        "seconds": 12.557939699850976,
+        "seconds": 12.430706600192934,
         "detail": ""
       },
       {
         "name": "test_worker_mission_bridge.py",
         "status": "PASS",
-        "seconds": 96.2070339997299,
+        "seconds": 152.3331104000099,
         "detail": ""
       },
       {
         "name": "test_worker_orchestrator.py",
         "status": "PASS",
-        "seconds": 40.84224489983171,
+        "seconds": 78.53210079995915,
         "detail": ""
       },
       {
         "name": "test_worker_router.py",
         "status": "PASS",
-        "seconds": 1.882545500062406,
+        "seconds": 2.362879700027406,
         "detail": ""
       },
       {
         "name": "test_worker_spawn_ownership.py",
         "status": "PASS",
-        "seconds": 6.661549699958414,
+        "seconds": 6.577088099904358,
         "detail": ""
       },
       {
         "name": "test_workflow_discovery.py",
         "status": "PASS",
-        "seconds": 5.591698900330812,
+        "seconds": 5.199380200356245,
         "detail": ""
       },
       {
         "name": "test_workflow_run_verifier_agreement.py",
         "status": "PASS",
-        "seconds": 97.65536980004981,
+        "seconds": 105.74036099994555,
         "detail": ""
       },
       {
         "name": "test_doc_staleness_check.py",
         "status": "FAIL",
-        "seconds": 2.576420800294727,
+        "seconds": 2.6230963999405503,
         "detail": "FAILED tests/foundry/test_doc_staleness_check.py::test_current_state_names_real_head_and_schema"
-      },
-      {
-        "name": "test_evolution_lab.py",
-        "status": "FAIL",
-        "seconds": 21.056162800174206,
-        "detail": "FAILED tests/foundry/test_evolution_lab.py::test_compare_improvement_met - as..."
       },
       {
         "name": "test_git_connector.py",
         "status": "FAIL",
-        "seconds": 6.269093599636108,
+        "seconds": 7.306557099800557,
         "detail": "FAILED tests/foundry/test_git_connector.py::test_commit_and_push_refuse_unowned_or_dirty_worktrees"
       },
       {
         "name": "test_goal2_supervisor_autonomy.py",
         "status": "FAIL",
-        "seconds": 50.727896300144494,
+        "seconds": 65.81288399966434,
         "detail": "FAILED tests/foundry/test_goal2_supervisor_autonomy.py::test_heartbeat_stays_nonblocking_when_spawning_worker_loop"
       },
       {
         "name": "test_installer.py",
         "status": "FAIL",
-        "seconds": 21.592334600165486,
+        "seconds": 22.738460899796337,
         "detail": "FAILED tests/foundry/test_installer.py::test_task_xml_escapes_special_characters"
       },
       {
         "name": "test_lane2_runtime_truth.py",
         "status": "FAIL",
-        "seconds": 9.881177899893373,
+        "seconds": 8.559295400045812,
         "detail": "FAILED tests/foundry/test_lane2_runtime_truth.py::test_command_center_status_endpoint_exposes_runtime_truth"
       },
       {
         "name": "test_lane3_product_truth_autonomy.py",
         "status": "FAIL",
-        "seconds": 24.7967985002324,
+        "seconds": 26.754816100001335,
         "detail": "FAILED tests/foundry/test_lane3_product_truth_autonomy.py::test_source_backed_loop_reaches_memory_and_owner_briefing"
       },
       {
         "name": "test_owner_goal_execution_spine.py",
         "status": "FAIL",
-        "seconds": 53.8958565001376,
+        "seconds": 57.93270750017837,
         "detail": "FAILED tests/foundry/test_owner_goal_execution_spine.py::test_supervisor_owns_command_center_and_continues_goal_without_prompts"
       },
       {
         "name": "test_postv7_skill_library.py",
         "status": "FAIL",
-        "seconds": 6.498702600132674,
+        "seconds": 10.469308400060982,
         "detail": "FAILED tests/foundry/test_postv7_skill_library.py::test_independent_verifier_rejects_tampered_oracle"
       },
       {
         "name": "test_purpose_recovery_ii_convergence_adapter.py",
         "status": "FAIL",
-        "seconds": 41.07678950019181,
+        "seconds": 40.222935600206256,
         "detail": "FAILED tests/foundry/test_purpose_recovery_ii_convergence_adapter.py::test_observed_project_class_admits_with_a_normalized_intent"
-      },
-      {
-        "name": "test_purpose_recovery_ii_lane_a_product_path.py",
-        "status": "FAIL",
-        "seconds": 7.699971600435674,
-        "detail": "FAILED tests/foundry/test_purpose_recovery_ii_lane_a_product_path.py::test_worker_loop_records_stall_when_selected_repo_cannot_continue"
       },
       {
         "name": "test_release_packaging_browser.py",
         "status": "FAIL",
-        "seconds": 298.1285244002938,
+        "seconds": 305.55509279994294,
         "detail": "FAILED tests/foundry/test_release_packaging_browser.py::test_fresh_immutable_release_contains_and_runs_v10_web_runtime"
       },
       {
         "name": "test_software_identity.py",
         "status": "FAIL",
-        "seconds": 33.544622499961406,
+        "seconds": 44.2018444002606,
         "detail": "FAILED tests/foundry/test_software_identity.py::TestRegistrationAndAliases::test_two_worktrees_same_project_different_worktree_truth"
       },
       {
         "name": "test_stop_controls.py",
         "status": "FAIL",
-        "seconds": 5.836287000216544,
+        "seconds": 7.662289300002158,
         "detail": "FAILED tests/foundry/test_stop_controls.py::test_hotkey_collision_fails_closed_with_real_error"
       },
       {
         "name": "test_v10_c_developer_provider.py",
         "status": "FAIL",
-        "seconds": 8.191955999936908,
+        "seconds": 13.020145500078797,
         "detail": "FAILED tests/foundry/test_v10_c_developer_provider.py::test_golden_journey_stop_before_commit_has_no_commit_or_release"
       },
       {
         "name": "test_v12_canonical_artifact_trial.py",
         "status": "FAIL",
-        "seconds": 627.3360616997816,
+        "seconds": 631.6012007002719,
         "detail": "FAILED tests/foundry/test_v12_canonical_artifact_trial.py::test_failed_artifact_trial_cannot_corrupt_catalog"
       },
       {
         "name": "test_v12_irreversible_fabric.py",
         "status": "FAIL",
-        "seconds": 37.90280879987404,
+        "seconds": 36.290746400132775,
         "detail": "FAILED tests/foundry/test_v12_irreversible_fabric.py::test_github_fabric_reconciles_ambiguous_pr_under_stop"
       },
       {
         "name": "test_v12_irreversible_github.py",
         "status": "FAIL",
-        "seconds": 17.069035700056702,
+        "seconds": 11.540313399862498,
         "detail": "FAILED tests/foundry/test_v12_irreversible_github.py::test_github_5xx_after_acceptance_is_unknown_then_reconciled"
       },
       {
         "name": "test_v12_self_expansion_convergence.py",
         "status": "TIMEOUT",
-        "seconds": 900.1658296999522,
+        "seconds": 900.2273627002724,
         "detail": "exceeded 900s; .."
       },
       {
         "name": "test_v13_workforce_long_run.py",
-        "status": "TIMEOUT",
-        "seconds": 900.4229254997335,
-        "detail": "exceeded 900s; ..F....F..........."
+        "status": "FAIL",
+        "seconds": 405.1327140000649,
+        "detail": "ERROR tests/foundry/test_v13_workforce_long_run.py::test_objective_reader_is_pure_and_completion_command_is_gated"
+      },
+      {
+        "name": "test_v13_workforce_steering.py",
+        "status": "FAIL",
+        "seconds": 808.0882264999673,
+        "detail": "FAILED tests/foundry/test_v13_workforce_steering.py::test_distinct_interventions_serialize_before_stale_attempt_check"
       },
       {
         "name": "test_v13_workforce_worktrees.py",
         "status": "FAIL",
-        "seconds": 286.74454930005595,
+        "seconds": 340.80843959981576,
         "detail": "FAILED tests/foundry/test_v13_workforce_worktrees.py::test_replay_rejects_wrong_source_and_replaced_unlinked_checkout"
       },
       {
         "name": "test_v14_lane3_developer_effects.py",
         "status": "FAIL",
-        "seconds": 40.79454270005226,
+        "seconds": 45.28471320029348,
         "detail": "FAILED tests/foundry/test_v14_lane3_developer_effects.py::test_git_push_rejection_reports_truthful_failure"
       },
       {
         "name": "test_v3_fault_matrix.py",
         "status": "FAIL",
-        "seconds": 106.08625469962135,
+        "seconds": 95.50651809992269,
         "detail": "FAILED tests/foundry/test_v3_fault_matrix.py::test_git_fault_freezes_before_any_retry[post effect.reconcile_pending]"
       },
       {
         "name": "test_v3_fixtures.py",
         "status": "FAIL",
-        "seconds": 5.203452699817717,
+        "seconds": 4.07910169987008,
         "detail": "FAILED tests/foundry/test_v3_fixtures.py::test_disposable_bare_remote_push_and_ls_remote_roundtrip"
       },
       {
         "name": "test_v3_git_reconcile.py",
         "status": "FAIL",
-        "seconds": 23.326197300106287,
+        "seconds": 20.973787700291723,
         "detail": "FAILED tests/foundry/test_v3_git_reconcile.py::test_pull_from_disposable_remote_roundtrip"
       },
       {
         "name": "test_v5_composed_mission.py",
         "status": "FAIL",
-        "seconds": 6.749353500083089,
+        "seconds": 10.157748700119555,
         "detail": "FAILED tests/foundry/test_v5_composed_mission.py::test_http_outage_isolated_from_unrelated_git_work"
       },
       {
         "name": "test_v7b_digital_office_lab.py",
         "status": "FAIL",
-        "seconds": 4.951113100163639,
+        "seconds": 10.012616599909961,
         "detail": "FAILED tests/foundry/test_v7b_digital_office_lab.py::test_digital_office_lab_passes_without_live_accounts"
       },
       {
         "name": "test_v7b_project.py",
         "status": "FAIL",
-        "seconds": 4.326937799807638,
+        "seconds": 7.067405499983579,
         "detail": "FAILED tests/foundry/test_v7b_project.py::test_disposable_project_workflow_reconciles_local_remote"
       },
       {
         "name": "test_v9_capability_fabric.py",
         "status": "FAIL",
-        "seconds": 289.2352651995607,
+        "seconds": 331.25712849991396,
         "detail": "FAILED tests/foundry/test_v9_capability_fabric.py::test_http_write_then_read_and_git_log"
       }
     ]

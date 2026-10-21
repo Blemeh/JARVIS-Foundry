@@ -120,22 +120,20 @@ They disagree; this is how to read them.
 * **Python suite** (371 files in `tests/foundry`, each run in its own process,
   6 in parallel, 900 s per-file timeout; result in
   `docs/evidence/test-baseline-2026-10-21-final.json`, the first pass of the day
-  in `docs/evidence/test-baseline-2026-10-21.json`): **342 pass, 27 fail, 2 time
-  out**. Two of those only fail under parallel load and pass alone
-  (`test_evolution_lab` is timing-sensitive; `test_v13_workforce_convergence`
-  passed in the final run), and `test_doc_staleness_check` reports the
-  documentation pin (resolved by the docs-only reconciliation commit that closes
-  this work).
+  in `docs/evidence/test-baseline-2026-10-21.json`): **343 pass, 27 fail, 1 times
+  out**. `test_doc_staleness_check` is among the failures only until the
+  docs-only reconciliation commit that closes this work (it pins the documentation
+  to its parent). `test_v13_workforce_steering` is load-sensitive: it fails in a
+  6-way parallel run and passes alone.
 * **No regressions from this work.** The 37 files that did not pass in the first
   run were re-run on plain `main` in the same environment; 35 fail or time out
-  identically there, and none of the 29 non-passing files in the final run is
-  new. Eight of the 37 now pass. The rest need real `git clone`/`push`
-  transport, process spawning, Windows task/tray APIs, `pip` downloads, or a
-  writable system temp directory, none of which the environment used for this
-  run provides. They have **not** been root-caused one by one, so treat them as
-  *unproven here*, not *proven broken*. Run `python scripts/verify.py` on a
-  normal machine to see the real numbers.
-* **Two known-stale proofs** (deliberately not rewritten): the
+  identically there, and none of the 28 non-passing files in the final run is
+  outside that first set. Nine of the 37 now pass. The rest need real `git
+  clone`/`push` transport, process spawning, Windows task/tray APIs, `pip`
+  downloads, or a writable system temp directory, none of which the environment
+  used for this run provides. They have **not** been root-caused one by one, so
+  treat them as *unproven here*, not *proven broken*. Run `python scripts/verify.py`
+  on a normal machine to see the real numbers.* **Two known-stale proofs** (deliberately not rewritten): the
   `test_lane3_product_truth_autonomy` fixture still scripts "false claim -> repair
   -> pass" for an owner-goal mission, but those missions now fail closed to the
   Executive by design (`mission/loop.py::_repair_or_block`); and the
