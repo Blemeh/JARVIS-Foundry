@@ -29,7 +29,7 @@ def _register(database: FoundryDatabase, repository: Path) -> None:
     )
 
 
-def test_command_center_goal_plans_executes_rejects_false_success_and_repairs(
+def test_command_center_goal_plans_executes_and_fails_closed_on_false_success(
     tmp_path: Path,
 ) -> None:
     database = FoundryDatabase(tmp_path / "foundry.db")
@@ -94,9 +94,14 @@ def test_command_center_goal_plans_executes_rejects_false_success_and_repairs(
         database, paths, config,
         loop_id="owner-proof-execute", instance_id="owner-proof-supervisor-2",
     )
-    assert second["outcome"] == "PASSED", second
+    # Owner-goal missions are Executive-owned: a verifier FAIL is strategy
+    # evidence for a materially different replan, never a cue to replay the
+    # same contracts under REPAIRING (mission/loop.py::_repair_or_block). The
+    # injected false success must therefore be rejected and fail closed.
+    assert second["outcome"] == "BLOCKED", second
+    assert "repair budget exhausted" in second["reason"], second
     mission = database.row("missions", "mission_id", mission_id)
-    assert mission["state"] == "COMPLETE"
+    assert mission["state"] != "COMPLETE"
 
     with database.connect(readonly=True) as connection:
         verdicts = [dict(row) for row in connection.execute(
@@ -107,22 +112,20 @@ def test_command_center_goal_plans_executes_rejects_false_success_and_repairs(
             (mission_id,)).fetchall()]
     execute_verdicts = [
         row for row in verdicts if row["subject_id"] == "02-execute"]
-    assert [row["status"] for row in execute_verdicts] == ["FAIL", "PASS"]
-    roles = [row["role"] for row in run_rows]
-    assert "repair" in roles
+    assert [row["status"] for row in execute_verdicts] == ["FAIL"]
+    assert "repair" not in [row["role"] for row in run_rows]
     events = [event.event_type for event in database.events()]
-    assert "mission.completed" in events
-    assert "portfolio.outcome_recorded" in events
+    assert "mission.completed" not in events
 
     third = run_cycle(
         database, paths, config,
-        loop_id="owner-proof-after-complete",
+        loop_id="owner-proof-after-block",
         instance_id="owner-proof-supervisor-3",
     )
     assert third["outcome"] == "WAITING", third
     with database.connect(readonly=True) as connection:
+        # No duplicate mission or effect is admitted behind a rejected claim.
         assert connection.execute("SELECT COUNT(*) FROM missions").fetchone()[0] == 1
-
 
 def test_machine_local_owner_secret_is_stable(tmp_path: Path) -> None:
     from jarvis_foundry.owner_controls import load_or_create_owner_secret
