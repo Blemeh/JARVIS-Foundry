@@ -49,6 +49,23 @@ reasons only; nothing was written and no live process was touched):
   next cycle. Keep this checkout on a good branch with a valid file; moving the
   config out of the working tree is an owner/promotion decision. `python
   scripts/doctor.py` now checks the file and states this coupling.
+## Observed product gaps (deferred, not built)
+
+Per the frozen roadmap, out-of-phase discoveries are recorded, not implemented.
+
+1. **Silent stall on a blocked delegation.** A delegation blocked on
+   `EXECUTIVE_OBJECTIVE_REQUIRED` re-emits `delegation.intent_blocked` every
+   cycle (3,301 events so far; the idempotency key in
+   `delegation/service.py::_block` includes the intent's `updated_at`, which
+   changes each cycle) yet the owner was asked for clarification **once**
+   (`delegation.clarification_requested`, 2026-10-06) and never again. Sensible
+   fixes, both owner-gated because they change live Executive behavior: make the
+   blocked event idempotent per (intent, reason) while the state is unchanged, and
+   re-escalate to the owner on a schedule.
+2. **Stale "ACTIVE" objectives** that never execute (two from 2026-09-24) keep
+   competing for the shared resource; stale suspended/blocked objectives are
+   never closed without an explicit owner action.
+3. **Worker config read from a working tree** (see above).
 ## Which document to believe
 
 The repo has several overlapping "state" documents written at different times.
