@@ -19,7 +19,7 @@ Command Center for the owner. About 190k lines of Python under `src/jarvis_found
 | Thing | State |
 | --- | --- |
 | `origin/main` | Contains the owner-experience redesign merged with all of main's backend work. |
-| Installed live release | `CURRENT` = `4cac1948…` (the release built *before* the redesign). The `JARVIS-Foundry-Supervisor` task was Running and its launcher/worker processes were alive when checked on 2026-10-21. **Not touched** by this work. Health/trust was not read. |
+| Installed live release | `CURRENT` = `4cac1948…` (built *before* the redesign), `PREVIOUS` = `0bc96b70…`. **Alive on 2026-10-21 (read-only observation):** the `JARVIS-Foundry-Supervisor` task is Running (launcher process up since 10-12 21:11), a `worker_loop --once` cycle had just started (02:34), and the 633 MB ledger had been written within the minute. **Not touched** by this work; health/trust values were not read. |
 | Gap between them | Everything on main after `4cac1948` (the redesigned Command Center, the fixes below) is **not live** until a release is promoted via `docs/agent/workflows/promotion.md`, which needs an explicit owner goal. |
 
 ## Which document to believe
