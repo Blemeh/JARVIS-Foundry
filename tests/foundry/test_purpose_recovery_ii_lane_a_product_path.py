@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import pytest
 from pathlib import Path
 
 from jarvis_foundry.control.registration import inspect_git_resource, registration_event
@@ -37,6 +38,14 @@ EVIDENCE = Path(
     r"\var\purpose-recovery-ii-20260917\lane-a\PRODUCT_PATH_PROOF.json"
 )
 
+
+# Machine-specific proof: it clones the author's real local repositories and writes its
+# evidence beside one of them. Without those checkouts there is nothing to prove, so
+# skip with a reason instead of reporting a failure on every other machine.
+pytestmark = pytest.mark.skipif(
+    not (REAL_JARVIS.is_dir() and REAL_OPERATOROS.is_dir() and REAL_GRUPI.is_dir()),
+    reason="needs the author's real local repositories (machine-specific lane proof)",
+)
 
 def _clone(src: Path, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
