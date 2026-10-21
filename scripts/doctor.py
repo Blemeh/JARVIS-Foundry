@@ -202,6 +202,21 @@ def _local_app_data() -> Path:
     return Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
 
 
+def _dir_size(path: Path, limit: int = 200_000) -> int:
+    """Best-effort byte size of a directory tree (bounded walk)."""
+    total = 0
+    seen = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.path.getsize(os.path.join(root, name))
+            except OSError:
+                pass
+            seen += 1
+            if seen >= limit:
+                return total
+    return total
+
 def check_live_install() -> list[Finding]:
     install = _local_app_data() / "JARVIS"
     current_file = install / "CURRENT"
@@ -214,7 +229,19 @@ def check_live_install() -> list[Finding]:
               if behind.isdigit() else "installed release is not an ancestor of main (or unknown here)"]
     releases = install / "releases"
     if releases.exists():
-        detail.append(f"{len(list(releases.iterdir()))} release folder(s) under {releases}")
+        folders = [p for p in releases.iterdir() if p.is_dir()]
+        sample = _dir_size(folders[0]) if folders else 0
+        detail.append(
+            f"{len(folders)} release folder(s) under {releases}, about "
+            f"{len(folders) * sample / 1024**3:.0f} GB (estimated from one release)")
+        previous_file = install / "PREVIOUS"
+        previous = previous_file.read_text(encoding="utf-8", errors="replace").strip() if previous_file.exists() else ""
+        stale = [p.name for p in folders if p.name not in {current, previous}]
+        if len(stale) > 6:
+            detail.append(
+                f"{len(stale)} release(s) are neither CURRENT nor PREVIOUS (the rollback target); "
+                "they are immutable, rebuildable history. The product has no retention policy; "
+                "pruning is an owner decision on the live install.")
     findings = [Finding("live", WARN if behind.isdigit() and int(behind) > 0 else OK,
                         "installed release lags main" if behind.isdigit() and int(behind) > 0 else "installed release matches main",
                         detail + ["promotion requires an explicit owner goal (docs/agent/workflows/promotion.md)"])]

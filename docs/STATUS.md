@@ -110,6 +110,7 @@ real reconciliation of `CURRENT_STATE.md`.
   hygiene/verification.
 * **Promote the redesign?** The redesigned Command Center and the fixes above are
   on main but not in the running release.
+* **Release retention (live install, ~131 GB).** `%LOCALAPPDATA%\JARVIS\releases` holds 133 immutable release folders of about 1 GB each (a venv per release). Only `CURRENT` and `PREVIOUS` (the rollback target) matter operationally; the rest is rebuildable history and the product has no retention policy. It was left alone because the live install is off-limits without an explicit owner goal; `python scripts/doctor.py` reports the figure.
 * **Leftover scheduled tasks (clutter only).** Eight old tasks
   (`JARVIS-Codex-V9-Lane1/Lane3-Resume`, the four `…Proving-Window-Monitor*`
   tasks, `JARVIS-Foundry-Worker-Loop`, `JARVIS-Prompt4-M11-Trust-Monitor`) are
