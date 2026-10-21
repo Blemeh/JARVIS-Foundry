@@ -6,11 +6,61 @@ This document is the authoritative current-state record. The frozen roadmap
 remains authoritative for sequencing and scope; its execution pointer is
 `docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`.
 
-Last reconciled: Monday, September 28, 2026 for V7 READINESS + LIVE PROOF
+Last reconciled: Wednesday, October 21, 2026 (status reconciliation; see the first section below).
+Previous reconciliation: Monday, September 28, 2026 for V7 READINESS + LIVE PROOF
 (stale capability-declaration repair, autonomous mission materialization,
 GitHub issue effect with provider-side reconciliation, desktop observation
 evidence, STOP drill), live on the release below at reconciliation time.
 
+## Current canonical and live state — 2026-10-21 (STATUS RECONCILIATION)
+
+DOCUMENTATION STATE BASE SHA: `5dbfa6e6dd3b6b4cd7d61ccd348eea1994ea530b`
+
+CURRENT/CANDIDATE SCHEMA: v41
+
+The SHA above is the immediate parent of this docs-only reconciliation commit, as
+required by `scripts/doc_staleness_check.py`. It names the source state this
+section describes. The short, evidence-linked companion is `docs/STATUS.md`
+(read it first); `docs/README.md` maps the rest of the documentation.
+
+Source: `main` carries the owner-experience Command Center redesign merged with
+all earlier backend work, plus fixes and tooling from this reconciliation:
+campaign-child wakes no longer park a whole objective; observation sources rotate
+past the per-cycle limit (with a hard ceiling of 64); a blocked delegation no
+longer re-writes an identical event every cycle; the owner attention queue no longer
+floods with per-cycle telemetry, and shows escalations, stalled delegations and
+worker-activation failures regardless of ledger age (closing them on resolution or
+when their objective ends); popups are limited to fresh owner-actionable items; the
+test suite can no longer touch the owner's registry PATH, Hermes profile or live
+install; `scripts/verify.py`, `scripts/doctor.py` and `scripts/prune_releases.py`
+were added. Schema is unchanged (v41).
+
+Live (read-only observation on 2026-10-21; nothing in the live install, database,
+Scheduler, trust or release pointers was changed): installed `CURRENT` is
+`4cac1948ce115d75225fdfab929ae57aaecbbbb5` (`PREVIOUS` `0bc96b70`), built before
+the redesign and the fixes above, so none of them are live until a release is
+promoted under `docs/agent/workflows/promotion.md`. The `JARVIS-Foundry-Supervisor`
+task is Running and the worker loop cycles about 70 times a day, but **no mission
+was started in the last 7 days**: the last owner directive is dated 2026-10-06, a
+delegation is blocked on `EXECUTIVE_OBJECTIVE_REQUIRED` and the portfolio decides
+`WAIT`. Health and trust values were not read here.
+
+Verification on the pinned source: command-center typecheck, lint, production build
+and 244 unit tests pass; the Python suite (371 files, per-file isolation) passes 343
+files, with no file failing outside the set that also fails on plain `main` in the
+same environment (real Git transport, process spawning, Windows tasks and `pip`
+are unavailable there, so those files are unproven rather than proven broken).
+Results: `docs/evidence/test-baseline-2026-10-21-final.json` and
+`docs/evidence/test-baseline-2026-10-21.json`.
+
+Document conflicts, resolved here: the roadmap execution-state file
+(`docs/roadmap/JARVIS_1_0_EXECUTION_STATE.yaml`, last reconciled 2026-09-03) is
+stale and was deliberately not edited (only the session that closes a gate may
+update it); `docs/CAPABILITY_MATRIX.md` (2026-09-27) lists as candidate-only
+several commits that are already ancestors of `main`. The next authorized gate is an
+owner decision. A cleanup incident is recorded in `docs/STATUS.md`: deleting old
+worktrees dropped registered live resources from the Executive's context; the
+canonical JARVIS resource's worktree was restored.
 ## Current canonical and live state — 2026-09-28 (V7 READINESS + LIVE PROOF)
 
 DOCUMENTATION STATE BASE SHA: `962e663a7e2c870b946f4d6d883979c035c302e7`
