@@ -60,3 +60,53 @@ def test_user_path_writes_are_refused_inside_the_test_suite(doctor) -> None:
     winreg = pytest.importorskip("winreg")
     with pytest.raises(AssertionError, match="registry"):
         winreg.SetValueEx(None, "Path", 0, winreg.REG_EXPAND_SZ, "x")
+
+def test_worker_config_with_conflict_markers_is_reported_unloadable(doctor) -> None:
+    broken = "enabled: true\n<<<<<<< HEAD\nstatus: A\n=======\nstatus: B\n>>>>>>> main\n"
+    problems = doctor.worker_config_problems(broken)
+    assert any("conflict markers" in item for item in problems)
+
+
+def test_worker_config_that_does_not_parse_or_is_not_a_mapping(doctor) -> None:
+    pytest.importorskip("yaml")
+    assert any("does not parse" in p for p in doctor.worker_config_problems("a: [unclosed\n"))
+    assert any("not a mapping" in p for p in doctor.worker_config_problems("- just\n- a list\n"))
+    assert doctor.worker_config_problems("enabled: true\nstatus: CONFIGURED\n") == []
+
+
+def test_activity_summary_counts_without_reading_payloads(doctor, tmp_path) -> None:
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+
+    db_path = tmp_path / "foundry.db"
+    now = datetime(2026, 10, 21, 12, 0, tzinfo=timezone.utc)
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "CREATE TABLE events (sequence INTEGER PRIMARY KEY AUTOINCREMENT, event_type TEXT, "
+            "occurred_at TEXT, payload_json TEXT)")
+        for event_type, hours_ago in (
+            ("executive.autonomy_cycle_recorded", 1),
+            ("executive.autonomy_cycle_recorded", 30),  # outside 24h
+            ("mission.created", 24 * 3),
+            ("mission.created", 24 * 9),  # outside 7d
+            ("owner_directive.recorded", 24 * 5),
+            ("delegation.intent_blocked", 2),
+        ):
+            stamp = (now - timedelta(hours=hours_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            connection.execute(
+                "INSERT INTO events (event_type, occurred_at, payload_json) VALUES (?, ?, ?)",
+                (event_type, stamp, '{"secret_goal_text": "must never be read"}'))
+    info = doctor.activity_summary(db_path, now=now)
+    assert info["cycles_24h"] == 1
+    assert info["missions_created_7d"] == 1
+    assert info["missions_completed_7d"] == 0
+    assert info["blocked_delegations_24h"] == 1
+    assert str(info["last_owner_directive"]).startswith("2026-10-16")
+    assert "must never be read" not in str(info)
+
+def test_guarded_checks_turn_crashes_into_findings(doctor) -> None:
+    def boom():
+        raise RuntimeError("probe exploded")
+
+    findings = doctor._guarded("probe", boom)
+    assert len(findings) == 1 and findings[0].status == doctor.WARN and "RuntimeError" in findings[0].summary

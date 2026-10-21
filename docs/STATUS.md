@@ -22,6 +22,33 @@ Command Center for the owner. About 190k lines of Python under `src/jarvis_found
 | Installed live release | `CURRENT` = `4cac1948…` (built *before* the redesign), `PREVIOUS` = `0bc96b70…`. **Alive on 2026-10-21 (read-only observation):** the `JARVIS-Foundry-Supervisor` task is Running (launcher process up since 10-12 21:11), a `worker_loop --once` cycle had just started (02:34), and the 633 MB ledger had been written within the minute. **Not touched** by this work; health/trust values were not read. |
 | Gap between them | Everything on main after `4cac1948` (the redesigned Command Center, the fixes below) is **not live** until a release is promoted via `docs/agent/workflows/promotion.md`, which needs an explicit owner goal. |
 
+## The live system today (read-only ledger observation, 2026-10-21)
+
+Observed by reading the live ledger through a read-only connection (counts and
+reasons only; nothing was written and no live process was touched):
+
+* **Awake but idle.** About 70 autonomy cycles and 1,200 Supervisor heartbeats per
+  day, yet **0 missions created or completed in the last 7 days**. The last owner
+  directive was recorded on **2026-10-06**.
+* **Why nothing starts.** The portfolio decides `WAIT` ("no positive-value work is
+  currently executable") every cycle. An owner delegation has been blocked 140
+  times in 24 h with `EXECUTIVE_OBJECTIVE_REQUIRED` ("delegation cannot choose
+  among multiple Executive objectives"), and active owner-goal objectives conflict
+  over one shared resource. The ledger holds 43 objectives: 12 completed, 14
+  suspended, 9 blocked, 6 failed, 2 active; the two "active" ones date from
+  2026-09-24 and are trivial lint fixes that never ran.
+* **What unblocks it** (owner decisions, none taken here): give JARVIS a fresh,
+  single goal, and/or close or revoke the stale suspended/blocked objectives so a
+  delegation can resolve to one objective.
+* **Config coupling hazard.** The running worker loop is started with
+  `--config <this checkout>\config\worker_routing.yaml`, i.e. it reads the
+  *working tree* of this repository. Switching branches, a conflicted merge or an
+  edit of that file changes the live worker immediately. One cycle was blocked
+  (`worker_loop.activation_blocked`, 2026-10-20 14:43 UTC, YAML parse error from
+  merge-conflict markers) during a merge in this very work, and recovered on the
+  next cycle. Keep this checkout on a good branch with a valid file; moving the
+  config out of the working tree is an owner/promotion decision. `python
+  scripts/doctor.py` now checks the file and states this coupling.
 ## Which document to believe
 
 The repo has several overlapping "state" documents written at different times.

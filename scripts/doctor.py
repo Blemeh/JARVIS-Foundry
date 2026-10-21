@@ -272,6 +272,116 @@ def _scheduled_tasks() -> Finding:
                    f"{len(rows)} related task(s), {disabled} disabled, {len(broken)} enabled with a missing target", detail)
 
 
+# ------------------------------------------------- live config + activity (read-only)
+
+
+CONFLICT_MARKER = re.compile(r"(?m)^(<<<<<<<|=======|>>>>>>>)( |$)")
+
+
+def worker_config_problems(text: str) -> list[str]:
+    """Problems that would make the live worker refuse to activate (pure)."""
+    problems: list[str] = []
+    if CONFLICT_MARKER.search(text):
+        problems.append("contains git merge-conflict markers (the worker cannot parse it)")
+    try:
+        import yaml  # type: ignore[import-not-found]
+    except ImportError:
+        return problems
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as error:
+        problems.append(f"YAML does not parse: {str(error).splitlines()[0][:100]}")
+        return problems
+    if not isinstance(data, dict):
+        problems.append("YAML root is not a mapping")
+    return problems
+
+
+def _worker_config_path() -> Path:
+    """The --config the running worker loop was started with, else the repo copy."""
+    if sys.platform == "win32":
+        code, out = _run("powershell", "-NoProfile", "-Command",
+                         "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'worker_loop' -and "
+                         "$_.CommandLine -match '--config' } | Select-Object -First 1 -ExpandProperty CommandLine",
+                         timeout=30)
+        match = re.search(r'--config\s+"([^"]+)"', out) if code == 0 else None
+        if match:
+            return Path(match.group(1))
+    return ROOT / "config" / "worker_routing.yaml"
+
+
+def check_live_config() -> Finding:
+    path = _worker_config_path()
+    if not path.exists():
+        return Finding("config", WARN, "live worker config not found", [str(path)])
+    detail = [f"worker config: {path}"]
+    problems = worker_config_problems(path.read_text(encoding="utf-8", errors="replace"))
+    try:
+        path.resolve().relative_to(ROOT.resolve())
+        inside = True
+    except ValueError:
+        inside = False
+    if inside:
+        _, branch = _run("git", "branch", "--show-current")
+        _, dirty = _run("git", "status", "--porcelain", "--", str(path))
+        detail.append(f"it lives in this checkout (branch {branch or 'detached'}): switching branches, a conflicted merge "
+                      "or an edit here changes the running worker immediately")
+        if dirty.strip():
+            detail.append("the file has uncommitted changes")
+    if problems:
+        return Finding("config", FAIL, "live worker config is not loadable", detail + problems)
+    return Finding("config", WARN if inside else OK,
+                   "live worker config loads" + (" (but is read from the working tree)" if inside else ""), detail)
+
+
+def activity_summary(db_path: Path, now: datetime | None = None) -> dict[str, int | str | None]:
+    """Counts only (no payload text): how busy the ledger has been. Strictly read-only."""
+    import sqlite3
+
+    now = now or datetime.now(timezone.utc)
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
+    try:
+        con.execute("PRAGMA query_only=ON")
+
+        def count(event_type: str, days: int) -> int:
+            since = (now.timestamp() - days * 86400)
+            stamp = datetime.fromtimestamp(since, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            return int(con.execute(
+                "SELECT COUNT(*) FROM events WHERE event_type = ? AND occurred_at >= ?",
+                (event_type, stamp)).fetchone()[0])
+
+        latest = con.execute("SELECT occurred_at FROM events ORDER BY sequence DESC LIMIT 1").fetchone()
+        last_owner = con.execute(
+            "SELECT occurred_at FROM events WHERE event_type = 'owner_directive.recorded' "
+            "ORDER BY sequence DESC LIMIT 1").fetchone()
+        return {
+            "latest_event": latest[0] if latest else None,
+            "last_owner_directive": last_owner[0] if last_owner else None,
+            "cycles_24h": count("executive.autonomy_cycle_recorded", 1),
+            "missions_created_7d": count("mission.created", 7),
+            "missions_completed_7d": count("mission.completed", 7),
+            "blocked_delegations_24h": count("delegation.intent_blocked", 1),
+        }
+    finally:
+        con.close()
+
+
+def check_live_activity() -> Finding:
+    db = _local_app_data() / "hermes" / "foundry" / "foundry.db"
+    if not db.exists():
+        return Finding("activity", WARN, "no live ledger found", [str(db)])
+    try:
+        info = activity_summary(db)
+    except Exception as error:  # noqa: BLE001 - observation must never raise
+        return Finding("activity", WARN, "could not read the live ledger", [f"{type(error).__name__}: {error}"[:160]])
+    detail = [f"{key}: {value}" for key, value in info.items()]
+    idle = info["cycles_24h"] and not info["missions_created_7d"]
+    if idle:
+        detail.append("the system is awake and cycling but has started no work in 7 days: it is waiting for a goal "
+                      "or for blocked objectives/delegations to be resolved by the owner")
+    return Finding("activity", WARN if idle else OK,
+                   "live system idle (no missions started in 7 days)" if idle else "live system active", detail)
+
 # -------------------------------------------------------------- scratch/docs
 
 
@@ -323,21 +433,30 @@ def check_env() -> Finding:
 # -------------------------------------------------------------------- main
 
 
+def _guarded(area: str, check) -> list[Finding]:
+    try:
+        result = check()
+    except Exception as error:  # noqa: BLE001 - the doctor must always finish its report
+        return [Finding(area, WARN, f"check failed to run: {type(error).__name__}", [str(error)[:160]])]
+    return result if isinstance(result, list) else [result]
+
+
 def run_checks(fix_path: bool, backup_dir: Path, skip: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     if "path" not in skip:
-        findings.append(check_path(fix_path, backup_dir))
+        findings += _guarded("path", lambda: check_path(fix_path, backup_dir))
     if "git" not in skip:
-        findings += check_git()
+        findings += _guarded("git", check_git)
     if "live" not in skip:
-        findings += check_live_install()
+        findings += _guarded("live", check_live_install)
+        findings += _guarded("config", check_live_config)
+        findings += _guarded("activity", check_live_activity)
     if "scratch" not in skip:
-        findings.append(check_scratch())
+        findings += _guarded("scratch", check_scratch)
     if "docs" not in skip:
-        findings += check_docs()
-    findings.append(check_env())
+        findings += _guarded("docs", check_docs)
+    findings += _guarded("env", check_env)
     return findings
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
