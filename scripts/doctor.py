@@ -334,6 +334,39 @@ def check_live_config() -> Finding:
                    "live worker config loads" + (" (but is read from the working tree)" if inside else ""), detail)
 
 
+def missing_resource_roots(db_path: Path) -> list[tuple[str, str, str]]:
+    """Registered resources whose root folder no longer exists: (id, readiness, root). Read-only."""
+    import sqlite3
+
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
+    try:
+        con.execute("PRAGMA query_only=ON")
+        rows = con.execute("SELECT resource_id, readiness_state, resolved_root FROM resources").fetchall()
+    finally:
+        con.close()
+    return [(rid, state, root) for rid, state, root in rows if root and not Path(root).is_dir()]
+
+
+def check_live_resources() -> Finding:
+    db = _local_app_data() / "hermes" / "foundry" / "foundry.db"
+    if not db.exists():
+        return Finding("resources", WARN, "no live ledger found", [str(db)])
+    try:
+        gone = missing_resource_roots(db)
+    except Exception as error:  # noqa: BLE001 - observation must never raise
+        return Finding("resources", WARN, "could not read registered resources", [f"{type(error).__name__}: {error}"[:160]])
+    if not gone:
+        return Finding("resources", OK, "every registered resource root exists")
+    real = [item for item in gone if "probe" not in item[0] and "scenario" not in item[0] and "prompt" not in item[0]
+            and "e2e" not in item[0] and "proof" not in item[0] and "closure" not in item[0]]
+    detail = [f"{rid}  [{state}]  {root}" for rid, state, root in gone[:12]]
+    if len(gone) > 12:
+        detail.append(f"... and {len(gone) - 12} more")
+    detail.append("the live Executive can no longer resolve project context for these; most are old proof fixtures "
+                  "registered in the live ledger. Deleting a folder a resource points at silently drops it.")
+    return Finding("resources", WARN,
+                   f"{len(gone)} registered resource root(s) missing on disk ({len(real)} look like real projects)", detail)
+
 def activity_summary(db_path: Path, now: datetime | None = None) -> dict[str, int | str | None]:
     """Counts only (no payload text): how busy the ledger has been. Strictly read-only."""
     import sqlite3
@@ -451,6 +484,7 @@ def run_checks(fix_path: bool, backup_dir: Path, skip: set[str]) -> list[Finding
         findings += _guarded("live", check_live_install)
         findings += _guarded("config", check_live_config)
         findings += _guarded("activity", check_live_activity)
+        findings += _guarded("resources", check_live_resources)
     if "scratch" not in skip:
         findings += _guarded("scratch", check_scratch)
     if "docs" not in skip:

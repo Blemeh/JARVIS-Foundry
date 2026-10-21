@@ -110,3 +110,24 @@ def test_guarded_checks_turn_crashes_into_findings(doctor) -> None:
 
     findings = doctor._guarded("probe", boom)
     assert len(findings) == 1 and findings[0].status == doctor.WARN and "RuntimeError" in findings[0].summary
+
+def test_missing_resource_roots_lists_only_registered_roots_that_vanished(doctor, tmp_path) -> None:
+    import sqlite3
+
+    present = tmp_path / "present-repo"
+    present.mkdir()
+    db_path = tmp_path / "foundry.db"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "CREATE TABLE resources (resource_id TEXT, readiness_state TEXT, resolved_root TEXT)")
+        connection.executemany(
+            "INSERT INTO resources VALUES (?, ?, ?)",
+            [
+                ("resource-ok", "READY", str(present)),
+                ("resource-gone", "PROBING", str(tmp_path / "deleted-worktree")),
+                ("resource-blank", "READY", ""),
+            ],
+        )
+    assert doctor.missing_resource_roots(db_path) == [
+        ("resource-gone", "PROBING", str(tmp_path / "deleted-worktree")),
+    ]

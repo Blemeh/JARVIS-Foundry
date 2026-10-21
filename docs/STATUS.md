@@ -76,6 +76,29 @@ Per the frozen roadmap, out-of-phase discoveries are recorded, not implemented.
    one) is an Executive-behavior change for the owner to schedule; nothing here
    is urgent at the current size.
 4. **Worker config read from a working tree** (see above).
+## Incident from this cleanup (found and repaired)
+
+The live ledger registers **38 resources** (project checkouts the Executive may work
+on). Early in this cleanup I deleted a large set of old worktrees and `C:\temp`
+folders. Afterwards the live Executive's project-context resolver stopped seeing
+the resources whose folders were gone (it had resolved all of them as AVAILABLE
+before). Two kinds were affected:
+
+* **`resource-jarvis-canonical`** (the Executive's own-repository target) was
+  registered at `C:\temp\JARVIS\wave2-main-promotion-20260924`, one of the
+  worktrees removed. **Restored:** the worktree was re-created detached at the
+  commit `main` had when it was removed (`4cac1948`), with its four untracked
+  paths put back from the salvage copy (they match the registered baseline).
+* **25 old proof fixtures** (`resource-hybrid-probe-*`, `resource-prompt*-*`,
+  `resource-owner-e2e-*`, `resource-scenario-b*`, `resource-v6-*`) are registered
+  as READY/PROBING but their folders no longer exist. They are rehearsal
+  leftovers from August-September proofs; leaving them unresolved is harmless and
+  arguably cleaner, but they remain registered. `python scripts/doctor.py` now
+  lists registered resources with missing roots so this cannot happen silently.
+
+Lesson recorded in the doctor and here: a folder can be a *registered live
+resource*; check the ledger before deleting checkouts the system points at. The
+live install itself (`%LOCALAPPDATA%\JARVIS`, `...\hermes\foundry`) was never touched.
 ## Which document to believe
 
 The repo has several overlapping "state" documents written at different times.
