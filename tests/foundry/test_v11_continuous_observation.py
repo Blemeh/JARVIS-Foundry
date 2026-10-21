@@ -482,3 +482,15 @@ def test_existing_worker_choke_point_and_flag_exclusion(tmp_path) -> None:
             provider_settings=settings,
             provider_settings_pool=(settings,),
         ).validate()
+
+def test_runaway_source_configuration_hits_the_hard_ceiling(tmp_path) -> None:
+    from jarvis_foundry.initiative_a2 import MAX_CONFIGURED_SOURCES
+
+    database = _database(tmp_path)
+    sources = [_source(f"watch-{index}", interval=1) for index in range(MAX_CONFIGURED_SOURCES + 1)]
+    with pytest.raises(ValueError, match="hard configuration ceiling"):
+        run_continuous_observation_cycle(
+            database, sources=sources, now=datetime.now(timezone.utc),
+            source_readers={"project": lambda spec, _stop: SourceReadResult("READY", ())},
+            research_reader=_research,
+        )

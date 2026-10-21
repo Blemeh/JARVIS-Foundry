@@ -51,6 +51,10 @@ SourceReader = Callable[[SourceSpec, Callable[[], bool]], SourceReadResult]
 FaultHook = Callable[[str], None]
 
 
+#: Hard ceiling on configured observation sources (rotation covers source_limit per cycle).
+MAX_CONFIGURED_SOURCES = 64
+
+
 @dataclass(frozen=True, slots=True)
 class InitiativeA2Bounds:
     """Machine-rate limits for one observation/judgment pass."""
@@ -1178,9 +1182,12 @@ def run_continuous_observation_cycle(
     sources = _with_default_vault_source(
         database, sources, source_limit=policy.source_limit,
     )
-    # No total-count ceiling here: `source_limit` bounds how many monitors are
-    # polled per cycle (`due_monitors(limit=...)`), so more configured sources
-    # than that rotate across cycles instead of failing the whole cycle.
+    # `source_limit` bounds how many monitors are polled per cycle
+    # (`due_monitors(limit=...)`), so more configured sources than that rotate
+    # across cycles instead of failing the whole cycle. A separate, generous
+    # ceiling still guards against a runaway configuration.
+    if len(sources) > MAX_CONFIGURED_SOURCES:
+        raise ValueError("configured source count exceeds the hard configuration ceiling")
 
     # A non-empty source list is the complete desired configuration. Empty is
     # a restart path: continue from durable configuration without requiring
