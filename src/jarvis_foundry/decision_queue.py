@@ -18,7 +18,18 @@ _CHIEF_ATTENTION_EVENT_TYPES = (
     "chief_of_staff.owner_attention_required",
     "chief_of_staff.item_state_changed",
 )
-
+#: How many of the newest ledger events feed the windowed part of the queue.
+_RECENT_SCAN_LIMIT = 10000
+#: Owner-facing items whose *state* (not age) decides whether they are open. They
+#: are read regardless of the window so a quiet owner never loses them as the
+#: ledger grows, and they are resolved from durable state below.
+_ESCALATION_EVENT_TYPES = ("executive.escalation_opened", "executive.escalation_resolved")
+_DELEGATION_ATTENTION_EVENT_TYPES = (
+    "delegation.clarification_requested",
+    "delegation.intent_blocked",
+)
+_STATEFUL_EVENT_TYPES = frozenset((*_ESCALATION_EVENT_TYPES, *_DELEGATION_ATTENTION_EVENT_TYPES))
+_OPEN_DELEGATION_STATUSES = frozenset({"AWAITING_CLARIFICATION", "BLOCKED"})
 
 def _classification(item: BriefingItem, *, unknown_directive: bool = False) -> str:
     if unknown_directive:
@@ -57,6 +68,65 @@ def _options(event: Any) -> list[Any]:
     return [value for value in raw[:5] if isinstance(value, (str, dict))]
 
 
+def _stateful_attention_items(
+    database: FoundryDatabase,
+    *,
+    now: datetime | str | None,
+) -> tuple[list[BriefingItem], list[Any], dict[str, str]]:
+    """Owner-facing items decided by durable state, independent of ledger age.
+
+    * escalations: every ``executive.escalation_opened`` ever recorded, closed by a
+      later ``executive.escalation_resolved`` (returned as ``escalation_id -> event``);
+    * delegation: only the *latest* clarification/block of each intent, and only
+      while the intent is still AWAITING_CLARIFICATION or BLOCKED. A stalled intent
+      that re-evaluates every cycle is one owner item, not thousands, and it
+      disappears when the intent is admitted, completed or superseded.
+    """
+    from .delegation.projection import project_delegation_intents
+
+    rows = database.events_with_sequences(
+        readonly=True,
+        event_types=(*_ESCALATION_EVENT_TYPES, *_DELEGATION_ATTENTION_EVENT_TYPES),
+    )
+    resolved: dict[str, str] = {}
+    latest_for_intent: dict[str, tuple[int, Any]] = {}
+    opened: list[tuple[int, Any]] = []
+    for sequence, event in rows:
+        payload = event.payload if isinstance(event.payload, dict) else {}
+        if event.event_type == "executive.escalation_resolved":
+            escalation_id = payload.get("escalation_id")
+            if isinstance(escalation_id, str) and escalation_id:
+                resolved[escalation_id] = event.event_id
+        elif event.event_type == "executive.escalation_opened":
+            opened.append((sequence, event))
+        else:
+            intent_id = payload.get("intent_id")
+            if isinstance(intent_id, str) and intent_id:
+                latest_for_intent[intent_id] = (sequence, event)  # ascending: last wins
+
+    statuses: dict[str, str] | None
+    try:
+        statuses = {
+            intent.intent_id: getattr(intent.status, "value", str(intent.status))
+            for intent in project_delegation_intents(database).intents
+        }
+    except Exception:  # noqa: BLE001 - never hide an owner item because a projection failed
+        statuses = None  # conservative: show each intent's latest block/clarification
+
+    candidates = list(opened)
+    candidates += [
+        pair for intent_id, pair in latest_for_intent.items()
+        if statuses is None or statuses.get(intent_id) in _OPEN_DELEGATION_STATUSES
+    ]
+    items: list[BriefingItem] = []
+    events: list[Any] = []
+    for sequence, event in candidates:
+        item = event_to_item(event, sequence, now=now)
+        if item is not None:
+            items.append(item)
+            events.append(event)
+    return items, events, resolved
+
 def build_owner_attention_queue(
     database: FoundryDatabase,
     *,
@@ -72,7 +142,7 @@ def build_owner_attention_queue(
         reversed(
             database.events(
                 readonly=True,
-                limit=10000,
+                limit=_RECENT_SCAN_LIMIT,
                 newest_first=True,
             )
         )
@@ -128,8 +198,11 @@ def build_owner_attention_queue(
         after_sequence=0,
         now=now,
         limit=max(1, int(limit) * 4),
-        max_scan=10000,
+        max_scan=_RECENT_SCAN_LIMIT,
     )
+    # Escalations and delegation blocks/clarifications are stateful: handled below
+    # from durable state instead of one item per (possibly repeated) event.
+    items = [item for item in items if item.source_event_type not in _STATEFUL_EVENT_TYPES]
     source_event_ids = {
         item.source_event_id
         for item in items
@@ -144,6 +217,17 @@ def build_owner_attention_queue(
         if item is not None:
             items.append(item)
             source_event_ids.add(event.event_id)
+    stateful_items, stateful_events, escalation_resolved = _stateful_attention_items(database, now=now)
+    for event in stateful_events:
+        event_by_id.setdefault(event.event_id, event)
+    for stateful in stateful_items:
+        if stateful.source_event_id not in source_event_ids:
+            items.append(stateful)
+            source_event_ids.add(stateful.source_event_id)
+    cycle_rows = database.events_with_sequences(
+        readonly=True, event_types=("worker_loop.cycle_started",), newest_first=True, limit=1,
+    )
+    latest_cycle_sequence = cycle_rows[0][0] if cycle_rows else 0
     records: list[dict[str, Any]] = []
     for item in items:
         event = event_by_id.get(item.source_event_id)
@@ -162,6 +246,21 @@ def build_owner_attention_queue(
             status, resolution_event_id = directive_status[item.entity_id]
         elif item.entity_kind == "decision" and item.entity_id in decision_status:
             status, resolution_event_id = decision_status[item.entity_id]
+        elif (
+            event is not None
+            and event.event_type == "worker_loop.activation_blocked"
+            and latest_cycle_sequence > int(item.source_sequence or 0)
+        ):
+            # A later worker cycle started: activation recovered by itself.
+            status, resolution_event_id = "RESOLVED", None
+        elif (
+            event is not None
+            and event.event_type == "executive.escalation_opened"
+            and str(event_payload.get("escalation_id") or "") in escalation_resolved
+        ):
+            status, resolution_event_id = (
+                "RESOLVED", escalation_resolved[str(event_payload.get("escalation_id"))],
+            )
         elif (
             event is not None
             and event.event_type == "chief_of_staff.owner_attention_required"

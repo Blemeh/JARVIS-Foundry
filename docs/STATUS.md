@@ -166,7 +166,24 @@ Real defects found while building a trustworthy baseline:
    pool in worker config, and the Go-only policy that now refuses a Zen dispatch.
 6. **Paths with spaces**: the fake worker adapter extracted the target directory
    with `split()[-1]`, which breaks for this very checkout path.
-
+5. **The owner's "Needs you" queue was unusable on the live ledger.** Measured with
+   the project's own read-only queue builder: **100 open items, all `UNKNOWN`, all
+   `executive.project_context_resolved` telemetry** (5,691 of the newest 10,000
+   events), while the 14 genuine escalations and the stalled delegation were absent.
+   Causes: unmapped per-cycle events fell through to `EVENT/UNKNOWN`
+   (`briefing_items.py::_rule`), `executive.escalation_opened` and
+   `delegation.*` were unmapped, and only the newest 10,000 events were scanned, so
+   any item older than a day or two of ledger traffic silently dropped out.
+   **Fixed in source** (`briefing_items.py`, `decision_queue.py`; projection only, no
+   authority): telemetry is skipped; escalations, owner-actionable delegation
+   blocks/clarifications and worker-activation failures are classified
+   `DECISION_REQUIRED`; escalations are read regardless of age and closed by
+   `executive.escalation_resolved`; a stalled intent is one item while it is still
+   BLOCKED/AWAITING_CLARIFICATION; activation failures close when a later worker
+   cycle starts. On the live ledger the queue goes from 100 junk items to 14
+   escalations plus the one stalled delegation. Not live until a release is
+   promoted. This also cleans the daily briefing, which counted `UNKNOWN` as an
+   exception.
 New tooling: **`scripts/verify.py`** — one command for the health check
 (`--lane python|ui|docs|all`). It isolates each test file with a timeout, redirects
 the live-machine environment, and prints attributable failure lines.

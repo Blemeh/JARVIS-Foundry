@@ -25,11 +25,31 @@ _SKIP_EVENT_TYPES = frozenset({
     "briefing.delivered",
     "briefing.failed",
     "supervisor.heartbeat",
+    # Per-cycle Executive/worker telemetry. These are written every cycle (thousands
+    # per day, e.g. 5,691 project_context_resolved in the newest 10k live events) and
+    # carry no owner action; unmapped, they fell through to EVENT/UNKNOWN and
+    # flooded the owner queue and the daily briefing, burying real items.
+    "executive.project_context_resolved",
+    "executive.context_assembled",
+    "executive.autonomy_cycle_recorded",
+    "worker_loop.cycle_started",
+    "worker_loop.waiting",
+    "worker_loop.waiting_heartbeat",
+    "worker_loop.portfolio_waiting",
+    "trust.gate_report_recorded",
     # A verifier PASS is preliminary until AcceptanceGate records its
     # immutable acceptance receipt below.
     "verification.passed",
 })
 
+
+# Delegation blocks the owner can actually resolve (pick/identify the objective or
+# step). Other blocks are system waits (Executive still planning, STOP, withdrawn).
+_OWNER_ACTIONABLE_DELEGATION_BLOCKS = frozenset({
+    "EXECUTIVE_OBJECTIVE_REQUIRED",
+    "EXECUTIVE_STEP_REQUIRED",
+    "METHOD_GOAL_MISMATCH",
+})
 
 @dataclass(frozen=True, slots=True)
 class BriefingItem:
@@ -119,6 +139,11 @@ def _payload_summary(event: Event) -> str:
             result = _text(briefing.get("result"), limit=40)
             if attempted and result:
                 return f"{attempted} -> {result}"
+    if event.event_type == "executive.escalation_opened":
+        decision = _text(payload.get("decision"), limit=140)
+        why = _text(payload.get("why"), limit=180)
+        if decision:
+            return f"{decision} - {why}" if why else decision
     for key in (
         "reason", "exact_text", "objective", "summary", "error",
         "failure_class", "next_action", "status", "question",
@@ -176,6 +201,19 @@ def _rule(event: Event) -> tuple[str, int, str]:
         if event_type == "chief_of_staff.wait_recorded":
             return "PROJECT", 2, "INFORM"
         return "PROJECT", 2, "INFORM"
+    # Stateful owner-facing items the queue must be able to show (and close).
+    if event_type == "executive.escalation_opened":
+        return "BLOCKER", 5, "DECISION_REQUIRED"
+    if event_type == "executive.escalation_resolved":
+        return "BLOCKER", 2, "INFORM"
+    if event_type == "delegation.clarification_requested":
+        return "OWNER_CONTROL", 5, "DECISION_REQUIRED"
+    if event_type == "delegation.intent_blocked":
+        if str(payload.get("reason_code") or "") in _OWNER_ACTIONABLE_DELEGATION_BLOCKS:
+            return "BLOCKER", 4, "DECISION_REQUIRED"
+        return "BLOCKER", 2, "INFORM"
+    if event_type == "worker_loop.activation_blocked":
+        return "EXCEPTION", 5, "DECISION_REQUIRED"
     if event_type in {"owner_directive.recorded", "owner_directive.revoked", "owner_directive.superseded"}:
         command = str(payload.get("command_type") or "")
         if command in {"STOP_EVERYTHING", "PAUSE", "VETO_ACTION", "STOP_MISSION"}:
