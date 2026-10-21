@@ -271,11 +271,12 @@ def test_compare_improvement_met(db: FoundryDatabase, tmp_path: Path) -> None:
     slow = [PY, "-c",
             "import pathlib,sys,time\n"
             "pathlib.Path(sys.argv[1]).read_text()\n"
-            "time.sleep(0.05)\n"]
+            "time.sleep(0.4)\n"]
     fast = [PY, "-c",
             "import pathlib,sys\n"
             "pathlib.Path(sys.argv[1]).read_text()\n"]
-    # MMI 0.01s decrease: the ~0.25s total delta must satisfy it
+    # MMI 0.01s decrease: the ~2s total delta (0.4s per input file) must satisfy it
+    # even when interpreter start-up jitter under parallel load is large.
     improvement_id = _improvement_mmi(db, 0.01)
     baseline_id = run_evaluation(db, workload_id=workload_id,
                                  subject_kind="baseline",
