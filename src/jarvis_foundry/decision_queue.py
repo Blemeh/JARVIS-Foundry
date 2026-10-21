@@ -30,10 +30,22 @@ _DELEGATION_ATTENTION_EVENT_TYPES = (
 )
 _STATEFUL_EVENT_TYPES = frozenset((*_ESCALATION_EVENT_TYPES, *_DELEGATION_ATTENTION_EVENT_TYPES))
 _OPEN_DELEGATION_STATUSES = frozenset({"AWAITING_CLARIFICATION", "BLOCKED"})
+#: An escalation asks the owner to unblock an objective; once that objective has ended
+#: (or been suspended) the question is moot and must not keep nagging.
+_MOOT_OBJECTIVE_STATUSES = frozenset({"COMPLETED", "FAILED", "CANCELLED", "SUSPENDED"})
 
-def _classification(item: BriefingItem, *, unknown_directive: bool = False) -> str:
+
+def _classification(
+    item: BriefingItem, *, unknown_directive: bool = False, wellformed_payload: bool = True,
+) -> str:
     if unknown_directive:
         return "UNKNOWN"
+    if wellformed_payload and item.category == "EVENT" and item.owner_action_required == "UNKNOWN":
+        # The catch-all for well-formed event types nobody classified. It carries no owner action;
+        # queueing it turned every new internal event type into owner attention (the
+        # live queue was 100 of these). Real uncertainty (effects, evolution) and malformed
+        # payloads / directives still fail honestly as UNKNOWN and surface.
+        return ""
     if item.owner_action_required in {
         "DECISION_REQUIRED",
         "BLOCKED_EXTERNAL_DEPENDENCY",
@@ -224,6 +236,17 @@ def build_owner_attention_queue(
         if stateful.source_event_id not in source_event_ids:
             items.append(stateful)
             source_event_ids.add(stateful.source_event_id)
+    objective_status: dict[str, str] = {}
+    if any(item.source_event_type == "executive.escalation_opened" for item in items):
+        try:
+            from .executive.autonomy import rebuild_executive_state
+
+            objective_status = {
+                objective_id: str(objective.status)
+                for objective_id, objective in rebuild_executive_state(database).objectives.items()
+            }
+        except Exception:  # noqa: BLE001 - unknown objective state keeps the escalation visible
+            objective_status = {}
     cycle_rows = database.events_with_sequences(
         readonly=True, event_types=("worker_loop.cycle_started",), newest_first=True, limit=1,
     )
@@ -237,7 +260,11 @@ def build_owner_attention_queue(
             and event.event_type == "owner_directive.recorded"
             and str(event_payload.get("directive_id") or "") in unknown_ids
         )
-        classification = _classification(item, unknown_directive=unknown_directive)
+        classification = _classification(
+            item,
+            unknown_directive=unknown_directive,
+            wellformed_payload=bool(event is not None and isinstance(event.payload, dict)),
+        )
         if not classification:
             continue
         status = "OPEN"
@@ -261,6 +288,12 @@ def build_owner_attention_queue(
             status, resolution_event_id = (
                 "RESOLVED", escalation_resolved[str(event_payload.get("escalation_id"))],
             )
+        elif (
+            event is not None
+            and event.event_type == "executive.escalation_opened"
+            and objective_status.get(str(event_payload.get("objective_id") or "")) in _MOOT_OBJECTIVE_STATUSES
+        ):
+            status, resolution_event_id = "SUPERSEDED", None
         elif (
             event is not None
             and event.event_type == "chief_of_staff.owner_attention_required"

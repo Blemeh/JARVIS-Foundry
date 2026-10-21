@@ -233,3 +233,36 @@ def test_worker_activation_failure_is_shown_until_a_later_cycle_recovers(tmp_pat
     _telemetry(database, "worker_loop.cycle_started", 1, "recovered")
     recovered = build_owner_attention_queue(database)
     assert recovered["open_count"] == 0
+
+def test_escalation_for_an_ended_objective_is_superseded_not_nagging(tmp_path: Path) -> None:
+    from jarvis_foundry.executive.autonomy import create_objective, set_objective_status
+
+    database = FoundryDatabase(tmp_path / "foundry.db")
+    database.initialize()
+    database.append(Event.create(
+        "system.start_build_recorded",
+        {"received_at": "2026-09-18T00:00:00Z", "standing_mandate": True},
+        source_type="owner", source_id="queue-test", idempotency_key="system.start-build",
+    ))
+    create_objective(database, "A goal that will fail", objective_id="owner-goal:owner-ends",
+                     source_id="queue-test")
+    create_objective(database, "A goal that stays blocked", objective_id="owner-goal:owner-stays",
+                     source_id="queue-test")
+    for escalation_id, objective_id in (("escalation:ends", "owner-goal:owner-ends"),
+                                        ("escalation:stays", "owner-goal:owner-stays")):
+        database.append(Event.create(
+            "executive.escalation_opened",
+            {"escalation_id": escalation_id, "objective_id": objective_id, "status": "OPEN",
+             "decision": "blocked", "why": "needs the owner", "options": ["decide"]},
+            source_type="supervisor", source_id="queue-test",
+            idempotency_key=f"executive.escalation_opened:{escalation_id}",
+        ))
+    before = build_owner_attention_queue(database)
+    assert {r["entity_id"] or r["queue_id"] for r in before["open"]}  # both visible while both live
+    assert before["open_count"] == 2
+
+    set_objective_status(database, "owner-goal:owner-ends", "FAILED", reason="gave up")
+    after = build_owner_attention_queue(database)
+    assert after["open_count"] == 1
+    superseded = [r for r in after["history"] if r["status"] == "SUPERSEDED"]
+    assert len(superseded) == 1 and superseded[0]["source_event_type"] == "executive.escalation_opened"

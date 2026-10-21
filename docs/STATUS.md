@@ -180,8 +180,12 @@ Real defects found while building a trustworthy baseline:
    `DECISION_REQUIRED`; escalations are read regardless of age and closed by
    `executive.escalation_resolved`; a stalled intent is one item while it is still
    BLOCKED/AWAITING_CLARIFICATION; activation failures close when a later worker
-   cycle starts. On the live ledger the queue goes from 100 junk items to 14
-   escalations plus the one stalled delegation. Not live until a release is
+   cycle starts; escalations whose objective has since ended or been suspended are
+   superseded; unclassified well-formed events never enter the queue (malformed
+   payloads still fail honestly as UNKNOWN); popups are limited to fresh,
+   owner-actionable items (`owner_ui.py`). On the live ledger the queue goes from 100
+   junk items to **7 real escalations plus the one stalled delegation** (7 moot
+   escalations superseded). Not live until a release is
    promoted. This also cleans the daily briefing, which counted `UNKNOWN` as an
    exception. The same flood drove notifications: the toast router fires once per *new*
    queue item, and its seen-store records about 4,100 toasts emitted between
