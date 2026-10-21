@@ -221,6 +221,18 @@ the live-machine environment, and prints attributable failure lines.
 parent of the docs-only commit that updates it, so the final commit of this work
 changes only `docs/CURRENT_STATE.md` and pins its parent. This page, the
 baselines and every other file were committed before it.
+## Recommended order (owner)
+
+1. **Give JARVIS one clear goal** (or close the stale objectives from the Command
+   Center) - the live system is idle waiting for direction, and an owner delegation
+   cannot resolve because several objectives compete. Nothing else will start work.
+2. **Run `python scripts/verify.py` on a normal terminal** to get the true test
+   baseline (this work could not run Git-transport or process-spawning tests).
+3. **Promote a release** (promotion workflow, explicit goal) when ready, to ship the
+   redesigned Command Center, the owner-queue/toast fix, the delegation fix and the
+   campaign fix; none of them are live yet.
+4. Optional housekeeping: `python scripts/prune_releases.py` (dry run) for the
+   ~126 GB of old releases; delete the eight disabled leftover scheduled tasks.
 ## Open decisions (owner)
 
 * **Which gate is next.** The execution-state file is stale; a real next gate has
