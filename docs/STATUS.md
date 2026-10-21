@@ -65,7 +65,16 @@ Per the frozen roadmap, out-of-phase discoveries are recorded, not implemented.
    behavior):** re-escalating a stalled delegation to the owner on a schedule.2. **Stale "ACTIVE" objectives** that never execute (two from 2026-09-24) keep
    competing for the shared resource; stale suspended/blocked objectives are
    never closed without an explicit owner action.
-3. **Worker config read from a working tree** (see above).
+3. **Ledger growth from idle cycles.** The live ledger holds 475k events
+   (342 MB of payload, a 633 MB database). The largest contributors are snapshots
+   written on every cycle even when nothing changed: `executive.context_assembled`
+   (5.0k events, 93 MB), `executive.autonomy_cycle_recorded` (4.8k, 89 MB) and
+   `executive.project_context_resolved` (91k, 54 MB); `worker_loop.cycle_started`
+   and heartbeats add 172k and 75k small events. It is append-only by design, so
+   any dedupe/compaction (for example, skip a snapshot identical to the previous
+   one) is an Executive-behavior change for the owner to schedule; nothing here
+   is urgent at the current size.
+4. **Worker config read from a working tree** (see above).
 ## Which document to believe
 
 The repo has several overlapping "state" documents written at different times.
