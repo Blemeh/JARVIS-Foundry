@@ -40,21 +40,30 @@ They disagree; this is how to read them.
 * **Command Center UI** (`ui/command-center`): typecheck clean, lint clean
   (`--max-warnings 0`), production build succeeds, **244 / 244** unit tests pass.
   Rendered in simulated mode: Home, Work and World load with no console errors.
-* **Python suite** (367 files in `tests/foundry`, run per file in parallel with a
-  per-file timeout; full result in `docs/evidence/test-baseline-2026-10-21.json`):
-  **330 pass, 28 fail, 9 time out**. The raw run included two files that only
-  fail under parallel load and pass alone (`test_evolution_lab`,
-  `test_v13_workforce_convergence`) and the documentation-pin check
-  (see "Documentation pin").
-* **No regressions from this work.** Every one of the 37 files that did not pass
-  was re-run on plain `main` in the same environment; 35 fail or time out
-  identically there. Most of them need real `git clone`/`push` transport,
-  process spawning, Windows task/tray APIs, or a writable system temp directory,
-  none of which the environment used for this run provides. They have **not**
-  been root-caused one by one, so treat them as *unproven here*, not *proven
-  broken*. Run `python scripts/verify.py` on a normal machine to see the real
-  numbers.
-
+* **Python suite** (371 files in `tests/foundry`, each run in its own process,
+  6 in parallel, 900 s per-file timeout; result in
+  `docs/evidence/test-baseline-2026-10-21-final.json`, the first pass of the day
+  in `docs/evidence/test-baseline-2026-10-21.json`): **342 pass, 27 fail, 2 time
+  out**. Two of those only fail under parallel load and pass alone
+  (`test_evolution_lab` is timing-sensitive; `test_v13_workforce_convergence`
+  passed in the final run), and `test_doc_staleness_check` reports the
+  documentation pin (resolved by the docs-only reconciliation commit that closes
+  this work).
+* **No regressions from this work.** The 37 files that did not pass in the first
+  run were re-run on plain `main` in the same environment; 35 fail or time out
+  identically there, and none of the 29 non-passing files in the final run is
+  new. Eight of the 37 now pass. The rest need real `git clone`/`push`
+  transport, process spawning, Windows task/tray APIs, `pip` downloads, or a
+  writable system temp directory, none of which the environment used for this
+  run provides. They have **not** been root-caused one by one, so treat them as
+  *unproven here*, not *proven broken*. Run `python scripts/verify.py` on a
+  normal machine to see the real numbers.
+* **Two known-stale proofs** (deliberately not rewritten): the
+  `test_lane3_product_truth_autonomy` fixture still scripts "false claim -> repair
+  -> pass" for an owner-goal mission, but those missions now fail closed to the
+  Executive by design (`mission/loop.py::_repair_or_block`); and the
+  supervisor-process variant in `test_owner_goal_execution_spine` needs real
+  process spawning.
 ## Fixed in this stretch
 
 Real defects found while building a trustworthy baseline:
@@ -99,10 +108,9 @@ the live-machine environment, and prints attributable failure lines.
 ## Documentation pin
 
 `scripts/doc_staleness_check.py` requires `CURRENT_STATE.md` to name the immediate
-parent of the docs-only commit that updates it. This page is additive and does not
-change that pin; `test_doc_staleness_check` therefore reports STALE until the next
-real reconciliation of `CURRENT_STATE.md`.
-
+parent of the docs-only commit that updates it, so the final commit of this work
+changes only `docs/CURRENT_STATE.md` and pins its parent. This page, the
+baselines and every other file were committed before it.
 ## Open decisions (owner)
 
 * **Which gate is next.** The execution-state file is stale; a real next gate has

@@ -1,0 +1,64 @@
+[
+  {
+    "lane": "python",
+    "ok": false,
+    "seconds": 1755.8285871003754,
+    "summary": "5 passed, 3 failed, 1 timed out of 9 files",
+    "files": [
+      {
+        "name": "test_mission_loop.py",
+        "status": "PASS",
+        "seconds": 196.11263900017366,
+        "detail": ""
+      },
+      {
+        "name": "test_role_dispatch.py",
+        "status": "PASS",
+        "seconds": 255.7787417001091,
+        "detail": ""
+      },
+      {
+        "name": "test_v11_a3_initiative_bridge.py",
+        "status": "PASS",
+        "seconds": 270.4310510000214,
+        "detail": ""
+      },
+      {
+        "name": "test_v13_workforce_runner.py",
+        "status": "PASS",
+        "seconds": 188.41187069984153,
+        "detail": ""
+      },
+      {
+        "name": "test_v13_workforce_steering.py",
+        "status": "PASS",
+        "seconds": 558.3481942000799,
+        "detail": ""
+      },
+      {
+        "name": "test_v12_canonical_artifact_trial.py",
+        "status": "FAIL",
+        "seconds": 627.3376066000201,
+        "detail": "FAILED tests/foundry/test_v12_canonical_artifact_trial.py::test_failed_artifact_trial_cannot_corrupt_catalog"
+      },
+      {
+        "name": "test_v12_self_expansion_convergence.py",
+        "status": "TIMEOUT",
+        "seconds": 1500.034209100064,
+        "detail": "exceeded 1500s; ..FF"
+      },
+      {
+        "name": "test_v13_workforce_long_run.py",
+        "status": "FAIL",
+        "seconds": 889.8803206998855,
+        "detail": "FAILED tests/foundry/test_v13_workforce_long_run.py::test_forged_same_base_delta_cannot_replace_accepted_package"
+      },
+      {
+        "name": "test_v13_workforce_worktrees.py",
+        "status": "FAIL",
+        "seconds": 212.64828780014068,
+        "detail": "FAILED tests/foundry/test_v13_workforce_worktrees.py::test_replay_rejects_wrong_source_and_replaced_unlinked_checkout"
+      }
+    ]
+  }
+]
