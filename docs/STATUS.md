@@ -62,7 +62,8 @@ Per the frozen roadmap, out-of-phase discoveries are recorded, not implemented.
    the intent's latest delegation event is the identical block (a changed reason
    or any intervening transition still records), with tests. Not live until a
    release is promoted. **Still deferred (owner-gated, changes Executive
-   behavior):** re-escalating a stalled delegation to the owner on a schedule.2. **Stale "ACTIVE" objectives** that never execute (two from 2026-09-24) keep
+   behavior):** re-escalating a stalled delegation to the owner on a schedule.
+2. **Stale "ACTIVE" objectives** that never execute (two from 2026-09-24) keep
    competing for the shared resource; stale suspended/blocked objectives are
    never closed without an explicit owner action.
 3. **Ledger growth from idle cycles.** The live ledger holds 475k events
