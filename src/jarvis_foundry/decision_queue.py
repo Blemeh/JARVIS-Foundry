@@ -238,15 +238,21 @@ def build_owner_attention_queue(
             source_event_ids.add(stateful.source_event_id)
     objective_status: dict[str, str] = {}
     if any(item.source_event_type == "executive.escalation_opened" for item in items):
-        try:
-            from .executive.autonomy import rebuild_executive_state
-
-            objective_status = {
-                objective_id: str(objective.status)
-                for objective_id, objective in rebuild_executive_state(database).objectives.items()
-            }
-        except Exception:  # noqa: BLE001 - unknown objective state keeps the escalation visible
-            objective_status = {}
+        # Only the objective status events (a few hundred), not a full Executive
+        # rebuild, which cost ~0.6 s per queue build and the queue is built twice per
+        # Command Center snapshot.
+        for event in database.events(
+            readonly=True,
+            event_types=(
+                "executive.objective_created",
+                "executive.objective_updated",
+                "executive.objective_status_changed",
+            ),
+        ):
+            payload = event.payload if isinstance(event.payload, dict) else {}
+            objective_id, status = payload.get("objective_id"), payload.get("status")
+            if isinstance(objective_id, str) and isinstance(status, str) and status:
+                objective_status[objective_id] = status
     cycle_rows = database.events_with_sequences(
         readonly=True, event_types=("worker_loop.cycle_started",), newest_first=True, limit=1,
     )
