@@ -75,7 +75,17 @@ Per the frozen roadmap, out-of-phase discoveries are recorded, not implemented.
    any dedupe/compaction (for example, skip a snapshot identical to the previous
    one) is an Executive-behavior change for the owner to schedule; nothing here
    is urgent at the current size.
-4. **Worker config read from a working tree** (see above).
+4. **Command Center snapshot latency.** Building one snapshot of the live ledger takes
+   about **20 s** (6.5 MB of JSON; measured with the project's own `build_snapshot`
+   read-only on 2026-10-21, `cProfile`): roughly 12 s is spent deserializing events
+   (about 261k events across ~600 reads, many re-reading the same large types), the
+   chief-of-staff projection alone is ~5.4 s, and the owner attention queue is built
+   twice per snapshot (~1.5 s each after this work). The server caches snapshots,
+   but a cold or invalidated cache means a long wait, which is a plausible cause of
+   the earlier "Command Center loading" repairs. Fixes (a shared per-snapshot event
+   cache, one queue build per snapshot, incremental projections) are performance
+   work for the owner to schedule.
+5. **Worker config read from a working tree** (see above).
 ## Incident from this cleanup (found and repaired)
 
 The live ledger registers **38 resources** (project checkouts the Executive may work
