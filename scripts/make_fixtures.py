@@ -43,7 +43,7 @@ PYSHOP = {
         pythonpath = ["."]
         """),
     ".gitignore": "__pycache__/\n.venv/\n.pytest_cache/\n",
-    "README.md": "# pyshop\n\nA tiny shop library. Run the tests with `uv run python -m pytest -q`.\n",
+    "README.md": "# pyshop\n\nA tiny shop library. Tests: `uv run python -m pytest -q`.\n",
     "shop/__init__.py": "",
     "shop/pricing.py": D('''\
         """Price calculations."""

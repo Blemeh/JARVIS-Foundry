@@ -35,3 +35,7 @@ src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Go fixture sources embedded as strings use tabs.
+"scripts/make_fixtures.py" = ["E101", "W191"]
