@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from .. import proc
 from .base import AgentRequest, AgentResult, AgentRunner, from_proc
@@ -30,10 +31,23 @@ def parse(stdout: str) -> dict:
 
 class ClaudeCode(AgentRunner):
     name = "claude_code"
+    _help: str | None = None
+
+    def supports(self, flag: str) -> bool:
+        """Whether this claude CLI offers a flag (checked once with --help)."""
+        if self._help is None:
+            res = proc.run([proc.which(self.command or "claude"), "--help"], Path("."),
+                           timeout=30)
+            self._help = res.out + res.err
+        return flag in self._help
 
     def argv(self, req: AgentRequest) -> list[str]:
         argv = [proc.which(self.command or "claude"), "-p", "--output-format", "json",
                 "--no-session-persistence"]
+        if self.supports("--strict-mcp-config"):
+            # Unattended runs do not inherit the user's MCP servers; opt in via
+            # [engine] args = ["--mcp-config", "..."]. Also keeps the prompt small.
+            argv.append("--strict-mcp-config")
         if self.model:
             argv += ["--model", self.model]
         if req.max_cost_usd:
@@ -41,6 +55,8 @@ class ClaudeCode(AgentRunner):
         if req.read_only:
             argv += ["--permission-mode", "default", "--allowedTools", READ_TOOLS,
                      "--disallowedTools", "Bash,Edit,Write,NotebookEdit"]
+            if self.supports("--tools"):  # only load what a read-only call can use
+                argv += ["--tools", READ_TOOLS]
         else:
             # acceptEdits confines file edits to the worktree (the cwd); Bash is
             # pre-approved so tests can run unattended. JARVIS verifies the diff.

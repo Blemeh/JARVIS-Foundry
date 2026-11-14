@@ -64,6 +64,7 @@ DONE ──serve sees the PR merged or closed──> DONE/merged | DONE/closed
 - Changes to the user's checkout during an agent run and tests or assertions lost in a passing diff are warnings, not failures: the user may be working in the checkout, and refactors may move tests.
 - `cancel` only applies to tasks that are not running (STOP first); `retry` requeues on a new branch and keeps the old one.
 - Every `serve` poll step is guarded: one failure is logged and retried on the next poll.
+- Claude Code runs with `--strict-mcp-config` (no inherited MCP servers) and read-only calls with `--tools Read,Glob,Grep`; flags are used only when the CLI's `--help` lists them.
 
 ## Later (not in the beta)
 - A small web dashboard (queue, runs, PRs, cost).
