@@ -22,7 +22,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[github-e2e]')
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
+      # GITHUB_TOKEN can only open PRs when the repo allows it (Settings > Actions >
+      # General > "Allow GitHub Actions to create and approve pull requests").
+      # Otherwise provide a fine-grained PAT as the JARVIS_E2E_TOKEN secret.
+      GH_TOKEN: ${{ secrets.JARVIS_E2E_TOKEN || github.token }}
       BASE: jarvis-e2e-base
     steps:
       - uses: actions/checkout@v4
