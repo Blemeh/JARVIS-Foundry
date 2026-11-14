@@ -299,9 +299,9 @@ class Runner:
 
     def deliver(self, job: Job, verdict: verify.Verdict, repairs: int) -> str:
         repo = job.repo
-        sha = worktree.commit_all(job.wt, f"jarvis: {job.task['title'][:72]}\n\nTask #{job.id}",
-                                  verdict.files)
-        if sha is None:
+        worktree.commit_all(job.wt, f"jarvis: {job.task['title'][:72]}\n\nTask #{job.id}",
+                            verdict.files)
+        if worktree.git(job.wt, "rev-parse", "HEAD") == job.base_sha:
             return self.finish(job, FAILED, "nothing to commit after verification")
         review = ""
         if self.cfg.review:

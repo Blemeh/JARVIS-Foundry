@@ -10,6 +10,8 @@ import threading
 import time
 from pathlib import Path
 
+import pytest
+
 from conftest import FIXED, WRONG, git
 from jarvis import proc, stop
 from jarvis.agents.fake import FakeAgent
@@ -38,6 +40,24 @@ def test_success_opens_local_pr(run_task, repo):
     assert git(origin, "rev-list", "--count", f"main..{task['branch']}") == "1"
     assert not Path(task["worktree"]).exists()  # worktree folder cleaned up
     assert git(repo, "rev-parse", "HEAD") == main_before  # the user's checkout untouched
+
+
+def test_agent_that_commits_itself_still_delivers(run_task, repo):
+    status, task, _, _ = run_task({"code": [{"write": {"calc.py": FIXED, "odd [x].txt": "x"},
+                                             "commit": True}]})
+    assert status == DONE, task["reason"]
+    origin = repo.parent / "origin.git"
+    assert git(origin, "show", f"{task['branch']}:calc.py").strip() == FIXED.strip()
+    assert "`odd [x].txt`" in Path(task["pr_url"]).read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="* is not allowed in Windows file names")
+def test_glob_characters_in_paths_are_staged_literally(run_task, repo):
+    status, task, _, _ = run_task({"code": [{"write": {"calc.py": FIXED, "x*.txt": "a",
+                                                       "xyz.txt": "b"}}]})
+    assert status == DONE, task["reason"]
+    files = git(repo.parent / "origin.git", "ls-tree", "--name-only", task["branch"]).split()
+    assert "x*.txt" in files and "xyz.txt" in files
 
 
 def test_test_failure_then_repair_then_success(run_task):

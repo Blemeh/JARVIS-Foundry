@@ -116,7 +116,8 @@ def stage(worktree: Path, paths: list[str] | None = None) -> None:
     if paths is None:
         git(worktree, "add", "--all", "--", ".", *_pathspec_excludes())
         return
-    subprocess.run(["git", "add", "--all", "--pathspec-from-file=-", "--pathspec-file-nul"],
+    subprocess.run(["git", "--literal-pathspecs", "add", "--all", "--pathspec-from-file=-",
+                    "--pathspec-file-nul"],
                    cwd=str(worktree), input="\0".join(paths).encode("utf-8"),
                    capture_output=True, check=True)
 

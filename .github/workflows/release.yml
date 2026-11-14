@@ -1,0 +1,53 @@
+name: release
+
+# Tag main and publish a GitHub release whose notes come from CHANGELOG.md.
+# Run from the Actions tab (or the API) on main, after CI is green.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release; must equal pyproject.toml (e.g. 0.1.0b1)"
+        required: true
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check the version
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$ ]]
+          grep -qx "version = \"$VERSION\"" pyproject.toml
+          grep -q "__version__ = \"$VERSION\"" src/jarvis/__init__.py
+          test -z "$(git ls-remote --tags origin "refs/tags/v$VERSION")"
+      - name: Release notes from CHANGELOG.md
+        run: |
+          python3 - <<'PY'
+          import os, re
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          version = os.environ["VERSION"]
+          match = re.search(rf"^## {re.escape(version)}\b.*?$(.*?)(?=^## |\Z)", text, re.M | re.S)
+          assert match, f"no CHANGELOG section for {version}"
+          open("notes.md", "w", encoding="utf-8").write(match.group(1).strip() + "\n")
+          PY
+          cat notes.md
+      - name: Tag and publish the release
+        run: |
+          git tag "v$VERSION" "$GITHUB_SHA"
+          git push origin "refs/tags/v$VERSION"
+          pre=""
+          [[ "$VERSION" =~ (a|b|rc)[0-9]+$ ]] && pre="--prerelease"
+          gh release create "v$VERSION" --verify-tag --title "JARVIS $VERSION" --notes-file notes.md $pre

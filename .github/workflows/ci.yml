@@ -31,6 +31,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv run --frozen ruff check
+      - name: No secrets in the repository
+        run: |
+          pattern='gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+          if git grep -nE "$pattern"; then echo "possible secret committed"; exit 1; fi
 
   loc-budget:
     strategy:
