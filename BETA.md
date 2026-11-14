@@ -1,4 +1,4 @@
-# JARVIS beta (0.1.0b2)
+# JARVIS private beta (0.1.0rc1)
 
 ## Who this beta is for
 
@@ -10,6 +10,11 @@ requests you also need `gh` logged in.
 
 It is not for unattended work on repos you do not trust (the agent runs as your
 user), and it is not a replacement for code review: JARVIS never merges.
+
+Supported in this beta: Linux and macOS; the `claude_code` engine; local and
+GitHub modes; Python (pytest or unittest, dependencies from extras, dependency
+groups or requirements files), Node (npm, pnpm, yarn) and Go repos.
+Experimental: the `codex` and `hermes` engines, and Windows.
 
 ## Known limitations
 
@@ -28,6 +33,12 @@ user), and it is not a replacement for code review: JARVIS never merges.
 - The agent's Bash commands are not sandboxed (see README, Safety model).
 - Windows: the code and test suite run on Windows in CI (and the installed CLI
   works there), but no real-engine run has been done on Windows yet.
+- Python environments are built per task (a few seconds with uv and a warm
+  cache) and need network access to your package index. Layouts other than
+  extras, dependency groups or requirements files (for example Poetry dev
+  groups) need `setup`/`test` set in the repo config.
+- Large tasks (over 150 words by default) wait for `jarvis approve`; in a fully
+  unattended `serve` they stay waiting until you approve them.
 
 ## NOT VERIFIED
 
@@ -41,6 +52,66 @@ user), and it is not a replacement for code review: JARVIS never merges.
   test only covers issues whose task succeeds.
 - **macOS real-engine runs**: CI runs the test suite and install smoke on macOS;
   no real-engine run was done there.
+
+## Independent suite on unfamiliar projects (0.1.0rc1)
+
+The strongest evidence in this file. An independent author, who did not see
+JARVIS's code, wrote three realistic projects and ten user-style tasks, each
+with a hidden acceptance check:
+
+- **The projects:**
+  - `invoicer`: a Python app, requirements files, about 960 lines, 98 tests;
+  - `geokit`: a src-layout library with attrs and `[test]` extras, about 940 lines, 71 tests;
+  - `taskboard`: a Node CLI with jest, about 850 lines, 76 tests.
+- **How the checks were proven:** each one fails on the base commit and passes
+  on a reference fix. Cross-checks show no check passes on an unrelated change.
+- **Bug-fix tasks:** the bugs were injected with no test coverage, so the reports
+  only describe symptoms.
+- **Harder tasks:** the add-tests task is judged by mutation testing, and the
+  performance task by a timed 60k-task run plus a differential test.
+
+Run with `python scripts/run_suite.py SUITE WORK` on commit 69a2f8f, 2026-11-14,
+Linux, with `claude_code` (`claude-opus-5-5`):
+
+| # | Repo | Task | Outcome | Hidden check | Repairs | Duration | Cost |
+|---|---|---|---|---|---|---|---|
+| 1 | invoicer | bugfix: Invoice amounts sometimes one cent lower than our bookkeeping software | DONE | pass | 0 | 0m58s | $0.59 |
+| 2 | invoicer | feature: Support an invoice-level discount | DONE (after `jarvis approve`) | pass | 0 | plan + run | $1.14 |
+| 3 | invoicer | multi-file: Rename `qty` to `quantity` everywhere | DONE | pass | 0 | 1m13s | $0.64 |
+| 4 | invoicer | impossible: Subtotal must always match both the printed lines and the exact sum | FAILED (expected) | - | 0 | 0m26s | $0.21 |
+| 5 | geokit | bugfix: parse_coordinate puts southern/western points in the wrong hemisphere | DONE | pass | 0 | 0m41s | $0.40 |
+| 6 | geokit | refactor: Port Point and BoundingBox to attrs | DONE | pass | 0 | 1m27s | $0.55 |
+| 7 | geokit | add-tests: Add tests for the geohash module | DONE | pass (12/12 mutants killed) | 0 | 2m23s | $0.85 |
+| 8 | taskboard | bugfix: WIP limit lets one extra card in | DONE | pass | 0 | 0m36s | $0.41 |
+| 9 | taskboard | feature: Allow excluding things in list queries | DONE | pass | 0 | 1m26s | $0.54 |
+| 10 | taskboard | performance: Everything is slow on big boards | DONE | pass | 0 | 1m18s | $0.63 |
+
+Result: **all 9 doable tasks done and passing their hidden checks, the impossible
+task failed cleanly with an exact explanation, 0 false successes**, default
+branches untouched, 0 false warnings, about $5.96 in total.
+
+- **Task 2:** its description was over the plan threshold, so JARVIS stopped with
+  a plan and three open questions. After `jarvis approve` it finished and passed.
+- **Dependencies:** all three projects got their dependencies installed per task
+  with no configuration. Before 0.1.0rc1, the two Python projects would have
+  failed verification on every task.
+
+## Fixture suite on 0.1.0rc1 (no regression)
+
+| # | Repo | Task | Outcome | Hidden check | Repairs | Duration | Cost |
+|---|---|---|---|---|---|---|---|
+| 1 | pyshop | bug fix: Fix apply_discount: percentage discounts are applied wrong | DONE | pass | 0 | 0m23s | $0.24 |
+| 2 | pyshop | small feature: Add Cart.remove(sku, qty=None) to shop/cart.py | DONE | pass | 0 | 0m27s | $0.27 |
+| 3 | pyshop | refactor: Refactor shop/inventory.py to remove duplicated SKU validation | DONE | pass | 0 | 0m20s | $0.23 |
+| 4 | pyshop | add missing tests: Add tests for shop/money.py | DONE | pass | 0 | 0m57s | $0.52 |
+| 5 | nodecart | multi-file change: Rename calcTotal to computeTotal everywhere | DONE | pass | 0 | 0m17s | $0.24 |
+| 6 | nodecart | bug fix: slugify leaves repeated and trailing dashes | DONE | pass | 0 | 0m24s | $0.25 |
+| 7 | nodecart | small feature: Add a --json flag to bin/cli.js | DONE | pass | 0 | 0m37s | $0.30 |
+| 8 | gotext | small feature: Add textutil.Truncate(s string, n int) string | DONE | pass | 0 | 0m25s | $0.23 |
+| 9 | gotext | should fail cleanly: Report API version 2 | FAILED (expected) | - | 0 | 0m11s | $0.10 |
+| 10 | gotext | bug fix: WordCount counts punctuation as part of words | DONE | pass | 0 | 0m33s | $0.30 |
+
+9/10 with verified tests, 0 false successes, 0 false warnings.
 
 ## Real-engine results (Phase 4)
 

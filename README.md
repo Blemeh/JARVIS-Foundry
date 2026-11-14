@@ -15,7 +15,7 @@ and duration.
 JARVIS never merges, never pushes to a default branch and never deploys.
 `jarvis stop` halts everything within seconds.
 
-Status: beta (`0.1.0b2`). See [BETA.md](BETA.md) for what is verified and what is not.
+Status: private beta release candidate (`0.1.0rc1`). See [BETA.md](BETA.md) for what is verified and what is not.
 
 ## Requirements
 
@@ -32,9 +32,9 @@ Status: beta (`0.1.0b2`). See [BETA.md](BETA.md) for what is verified and what i
 ## Install
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
 # or
-pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
+pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
 ```
 
 If `jarvis` is not found afterwards, run `uv tool update-shell` and open a new
@@ -46,7 +46,7 @@ This uses a tiny demo repo with a failing test, in local mode (no GitHub
 needed). Commands are for a POSIX shell (Linux, macOS, Git Bash on Windows).
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
 export PATH="$HOME/.local/bin:$PATH"   # only needed if `jarvis` is not found
 jarvis init
 
@@ -90,7 +90,7 @@ jarvis run          # or: jarvis serve  (also picks up issues labeled "jarvis")
 | `jarvis serve [--concurrency N] [--no-intake] [--once]` | Background loop: polls GitHub issues labeled `jarvis` and the outcome of JARVIS's PRs, runs the queue. `--once`: one cycle, then exit |
 | `jarvis stop [reason]` | STOP: kill running agents, halt the queue |
 | `jarvis resume` | Clear STOP and re-queue stopped tasks |
-| `jarvis approve ID [--reject]` | Approve (or reject) the plan of a large task |
+| `jarvis approve ID [--reject] [--note TEXT]` | Approve (or reject) the plan of a large task; `--note` answers the plan's questions |
 | `jarvis cancel ID` | Cancel a queued, waiting or stopped task |
 | `jarvis retry ID` | Queue a failed, rejected, cancelled or stopped task again (its old branch is kept) |
 | `jarvis notes REPO [--accept ID] [--reject ID]` | Show the repo's notes and proposed lessons |

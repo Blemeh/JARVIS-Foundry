@@ -13,6 +13,9 @@
   changed during the agent run.
 - `jarvis cancel` and `jarvis retry`.
 - `jarvis serve` survives a failing poll step.
+- `jarvis approve ID --note "..."` answers a plan's questions; the note goes into
+  the plan the agent follows.
+- `jarvis run` now reports the tasks it actually processed.
 - Detection fixes: requirements-only projects are Python; `go.mod` and
   `Cargo.toml` win over a stray `tests/` folder; ruff is only used when it can run.
 
