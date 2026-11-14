@@ -62,6 +62,8 @@ def cmd_repo_add(args) -> int:
         values["scope"] = [s.strip() for s in args.scope.split(",") if s.strip()]
     if args.draft:
         values["draft"] = True
+    if args.branch_prefix:
+        values["branch_prefix"] = args.branch_prefix
     config.append_repo(cfg, name, values)
     cfg = config.load(cfg.home)
     profile = repo_profile.resolve(cfg.repos[name])
@@ -289,6 +291,7 @@ def parser() -> argparse.ArgumentParser:
         add.add_argument(f"--{key}", help=f"{key} command (default: detected)")
     add.add_argument("--scope", help="comma-separated allowed paths (default: whole repo)")
     add.add_argument("--draft", action="store_true", help="open pull requests as drafts")
+    add.add_argument("--branch-prefix", help="task branch prefix (default: jarvis/)")
     add.set_defaults(func=cmd_repo_add)
     repo.add_parser("ls", help="list registered repositories").set_defaults(func=cmd_repo_ls)
 

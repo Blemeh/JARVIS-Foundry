@@ -1,0 +1,3 @@
+{"code": [{"write": {"calc.py": "def add(a, b):\n    return a + b\n"},
+           "output": "Fixed add() to add instead of subtract.", "cost": 0.0,
+           "model": "fake-model"}]}

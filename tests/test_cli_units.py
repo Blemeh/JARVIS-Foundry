@@ -25,9 +25,10 @@ def test_init_repo_add_add_ls_show(repo, tmp_path, capsys):
     home = config.jarvis_home()
     assert (home / "config.toml").exists() and (home / "jarvis.db").exists()
     assert cli.main(["repo", "add", str(repo), "--name", "calc", "--test", TEST_CMD,
-                     "--scope", "calc.py, tests/", "--draft"]) == 0
+                     "--scope", "calc.py, tests/", "--draft", "--branch-prefix", "bot/"]) == 0
     cfg = config.load()
     assert cfg.repos["calc"].scope == ["calc.py", "tests/"] and cfg.repos["calc"].draft
+    assert cfg.repos["calc"].branch_prefix == "bot/"
     assert cli.main(["repo", "add", str(repo), "--name", "calc"]) == 2  # duplicate
     assert cli.main(["repo", "ls"]) == 0
     assert cli.main(["add", "--repo", "calc", "Fix add()\nIt subtracts."]) == 0
