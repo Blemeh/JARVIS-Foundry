@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 from conftest import FIXED, WRONG, git
-
 from jarvis import cli, config, github
 from jarvis.agents.fake import FakeAgent
 from jarvis.runner import Runner, preflight
