@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0rc2 (private beta release candidate)
+
+- Claude Code runs no longer inherit your MCP servers (`--strict-mcp-config`);
+  opt in through `[engine] args`. Safer for unattended work, and a smaller prompt.
+- Plan, review and lessons calls load only the read-only tools, which cut the
+  context of a review call from about 37k to about 7k tokens in a measured run.
+
 ## 0.1.0rc1 (private beta release candidate)
 
 - Python repos without `uv.lock` now work: each task gets a `.venv` in its

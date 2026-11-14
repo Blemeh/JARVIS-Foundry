@@ -15,7 +15,7 @@ and duration.
 JARVIS never merges, never pushes to a default branch and never deploys.
 `jarvis stop` halts everything within seconds.
 
-Status: private beta release candidate (`0.1.0rc1`). See [BETA.md](BETA.md) for what is verified and what is not.
+Status: private beta release candidate (`0.1.0rc2`). See [BETA.md](BETA.md) for what is verified and what is not.
 
 ## Requirements
 
@@ -32,9 +32,9 @@ Status: private beta release candidate (`0.1.0rc1`). See [BETA.md](BETA.md) for 
 ## Install
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc2
 # or
-pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
+pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc2
 ```
 
 If `jarvis` is not found afterwards, run `uv tool update-shell` and open a new
@@ -46,7 +46,7 @@ This uses a tiny demo repo with a failing test, in local mode (no GitHub
 needed). Commands are for a POSIX shell (Linux, macOS, Git Bash on Windows).
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc2
 export PATH="$HOME/.local/bin:$PATH"   # only needed if `jarvis` is not found
 jarvis init
 
@@ -107,7 +107,7 @@ folder. Unknown keys are errors, so typos do not pass silently.
 | Key | Default | Meaning |
 |---|---|---|
 | `[engine] name` | `"claude_code"` | `claude_code`, `codex`, `hermes` or `fake` |
-| `[engine] model` | `""` | Model passed to the engine; empty uses the engine's default |
+| `[engine] model` | `""` | Model passed to the engine; empty uses the engine's default, which decides most of the cost per task (for example `"sonnet"` costs less than the largest models) |
 | `[engine] command` | `""` | Engine executable; empty uses `claude` / `codex` / `hermes` |
 | `[engine] args` | `[]` | Extra arguments appended to the engine command |
 | `[engine] timeout_s` | `1800` | Timeout per agent call |
@@ -194,6 +194,10 @@ JARVIS's GitHub PRs: the number that says whether JARVIS is useful.
   read-only tools, and JARVIS discards any change they make anyway.
 - **Secrets.** Output that looks like a token or key is redacted before it is
   written to logs, transcripts or PR bodies.
+- **No inherited MCP servers.** With Claude Code, JARVIS runs the agent with
+  `--strict-mcp-config`, so it does not get the MCP servers from your own Claude
+  setup (which could act outside the repo). Opt in with
+  `[engine] args = ["--mcp-config", "/path/to/mcp.json"]`.
 - **What the agent can do.** The agent runs as your user. With Claude Code,
   file edits are confined to the worktree and Bash is pre-approved so it can
   run tests; Bash commands themselves are not sandboxed. Run JARVIS in a
