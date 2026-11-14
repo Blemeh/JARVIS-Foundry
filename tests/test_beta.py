@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from conftest import FIXED, WRONG, git
+from conftest import FIXED, TEST, WRONG, git
 from jarvis import cli, config, github
 from jarvis.agents.fake import FakeAgent
 from jarvis.runner import Runner, preflight
@@ -123,3 +123,23 @@ def test_cancel_and_retry(make_cfg, repo, capsys):
     assert git(repo, "show", f"{first_branch}:calc.py").strip() == WRONG.strip()
     assert cli.main(["retry", str(failed)]) == 2  # DONE tasks are not retried
     assert cli.main(["retry", "999"]) == 2
+
+
+CHEAT = ("import unittest\n\n\nclass AddTest(unittest.TestCase):\n"
+         "    def test_nothing(self):\n        pass\n")
+
+
+def test_passing_by_deleting_assertions_is_flagged(run_task):
+    status, task, runner, _ = run_task({"code": [{"write": {"test_calc.py": CHEAT}}]})
+    assert status == DONE  # it does pass verification: the warning is what protects you
+    body = Path(task["pr_url"]).read_text(encoding="utf-8")
+    assert "## Warning: tests were removed or weakened" in body
+    assert "test_calc.py: 0 test(s) and 1 assertion(s) fewer than before" in body
+    assert any("tests removed or weakened" in r["message"] for r in runner.store.logs(task["id"]))
+
+
+def test_adding_tests_is_not_flagged(run_task):
+    more = TEST + "\n    def test_zero(self):\n        self.assertEqual(add(0, 0), 0)\n"
+    status, task, _, _ = run_task({"code": [{"write": {"calc.py": FIXED, "test_calc.py": more}}]})
+    assert status == DONE
+    assert "removed or weakened" not in Path(task["pr_url"]).read_text(encoding="utf-8")

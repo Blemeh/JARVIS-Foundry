@@ -490,6 +490,13 @@ class Runner:
                       shown or "(no output)", "```", "</details>"]
         if review:
             lines += ["", "## Reviewer notes (informational)", proc.redact(review.strip())]
+        weakened = verify.weakened_tests(job.wt, job.base_sha, verdict.files)
+        if weakened:
+            self.log(job.id, "warning: tests removed or weakened: " + "; ".join(weakened))
+            lines += ["", "## Warning: tests were removed or weakened",
+                      "Verification passed, but these test files lost tests or assertions. "
+                      "Check that the change did not pass by deleting checks:"]
+            lines += [f"- `{w}`" for w in weakened]
         if job.checkout_changes:
             lines += ["", "## Warning: your checkout changed during the agent run",
                       f"`{job.repo.path}` changed while the agent worked. If you did not make "

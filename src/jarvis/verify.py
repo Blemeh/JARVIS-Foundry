@@ -26,6 +26,30 @@ def test_files(files: list[str]) -> list[str]:
     return [f for f in files if TEST_PATH.search(f)]
 
 
+TEST_DEF = re.compile(r"^\s*(async\s+)?def\s+test\w*|^\s*func\s+Test\w*|"
+                      r"^\s*(it|test|describe)(\.\w+)?\s*\(|^\s*#\[test\]|@Test\b")
+ASSERTION = re.compile(r"\bassert|\bexpect\s*\(|\bt\.(Error|Fatal)|\bassert_eq!")
+
+
+def weakened_tests(wt: Path, base_sha: str, files: list[str]) -> list[str]:
+    """Test files that lost test definitions or assertions compared with the base."""
+    found = []
+    for path in test_files(files):
+        diff = worktree.git(wt, "diff", "--no-color", "-U0", base_sha, "--", path, check=False)
+        removed = [line[1:] for line in diff.splitlines()
+                   if line.startswith("-") and not line.startswith("---")]
+        added = [line[1:] for line in diff.splitlines()
+                 if line.startswith("+") and not line.startswith("+++")]
+        lost_defs = sum(bool(TEST_DEF.search(x)) for x in removed) - sum(
+            bool(TEST_DEF.search(x)) for x in added)
+        lost_asserts = sum(bool(ASSERTION.search(x)) for x in removed) - sum(
+            bool(ASSERTION.search(x)) for x in added)
+        if lost_defs > 0 or lost_asserts > 0:
+            found.append(f"{path}: {max(lost_defs, 0)} test(s) and {max(lost_asserts, 0)} "
+                         "assertion(s) fewer than before")
+    return found
+
+
 @dataclass
 class CommandResult:
     name: str
