@@ -181,13 +181,12 @@ class Runner:
                     break
             else:
                 if time.monotonic() >= next_poll:
-                    if intake:
-                        self.intake()
-                    self.sync_prs()
                     next_poll = time.monotonic() + self.cfg.poll_interval_s
+                    for step in ((self.intake,) if intake else ()) + (self.sync_prs,):
+                        self._safely(step)
                 while len(workers) < max(1, self.cfg.concurrency) \
                         and time.monotonic() >= paused_until:
-                    task = self.store.claim(self.owner)
+                    task = self._safely(self.store.claim, self.owner)
                     if task is None:
                         break
                     thread = threading.Thread(target=self._thread, args=(task,), daemon=True)
@@ -198,6 +197,16 @@ class Runner:
             self.shutdown.wait(0.2 if once else 1.0)
         for thread in workers.values():
             thread.join(timeout=60)
+
+    def _safely(self, step, *args):
+        """One serve step; an unexpected error is reported and the loop keeps running."""
+        try:
+            return step(*args)
+        except Exception as exc:  # noqa: BLE001 - serve must outlive any single failure
+            name = getattr(step, "__name__", "step")
+            self.log(None, f"serve: {name} failed: {exc!r}")
+            self.say(f"{name} failed, will retry: {exc!r}")
+            return None
 
     def _thread(self, task) -> None:
         try:

@@ -143,3 +143,22 @@ def test_adding_tests_is_not_flagged(run_task):
     status, task, _, _ = run_task({"code": [{"write": {"calc.py": FIXED, "test_calc.py": more}}]})
     assert status == DONE
     assert "removed or weakened" not in Path(task["pr_url"]).read_text(encoding="utf-8")
+
+
+def test_serve_survives_a_failing_poll_step(make_cfg, monkeypatch):
+    cfg = make_cfg()
+    store = Store(cfg.db_path)
+    runner = Runner(cfg, store, FakeAgent({"code": [{"write": {"calc.py": FIXED}}]}))
+    calls = []
+
+    def broken_intake():
+        calls.append(1)
+        raise ValueError("gh returned garbage")
+
+    monkeypatch.setattr(runner, "intake", broken_intake)
+    task_id = store.add_task("calc", "Fix add()")
+    runner.serve(once=True)
+    assert calls == [1]
+    assert store.task(task_id)["status"] == DONE  # the queue still ran
+    assert any("intake failed" in r["message"] for r in store.db.execute(
+        "SELECT message FROM log WHERE task_id IS NULL").fetchall())
