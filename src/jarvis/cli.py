@@ -216,7 +216,7 @@ def cmd_run(args) -> int:
     _install_signals(runner)
     count = runner.run_queue()
     print(f"Processed {count} task(s).")
-    for t in store.tasks(limit=count) if count else []:
+    for t in (store.task(task_id) for task_id in runner.processed):
         if t["status"] == AWAITING_APPROVAL:
             print(f"  #{t['id']} plan ready: read it with `jarvis show {t['id']}`, then "
                   f"`jarvis approve {t['id']}` (or --reject)")
@@ -287,13 +287,17 @@ def cmd_approve(args) -> int:
     if t is None or t["status"] != AWAITING_APPROVAL:
         print(f"error: task {args.id} is not awaiting approval", file=sys.stderr)
         return 2
+    note = (args.note or "").strip()
     if args.reject:
-        store.update(args.id, status=FAILED, reason="plan rejected by owner", finished_at=now())
+        reason = "plan rejected by owner" + (f": {note}" if note else "")
+        store.update(args.id, status=FAILED, reason=reason, finished_at=now())
         print(f"Task {args.id} plan rejected.")
     else:
-        store.update(args.id, status=QUEUED, plan_approved=1)
-        print(f"Task {args.id} plan approved and queued.")
-    store.log(args.id, "plan rejected" if args.reject else "plan approved")
+        plan = t["plan"] + (f"\n\n## Owner's answers and instructions\n{note}" if note else "")
+        store.update(args.id, status=QUEUED, plan_approved=1, plan=plan)
+        print(f"Task {args.id} plan approved and queued" + (" with your note." if note else "."))
+    store.log(args.id, ("plan rejected" if args.reject else "plan approved")
+              + (f" with note: {note}" if note else ""))
     return 0
 
 
@@ -423,6 +427,7 @@ def parser() -> argparse.ArgumentParser:
     ap = sub.add_parser("approve", help="approve (or --reject) a task's plan")
     ap.add_argument("id", type=int)
     ap.add_argument("--reject", action="store_true")
+    ap.add_argument("--note", help="answers to the plan's questions or extra instructions")
     ap.set_defaults(func=cmd_approve)
 
     cancel = sub.add_parser("cancel", help="cancel a queued, waiting or stopped task")

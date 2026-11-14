@@ -162,3 +162,37 @@ def test_serve_survives_a_failing_poll_step(make_cfg, monkeypatch):
     assert store.task(task_id)["status"] == DONE  # the queue still ran
     assert any("intake failed" in r["message"] for r in store.db.execute(
         "SELECT message FROM log WHERE task_id IS NULL").fetchall())
+
+
+def test_approve_with_note_reaches_the_agent_and_run_reports_the_right_task(
+        make_cfg, tmp_path, capsys):
+    script = tmp_path / "s.json"
+    script.write_text(json.dumps({"plan": {"output": "1. fix add\nQuestion: keep ints?"},
+                                  "code": [{"write": {"calc.py": FIXED}}]}))
+    cfg = make_cfg()
+    _set(cfg, 'name = "claude_code"', f'name = "fake"\nscript = {json.dumps(str(script))}')
+    store = Store(cfg.db_path)
+    newer_ids = [store.add_task("calc", "Fix add()")]
+    assert cli.main(["add", "--repo", "calc", "--plan", "Fix add() with a plan"]) == 0
+    planned = store.tasks()[0]["id"]
+    store.update(newer_ids[0], status=CANCELLED)
+    assert cli.main(["run"]) == 0
+    assert cli.main(["approve", str(planned), "--note", "Yes, keep ints."]) == 0
+    assert "Owner's answers and instructions\nYes, keep ints." in store.task(planned)["plan"]
+    newer_ids.append(store.add_task("calc", "a newer task that stays queued"))
+    store.update(newer_ids[1], status=CANCELLED)
+    capsys.readouterr()
+    assert cli.main(["run"]) == 0
+    out = capsys.readouterr().out
+    assert f"#{planned} DONE" in out and f"#{newer_ids[1]}" not in out
+    runs = [line["message"] for line in store.logs(planned)]
+    assert any("with note: Yes, keep ints." in m for m in runs)
+
+
+def test_reject_with_note_records_the_reason(make_cfg):
+    cfg = make_cfg()
+    store = Store(cfg.db_path)
+    task_id = store.add_task("calc", "x")
+    store.update(task_id, status="AWAITING_APPROVAL", plan="1. do x")
+    assert cli.main(["approve", str(task_id), "--reject", "--note", "wrong approach"]) == 0
+    assert store.task(task_id)["reason"] == "plan rejected by owner: wrong approach"

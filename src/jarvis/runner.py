@@ -112,6 +112,7 @@ class Runner:
         self.echo = False  # `jarvis serve` prints intake and PR-sync activity
         self.engine_errors = 0  # consecutive tasks that failed on an engine error
         self.paused = ""  # why the queue was paused, if it was
+        self.processed: list[int] = []  # task ids this runner worked on, in order
 
     def say(self, message: str) -> None:
         if self.echo:
@@ -154,6 +155,7 @@ class Runner:
             if task is None:
                 break
             self.process(task)
+            self.processed.append(task["id"])
             count += 1
             if self.engine_errors >= ENGINE_ERRORS_BEFORE_PAUSE:
                 self.paused = (f"{self.engine_errors} tasks in a row failed on an engine error; "
