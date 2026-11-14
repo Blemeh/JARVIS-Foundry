@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+import shutil
 import sys
 import tempfile
 import tomllib
@@ -51,27 +53,69 @@ def _node(path: Path) -> Profile:
     )
 
 
-def _python(path: Path) -> Profile:
-    text = ""
-    for name in ("pyproject.toml", "setup.cfg", "tox.ini", "pytest.ini", "requirements-dev.txt",
-                 "requirements.txt"):
-        try:
-            text += (path / name).read_text(encoding="utf-8") + "\n"
-        except OSError:
-            pass
+REQUIREMENTS = ("requirements.txt", "requirements-dev.txt", "requirements-test.txt",
+                "requirements_dev.txt", "requirements_test.txt", "dev-requirements.txt",
+                "test-requirements.txt", "dev.requirements.txt", "requirements/dev.txt",
+                "requirements/test.txt", "requirements/tests.txt")
+TEST_EXTRAS = ("test", "tests", "testing", "dev")
+VENV_PY = ".venv\\Scripts\\python.exe" if sys.platform == "win32" else ".venv/bin/python"
+
+
+def _read(path: Path) -> str:
     try:
-        pyproject = tomllib.loads((path / "pyproject.toml").read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
+def _python(path: Path) -> Profile:
+    """Python projects without uv.lock get a private .venv in the task worktree, built
+    from their declared dependencies, so tests import the worktree's own code."""
+    try:
+        pyproject = tomllib.loads(_read(path / "pyproject.toml"))
+    except tomllib.TOMLDecodeError:
         pyproject = {}
-    uses_pytest = "pytest" in text or (path / "conftest.py").exists() \
+    config = "".join(_read(path / n) for n in ("pyproject.toml", "setup.cfg", "tox.ini"))
+    requirements = [n for n in REQUIREMENTS if (path / n).is_file()]
+    project = pyproject.get("project", {})
+    extras_declared = set(project.get("optional-dependencies", {}))
+    cfg_extras = re.search(r"\[options\.extras_require\]([^\[]*)", _read(path / "setup.cfg"))
+    if cfg_extras:
+        extras_declared |= set(re.findall(r"^(\w[\w-]*)\s*=", cfg_extras.group(1), re.M))
+    extras = [e for e in TEST_EXTRAS if e in extras_declared]
+    groups = [g for g in TEST_EXTRAS if g in pyproject.get("dependency-groups", {})]
+    deps = "".join(_read(path / n) for n in requirements) + json.dumps(
+        [project.get("optional-dependencies", {}).get(e) for e in extras]
+        + [pyproject["dependency-groups"][g] for g in groups])
+    uses_pytest = "pytest" in config + deps or (path / "conftest.py").exists() \
         or (path / "pytest.ini").exists()
-    uses_ruff = "ruff" in pyproject.get("tool", {}) or "ruff" in text
-    run = "uv run " if (path / "uv.lock").exists() else ""
-    py = "python" if run else PY
-    return Profile(
-        test=f"{run}{py} -m pytest -q" if uses_pytest else f"{run}{py} -m unittest",
-        lint=f"{run}ruff check ." if uses_ruff and run else ("ruff check ." if uses_ruff else ""),
-    )
+    configured_ruff = "ruff" in pyproject.get("tool", {}) or (path / "ruff.toml").exists()
+    if (path / "uv.lock").exists():
+        return Profile(test="uv run python -m pytest -q" if uses_pytest
+                       else "uv run python -m unittest",
+                       lint="uv run ruff check ." if configured_ruff else "")
+    installable = bool(project) or (path / "setup.py").exists() or "[metadata]" in _read(
+        path / "setup.cfg")
+    packages = ([f'-e ".[{",".join(extras)}]"' if extras else "-e ."] if installable else [])
+    packages += [f"--group {g}" for g in groups] + [f"-r {r}" for r in requirements]
+    packages += ["pytest"] if uses_pytest else []
+    ruff_in_venv = "ruff" in deps
+    if ruff_in_venv:
+        packages.append("ruff")
+    if not packages:  # nothing to install: the stdlib test runner is enough
+        return Profile(test=f"{PY} -m unittest",
+                       lint="ruff check ." if configured_ruff and shutil.which("ruff") else "")
+    if shutil.which("uv"):
+        setup = f"uv venv -q .venv && uv pip install -q --python {VENV_PY} " + " ".join(packages)
+    else:
+        pip = [p for p in packages if not p.startswith("--group")]  # pip has no groups
+        setup = f"{PY} -m venv .venv && {VENV_PY} -m pip install -q " + " ".join(pip)
+    lint = ""
+    if configured_ruff or ruff_in_venv:
+        lint = f"{VENV_PY} -m ruff check ." if ruff_in_venv else (
+            "ruff check ." if shutil.which("ruff") else "")
+    return Profile(setup=setup, lint=lint,
+                   test=f"{VENV_PY} -m pytest -q" if uses_pytest else f"{VENV_PY} -m unittest")
 
 
 def detect(path: Path) -> Profile:
@@ -79,13 +123,15 @@ def detect(path: Path) -> Profile:
         profile = _node(path)
         if profile.test:
             return profile
-    if any((path / n).exists() for n in ("pyproject.toml", "setup.py", "setup.cfg", "pytest.ini")) \
-            or any(path.glob("test*.py")) or (path / "tests").is_dir():
+    python_files = ("pyproject.toml", "setup.py", "setup.cfg", "pytest.ini", *REQUIREMENTS)
+    if any((path / n).is_file() for n in python_files):
         return _python(path)
     if (path / "go.mod").exists():
         return Profile(test="go test ./...", lint="go vet ./...")
     if (path / "Cargo.toml").exists():
         return Profile(test="cargo test")
+    if any(path.glob("test*.py")) or (path / "tests").is_dir():  # weaker Python signals
+        return _python(path)
     makefile = path / "Makefile"
     if makefile.exists() and "\ntest:" in "\n" + makefile.read_text(encoding="utf-8",
                                                                       errors="replace"):
@@ -95,7 +141,7 @@ def detect(path: Path) -> Profile:
 
 MANIFESTS = {"package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "uv.lock",
              "pyproject.toml", "setup.py", "setup.cfg", "tox.ini", "pytest.ini", "conftest.py",
-             "requirements.txt", "requirements-dev.txt", "go.mod", "Cargo.toml", "Makefile"}
+             "go.mod", "Cargo.toml", "Makefile", *REQUIREMENTS}
 
 
 def detect_ref(repo_path: Path, ref: str) -> Profile:
@@ -115,6 +161,11 @@ def detect_ref(repo_path: Path, ref: str) -> Profile:
                                          encoding="utf-8")
             else:
                 (root / name).touch()
+        for name in (n for n in MANIFESTS if "/" in n):  # e.g. requirements/dev.txt
+            text = git(repo_path, "show", f"{ref}:{name}", check=False)
+            if text:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(text, encoding="utf-8")
         return detect(root)
 
 
