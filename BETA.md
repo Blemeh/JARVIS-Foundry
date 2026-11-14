@@ -66,6 +66,17 @@ false success. Task 9 is contradictory by design and must fail.
 Result: **9/10 succeeded with verified green tests, 0 false successes**, the
 designed failure failed cleanly, and no fixture's `origin/main` moved.
 
+## STOP and RESUME with the real engine
+
+`python scripts/make_fixtures.py stop DIR --jarvis <installed jarvis>`, run
+2026-11-14 on Linux with `claude_code`: an installed `jarvis serve` worked task 1
+(`pyshop`, add tests) with task 2 queued. 8 seconds into the agent's work,
+`jarvis stop` ran. Results: task 1 was `STOPPED` **0.81 s** after the command
+started; the agent process and its whole process group were gone; the run was
+recorded as `stopped`; `serve` stayed up and started nothing (task 2 still
+`QUEUED` 3 s later). After `jarvis resume`, `serve` re-ran task 1 and then ran
+task 2: both `DONE`. SIGTERM then shut `serve` down cleanly (exit 0).
+
 ## Owner actions
 
 From the reset audit (section 7, Phase 0). Only you can do these, on your

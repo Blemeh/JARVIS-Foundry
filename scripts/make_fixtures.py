@@ -2,6 +2,7 @@
 
   python scripts/make_fixtures.py create DIR      # generate the 3 fixture repos only
   python scripts/make_fixtures.py run DIR [--tasks 1,2] [--engine claude_code] [--model M]
+  python scripts/make_fixtures.py stop DIR --jarvis PATH   # STOP/RESUME with a real engine
 
 `run` creates fresh fixtures in DIR (each with a bare `origin`), registers them in
 a JARVIS_HOME inside DIR (local PR mode), queues the tasks, runs `jarvis run`, then
@@ -748,16 +749,98 @@ def run(root: Path, numbers: list[int], engine: str, model: str) -> int:
     return 0 if untouched and not false else 1
 
 
+def stop_test(root: Path, jarvis_bin: str, engine: str, model: str) -> int:
+    """`jarvis serve` (installed copy) runs a real task; STOP mid-run; RESUME continues."""
+    import time
+
+    paths = create(root)
+    home = root / "home"
+    shutil.rmtree(home, ignore_errors=True)
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    env["JARVIS_HOME"] = str(home)
+
+    def jv(*args):
+        return sh([jarvis_bin, *args], root, env=env)
+
+    jv("init")
+    cfg = home / "config.toml"
+    cfg.write_text(cfg.read_text(encoding="utf-8").replace(
+        'name = "claude_code"', f'name = "{engine}"').replace(
+        'model = ""', f'model = "{model}"'), encoding="utf-8")
+    jv("repo", "add", str(paths["pyshop"]), "--name", "pyshop")
+    jv("add", "--repo", "pyshop", TASKS[3].text, "--scope", TASKS[3].scope)
+    jv("add", "--repo", "pyshop", TASKS[0].text)
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+    from jarvis import proc
+    from jarvis.store import Store
+
+    store = Store(home / "jarvis.db")
+    log = (root / "serve.log").open("w", encoding="utf-8")
+    serve = subprocess.Popen([jarvis_bin, "serve", "--no-intake"], env=env, stdout=log,
+                             stderr=subprocess.STDOUT)
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline and not (store.runs(1) and store.runs(1)[0]["pid"]):
+        time.sleep(0.2)
+    time.sleep(8)  # let the agent get well into its work
+    pid = store.runs(1)[0]["pid"]
+    alive_before = proc.pid_alive(pid)
+    started = time.monotonic()
+    code, out = jv("stop", "gate check")
+    while store.task(1)["status"] != "STOPPED" and time.monotonic() - started < 30:
+        time.sleep(0.1)
+    elapsed = time.monotonic() - started
+    group_gone = True
+    if not proc.WINDOWS:
+        try:
+            os.killpg(pid, 0)
+            group_gone = False
+        except ProcessLookupError:
+            pass
+    result = {"agent_alive_before_stop": alive_before, "stop_output": out,
+              "status_after_stop": store.task(1)["status"], "seconds_to_stopped":
+              round(elapsed, 2), "agent_pid_alive_after": proc.pid_alive(pid),
+              "agent_process_group_gone": group_gone, "run_outcome": store.runs(1)[0]["outcome"],
+              "serve_still_running": serve.poll() is None,
+              "task2_status_while_stopped": store.task(2)["status"]}
+    time.sleep(3)
+    result["task2_status_3s_later"] = store.task(2)["status"]
+    result["resume_output"] = jv("resume")[1]
+    deadline = time.monotonic() + 1800
+    while time.monotonic() < deadline and any(
+            store.task(i)["status"] not in ("DONE", "FAILED", "REJECTED") for i in (1, 2)):
+        time.sleep(1)
+    result["after_resume"] = {i: (store.task(i)["status"], store.task(i)["pr_url"] or
+                                  store.task(i)["reason"]) for i in (1, 2)}
+    serve.terminate()
+    try:
+        serve.wait(timeout=60)
+    except subprocess.TimeoutExpired:
+        serve.kill()
+    log.close()
+    result["serve_exit"] = serve.returncode
+    result["serve_log_tail"] = (root / "serve.log").read_text(encoding="utf-8")[-300:]
+    print(json.dumps(result, indent=2))
+    ok = (alive_before and result["status_after_stop"] == "STOPPED" and elapsed <= 10
+          and not result["agent_pid_alive_after"] and group_gone
+          and result["task2_status_3s_later"] == "QUEUED"
+          and all(v[0] == "DONE" for v in result["after_resume"].values()))
+    print("STOP/RESUME gate:", "PASS" if ok else "FAIL")
+    return 0 if ok else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("action", choices=["create", "run"])
+    parser.add_argument("action", choices=["create", "run", "stop"])
     parser.add_argument("dir")
     parser.add_argument("--tasks", default="1,2,3,4,5,6,7,8,9,10")
     parser.add_argument("--engine", default="claude_code")
     parser.add_argument("--model", default="")
+    parser.add_argument("--jarvis", default="jarvis", help="installed jarvis executable")
     args = parser.parse_args()
     root = Path(args.dir).resolve()
+    if args.action == "stop":
+        return stop_test(root, args.jarvis, args.engine, args.model)
     if args.action == "create":
         for name, path in create(root).items():
             print(f"{name}: {path}")
