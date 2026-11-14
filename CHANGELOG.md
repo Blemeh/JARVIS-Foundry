@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.0b2 (beta)
+
+- Baseline: before the agent works, JARVIS runs the verification commands on
+  the base branch. The agent sees what already fails, and the PR body shows
+  before -> after for every command (`[limits] baseline`, on by default).
+- The PR body says which test files changed. Repos can set `require_tests`
+  (`jarvis repo add --require-tests`) so a change without a test fails
+  verification and is repaired.
+- Learning from your reviews: `jarvis serve` tracks whether JARVIS's PRs are
+  merged or closed, and turns review comments into proposed repo notes.
+  `jarvis ls` shows `DONE/merged`, `DONE/closed` and the merge rate.
+- `jarvis serve --once`: poll issues and PR outcomes once, work the queue, exit.
+- Notes proposals skip near-duplicates and lessons you already rejected.
+- `jarvis repo add` detects commands from the base branch rather than the
+  current checkout, and takes `--label` and `--require-tests`.
+- Command output in PR bodies is capped at 40 lines.
+- Real GitHub issue intake is now covered by the GitHub smoke test.
+
 ## 0.1.0b1 (beta)
 
 First release of the rebuilt JARVIS: a small command-line tool that turns a

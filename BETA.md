@@ -1,4 +1,4 @@
-# JARVIS 0.1.0b1 beta
+# JARVIS beta (0.1.0b2)
 
 ## Who this beta is for
 
@@ -17,7 +17,11 @@ user), and it is not a replacement for code review: JARVIS never merges.
   test checks can pass verification without being right; the reviewer pass
   lists risks but does not gate.
 - One engine call per attempt; no plan-size heuristic beyond a word count.
-- Notes proposals are de-duplicated by exact text only, so near-duplicates appear.
+- The repair loop has not been exercised by the real engine yet: in every real
+  run so far, Claude passed verification on its first attempt. It is covered by
+  fake-engine tests only.
+- Lessons from PR reviews are learned only while `jarvis serve` runs (or with
+  `jarvis serve --once`).
 - A failed or stopped task is restarted from scratch, not resumed mid-way.
 - In local mode without a remote, the task branch stays in your repo and the PR
   body is a file under `~/.jarvis/prs/`.
@@ -86,6 +90,32 @@ The same 10 tasks on the final code (commit 538ebbb, all Phase 5 features on), r
 
 Result: **9/10 succeeded with verified green tests, 0 false successes**; task 9
 failed cleanly again; no fixture's `origin/main` moved. Total cost $2.30.
+
+## Re-run on 0.1.0b2 (no regression)
+
+The same 10 tasks after adding the baseline run, test-change check and PR-outcome
+learning (commit 1bb02d0), run 2026-11-14 on Linux with `claude_code`
+(`claude-opus-5-5`), local PR mode:
+
+| # | Repo | Task | Outcome | Hidden check | Repairs | Duration | Cost |
+|---|---|---|---|---|---|---|---|
+| 1 | pyshop | bug fix: Fix apply_discount: percentage discounts are applied wrong | DONE | pass | 0 | 0m22s | $0.24 |
+| 2 | pyshop | small feature: Add Cart.remove(sku, qty=None) to shop/cart.py | DONE | pass | 0 | 0m29s | $0.28 |
+| 3 | pyshop | refactor: Refactor shop/inventory.py to remove duplicated SKU validation | DONE | pass | 0 | 0m16s | $0.21 |
+| 4 | pyshop | add missing tests: Add tests for shop/money.py | DONE | pass (4/4 mutants killed) | 0 | 0m45s | $0.31 |
+| 5 | nodecart | multi-file change: Rename calcTotal to computeTotal everywhere | DONE | pass | 0 | 0m17s | $0.23 |
+| 6 | nodecart | bug fix: slugify leaves repeated and trailing dashes | DONE | pass | 0 | 0m20s | $0.24 |
+| 7 | nodecart | small feature: Add a --json flag to bin/cli.js | DONE | pass | 0 | 0m32s | $0.29 |
+| 8 | gotext | small feature: Add textutil.Truncate(s string, n int) string | DONE | pass | 0 | 0m24s | $0.23 |
+| 9 | gotext | should fail cleanly: Report API version 2 | FAILED (expected) | - | 0 | 0m12s | $0.11 |
+| 10 | gotext | bug fix: WordCount counts punctuation as part of words | DONE | pass | 0 | 0m33s | $0.28 |
+
+Result: **9/10 succeeded with verified green tests, 0 false successes**; task 9
+failed cleanly; no fixture's `origin/main` moved. Total cost $2.42.
+
+Review lessons with the real engine: given two review comments on a closed PR
+("keep shop/ stdlib-only", "use plain pytest functions"), the lessons call
+proposed exactly those two durable notes ($0.09, 5 s).
 
 ## STOP and RESUME with the real engine
 

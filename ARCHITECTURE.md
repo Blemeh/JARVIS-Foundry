@@ -25,7 +25,7 @@ real history (branches, commits, pull requests); JARVIS only keeps a queue.
 ## Task lifecycle
 
 ```
-QUEUED ──claim──> RUNNING ──verify ok──> DONE (PR opened)
+QUEUED ──claim──> RUNNING (baseline, agent, verify) ──ok──> DONE (PR opened)
   │                 │  └─verify fail─> repair (max 2) ─> FAILED (branch kept)
   │                 ├─scope violation─> REJECTED (branch kept, no repair)
   │                 ├─agent timeout / cost cap / error─> FAILED
@@ -33,6 +33,8 @@ QUEUED ──claim──> RUNNING ──verify ok──> DONE (PR opened)
   └─large or --plan─> PLANNING ─> AWAITING_APPROVAL ──approve──> QUEUED
                                                   └─approve --reject─> FAILED
 RUNNING left by a dead process ──next start──> QUEUED (worktree discarded)
+DONE ──serve sees the PR merged or closed──> DONE/merged | DONE/closed
+                                             (review comments -> proposed notes)
 ```
 
 ## Decisions
@@ -53,6 +55,10 @@ RUNNING left by a dead process ──next start──> QUEUED (worktree discarde
 - Verification commands run with a private Python bytecode cache, so a same-size edit within one second can never run stale `.pyc` files.
 - The webhook also sends `plan_ready`, because a plan waiting for approval needs the owner just like a failure.
 - Scope globs use fnmatch: `*` also matches `/`, like gitignore patterns without a slash.
+- The baseline run informs and never fails a task: a bug-fix task usually starts red.
+- A missing test (`require_tests`) is a verification failure that gets repaired, unlike a scope breach.
+- PR outcomes are polled by `serve` only; review lessons come from a read-only agent call in an empty temp folder (never the user's checkout) and are only proposed.
+- The merge rate in `jarvis ls` counts GitHub PRs only; local-mode PR files have no outcome.
 
 ## Later (not in the beta)
 - A small web dashboard (queue, runs, PRs, cost).
@@ -60,4 +66,4 @@ RUNNING left by a dead process ──next start──> QUEUED (worktree discarde
 - A proposals queue: suggest tasks from issues, CI results and TODOs.
 - Auto-merge for whitelisted categories with green CI.
 - Choosing the model by task size.
-- Learning notes from merged or rejected PRs automatically.
+- Running each task in a container to sandbox the agent's shell commands.

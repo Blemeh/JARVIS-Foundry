@@ -15,7 +15,7 @@ and duration.
 JARVIS never merges, never pushes to a default branch and never deploys.
 `jarvis stop` halts everything within seconds.
 
-Status: beta (`0.1.0b1`). See [BETA.md](BETA.md) for what is verified and what is not.
+Status: beta (`0.1.0b2`). See [BETA.md](BETA.md) for what is verified and what is not.
 
 ## Requirements
 
@@ -32,9 +32,9 @@ Status: beta (`0.1.0b1`). See [BETA.md](BETA.md) for what is verified and what i
 ## Install
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b1
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
 # or
-pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b1
+pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
 ```
 
 If `jarvis` is not found afterwards, run `uv tool update-shell` and open a new
@@ -46,7 +46,7 @@ This uses a tiny demo repo with a failing test, in local mode (no GitHub
 needed). Commands are for a POSIX shell (Linux, macOS, Git Bash on Windows).
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b1
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
 export PATH="$HOME/.local/bin:$PATH"   # only needed if `jarvis` is not found
 jarvis init
 
@@ -81,13 +81,13 @@ jarvis run          # or: jarvis serve  (also picks up issues labeled "jarvis")
 | Command | What it does |
 |---|---|
 | `jarvis init` | Create `~/.jarvis` (or `$JARVIS_HOME`) with `config.toml` and the queue database |
-| `jarvis repo add PATH [--name N] [--github owner/repo] [--base B] [--test CMD] [--lint CMD] [--setup CMD] [--build CMD] [--scope a,b] [--draft] [--branch-prefix P]` | Register a repo; prints the detected commands |
+| `jarvis repo add PATH [--name N] [--github owner/repo] [--base B] [--test CMD] [--lint CMD] [--setup CMD] [--build CMD] [--scope a,b] [--draft] [--branch-prefix P] [--label L] [--require-tests]` | Register a repo; prints the commands detected on its base branch |
 | `jarvis repo ls` | List registered repos |
 | `jarvis add --repo N "task" [--plan] [--scope a,b] [--body-file F]` | Queue a task (first line is the title) |
-| `jarvis ls [--status S]` | List tasks with status, cost and PR link or failure reason |
+| `jarvis ls [--status S]` | List tasks with status, cost and PR link or failure reason, plus the merge rate of JARVIS's GitHub PRs |
 | `jarvis show ID` | Task details, plan, runs (engine, model, cost, transcript path) and log |
 | `jarvis run` | Process queued tasks in the foreground until the queue is empty |
-| `jarvis serve [--concurrency N] [--no-intake]` | Background loop: polls GitHub issues labeled `jarvis`, runs the queue |
+| `jarvis serve [--concurrency N] [--no-intake] [--once]` | Background loop: polls GitHub issues labeled `jarvis` and the outcome of JARVIS's PRs, runs the queue. `--once`: one cycle, then exit |
 | `jarvis stop [reason]` | STOP: kill running agents, halt the queue |
 | `jarvis resume` | Clear STOP and re-queue stopped tasks |
 | `jarvis approve ID [--reject]` | Approve (or reject) the plan of a large task |
@@ -115,6 +115,7 @@ folder. Unknown keys are errors, so typos do not pass silently.
 | `[limits] max_cost_usd` | `5.0` | Cost cap per task (`0` disables). Only engines that report cost can be capped; others show `NOT REPORTED` |
 | `[limits] verify_timeout_s` | `900` | Timeout per verification command |
 | `[limits] plan_over_words` | `150` | Tasks longer than this need an approved plan first (`0`: only with `--plan`) |
+| `[limits] baseline` | `true` | Run the verification commands on the base branch before the agent; the agent sees what already fails and the PR shows before -> after |
 | `[review] enabled` | `true` | A second, read-only agent call lists risks in the PR body (informs, never gates) |
 | `[serve] concurrency` | `1` | Tasks run in parallel by `jarvis serve` |
 | `[serve] poll_interval_s` | `120` | GitHub issue polling interval |
@@ -134,11 +135,21 @@ Per repo (`[repos.<name>]`, written by `jarvis repo add`, editable by hand):
 | `branch_prefix` | `"jarvis/"` | Task branches are `<prefix><task id>` |
 | `draft` | `false` | Open PRs as drafts |
 | `label` | `"jarvis"` | Issue label picked up by `jarvis serve` |
+| `require_tests` | `false` | A change that adds or changes no test file fails verification (and is repaired) |
 
 Notes live in `~/.jarvis/notes/<repo>.md` (commands, conventions, lessons) and
-go into every prompt for that repo. After a task, lines the agent marks
-`NOTE:` become proposals; `jarvis notes <repo>` lists them for you to accept
-or reject. JARVIS never writes notes into your repo.
+go into every prompt for that repo. JARVIS never writes notes into your repo.
+New lessons are only ever *proposed*; `jarvis notes <repo>` lists them for you to
+accept or reject. They come from two places:
+
+- lines the agent marks `NOTE:` at the end of a task;
+- your reviews: while `jarvis serve` runs, it checks the outcome of every PR
+  JARVIS opened. When you merge or close one that has review comments, a
+  read-only agent call turns your comments into proposed lessons, so the next
+  task on that repo avoids the same mistake.
+
+`jarvis ls` shows `DONE/merged` and `DONE/closed`, and the merge rate of
+JARVIS's GitHub PRs: the number that says whether JARVIS is useful.
 
 ## Safety model
 
@@ -147,7 +158,9 @@ or reject. JARVIS never writes notes into your repo.
 - **Never merges, never touches default branches.** JARVIS only pushes the task
   branch, refuses to push to the base or default branch, never force-pushes,
   and only opens pull requests.
-- **Independent verification.** JARVIS computes the diff itself (including
+- **Independent verification.** Before the agent starts, JARVIS runs the
+  repo's commands on the base branch, so the PR shows what failed before and
+  passes after. Then it computes the diff itself (including
   untracked files), rejects empty diffs, rejects edits outside `scope` or
   inside `protected` (state `REJECTED`, no repair), and runs the repo's own
   commands. No configured or detected command means the task cannot pass.
