@@ -70,6 +70,7 @@ MIGRATIONS = [
     );
     """,
     "ALTER TABLE runs ADD COLUMN pid INTEGER;",
+    "ALTER TABLE tasks ADD COLUMN pr_state TEXT;",  # open | merged | closed (GitHub mode)
 ]
 
 
@@ -128,6 +129,18 @@ class Store:
         if limit:
             sql += f" LIMIT {int(limit)}"
         return self.db.execute(sql, params).fetchall()
+
+    def open_prs(self) -> list[sqlite3.Row]:
+        """DONE tasks whose GitHub pull request is not known to be merged or closed."""
+        return self.db.execute(
+            "SELECT * FROM tasks WHERE status = ? AND pr_url LIKE 'http%'"
+            " AND (pr_state IS NULL OR pr_state = 'open') ORDER BY id", (DONE,)).fetchall()
+
+    def pr_counts(self) -> dict[str, int]:
+        rows = self.db.execute(
+            "SELECT COALESCE(pr_state, 'open'), COUNT(*) FROM tasks WHERE status = ?"
+            " AND pr_url LIKE 'http%' GROUP BY 1", (DONE,)).fetchall()
+        return {state: count for state, count in rows}
 
     def task_for_issue(self, repo: str, issue: int) -> sqlite3.Row | None:
         return self.db.execute(

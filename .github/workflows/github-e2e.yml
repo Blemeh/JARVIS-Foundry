@@ -1,9 +1,13 @@
 name: github-e2e
 
-# Real GitHub smoke test: JARVIS opens a DRAFT pull request from a
-# jarvis-e2e/<id> branch into a throwaway jarvis-e2e-base branch, the PR is
-# checked, then closed and both branches are deleted. The coding engine is
-# the deterministic fake engine; this test proves the GitHub path, not an LLM.
+# Real GitHub smoke test. JARVIS (installed from this checkout, fake engine)
+# takes two tasks against a throwaway orphan branch jarvis-e2e-base: one from
+# `jarvis add`, one from a real issue labeled jarvis-e2e. One `jarvis serve
+# --once` must open a DRAFT pull request for each from jarvis-e2e/<id>
+# branches, the issue's PR must say "Closes #N". After a review comment and
+# closing, a second `serve --once` must record the outcomes and turn the
+# review into a proposed note. Then the PRs, the issue and both branches are
+# cleaned up. The engine is fake: this proves the GitHub path, not an LLM.
 on:
   workflow_dispatch:
   push:
@@ -12,6 +16,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 defaults:
   run:
@@ -53,42 +58,72 @@ jobs:
           printf '__pycache__/\n' > .gitignore
           git add . && git commit -qm "jarvis e2e fixture"
           git push -q origin "HEAD:refs/heads/$BASE"
-      - name: JARVIS takes a task and opens a draft PR
+      - name: JARVIS takes a CLI task and a labeled issue, opens draft PRs
         run: |
           jarvis init
           sed -i "s|name = \"claude_code\"|name = \"fake\"\nscript = \"$GITHUB_WORKSPACE/.github/e2e/fake-fix.json\"|" "$JARVIS_HOME/config.toml"
           sed -i 's|enabled = true|enabled = false|' "$JARVIS_HOME/config.toml"
           jarvis repo add "$GITHUB_WORKSPACE" --name e2e --github "$GITHUB_REPOSITORY" \
-            --base "$BASE" --draft --branch-prefix jarvis-e2e/
+            --base "$BASE" --draft --branch-prefix jarvis-e2e/ --label jarvis-e2e
+          gh label create jarvis-e2e --color FBCA04 --description "JARVIS e2e smoke test" --force
+          issue=$(gh issue create --label jarvis-e2e \
+            --title "[jarvis-e2e] Fix add() (smoke test, closed automatically)" \
+            --body "add() subtracts instead of adding; make the tests pass.")
+          echo "ISSUE_NUMBER=${issue##*/}" >> "$GITHUB_ENV"
           jarvis add --repo e2e "Fix add() so the tests pass"
-          jarvis run
+          jarvis serve --once
+          jarvis ls
           jarvis show 1
-          jarvis ls | grep -q DONE
-      - name: Check the pull request
+          jarvis show 2
+      - name: Check both pull requests
         run: |
-          url=$(jarvis ls | awk '/DONE/ {print $NF}')
-          echo "PR: $url"
-          gh pr view "$url" --json number,isDraft,baseRefName,headRefName,state,body > pr.json
           python3 - <<'PY'
-          import json
-          pr = json.load(open("pr.json"))
-          assert pr["isDraft"] is True, pr
-          assert pr["baseRefName"] == "jarvis-e2e-base", pr
-          assert pr["headRefName"].startswith("jarvis-e2e/"), pr
-          assert pr["state"] == "OPEN", pr
-          for part in ("## Summary", "## Changed files", "`calc.py`", "## Verification",
-                       "exit 0", "Engine: fake", "Cost: $0.00"):
-              assert part in pr["body"], part
-          print(f"PR #{pr['number']} OK: draft from {pr['headRefName']} into {pr['baseRefName']}")
+          import json, os, sqlite3, subprocess
+          db = sqlite3.connect(os.path.join(os.environ["JARVIS_HOME"], "jarvis.db"))
+          rows = db.execute("SELECT id, status, issue, pr_url FROM tasks ORDER BY id").fetchall()
+          assert [r[1] for r in rows] == ["DONE", "DONE"], rows
+          numbers = []
+          for task_id, _, issue, url in rows:
+              pr = json.loads(subprocess.check_output(
+                  ["gh", "pr", "view", url, "--json",
+                   "number,isDraft,baseRefName,headRefName,state,body"]))
+              assert pr["isDraft"] is True, pr
+              assert pr["baseRefName"] == "jarvis-e2e-base", pr
+              assert pr["headRefName"].startswith("jarvis-e2e/"), pr
+              assert pr["state"] == "OPEN", pr
+              for part in ("## Summary", "## Changed files", "`calc.py`", "## Verification",
+                           "exit 0", "before the change: exit 1", "Engine: fake",
+                           "Cost: $0.00"):
+                  assert part in pr["body"], (task_id, part)
+              if issue:
+                  assert issue == int(os.environ["ISSUE_NUMBER"]), (issue, os.environ["ISSUE_NUMBER"])
+                  assert f"Closes #{issue}" in pr["body"], pr["body"]
+              numbers.append(pr["number"])
+              print(f"PR #{pr['number']} OK: draft from {pr['headRefName']} (task {task_id},"
+                    f" issue {issue})")
+          assert any(r[2] for r in rows), "no task came from the labeled issue"
+          with open(os.environ["GITHUB_ENV"], "a") as env:
+              env.write(f"PR_NUMBERS={' '.join(map(str, numbers))}\n")
           PY
-          echo "PR_NUMBER=$(python3 -c 'import json;print(json.load(open("pr.json"))["number"])')" >> "$GITHUB_ENV"
-          echo "PR_HEAD=$(python3 -c 'import json;print(json.load(open("pr.json"))["headRefName"])')" >> "$GITHUB_ENV"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$MAIN_BEFORE"
-          echo "### github-e2e: draft PR #$(python3 -c 'import json;print(json.load(open("pr.json"))["number"])') passed" >> "$GITHUB_STEP_SUMMARY"
-      - name: Clean up the PR and both branches
+      - name: Review, close, and check that JARVIS records outcomes and learns
+        run: |
+          set -- $PR_NUMBERS
+          gh pr comment "$1" --body "Review: keep calc.py functions pure."
+          for n in $PR_NUMBERS; do gh pr close "$n"; done
+          gh issue close "$ISSUE_NUMBER"
+          jarvis serve --once --no-intake
+          jarvis ls | tee ls.txt
+          test "$(grep -c 'DONE/closed' ls.txt)" -eq 2
+          grep -q "GitHub pull requests: 2 opened, 0 merged (0%), 2 closed without merge" ls.txt
+          jarvis notes e2e | tee notes.txt
+          grep -q "e2e lesson: keep calc.py functions pure" notes.txt
+          echo "### github-e2e: draft PRs #${PR_NUMBERS// /, #} and issue #$ISSUE_NUMBER passed" >> "$GITHUB_STEP_SUMMARY"
+      - name: Clean up PRs, issue and branches
         if: always()
         run: |
-          if [ -n "${PR_NUMBER:-}" ]; then gh pr close "$PR_NUMBER" --comment "jarvis e2e smoke test: closing" || true; fi
+          for n in ${PR_NUMBERS:-}; do gh pr close "$n" 2>/dev/null || true; done
+          if [ -n "${ISSUE_NUMBER:-}" ]; then gh issue close "$ISSUE_NUMBER" 2>/dev/null || true; fi
           for ref in $(git ls-remote --heads origin 'jarvis-e2e/*' | cut -f2) "refs/heads/$BASE"; do
             git push -q origin --delete "$ref" || true
           done

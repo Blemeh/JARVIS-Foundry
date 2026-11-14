@@ -6,6 +6,7 @@ import json
 import os
 import re
 import socket
+import tempfile
 import threading
 import time
 import traceback
@@ -42,6 +43,7 @@ class Job:
     summary: str = ""
     model: str = ""
     cost_note_logged: bool = False
+    baseline: list[verify.CommandResult] = field(default_factory=list)
 
     @property
     def id(self) -> int:
@@ -111,16 +113,22 @@ class Runner:
             count += 1
         return count
 
-    def serve(self, *, intake: bool = True) -> None:
-        """Background loop: poll issues, keep up to `concurrency` tasks running."""
+    def serve(self, *, intake: bool = True, once: bool = False) -> None:
+        """Background loop: poll issues and PR outcomes, keep up to `concurrency` tasks
+        running. With `once`, do one poll, work the queue until it is empty, and return."""
         self.recover()
         workers: dict[int, threading.Thread] = {}
         next_poll = 0.0
         while not self.shutdown.is_set():
             workers = {tid: t for tid, t in workers.items() if t.is_alive()}
-            if not stop.active(self.cfg.home):
-                if intake and time.monotonic() >= next_poll:
-                    self.intake()
+            if stop.active(self.cfg.home):
+                if once:
+                    break
+            else:
+                if time.monotonic() >= next_poll:
+                    if intake:
+                        self.intake()
+                    self.sync_prs()
                     next_poll = time.monotonic() + self.cfg.poll_interval_s
                 while len(workers) < max(1, self.cfg.concurrency):
                     task = self.store.claim(self.owner)
@@ -129,7 +137,9 @@ class Runner:
                     thread = threading.Thread(target=self._thread, args=(task,), daemon=True)
                     thread.start()
                     workers[task["id"]] = thread
-            self.shutdown.wait(1.0)
+                if once and not workers:
+                    break
+            self.shutdown.wait(0.2 if once else 1.0)
         for thread in workers.values():
             thread.join(timeout=60)
 
@@ -161,6 +171,44 @@ class Runner:
                 created.append(task_id)
             self.store.set_last_poll(repo.name)
         return created
+
+    def sync_prs(self) -> int:
+        """Record merged/closed outcomes of JARVIS pull requests; learn from reviews."""
+        changed = 0
+        for task in self.store.open_prs():
+            repo = self.cfg.repos.get(task["repo"])
+            if repo is None or not repo.github:
+                continue
+            try:
+                state, feedback = github.pr_outcome(task["pr_url"])
+            except github.GitHubError as exc:
+                self.log(task["id"], f"pull request sync failed: {exc}")
+                continue
+            if state == (task["pr_state"] or "open"):
+                continue
+            self.store.update(task["id"], pr_state=state)
+            self.log(task["id"], f"pull request {state}")
+            changed += 1
+            if state != "open" and feedback:
+                self.learn(task, state, feedback)
+        return changed
+
+    def learn(self, task, state: str, feedback: list[str]) -> list[int]:
+        """Turn review feedback on a merged or closed PR into proposed repo notes."""
+        run_id = self.store.add_run(task["id"], "lessons", 0, self.agent.name)
+        cap = min(1.0, self.cfg.max_cost_usd) if self.cfg.max_cost_usd else None
+        with tempfile.TemporaryDirectory(prefix="jarvis-lessons-") as tmp:
+            result = self.agent.run(AgentRequest(
+                prompt.lessons_prompt(task, state, feedback), Path(tmp),
+                min(600, self.cfg.agent_timeout_s), "lessons", 0, True, cap), self.stopping)
+        self.store.finish_run(run_id, model=result.model, outcome="ok" if result.ok else "error",
+                              exit_code=result.exit_code, cost_usd=result.cost_usd,
+                              duration_s=round(result.duration_s, 1))
+        ids = notes.propose(self.store, self.cfg.home, task["repo"], task["id"],
+                            result.output) if result.ok else []
+        self.log(task["id"], f"lessons from the {state} PR: {len(ids)} proposed"
+                             + ("" if result.ok else f" (agent error: {result.error})"))
+        return ids
 
     # ------------------------------------------------------------ one task
     def process(self, task) -> str:
@@ -262,11 +310,19 @@ class Runner:
         repo, cfg = job.repo, self.cfg
         allowed = list(json.loads(job.task["scope"] or "[]")) or repo.scope
         failure, verdict = "", None
+        if cfg.baseline and job.profile.commands():
+            job.baseline = verify.run_all(job.profile, job.wt, cfg.verify_timeout_s,
+                                          self.stopping)
+            if self.stopping():
+                return self.finish(job, STOPPED, "stopped during the baseline run")
+            self.log(job.id, "baseline: " + ", ".join(
+                f"{r.name} {'ok' if r.ok else 'FAILED'}" for r in job.baseline))
         for attempt in range(cfg.max_repairs + 1):
             text = prompt.task_prompt(
                 job.task, notes=notes.read(cfg.home, repo.name), commands=job.profile.commands(),
                 allowed=allowed, protected=repo.protected, plan=job.task["plan"] or "",
-                failure=failure, attempt=attempt, max_repairs=cfg.max_repairs)
+                failure=failure, attempt=attempt, max_repairs=cfg.max_repairs,
+                baseline=job.baseline, require_tests=repo.require_tests)
             try:
                 result = self.call(job, "code" if attempt == 0 else "repair", attempt, text, False)
             except CapReached as exc:
@@ -276,7 +332,7 @@ class Runner:
             job.summary, job.model = result.output, result.model
             verdict = verify.verify(job.wt, job.base_sha, job.profile, allowed=allowed,
                                     protected=repo.protected, timeout=cfg.verify_timeout_s,
-                                    should_stop=self.stopping)
+                                    should_stop=self.stopping, require_tests=repo.require_tests)
             self.log(job.id, f"verify attempt {attempt}: {verdict.kind} "
                              + "; ".join(r.splitlines()[0] for r in verdict.reasons))
             if verdict.ok:
@@ -340,11 +396,20 @@ class Runner:
         if job.task["issue"] and job.repo.github:
             lines += [f"Closes #{job.task['issue']}", ""]
         lines += ["## Changed files"] + [f"- `{f}`" for f in verdict.files[:200]]
+        tests = verify.test_files(verdict.files)
+        lines += ["", f"Tests changed: {', '.join(f'`{t}`' for t in tests)}" if tests
+                  else "No test files changed."]
         lines += ["", "## Verification", "JARVIS ran these commands itself in the task worktree:"]
+        before = {r.command: r for r in job.baseline}
         for r in verdict.results:
-            lines += ["", f"`{r.command}` exit {r.code} ({r.duration}s)",
+            was = before.get(r.command)
+            note = "" if was is None else (
+                f"; before the change: {'timed out' if was.timed_out else f'exit {was.code}'}")
+            output = r.output.splitlines()
+            shown = "\n".join((["..."] if len(output) > 40 else []) + output[-40:])
+            lines += ["", f"`{r.command}` exit {r.code} ({r.duration}s){note}",
                       "<details><summary>output</summary>", "", "```",
-                      r.output or "(no output)", "```", "</details>"]
+                      shown or "(no output)", "```", "</details>"]
         if review:
             lines += ["", "## Reviewer notes (informational)", proc.redact(review.strip())]
         lines += ["", "## Run",

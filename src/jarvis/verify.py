@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import re
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -14,6 +15,15 @@ from .repo_profile import Profile
 
 PASS, EMPTY, SCOPE, COMMANDS, NO_COMMANDS, STOPPED = (
     "pass", "empty", "scope", "commands", "no_commands", "stopped")
+
+# Paths that are tests in the usual layouts of Python, JS/TS, Go, Rust, Java and Ruby.
+TEST_PATH = re.compile(
+    r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*\.py$|_test\.(py|go)$"
+    r"|\.(test|spec)\.[cm]?[jt]sx?$|Tests?\.(java|kt|cs)$|_spec\.rb$")
+
+
+def test_files(files: list[str]) -> list[str]:
+    return [f for f in files if TEST_PATH.search(f)]
 
 
 @dataclass
@@ -82,8 +92,19 @@ def run_command(name: str, command: str, cwd: Path, timeout: float,
                          round(res.duration, 1), res.timed_out)
 
 
+def run_all(profile: Profile, cwd: Path, timeout: float,
+            should_stop: Callable[[], bool]) -> list[CommandResult]:
+    results = []
+    for name, command in profile.commands():
+        if should_stop():
+            break
+        results.append(run_command(name, command, cwd, timeout, should_stop))
+    return results
+
+
 def verify(wt: Path, base_sha: str, profile: Profile, *, allowed: list[str],
-           protected: list[str], timeout: float, should_stop: Callable[[], bool]) -> Verdict:
+           protected: list[str], timeout: float, should_stop: Callable[[], bool],
+           require_tests: bool = False) -> Verdict:
     files = worktree.changed_files(wt, base_sha)
     if not files:
         return Verdict(EMPTY, ["The agent produced no changes (empty diff)."])
@@ -94,15 +115,14 @@ def verify(wt: Path, base_sha: str, profile: Profile, *, allowed: list[str],
     if not commands:
         return Verdict(NO_COMMANDS, ["No test or lint command is configured or detected, "
                                      "so the change cannot be verified."], files)
-    results = []
-    for name, command in commands:
-        if should_stop():
-            return Verdict(STOPPED, ["Stopped during verification."], files, results)
-        results.append(run_command(name, command, wt, timeout, should_stop))
+    results = run_all(profile, wt, timeout, should_stop)
     if should_stop():
         return Verdict(STOPPED, ["Stopped during verification."], files, results)
+    reasons = []
     failed = [r for r in results if not r.ok]
     if failed:
-        return Verdict(COMMANDS, [f"Verification failed: {', '.join(r.command for r in failed)}"],
-                       files, results)
-    return Verdict(PASS, [], files, results)
+        reasons.append(f"Verification failed: {', '.join(r.command for r in failed)}")
+    if require_tests and not test_files(files):
+        reasons.append("No test file was added or changed; this repo requires a test with "
+                       "every change.")
+    return Verdict(COMMANDS if reasons else PASS, reasons, files, results)

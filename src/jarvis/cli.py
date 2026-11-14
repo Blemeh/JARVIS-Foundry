@@ -55,7 +55,7 @@ def cmd_repo_add(args) -> int:
     path = worktree.toplevel(Path(args.path).expanduser().resolve())
     name = args.name or path.name
     values: dict = {"path": str(path)}
-    for key in ("github", "base", "setup", "test", "lint", "build"):
+    for key in ("github", "base", "setup", "test", "lint", "build", "label"):
         if getattr(args, key) is not None:
             values[key] = getattr(args, key)
     if args.scope:
@@ -64,13 +64,22 @@ def cmd_repo_add(args) -> int:
         values["draft"] = True
     if args.branch_prefix:
         values["branch_prefix"] = args.branch_prefix
+    if args.require_tests:
+        values["require_tests"] = True
     config.append_repo(cfg, name, values)
     cfg = config.load(cfg.home)
-    profile = repo_profile.resolve(cfg.repos[name])
+    repo = cfg.repos[name]
+    base = repo.base or worktree.default_branch(path, repo.remote)
+    ref = worktree.base_ref(path, repo.remote, base, fetch=False)
+    try:  # tasks start from the base branch, so detect its commands, not the checkout's
+        profile = repo_profile.resolve(repo, ref=ref)
+    except worktree.GitError:
+        ref, profile = "the current checkout", repo_profile.resolve(repo)
     notes_file = notes.ensure(cfg.home, name, profile)
     print(f"Added repo {name!r}: {path}")
     mode = f"GitHub {args.github}" if args.github else "local (PR body written to a file)"
     print(f"  mode: {mode}")
+    print(f"  commands detected from {ref}:")
     for key in ("setup", "test", "lint", "build"):
         print(f"  {key}: {getattr(profile, key) or '(none)'}")
     if not profile.test and not profile.lint:
@@ -116,8 +125,17 @@ def cmd_ls(args) -> int:
     print(f"{'ID':>4}  {'STATUS':17} {'REPO':12} {'TITLE':40} {'COST':>7}  RESULT")
     for t in rows:
         result = t["pr_url"] or t["reason"] or ""
-        print(f"{t['id']:>4}  {t['status']:17} {_short(t['repo'], 12):12} "
+        status = f"{t['status']}/{t['pr_state']}" if t["pr_state"] in ("merged", "closed") \
+            else t["status"]
+        print(f"{t['id']:>4}  {status:17} {_short(t['repo'], 12):12} "
               f"{_short(t['title'], 40):40} {_cost(store, t['id']):>7}  {_short(result, 70)}")
+    counts = store.pr_counts()
+    total = sum(counts.values())
+    if total:
+        merged = counts.get("merged", 0)
+        print(f"\nGitHub pull requests: {total} opened, {merged} merged "
+              f"({100 * merged // total}%), {counts.get('closed', 0)} closed without merge, "
+              f"{counts.get('open', 0)} open. Outcomes update while `jarvis serve` runs.")
     return 0
 
 
@@ -201,7 +219,7 @@ def cmd_serve(args) -> int:
     _install_signals(runner)
     print(f"jarvis serve: {len(cfg.repos)} repo(s), concurrency {cfg.concurrency}, "
           f"engine {cfg.engine}. Ctrl+C to shut down.", flush=True)
-    runner.serve(intake=not args.no_intake)
+    runner.serve(intake=not args.no_intake, once=args.once)
     print("jarvis serve: shut down cleanly.")
     return 0
 
@@ -296,6 +314,9 @@ def parser() -> argparse.ArgumentParser:
     add.add_argument("--scope", help="comma-separated allowed paths (default: whole repo)")
     add.add_argument("--draft", action="store_true", help="open pull requests as drafts")
     add.add_argument("--branch-prefix", help="task branch prefix (default: jarvis/)")
+    add.add_argument("--label", help="issue label for `jarvis serve` intake (default: jarvis)")
+    add.add_argument("--require-tests", action="store_true",
+                     help="fail verification when a change adds or changes no test file")
     add.set_defaults(func=cmd_repo_add)
     repo.add_parser("ls", help="list registered repositories").set_defaults(func=cmd_repo_ls)
 
@@ -322,6 +343,8 @@ def parser() -> argparse.ArgumentParser:
     serve = sub.add_parser("serve", help="background loop: issue intake + task queue")
     serve.add_argument("--concurrency", type=int)
     serve.add_argument("--no-intake", action="store_true", help="do not poll GitHub issues")
+    serve.add_argument("--once", action="store_true",
+                       help="one cycle: poll issues and PR outcomes, work the queue, exit")
     serve.add_argument("--allow-dev", action="store_true", help="allow a source checkout")
     serve.set_defaults(func=cmd_serve)
 

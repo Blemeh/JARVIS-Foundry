@@ -29,6 +29,7 @@ class RepoConfig:
     branch_prefix: str = "jarvis/"
     draft: bool = False
     label: str = "jarvis"
+    require_tests: bool = False  # every change must add or change a test file
 
 
 @dataclass
@@ -45,6 +46,7 @@ class Config:
     max_cost_usd: float = 5.0  # 0 disables the cap
     verify_timeout_s: int = 900
     plan_over_words: int = 150  # 0: plan only with `jarvis add --plan`
+    baseline: bool = True  # run the verification commands on the base before the agent
     review: bool = True
     concurrency: int = 1
     poll_interval_s: int = 120
@@ -66,7 +68,7 @@ SECTIONS = {
                "script": "script", "timeout_s": "agent_timeout_s"},
     "limits": {"max_repairs": "max_repairs", "task_timeout_s": "task_timeout_s",
                "max_cost_usd": "max_cost_usd", "verify_timeout_s": "verify_timeout_s",
-               "plan_over_words": "plan_over_words"},
+               "plan_over_words": "plan_over_words", "baseline": "baseline"},
     "review": {"enabled": "review"},
     "serve": {"concurrency": "concurrency", "poll_interval_s": "poll_interval_s"},
     "webhook": {"url": "webhook"},
@@ -87,6 +89,7 @@ task_timeout_s = 3600  # wall-clock cap per task
 max_cost_usd = 5.0     # cost cap per task (0 disables; only engines that report cost)
 verify_timeout_s = 900 # per verification command
 plan_over_words = 150  # tasks longer than this need an approved plan (0: only --plan)
+baseline = true        # run the checks on the base branch first, to show before -> after
 
 [review]
 enabled = true         # second agent call lists risks in the PR body
