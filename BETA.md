@@ -36,9 +36,9 @@ user), and it is not a replacement for code review: JARVIS never merges.
   available.
 - **hermes engine**: ported from the Foundry adapter's subprocess call; Hermes
   was not installed or run.
-- **Real GitHub issue intake** (`jarvis serve` polling issues labeled `jarvis`,
-  PR linking, failure comments): covered by tests with a stubbed `gh`, not run
-  against GitHub.
+- **Failure comments on GitHub issues**: when an issue's task fails, JARVIS
+  comments on the issue. Covered by tests with a stubbed `gh`; the real smoke
+  test only covers issues whose task succeeds.
 - **macOS real-engine runs**: CI runs the test suite and install smoke on macOS;
   no real-engine run was done there.
 
@@ -145,6 +145,14 @@ the expected base, head and body sections, and that `main` did not move. It then
 closed the PR and deleted both branches (0 `jarvis-e2e*` branches left). The
 coding engine in this test is the fake engine: it proves the GitHub path, not an
 LLM.
+
+0.1.0b2 extends the same workflow (run 43631259031, 2026-11-14). One
+`jarvis serve --once` took a `jarvis add` task and **real issue #9** labeled
+`jarvis-e2e`, and opened **draft PRs #10 and #11**. PR #11's body says
+`Closes #9`, and both show the baseline (`before the change: exit 1`). After a
+review comment on #10 and closing both, a second `jarvis serve --once` recorded
+them as `DONE/closed`, `jarvis ls` reported "2 opened, 0 merged (0%)", and the
+review comment became a proposed note. PRs, issue and branches were cleaned up.
 
 ## Owner actions
 
