@@ -190,6 +190,11 @@ proposed exactly those two durable notes ($0.09, 5 s).
 
 ## STOP and RESUME with the real engine
 
+Re-run on 0.1.0rc1 (installed copy, 2026-11-14): STOPPED **0.81 s** after
+`jarvis stop`, agent process group gone, `serve` kept running and started
+nothing, and both tasks were DONE after `jarvis resume`. The original b1 run
+follows.
+
 `python scripts/make_fixtures.py stop DIR --jarvis <installed jarvis>`, run
 2026-11-14 on Linux with `claude_code`: an installed `jarvis serve` worked task 1
 (`pyshop`, add tests) with task 2 queued. 8 seconds into the agent's work,
