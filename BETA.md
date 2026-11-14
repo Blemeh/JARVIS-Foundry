@@ -77,6 +77,13 @@ recorded as `stopped`; `serve` stayed up and started nothing (task 2 still
 `QUEUED` 3 s later). After `jarvis resume`, `serve` re-ran task 1 and then ran
 task 2: both `DONE`. SIGTERM then shut `serve` down cleanly (exit 0).
 
+## Plan-first with the real engine
+
+`jarvis add --plan` on the Go fixture (add `Truncate`), 2026-11-14: the read-only
+plan call produced a numbered plan ($0.14, 16 s) and left no branch and no
+change behind; `jarvis approve 1` and `jarvis run` then produced a DONE task
+(code $0.16, review $0.10).
+
 ## Owner actions
 
 From the reset audit (section 7, Phase 0). Only you can do these, on your

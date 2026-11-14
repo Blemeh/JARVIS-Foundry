@@ -45,10 +45,14 @@ RUNNING left by a dead process ──next start──> QUEUED (worktree discarde
 - JARVIS commits the agent's work itself; failed attempts are committed to the task branch so they can be inspected.
 - Local mode: the branch goes to the repo's `origin` remote if one exists (else stays local) and the PR body is written to `$JARVIS_HOME/prs/`.
 - `serve` shutdown kills in-flight agent runs and re-queues their tasks; STOP marks them STOPPED instead.
-- A crashed RUNNING task (owner process gone) is re-queued from scratch on the next start.
+- A crashed RUNNING task (owner process gone) has its orphaned agent killed (runs record the engine pid) and is re-queued from scratch on the next start.
 - `serve` refuses to run from a source checkout unless `--allow-dev` is given.
 - Cost is whatever the engine reports; otherwise it is recorded as NOT REPORTED and only the time cap applies.
 - Plan and review calls run the agent read-only; JARVIS discards any change they make.
+- If the agent commits on its own despite the rules, its commits are delivered like JARVIS's own (the diff is always measured from the base).
+- Verification commands run with a private Python bytecode cache, so a same-size edit within one second can never run stale `.pyc` files.
+- The webhook also sends `plan_ready`, because a plan waiting for approval needs the owner just like a failure.
+- Scope globs use fnmatch: `*` also matches `/`, like gitignore patterns without a slash.
 
 ## Later (not in the beta)
 - A small web dashboard (queue, runs, PRs, cost).
