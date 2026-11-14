@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="2.406" timestamp="2026-08-24T00:16:34.747457+02:00" hostname="DESKTOP-42E0DQE"><testcase classname="tests.foundry.test_v3_resources" name="test_resource_snapshot_and_limits" time="2.323" /></testsuite></testsuites>

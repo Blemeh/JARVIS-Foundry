@@ -9,89 +9,29 @@
 credentials.*
 secrets.*
 
-# Runtime state must never be committed
-var/*
-!var/convergence-20260916/
-!var/convergence-20260916/**
-var/convergence-20260916/**/run/
-!var/integrated-acceptance-20260916/
-!var/integrated-acceptance-20260916/**
-var/integrated-acceptance-20260916/**/run/
-!var/lane1-demo/
-!var/lane1-demo/**
-!var/lane2-demo/
-!var/lane2-demo/**
-var/lane2-demo/.jarvis-personal-operator/
-var/lane2-demo/hello-1*.txt
-var/lane2-demo/hello-open-1*.txt
-var/lane2-demo/hello-save-1*.txt
-var/lane2-demo/probe-*.txt
-var/lane2-demo/lane2-excel-*.xlsx
-var/lane2-demo/lane2.xlsx
-var/lane2-demo/~$*
-!var/lane5-demo/
-!var/lane5-demo/**
-var/lane5-demo/generated/
-!var/purpose-recovery-ii-20260917/
-!var/purpose-recovery-ii-20260917/**
-state/
-logs/
-scripts/.cc_live_e2e/
+# Runtime state never belongs in git
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
-EMERGENCY_STOP
+.jarvis/
 
 # Python
 __pycache__/
 *.egg-info/
 *.py[cod]
 .pytest_cache/
-.mypy_cache/
 .ruff_cache/
 .venv/
-.test-venv/
-venv/
-.playwright-browsers/
+build/
+dist/
 
 # Node
 node_modules/
-.npm/
-.pnpm-store/
-dist/
-build/
-coverage/
 
-# Editors and operating system
-.idea/
+# Editors / OS
 .vscode/
-*.swp
-*.tmp
+.idea/
+.DS_Store
 Thumbs.db
-Desktop.ini
-
-# Machine-local provider credentials (never commit live copies)
-**/provider.yaml
-
-.worktrees/
-.h/
-artifacts/
-reports/generated/
-snapshots/
-backups/
-full-suite-run.log
-
-# Disposable overnight release-factory marker and evidence stay local.
-OVERNIGHT_FACTORY_ROOT.json
-evidence/release/overnight/
-
-# Disposable V10-A golden-journey evidence stays outside the source history.
-evidence-v10-a-golden-journey-1*.json
-
-# test scratch + editor state
-/pytest-of-*/
-/tmp*/
-.cursor/
-/out/

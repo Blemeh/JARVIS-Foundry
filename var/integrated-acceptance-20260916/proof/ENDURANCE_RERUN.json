@@ -1,7 +1,0 @@
-{
-  "schema": "jarvis.integrated-acceptance.focused-rerun.v1",
-  "test": "tests/foundry/test_v12_endurance_convergence.py::test_real_disposable_endurance_campaign_script",
-  "result": "PASS",
-  "wall_time_s": 48.96,
-  "note": "Proof now admits both dispatchable children to RUNNING via record_child_state before sequential MissionLoop work. Peak parallel occupancy is no longer taken from leftover RUNNING after verified PASS."
-}

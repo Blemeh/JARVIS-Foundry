@@ -1,7 +1,0 @@
-============================= test session starts =============================
-collected 10 items
-
-tests\foundry\test_purpose_recovery_ii_b_verifier_routing.py ..........  [100%]
-
-======================== 10 passed in 65.51s (0:01:05) ========================
-EXIT=0

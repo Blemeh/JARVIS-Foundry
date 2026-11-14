@@ -1,9 +1,0 @@
-{
-  "schema": "jarvis.integrated-acceptance.focused-rerun.v1",
-  "test": "tests/foundry/test_release_packaging_browser.py::test_fresh_immutable_release_contains_and_runs_v10_web_runtime",
-  "result": "PASS",
-  "source_sha": "0bfdfa851f6c3f4d0203d1e75216967587ecc4d6",
-  "tree": "clean",
-  "wall_time_s": 175.993,
-  "note": "Same packaging gate that failed on the dirty acceptance tree. Clean HEAD of the product repair passed without a second full-suite farm."
-}
