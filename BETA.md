@@ -1,4 +1,4 @@
-# JARVIS private beta (0.1.0rc1)
+# JARVIS private beta (0.1.0rc2)
 
 ## Who this beta is for
 
@@ -39,6 +39,11 @@ Experimental: the `codex` and `hermes` engines, and Windows.
   groups) need `setup`/`test` set in the repo config.
 - Large tasks (over 150 words by default) wait for `jarvis approve`; in a fully
   unattended `serve` they stay waiting until you approve them.
+- Cost depends mostly on the engine's model. With `[engine] model` empty, Claude
+  Code picks its own default, and that default changed during testing (from
+  `claude-opus-5-5` to the pricier `claude-fable-5-2`), raising cost per task
+  about 1.5 to 2 times with the same outcomes. Pin `[engine] model` for
+  predictable cost; every PR shows the model it used.
 
 ## NOT VERIFIED
 
@@ -95,6 +100,43 @@ branches untouched, 0 false warnings, about $5.96 in total.
 - **Dependencies:** all three projects got their dependencies installed per task
   with no configuration. Before 0.1.0rc1, the two Python projects would have
   failed verification on every task.
+
+### The same suite on 0.1.0rc2
+
+Commit b26974f, 2026-11-14. This release changes the Claude Code flags: no
+inherited MCP servers, and read-only tools for plan, review and lessons calls.
+During this run the engine's default model had changed to `claude-fable-5-2`
+(one call still ran on `claude-opus-5-5`).
+
+| # | Repo | Task | Outcome | Hidden check | Repairs | Duration | Cost |
+|---|---|---|---|---|---|---|---|
+| Line | Qty × unit price | Exact | Printed |
+| 2 | invoicer | feature: Support an invoice-level discount | DONE (after `jarvis approve --note`) | pass | 0 | plan + run | $2.53 |
+| 1 | 1 × 0.333 | 0.333 | 0.33 |
+| 3 | 1 × 0.333 | 0.333 | 0.33 |
+| 1 | invoicer | bugfix: Invoice amounts sometimes one cent lower than our bookkeeping software | DONE | pass | 0 | 1m07s | $0.76 |
+| 3 | invoicer | multi-file: Rename `qty` to `quantity` everywhere | DONE | pass | 0 | 0m59s | $0.99 |
+| 4 | invoicer | impossible: Subtotal must always match both the printed lines and the exact sum | FAILED (expected) | - | 0 | 0m34s | $0.45 |
+| 5 | geokit | bugfix: parse_coordinate puts southern/western points in the wrong hemisphere | DONE | pass | 0 | 0m44s | $0.73 |
+| 6 | geokit | refactor: Port Point and BoundingBox to attrs | DONE | pass | 0 | 1m36s | $0.92 |
+| 7 | geokit | add-tests: Add tests for the geohash module | DONE | pass | 0 | 3m27s | $1.72 |
+| 8 | taskboard | bugfix: WIP limit lets one extra card in | DONE | pass | 0 | 0m35s | $0.74 |
+| 9 | taskboard | feature: Allow excluding things in list queries | DONE | pass | 0 | 1m42s | $1.08 |
+| 10 | taskboard | performance: Everything is slow on big boards | DONE | pass | 0 | 1m33s | $1.19 |
+| Line | Qty × unit price | Exact | Printed |
+| 1 | 1 × 0.333 | 0.333 | 0.33 |
+| 3 | 1 × 0.333 | 0.333 | 0.33 |
+
+Result: **the same, all 9 doable tasks done and passing their hidden checks**, the
+impossible task failed cleanly, 0 false successes, 0 false warnings. Total
+$11.11.
+
+The higher cost comes from the pricier default model, not from JARVIS. With
+the narrowed read-only tools, a review call's context fell from a median of
+175k tokens (rc1 run) to 64k tokens (this run).
+
+The "Owner's answers" note given with `jarvis approve --note` reached the plan
+the agent followed.
 
 ## Fixture suite on 0.1.0rc1 (no regression)
 
