@@ -23,7 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      JARVIS_HOME: ${{ runner.temp }}/jarvis-home
       BASE: jarvis-e2e-base
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +33,7 @@ jobs:
           python-version: "3.12"
       - name: Install JARVIS from this checkout
         run: |
+          echo "JARVIS_HOME=$RUNNER_TEMP/jarvis-home" >> "$GITHUB_ENV"
           uv tool install .
           echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
       - name: Create the throwaway base branch with a fixture project
