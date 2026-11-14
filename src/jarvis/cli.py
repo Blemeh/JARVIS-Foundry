@@ -176,7 +176,11 @@ def cmd_run(args) -> int:
     count = runner.run_queue()
     print(f"Processed {count} task(s).")
     for t in store.tasks(limit=count) if count else []:
-        print(f"  #{t['id']} {t['status']}: {t['pr_url'] or t['reason'] or ''}")
+        if t["status"] == AWAITING_APPROVAL:
+            print(f"  #{t['id']} plan ready: read it with `jarvis show {t['id']}`, then "
+                  f"`jarvis approve {t['id']}` (or --reject)")
+        else:
+            print(f"  #{t['id']} {t['status']}: {t['pr_url'] or t['reason'] or ''}")
     if stop.active(cfg.home):
         print("STOP is active; the queue is paused.")
     return 0
