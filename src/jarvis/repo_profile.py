@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -92,9 +93,34 @@ def detect(path: Path) -> Profile:
     return Profile()
 
 
-def resolve(repo: RepoConfig, path: Path | None = None) -> Profile:
+MANIFESTS = {"package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "uv.lock",
+             "pyproject.toml", "setup.py", "setup.cfg", "tox.ini", "pytest.ini", "conftest.py",
+             "requirements.txt", "requirements-dev.txt", "go.mod", "Cargo.toml", "Makefile"}
+
+
+def detect_ref(repo_path: Path, ref: str) -> Profile:
+    """Detect from a branch's committed manifests instead of the current checkout."""
+    from .worktree import git
+
+    with tempfile.TemporaryDirectory(prefix="jarvis-profile-") as tmp:
+        root = Path(tmp)
+        for entry in git(repo_path, "ls-tree", "-z", ref).split("\0"):
+            if "\t" not in entry:
+                continue
+            meta, name = entry.split("\t", 1)
+            if meta.split()[1] == "tree":
+                (root / name).mkdir(exist_ok=True)
+            elif name in MANIFESTS:
+                (root / name).write_text(git(repo_path, "show", f"{ref}:{name}"),
+                                         encoding="utf-8")
+            else:
+                (root / name).touch()
+        return detect(root)
+
+
+def resolve(repo: RepoConfig, path: Path | None = None, ref: str | None = None) -> Profile:
     """Detected commands with config overrides (None: keep detected, "": disable)."""
-    profile = detect(path or repo.path)
+    profile = detect_ref(repo.path, ref) if ref else detect(path or repo.path)
     for name in ("setup", "test", "lint", "build"):
         override = getattr(repo, name)
         if override is not None:

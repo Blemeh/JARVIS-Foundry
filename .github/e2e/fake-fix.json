@@ -1,3 +1,4 @@
 {"code": [{"write": {"calc.py": "def add(a, b):\n    return a + b\n"},
            "output": "Fixed add() to add instead of subtract.", "cost": 0.0,
-           "model": "fake-model"}]}
+           "model": "fake-model"}],
+ "lessons": {"output": "NOTE: e2e lesson: keep calc.py functions pure", "cost": 0.0}}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from .repo_profile import Profile
@@ -41,11 +42,26 @@ def extract(output: str, limit: int = 3) -> list[str]:
     return found[:limit]
 
 
+def _norm(text: str) -> str:
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", text.lower()).split())
+
+
+def _known(text: str, seen: list[str]) -> bool:
+    norm = _norm(text)
+    return any(norm == s or SequenceMatcher(None, norm, s).ratio() >= 0.8 for s in seen)
+
+
 def propose(store, home: Path, repo: str, task_id: int, output: str) -> list[int]:
-    existing = read(home, repo).lower()
-    pending = {row["text"].lower() for row in store.proposals(repo, status=None)}
-    return [store.add_proposal(repo, task_id, text) for text in extract(output)
-            if text.lower() not in existing and text.lower() not in pending]
+    """Store new NOTE lines as proposals, skipping ones already noted, proposed or
+    rejected (also near-duplicates that differ only in wording details)."""
+    seen = [_norm(line.lstrip("-* ")) for line in read(home, repo).splitlines() if line.strip()]
+    seen += [_norm(row["text"]) for row in store.proposals(repo, status=None)]
+    ids = []
+    for text in extract(output):
+        if not _known(text, seen):
+            ids.append(store.add_proposal(repo, task_id, text))
+            seen.append(_norm(text))
+    return ids
 
 
 def accept(store, home: Path, proposal_id: int):

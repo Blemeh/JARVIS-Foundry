@@ -34,7 +34,7 @@ class FakeAgent(AgentRunner):
         return cls(json.loads(Path(path).expanduser().read_text(encoding="utf-8")))
 
     def step(self, req: AgentRequest) -> dict:
-        if req.kind in ("plan", "review"):
+        if req.kind in ("plan", "review", "lessons"):
             return self.script.get(req.kind, {"output": f"fake {req.kind}", "cost": 0.0})
         steps = self.script.get("code") or [DEFAULT_STEP]
         return steps[min(req.attempt, len(steps) - 1)]

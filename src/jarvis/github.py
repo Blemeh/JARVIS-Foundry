@@ -59,3 +59,11 @@ def labeled_issues(github: str, label: str) -> list[dict]:
 
 def comment(github: str, number: int, body: str) -> None:
     gh("issue", "comment", str(number), "--repo", github, "--body", body)
+
+
+def pr_outcome(url: str) -> tuple[str, list[str]]:
+    """(state: open | merged | closed, review feedback texts) of a pull request."""
+    data = json.loads(gh("pr", "view", url, "--json", "state,reviews,comments") or "{}")
+    feedback = [item.get("body", "").strip() for key in ("reviews", "comments")
+                for item in data.get(key) or [] if (item.get("body") or "").strip()]
+    return str(data.get("state", "OPEN")).lower(), feedback
