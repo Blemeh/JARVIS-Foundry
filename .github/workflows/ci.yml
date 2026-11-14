@@ -1,9 +1,9 @@
 name: ci
 
-# The UI lane is a hard gate. The Python lane is informational until a clean
-# Windows runner has been shown to match a developer machine: it publishes the
-# per-file result JSON (scripts/verify.py) so regressions are attributable.
+# Every job gates. No continue-on-error anywhere.
 on:
+  push:
+    branches: [main, "claude/**"]
   pull_request:
   workflow_dispatch:
 
@@ -11,39 +11,81 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  ui:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ui/command-center
+  ruff:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: astral-sh/setup-uv@v6
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: ui/command-center/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+          python-version: "3.12"
+      - run: uv run --frozen ruff check
+      - name: No secrets in the repository
+        run: |
+          pattern='gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+          if git grep -nE "$pattern"; then echo "possible secret committed"; exit 1; fi
 
-  python:
-    runs-on: windows-latest
-    continue-on-error: true
+  loc-budget:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
-          cache: pip
-      - run: python -m pip install -e ".[dev]"
-      - run: python scripts/verify.py --lane python --jobs 4 --timeout 240 --json out/verify.json
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
-        if: always()
+          python-version: "3.12"
+      - run: python scripts/loc_budget.py
+
+  pytest:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
         with:
-          name: verify-python
-          path: out/verify.json
+          python-version: ${{ matrix.python }}
+      - run: uv run --frozen pytest -q
+
+  install-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: uv tool install
+        run: |
+          uv tool install .
+          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+      - name: jarvis --help and init in a temporary home
+        run: |
+          export JARVIS_HOME="$RUNNER_TEMP/jarvis home"
+          jarvis --version
+          jarvis --help
+          jarvis init
+          test -f "$JARVIS_HOME/config.toml"
+          jarvis repo ls
+          jarvis ls
+      - name: pipx install
+        run: pipx run --spec . jarvis --version

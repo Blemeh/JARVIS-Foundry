@@ -1,5 +1,28 @@
-Build JARVIS Foundry: a persistent autonomous personal AI organization powered by Hermes, Obsidian, and specialist AI agents. JARVIS should operate continuously while I am away: understand my goals, maintain institutional memory, search online, discover opportunities and problems, create and prioritize missions, research, build software and other useful assets, test and independently verify its work, repair failures, maintain completed projects, run experiments, and keep selecting the next valuable action without waiting for prompts or routine permission.
+# JARVIS
 
-Obsidian is JARVIS's evolving intelligence and long-term memory. Hermes coordinates execution and specialist workers. JARVIS must learn from evidence and outcomes, improve its workflows, agents, tools, knowledge, and eventually its own system through tested candidate releases, canaries, verification, and automatic rollback.
+JARVIS is my software-development assistant. I give it a coding task for one of
+my git repos, from the command line or by labeling a GitHub issue `jarvis`. It
+works each task in an isolated git worktree and branch, using a strong coding
+agent run headlessly. It then checks the work itself: it runs the repo's own
+test and lint commands, confirms the diff is non-empty, and confirms the diff
+stays inside the allowed scope. It never trusts the agent's own claims.
 
-The owner manages by exception: JARVIS acts by default, reports important results and decisions, and continues working until explicitly redirected, vetoed, paused, or stopped. The final experience should feel like JARVIS from science fiction: an always-active digital company, research laboratory, builder, operator, and self-improving second brain running on my Windows computer.
+If verification fails, JARVIS feeds the failure output back to the agent, at
+most twice. If it still fails, the task is marked FAILED with the reason and the
+branch is kept for inspection. If it passes, JARVIS pushes the branch and opens
+a pull request whose body shows a summary, the changed files, the verification
+commands and their output, the engine and model, and the cost and duration.
+
+JARVIS keeps a notes file per repo (commands, conventions, lessons). After a
+task it proposes additions; I accept or reject them.
+
+JARVIS never merges, never pushes to a default branch and never deploys.
+`jarvis stop` halts all work within seconds, including the agent process.
+`jarvis resume` continues the queue.
+
+Success = useful pull requests that I merge, every week.
+
+Out of scope until this file says otherwise: email, calendar, voice, chat
+integrations other than one generic webhook, desktop or browser automation,
+office documents, a world model, inventing its own goals, scheduled jobs,
+self-updating, trust levels, a web dashboard.

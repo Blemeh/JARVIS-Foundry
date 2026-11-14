@@ -1,9 +1,0 @@
-# Phase 3 discovery is independently disabled by default.
-enabled: false
-idle_gap_seconds: 300
-max_session_duration_seconds: 3600
-min_occurrences: 2
-min_tokens: 1
-similarity_threshold: 0.8
-freshness_horizon_seconds: 2592000
-max_similarity_comparisons: 256

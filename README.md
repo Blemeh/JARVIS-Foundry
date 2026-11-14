@@ -1,78 +1,193 @@
-# JARVIS Foundry
+# JARVIS
 
-**A durable autonomy kernel and independent Supervisor for a local autonomous AI organization.**
+JARVIS turns a coding task for one of your git repos into a tested pull request.
 
-JARVIS Foundry is a Windows-first research platform for planning, executing, verifying, and recovering work with durable evidence. It combines a deterministic control plane, scoped worker capabilities, long-term memory, and a local command center.
+You give it a task (`jarvis add`, or a GitHub issue labeled `jarvis`). It creates
+an isolated git worktree and branch, runs a coding agent headlessly in it, and
+then checks the work itself: it runs the repo's own test and lint commands,
+confirms the diff is non-empty and confirms the diff stays inside the allowed
+scope. It never trusts the agent's own claims. If verification fails it feeds
+the failure output back to the agent (at most 2 repairs). If it passes, it
+pushes the branch and opens a pull request with a summary, the changed files,
+the verification commands and their output, the engine and model, and the cost
+and duration.
 
-## What it demonstrates
+JARVIS never merges, never pushes to a default branch and never deploys.
+`jarvis stop` halts everything within seconds.
 
-- **Durable truth** - an append-only SQLite event ledger with event-derived projections and reconciliation.
-- **Independent control** - Supervisor heartbeats, leases, recovery, and an emergency STOP that do not depend on an LLM, UI, provider, or network.
-- **Brokered workers** - role-based workers receive scoped capabilities rather than raw credentials; consequential work is independently verified.
-- **Evidence-driven delivery** - fault injection, acceptance gates, candidate releases, canaries, rollback, and explicit `UNKNOWN` / `NOT_TESTED` outcomes.
-- **Long-term memory and visibility** - governed Obsidian integration plus a command center that projects ledger state without becoming a second source of truth.
+Status: beta (`0.1.0b1`). See [BETA.md](BETA.md) for what is verified and what is not.
 
-## Architecture
+## Requirements
 
-```text
-Mission
-  -> Supervisor + policy
-  -> capability broker
-  -> scoped worker
-  -> ledger + evidence
-  -> independent verifier
-  -> projections / command center
+- Python 3.11 or newer, with [uv](https://docs.astral.sh/uv/) (or pipx).
+- git, with an identity configured:
+  `git config --global user.name "Your Name"` and
+  `git config --global user.email "you@example.com"`.
+- One coding-engine CLI, installed and logged in:
+  - **Claude Code** (default): `claude` must work in your terminal.
+  - Codex CLI (`codex`) or Hermes Agent (`hermes`) are supported but not yet verified.
+- For GitHub mode only: the [GitHub CLI](https://cli.github.com/) `gh`, logged in
+  (`gh auth login`) with push access to the repo.
+
+## Install
+
+```bash
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b1
+# or
+pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b1
 ```
 
-## Tech stack
+If `jarvis` is not found afterwards, run `uv tool update-shell` and open a new
+terminal (or add `~/.local/bin` to your `PATH`).
 
-`Python 3.13+` · `SQLite` · `PyYAML` · `pytest` · `Windows Task Scheduler` · `Obsidian` · local web UI
+## 5-minute quickstart
 
-## Quick start
+This uses a tiny demo repo with a failing test, in local mode (no GitHub
+needed). Commands are for a POSIX shell (Linux, macOS, Git Bash on Windows).
 
-```powershell
-git clone https://github.com/Blemeh/JARVIS-Foundry.git
-cd JARVIS-Foundry
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e ".[dev]"
-jarvis --help
-pytest
+```bash
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b1
+export PATH="$HOME/.local/bin:$PATH"   # only needed if `jarvis` is not found
+jarvis init
+
+mkdir demo && cd demo
+git init -b main
+printf 'def add(a, b):\n    return a - b\n' > calc.py
+printf 'import unittest\n\nfrom calc import add\n\n\nclass T(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n' > test_calc.py
+git add . && git commit -m "demo"
+cd ..
+
+jarvis repo add demo
+jarvis add --repo demo "Fix add() so the tests pass"
+jarvis run
+jarvis ls
 ```
 
-Running the daemon changes local host state. Read [`docs/governance/AUTONOMY_MANDATE.md`](docs/governance/AUTONOMY_MANDATE.md) and [`docs/operations/EMERGENCY_STOP_AND_RECOVERY.md`](docs/operations/EMERGENCY_STOP_AND_RECOVERY.md) before enabling it.
+`jarvis run` works the queue in the foreground. When it finishes, `jarvis ls`
+shows the task as `DONE` with the path of the pull-request body (in local mode
+the PR body is written to `~/.jarvis/prs/<id>.md` and the branch `jarvis/<id>`
+stays in your repo). `jarvis show 1` prints the runs, costs and the log.
 
-## Health checks
+For a real repo on GitHub:
 
-```powershell
-python scripts/verify.py                 # python + ui + docs lanes (per-file timeouts, hermetic env)
-python scripts/verify.py --lane ui       # command center: typecheck, lint, tests, build
-python scripts/verify.py --lane python --match campaign
-python scripts/doctor.py                 # read-only machine/project drift report
+```bash
+jarvis repo add ~/code/api --github you/api
+jarvis add --repo api "Add rate limiting to POST /login"
+jarvis run          # or: jarvis serve  (also picks up issues labeled "jarvis")
 ```
 
-`verify.py` runs each test file in its own process so a hung file cannot stall the
-run or hide other results, and it redirects `LOCALAPPDATA`/`HERMES_HOME` so tests can
-never touch the live install. `doctor.py` reports git/worktree sprawl, installed-release
-lag, user-PATH leaks, leftover scratch and stale docs.
-## Repository map
+## Commands
 
-- `src/jarvis_foundry/` - autonomy kernel, Supervisor, ledger, workers, and CLI
-- `tests/` - unit, fault-injection, and acceptance coverage
-- `schemas/` - machine-readable contracts
-- `scripts/` - deterministic tooling and checks
-- `ui/` - local command-center surface
-- `docs/` - architecture, governance, operations, and evidence
+| Command | What it does |
+|---|---|
+| `jarvis init` | Create `~/.jarvis` (or `$JARVIS_HOME`) with `config.toml` and the queue database |
+| `jarvis repo add PATH [--name N] [--github owner/repo] [--base B] [--test CMD] [--lint CMD] [--setup CMD] [--build CMD] [--scope a,b] [--draft] [--branch-prefix P]` | Register a repo; prints the detected commands |
+| `jarvis repo ls` | List registered repos |
+| `jarvis add --repo N "task" [--plan] [--scope a,b] [--body-file F]` | Queue a task (first line is the title) |
+| `jarvis ls [--status S]` | List tasks with status, cost and PR link or failure reason |
+| `jarvis show ID` | Task details, plan, runs (engine, model, cost, transcript path) and log |
+| `jarvis run` | Process queued tasks in the foreground until the queue is empty |
+| `jarvis serve [--concurrency N] [--no-intake]` | Background loop: polls GitHub issues labeled `jarvis`, runs the queue |
+| `jarvis stop [reason]` | STOP: kill running agents, halt the queue |
+| `jarvis resume` | Clear STOP and re-queue stopped tasks |
+| `jarvis approve ID [--reject]` | Approve (or reject) the plan of a large task |
+| `jarvis notes REPO [--accept ID] [--reject ID]` | Show the repo's notes and proposed lessons |
 
-## Current boundary
+Task states: `QUEUED`, `PLANNING`, `AWAITING_APPROVAL`, `RUNNING`, `DONE`,
+`FAILED` (branch kept for inspection), `REJECTED` (edited outside its scope),
+`STOPPED`.
 
-JARVIS is active local research and development. The authoritative status, evidence, schema, runtime, and deployment boundaries are maintained in [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md). Experimental or disabled-by-default capabilities are documented there; this summary intentionally avoids turning source or test evidence into a production claim.
+## Config reference
 
-## Start here
+`jarvis init` writes `~/.jarvis/config.toml`. Set `JARVIS_HOME` to use another
+folder. Unknown keys are errors, so typos do not pass silently.
 
-- [`docs/architecture/00_READ_FIRST.md`](docs/architecture/00_READ_FIRST.md) - architecture entry point
-- [`docs/STATUS.md`](docs/STATUS.md) - short, reconciled "where are we" (read this first)
-- [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) - current status and evidence
-- [`docs/governance/`](docs/governance/) - autonomy and capability rules
-- [`docs/evidence/`](docs/evidence/) - gate reports and verification records
+| Key | Default | Meaning |
+|---|---|---|
+| `[engine] name` | `"claude_code"` | `claude_code`, `codex`, `hermes` or `fake` |
+| `[engine] model` | `""` | Model passed to the engine; empty uses the engine's default |
+| `[engine] command` | `""` | Engine executable; empty uses `claude` / `codex` / `hermes` |
+| `[engine] args` | `[]` | Extra arguments appended to the engine command |
+| `[engine] timeout_s` | `1800` | Timeout per agent call |
+| `[engine] script` | `""` | Fake engine only: JSON script path |
+| `[limits] max_repairs` | `2` | Repair attempts after a failed verification |
+| `[limits] task_timeout_s` | `3600` | Wall-clock cap per task |
+| `[limits] max_cost_usd` | `5.0` | Cost cap per task (`0` disables). Only engines that report cost can be capped; others show `NOT REPORTED` |
+| `[limits] verify_timeout_s` | `900` | Timeout per verification command |
+| `[limits] plan_over_words` | `150` | Tasks longer than this need an approved plan first (`0`: only with `--plan`) |
+| `[review] enabled` | `true` | A second, read-only agent call lists risks in the PR body (informs, never gates) |
+| `[serve] concurrency` | `1` | Tasks run in parallel by `jarvis serve` |
+| `[serve] poll_interval_s` | `120` | GitHub issue polling interval |
+| `[webhook] url` | `""` | POSTs `{"event": "pr_ready" \| "failed" \| "plan_ready", "task_id", "repo", "title", "status", "pr_url", "reason"}` |
 
+Per repo (`[repos.<name>]`, written by `jarvis repo add`, editable by hand):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `path` | required | The repo's local checkout |
+| `github` | `""` | `owner/name`: push and open real PRs with `gh`. Empty: local mode |
+| `base` | default branch | Branch the task branches start from and PRs target |
+| `remote` | `"origin"` | Remote to fetch from and push task branches to |
+| `setup`, `test`, `lint`, `build` | detected | Commands; `""` disables one. Detected from `package.json`, `pyproject.toml`/`uv.lock`, `go.mod`, `Cargo.toml`, `Makefile` |
+| `scope` | `[]` | Allowed paths (prefixes or globs; `*` also crosses folders). Empty: whole repo |
+| `protected` | `[]` | Paths the agent may never touch, e.g. `[".github/"]` |
+| `branch_prefix` | `"jarvis/"` | Task branches are `<prefix><task id>` |
+| `draft` | `false` | Open PRs as drafts |
+| `label` | `"jarvis"` | Issue label picked up by `jarvis serve` |
+
+Notes live in `~/.jarvis/notes/<repo>.md` (commands, conventions, lessons) and
+go into every prompt for that repo. After a task, lines the agent marks
+`NOTE:` become proposals; `jarvis notes <repo>` lists them for you to accept
+or reject. JARVIS never writes notes into your repo.
+
+## Safety model
+
+- **Isolation.** Every task runs in its own git worktree on its own branch
+  (`jarvis/<id>`), under `~/.jarvis/worktrees`. Your checkout is never touched.
+- **Never merges, never touches default branches.** JARVIS only pushes the task
+  branch, refuses to push to the base or default branch, never force-pushes,
+  and only opens pull requests.
+- **Independent verification.** JARVIS computes the diff itself (including
+  untracked files), rejects empty diffs, rejects edits outside `scope` or
+  inside `protected` (state `REJECTED`, no repair), and runs the repo's own
+  commands. No configured or detected command means the task cannot pass.
+- **Caps.** Time per agent call, time per task, cost per task and the number of
+  repairs are all capped.
+- **Read-only planning and review.** Plan and review calls run the agent with
+  read-only tools, and JARVIS discards any change they make anyway.
+- **Secrets.** Output that looks like a token or key is redacted before it is
+  written to logs, transcripts or PR bodies.
+- **What the agent can do.** The agent runs as your user. With Claude Code,
+  file edits are confined to the worktree and Bash is pre-approved so it can
+  run tests; Bash commands themselves are not sandboxed. Run JARVIS in a
+  container or VM if you do not trust the repo or the task.
+
+## STOP and RESUME
+
+`jarvis stop` writes a STOP file in `JARVIS_HOME`. Every running JARVIS process
+checks it several times a second: it kills the agent's whole process tree,
+marks the task `STOPPED`, removes its worktree and starts nothing new. The
+command waits until no task is running and reports the result. No LLM and no
+network are involved.
+
+`jarvis resume` removes the STOP file and re-queues the stopped tasks. A running
+`jarvis serve` continues on its own; otherwise run `jarvis run`.
+
+Ctrl+C on `jarvis run` or `jarvis serve` is a graceful shutdown: the agent is
+killed and its task goes back to `QUEUED`. If a JARVIS process crashes, the next
+`jarvis run` or `jarvis serve` kills the orphaned agent and re-queues its task.
+
+`jarvis serve` refuses to run from a source checkout (use an installed copy),
+so switching branches in a development checkout never changes a running JARVIS.
+
+## Development
+
+```bash
+uv run pytest
+uv run ruff check
+uv run python scripts/loc_budget.py      # src/jarvis must stay <= 5,000 lines
+uv run python scripts/make_fixtures.py run /tmp/jarvis-fixtures   # real-engine suite
+```
+
+See [AGENTS.md](AGENTS.md) for the working rules and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the design.

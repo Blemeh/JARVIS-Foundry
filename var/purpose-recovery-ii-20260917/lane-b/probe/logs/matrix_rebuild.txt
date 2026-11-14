@@ -1,7 +1,0 @@
-{
-  "domains": 19,
-  "counts": {
-    "REAL_AUTONOMOUS": 19
-  }
-}
-EXIT=0
