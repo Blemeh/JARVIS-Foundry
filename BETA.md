@@ -118,28 +118,18 @@ LLM.
 
 ## Owner actions
 
-From the reset audit (section 7, Phase 0). Only you can do these, on your
-Windows machine where the old Foundry ran:
+None are required for this beta.
 
-1. Stop the live system:
-   `schtasks /End /TN "JARVIS-Foundry-Supervisor"` and
-   `schtasks /Change /TN "JARVIS-Foundry-Supervisor" /DISABLE`.
-   Also disable `Hermes_Gateway` unless you use Hermes messaging for something
-   else. Check Task Manager: no JARVIS `python`/`pythonw` processes left.
-2. Delete the 8 disabled leftover scheduled tasks listed in the old
-   `docs/STATUS.md` (at tag `archive/foundry-final`), with
-   `schtasks /Delete /TN "<name>" /F`.
-3. Zip the foundry home (`%LOCALAPPDATA%\hermes\foundry\`, which holds the
-   ledger DB) to external storage.
-4. Once the zip exists, delete `%LOCALAPPDATA%\JARVIS\releases` (~131 GB) and
-   remove `%LOCALAPPDATA%\JARVIS\bin` from your user PATH.
-5. The archive tag `archive/foundry-final` is on GitHub (done). The ~96 local
-   `archive/*` lane tags were never pushed: push them with
-   `git push origin --tags` if you want them, or accept that they are gone.
-6. Clean up old worktrees: `git worktree list`, then `git worktree remove <path>`
-   for each old one (the `C:\temp\...` folders), then `git worktree prune`.
-7. Decide about the contributor (trains-on-your-data) model tier before pointing
-   any engine at private repos.
+- **Old Foundry install:** the reset audit (section 7, Phase 0) has a checklist
+  for shutting down a live Foundry on Windows: a `JARVIS-Foundry-Supervisor`
+  scheduled task, a foundry home under `%LOCALAPPDATA%\hermes\foundry\` and
+  about 131 GB of releases under `%LOCALAPPDATA%\JARVIS\releases`. The owner has
+  no such install, so it does not apply. If one ever turns up, the checklist is
+  in `AUDIT_AND_RESET_PLAN.md` at tag `archive/branches/claude/great-clarke-0a0hu9`.
+- **Archives:** the old `main` is at tag `archive/foundry-final`; the 39 old
+  branches are at tags `archive/branches/<name>`.
+- **Optional:** to verify the `codex` engine, provide an OpenAI API key and run
+  `python scripts/make_fixtures.py run DIR --engine codex`.
 
 ## How to report bugs
 
