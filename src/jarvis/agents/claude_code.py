@@ -49,7 +49,7 @@ class ClaudeCode(AgentRunner):
 
     def run(self, req: AgentRequest, should_stop) -> AgentResult:
         res = proc.run(self.argv(req), req.cwd, timeout=req.timeout_s, should_stop=should_stop,
-                       stdin_text=req.prompt)
+                       stdin_text=req.prompt, on_start=req.on_start)
         data = parse(res.out)
         cost = data.get("total_cost_usd")
         usage = data.get("modelUsage") or {}

@@ -74,7 +74,7 @@ def run_command(name: str, command: str, cwd: Path, timeout: float,
     # Python validates .pyc files by mtime (1s resolution) and size, so a same-size
     # edit within a second can run stale bytecode. Give every command a fresh,
     # never-written cache location so verification always runs the current source.
-    with tempfile.TemporaryDirectory(prefix="jarvis-pyc-") as pyc:
+    with tempfile.TemporaryDirectory(prefix="jarvis-pyc-", ignore_cleanup_errors=True) as pyc:
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPYCACHEPREFIX=pyc)
         res = proc.run(command, cwd, timeout=timeout, should_stop=should_stop, env=env)
     output = proc.redact(proc.tail((res.out + ("\n" + res.err if res.err else "")).strip()))

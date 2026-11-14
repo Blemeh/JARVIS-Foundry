@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from conftest import FIXED, WRONG, git
-from jarvis import stop
+from jarvis import proc, stop
 from jarvis.agents.fake import FakeAgent
 from jarvis.runner import Runner
 from jarvis.store import DONE, FAILED, QUEUED, REJECTED, RUNNING, STOPPED, Store
@@ -148,15 +148,23 @@ def test_crashed_running_task_is_recovered(make_cfg, tmp_path):
     child = subprocess.Popen([sys.executable, "-m", "jarvis", "run"], env=env,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     deadline = time.monotonic() + 30
-    while not store.runs(task_id) and time.monotonic() < deadline:
+    while time.monotonic() < deadline and not (
+            store.runs(task_id) and store.runs(task_id)[0]["pid"]):
         time.sleep(0.1)
     child.kill()  # simulate a crash: no cleanup runs
     child.wait(timeout=10)
     assert store.task(task_id)["status"] == RUNNING
+    orphan = store.runs(task_id)[0]["pid"]
+    assert orphan and proc.pid_alive(orphan)  # the agent outlived its crashed runner
     script.write_text(json.dumps({"code": [{"write": {"calc.py": FIXED}}]}))
     runner = Runner(cfg, store, FakeAgent.from_file(str(script)))
     assert runner.recover() == [task_id]
     assert store.task(task_id)["status"] == QUEUED
+    deadline = time.monotonic() + 10
+    while proc.pid_alive(orphan) and time.monotonic() < deadline:
+        time.sleep(0.1)
+    assert not proc.pid_alive(orphan)  # recovery killed the orphaned agent
+    assert store.runs(task_id)[0]["outcome"] == "crashed"
     runner.run_queue()
     task = store.task(task_id)
     assert task["status"] == DONE, task["reason"]

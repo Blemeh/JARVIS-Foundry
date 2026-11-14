@@ -72,10 +72,11 @@ def kill_tree(proc: subprocess.Popen) -> None:
 
 
 def run(cmd: list[str] | str, cwd: Path, *, timeout: float, should_stop: Callable[[], bool]
-        = lambda: False, stdin_text: str | None = None, env: dict | None = None) -> Result:
+        = lambda: False, stdin_text: str | None = None, env: dict | None = None,
+        on_start: Callable[[int], None] | None = None) -> Result:
     """A str command runs through the shell (verification commands from config)."""
     started = time.monotonic()
-    with tempfile.TemporaryDirectory(prefix="jarvis-proc-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="jarvis-proc-", ignore_cleanup_errors=True) as tmp:
         out_path, err_path, in_path = (Path(tmp) / n for n in ("out", "err", "in"))
         in_path.write_text(stdin_text or "", encoding="utf-8")
         kwargs = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if WINDOWS \
@@ -86,6 +87,8 @@ def run(cmd: list[str] | str, cwd: Path, *, timeout: float, should_stop: Callabl
                                         stdin=fin, stdout=fout, stderr=ferr, env=env, **kwargs)
             except OSError as exc:
                 return Result(None, "", f"could not start {cmd!r}: {exc}", 0.0)
+            if on_start is not None:
+                on_start(proc.pid)
             timed_out = stopped = False
             while proc.poll() is None:
                 if should_stop():
@@ -99,6 +102,20 @@ def run(cmd: list[str] | str, cwd: Path, *, timeout: float, should_stop: Callabl
         out = out_path.read_bytes().decode("utf-8", errors="replace")
         err = err_path.read_bytes().decode("utf-8", errors="replace")
     return Result(proc.returncode, out, err, time.monotonic() - started, timed_out, stopped)
+
+
+def kill_pid(pid: int) -> None:
+    """Kill a process tree we started earlier (e.g. an agent orphaned by a crash)."""
+    if WINDOWS:
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True,
+                       check=False)
+        return
+    for kill in (lambda: os.killpg(pid, signal.SIGKILL), lambda: os.kill(pid, signal.SIGKILL)):
+        try:
+            kill()
+            return
+        except (ProcessLookupError, PermissionError):
+            continue
 
 
 def pid_alive(pid: int) -> bool:

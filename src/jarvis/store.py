@@ -69,6 +69,7 @@ MIGRATIONS = [
         created_at TEXT NOT NULL
     );
     """,
+    "ALTER TABLE runs ADD COLUMN pid INTEGER;",
 ]
 
 
@@ -170,6 +171,13 @@ class Store:
         values["finished_at"] = now()
         cols = ", ".join(f"{key} = ?" for key in values)
         self.db.execute(f"UPDATE runs SET {cols} WHERE id = ?", (*values.values(), run_id))
+
+    def set_run_pid(self, run_id: int, pid: int) -> None:
+        self.db.execute("UPDATE runs SET pid = ? WHERE id = ?", (pid, run_id))
+
+    def open_runs(self, task_id: int) -> list[sqlite3.Row]:
+        return self.db.execute(
+            "SELECT * FROM runs WHERE task_id = ? AND finished_at IS NULL", (task_id,)).fetchall()
 
     def runs(self, task_id: int) -> list[sqlite3.Row]:
         return self.db.execute(

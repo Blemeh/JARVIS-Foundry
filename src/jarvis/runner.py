@@ -86,6 +86,10 @@ class Runner:
             if owner_host == host and pid.isdigit() and int(pid) != os.getpid() \
                     and proc.pid_alive(int(pid)):
                 continue
+            for run in self.store.open_runs(task["id"]):  # agent orphaned by the crash
+                if run["pid"] and proc.pid_alive(run["pid"]):
+                    proc.kill_pid(run["pid"])
+                self.store.finish_run(run["id"], outcome="crashed")
             repo = self.cfg.repos.get(task["repo"])
             if repo and task["worktree"]:
                 self._discard(repo, Path(task["worktree"]), task["branch"], task["base_sha"])
@@ -204,8 +208,10 @@ class Runner:
         run_id = self.store.add_run(job.id, kind, attempt, self.agent.name)
         self.log(job.id, f"{kind} call {attempt} started ({self.agent.name}, "
                          f"timeout {timeout:.0f}s)")
-        result = self.agent.run(AgentRequest(text, job.wt, timeout, kind, attempt, read_only,
-                                             (cap - spent) if cap else None), self.stopping)
+        request = AgentRequest(text, job.wt, timeout, kind, attempt, read_only,
+                               (cap - spent) if cap else None,
+                               lambda pid: self.store.set_run_pid(run_id, pid))
+        result = self.agent.run(request, self.stopping)
         if result.timed_out and timeout < self.cfg.agent_timeout_s:
             result.error = f"task time cap of {self.cfg.task_timeout_s}s reached"
         transcript = self.cfg.home / "runs" / str(job.id) / f"{run_id}-{kind}.log"

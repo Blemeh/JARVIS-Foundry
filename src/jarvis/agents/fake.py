@@ -46,7 +46,8 @@ class FakeAgent(AgentRunner):
         duration, timed_out, stopped = 0.0, False, False
         if step.get("sleep"):
             res = proc.run([sys.executable, "-c", f"import time; time.sleep({step['sleep']})"],
-                           req.cwd, timeout=req.timeout_s, should_stop=should_stop)
+                           req.cwd, timeout=req.timeout_s, should_stop=should_stop,
+                           on_start=req.on_start)
             duration, timed_out, stopped = res.duration, res.timed_out, res.stopped
             if timed_out or stopped:
                 return AgentResult(False, "", cost, model, duration, timed_out, stopped,

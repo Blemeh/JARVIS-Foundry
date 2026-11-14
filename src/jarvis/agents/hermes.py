@@ -25,5 +25,6 @@ class Hermes(AgentRunner):
         return argv + self.args
 
     def run(self, req: AgentRequest, should_stop) -> AgentResult:
-        res = proc.run(self.argv(req), req.cwd, timeout=req.timeout_s, should_stop=should_stop)
+        res = proc.run(self.argv(req), req.cwd, timeout=req.timeout_s, should_stop=should_stop,
+                       on_start=req.on_start)
         return from_proc(res, res.out.strip()[-4000:], None, self.model or "hermes default")

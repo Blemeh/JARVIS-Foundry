@@ -16,6 +16,7 @@ class AgentRequest:
     attempt: int = 0
     read_only: bool = False
     max_cost_usd: float | None = None
+    on_start: Callable[[int], None] | None = None  # receives the engine process id
 
 
 @dataclass

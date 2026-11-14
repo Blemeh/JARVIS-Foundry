@@ -25,6 +25,7 @@ class Codex(AgentRunner):
         with tempfile.TemporaryDirectory(prefix="jarvis-codex-") as tmp:
             last = Path(tmp) / "last.txt"
             res = proc.run(self.argv(req, last), req.cwd, timeout=req.timeout_s,
-                           should_stop=should_stop, stdin_text=req.prompt)
+                           should_stop=should_stop, stdin_text=req.prompt,
+                           on_start=req.on_start)
             output = last.read_text(encoding="utf-8", errors="replace") if last.exists() else ""
         return from_proc(res, output.strip(), None, self.model or "codex default")
