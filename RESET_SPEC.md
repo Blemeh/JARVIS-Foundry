@@ -1,4 +1,6 @@
-/goal Rebuild JARVIS (repository Blemeh/JARVIS-Foundry) as a small, working software-development assistant. It replaces the 219k-line "JARVIS Foundry" autonomy kernel. The product is "task in, tested pull request out". Take it to a tagged, installable beta (v0.1.0b1). Work autonomously until every item in the BETA GATE below has passed with real runs, however long that takes.
+# JARVIS reset spec (v0.1.0b1)
+
+Rebuild JARVIS (repository Blemeh/JARVIS-Foundry) as a small, working software-development assistant. It replaces the 219k-line "JARVIS Foundry" autonomy kernel. The product is "task in, tested pull request out". Take it to a tagged, installable beta (v0.1.0b1). Work autonomously until every item in the BETA GATE below has passed with real runs, however long that takes.
 
 === AUTHORITY ===
 I am the owner. This prompt is my standing authorization.
