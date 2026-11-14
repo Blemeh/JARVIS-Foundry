@@ -216,6 +216,7 @@ def cmd_serve(args) -> int:
     if args.concurrency:
         cfg.concurrency = args.concurrency
     runner = Runner(cfg, store)
+    runner.echo = True
     _install_signals(runner)
     print(f"jarvis serve: {len(cfg.repos)} repo(s), concurrency {cfg.concurrency}, "
           f"engine {cfg.engine}. Ctrl+C to shut down.", flush=True)

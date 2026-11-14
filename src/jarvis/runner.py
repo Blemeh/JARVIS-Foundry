@@ -6,6 +6,7 @@ import json
 import os
 import re
 import socket
+import sys
 import tempfile
 import threading
 import time
@@ -72,6 +73,11 @@ class Runner:
         self.agent = agent or make_runner(cfg)
         self.owner = f"{socket.gethostname()}:{os.getpid()}"
         self.shutdown = threading.Event()
+        self.echo = False  # `jarvis serve` prints intake and PR-sync activity
+
+    def say(self, message: str) -> None:
+        if self.echo:
+            print(f"jarvis serve: {proc.redact(message)}", file=sys.stderr, flush=True)
 
     def stopping(self) -> bool:
         return self.shutdown.is_set() or stop.active(self.cfg.home)
@@ -159,7 +165,9 @@ class Runner:
                 issues = github.labeled_issues(repo.github, repo.label)
             except github.GitHubError as exc:
                 self.log(None, f"issue intake for {repo.name} failed: {exc}")
+                self.say(f"issue intake for {repo.name} failed: {exc}")
                 continue
+            self.say(f"{repo.github}: {len(issues)} open issue(s) labeled {repo.label!r}")
             for issue in issues:
                 if self.store.task_for_issue(repo.name, issue["number"]):
                     continue
@@ -168,6 +176,7 @@ class Runner:
                     repo.name, issue["title"], body, issue=issue["number"],
                     needs_plan=needs_plan(self.cfg, issue["title"], body), scope=repo.scope)
                 self.log(task_id, f"created from {repo.github}#{issue['number']}")
+                self.say(f"task {task_id} created from {repo.github}#{issue['number']}")
                 created.append(task_id)
             self.store.set_last_poll(repo.name)
         return created
@@ -183,11 +192,13 @@ class Runner:
                 state, feedback = github.pr_outcome(task["pr_url"])
             except github.GitHubError as exc:
                 self.log(task["id"], f"pull request sync failed: {exc}")
+                self.say(f"pull request sync for task {task['id']} failed: {exc}")
                 continue
             if state == (task["pr_state"] or "open"):
                 continue
             self.store.update(task["id"], pr_state=state)
             self.log(task["id"], f"pull request {state}")
+            self.say(f"task {task['id']}: pull request {state}")
             changed += 1
             if state != "open" and feedback:
                 self.learn(task, state, feedback)

@@ -71,6 +71,7 @@ jobs:
             --body "add() subtracts instead of adding; make the tests pass.")
           echo "ISSUE_NUMBER=${issue##*/}" >> "$GITHUB_ENV"
           jarvis add --repo e2e "Fix add() so the tests pass"
+          gh issue list --repo "$GITHUB_REPOSITORY" --label jarvis-e2e --state open --json number,title
           jarvis serve --once
           jarvis ls
           jarvis show 1
