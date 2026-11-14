@@ -51,6 +51,14 @@ def open_pr(*, github: str, home: Path, task_id: int, branch: str, base: str, ti
     return out.splitlines()[-1].strip() if out else ""
 
 
+def logged_in() -> bool:
+    try:
+        gh("auth", "status", timeout=30)
+        return True
+    except GitHubError:
+        return False
+
+
 def labeled_issues(github: str, label: str) -> list[dict]:
     out = gh("issue", "list", "--repo", github, "--label", label, "--state", "open",
              "--json", "number,title,body,url", "--limit", "50")

@@ -2,7 +2,8 @@
 
 A script maps a call kind to steps: {"code": [step, ...], "plan": step, "review": step}.
 Code/repair attempt N uses code[N] (the last step repeats). A step may hold:
-  write {path: text}, delete [path], commit (bool), sleep seconds (a real child process, so
+  write {path: text}, delete [path], commit (bool), outside {abs path: text},
+  sleep seconds (a real child process, so
   STOP and timeouts exercise the kill path), exit code, cost, model, output.
 """
 
@@ -60,6 +61,8 @@ class FakeAgent(AgentRunner):
                 target.write_text(text, encoding="utf-8")
             for rel in step.get("delete") or []:
                 (req.cwd / rel).unlink(missing_ok=True)
+            for path, text in (step.get("outside") or {}).items():  # escapes its worktree
+                Path(path).write_text(text, encoding="utf-8")
             if step.get("commit"):  # a disobedient agent that commits its own work
                 for args in (["add", "-A"], ["commit", "-qm", "agent commit"]):
                     subprocess.run(["git", *args], cwd=req.cwd, capture_output=True)

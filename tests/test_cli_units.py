@@ -112,15 +112,64 @@ def test_repo_with_quotes_and_backslashes_round_trips(tmp_path):
     ({"pyproject.toml": "[tool.ruff]\n[dependency-groups]\ndev=['pytest']\n", "uv.lock": ""},
      ("", "uv run python -m pytest -q", "uv run ruff check .")),
     ({"go.mod": "module x\n"}, ("", "go test ./...", "go vet ./...")),
+    ({"go.mod": "module x\n", "tests/e2e_test.go": ""}, ("", "go test ./...", "go vet ./...")),
     ({"Cargo.toml": "[package]\n"}, ("", "cargo test", "")),
     ({"Makefile": "build:\n\ttrue\ntest:\n\ttrue\n"}, ("", "make test", "")),
     ({"README.md": "nothing"}, ("", "", "")),
 ])
 def test_repo_profile_detection(tmp_path, files, expected):
     for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_text(text)
     p = repo_profile.detect(tmp_path)
     assert (p.setup, p.test, p.lint) == expected
+
+
+VENV = repo_profile.VENV_PY
+
+
+@pytest.mark.parametrize("files,setup_parts,test", [
+    ({"requirements.txt": "python-dateutil\n", "requirements-dev.txt": "pytest\n"},
+     ["-r requirements.txt", "-r requirements-dev.txt", "pytest"], f"{VENV} -m pytest -q"),
+    ({"pyproject.toml": '[project]\nname="g"\nversion="1"\n'
+                        '[project.optional-dependencies]\ntest=["pytest"]\n'},
+     ['-e ".[test]"'], f"{VENV} -m pytest -q"),
+    ({"pyproject.toml": '[project]\nname="g"\nversion="1"\n[dependency-groups]\ndev=["pytest"]\n'},
+     ["-e .", "--group dev"], f"{VENV} -m pytest -q"),
+    ({"setup.cfg": "[metadata]\nname = g\n[options.extras_require]\ntesting = pytest\n"},
+     ['-e ".[testing]"'], f"{VENV} -m pytest -q"),
+    ({"requirements/dev.txt": "pytest\n", "tests/test_a.py": ""},
+     ["-r requirements/dev.txt"], f"{VENV} -m pytest -q"),
+])
+def test_python_projects_get_a_private_venv(tmp_path, files, setup_parts, test, monkeypatch):
+    monkeypatch.setattr(repo_profile.shutil, "which", lambda name: "/usr/bin/" + name)
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    p = repo_profile.detect(tmp_path)
+    assert p.setup.startswith(f"uv venv -q .venv && uv pip install -q --python {VENV} ")
+    for part in setup_parts:
+        assert part in p.setup
+    assert p.test == test
+
+
+def test_python_venv_falls_back_to_pip_without_uv(tmp_path, monkeypatch):
+    monkeypatch.setattr(repo_profile.shutil, "which", lambda name: None)
+    (tmp_path / "requirements.txt").write_text("pytest\n")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname="g"\nversion="1"\n[dependency-groups]\ndev=["pytest"]\n'
+        "[tool.ruff]\n")
+    p = repo_profile.detect(tmp_path)
+    assert p.setup.startswith(f"{repo_profile.PY} -m venv .venv && {VENV} -m pip install -q ")
+    assert "--group" not in p.setup and "-r requirements.txt" in p.setup
+    assert p.lint == ""  # ruff configured but not installed anywhere: no lint command
+
+
+def test_ruff_runs_from_the_venv_when_declared(tmp_path, monkeypatch):
+    monkeypatch.setattr(repo_profile.shutil, "which", lambda name: None)
+    (tmp_path / "requirements-dev.txt").write_text("pytest\nruff\n")
+    p = repo_profile.detect(tmp_path)
+    assert p.lint == f"{VENV} -m ruff check ." and "ruff" in p.setup.split()
 
 
 def test_profile_overrides(tmp_path):

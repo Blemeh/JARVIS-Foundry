@@ -15,7 +15,7 @@ and duration.
 JARVIS never merges, never pushes to a default branch and never deploys.
 `jarvis stop` halts everything within seconds.
 
-Status: beta (`0.1.0b2`). See [BETA.md](BETA.md) for what is verified and what is not.
+Status: private beta release candidate (`0.1.0rc1`). See [BETA.md](BETA.md) for what is verified and what is not.
 
 ## Requirements
 
@@ -32,9 +32,9 @@ Status: beta (`0.1.0b2`). See [BETA.md](BETA.md) for what is verified and what i
 ## Install
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
 # or
-pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
+pipx install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
 ```
 
 If `jarvis` is not found afterwards, run `uv tool update-shell` and open a new
@@ -46,7 +46,7 @@ This uses a tiny demo repo with a failing test, in local mode (no GitHub
 needed). Commands are for a POSIX shell (Linux, macOS, Git Bash on Windows).
 
 ```bash
-uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0b2
+uv tool install git+https://github.com/Blemeh/JARVIS-Foundry@v0.1.0rc1
 export PATH="$HOME/.local/bin:$PATH"   # only needed if `jarvis` is not found
 jarvis init
 
@@ -90,7 +90,9 @@ jarvis run          # or: jarvis serve  (also picks up issues labeled "jarvis")
 | `jarvis serve [--concurrency N] [--no-intake] [--once]` | Background loop: polls GitHub issues labeled `jarvis` and the outcome of JARVIS's PRs, runs the queue. `--once`: one cycle, then exit |
 | `jarvis stop [reason]` | STOP: kill running agents, halt the queue |
 | `jarvis resume` | Clear STOP and re-queue stopped tasks |
-| `jarvis approve ID [--reject]` | Approve (or reject) the plan of a large task |
+| `jarvis approve ID [--reject] [--note TEXT]` | Approve (or reject) the plan of a large task; `--note` answers the plan's questions |
+| `jarvis cancel ID` | Cancel a queued, waiting or stopped task |
+| `jarvis retry ID` | Queue a failed, rejected, cancelled or stopped task again (its old branch is kept) |
 | `jarvis notes REPO [--accept ID] [--reject ID]` | Show the repo's notes and proposed lessons |
 
 Task states: `QUEUED`, `PLANNING`, `AWAITING_APPROVAL`, `RUNNING`, `DONE`,
@@ -129,13 +131,27 @@ Per repo (`[repos.<name>]`, written by `jarvis repo add`, editable by hand):
 | `github` | `""` | `owner/name`: push and open real PRs with `gh`. Empty: local mode |
 | `base` | default branch | Branch the task branches start from and PRs target |
 | `remote` | `"origin"` | Remote to fetch from and push task branches to |
-| `setup`, `test`, `lint`, `build` | detected | Commands; `""` disables one. Detected from `package.json`, `pyproject.toml`/`uv.lock`, `go.mod`, `Cargo.toml`, `Makefile` |
+| `setup`, `test`, `lint`, `build` | detected | Commands; `""` disables one. Detected from `package.json`, `pyproject.toml`/`uv.lock`, `requirements*.txt`, `setup.cfg`, `go.mod`, `Cargo.toml`, `Makefile` (see "Python projects" below) |
 | `scope` | `[]` | Allowed paths (prefixes or globs; `*` also crosses folders). Empty: whole repo |
 | `protected` | `[]` | Paths the agent may never touch, e.g. `[".github/"]` |
 | `branch_prefix` | `"jarvis/"` | Task branches are `<prefix><task id>` |
 | `draft` | `false` | Open PRs as drafts |
 | `label` | `"jarvis"` | Issue label picked up by `jarvis serve` |
 | `require_tests` | `false` | A change that adds or changes no test file fails verification (and is repaired) |
+
+### Python projects
+
+Each task gets a fresh worktree, so it also gets its own environment. With a
+`uv.lock`, JARVIS uses `uv run`. Otherwise it creates `.venv` inside the task
+worktree and installs what the project declares: the project itself in editable
+mode with its `test`/`tests`/`testing`/`dev` extras, PEP 735 dependency groups
+of those names, the usual `requirements*.txt` files, and pytest if the project
+uses it. Tests then run with that interpreter, so they test the worktree's code.
+This needs network access to your package index, and uses `uv` if it is
+installed (`python -m venv` and pip otherwise). `jarvis repo add` prints the
+exact commands; set `setup`/`test` yourself if your project needs something else.
+
+### Repo notes and learning from reviews
 
 Notes live in `~/.jarvis/notes/<repo>.md` (commands, conventions, lessons) and
 go into every prompt for that repo. JARVIS never writes notes into your repo.
@@ -164,6 +180,14 @@ JARVIS's GitHub PRs: the number that says whether JARVIS is useful.
   untracked files), rejects empty diffs, rejects edits outside `scope` or
   inside `protected` (state `REJECTED`, no repair), and runs the repo's own
   commands. No configured or detected command means the task cannot pass.
+- **Warnings you will see in the PR.** If test files lost tests or assertions,
+  or if your own checkout changed while the agent ran (a sign it wrote outside
+  its worktree), the PR body says so in a "Warning" section. JARVIS never
+  reverts or deletes anything in your checkout.
+- **Preflight and pausing.** `jarvis run` and `jarvis serve` check the engine
+  CLI, the repos and (GitHub mode) the `gh` login before starting; if something
+  is wrong, nothing starts and queued tasks stay queued. Two tasks in a row
+  failing on an engine error (login, quota, outage) pause the queue.
 - **Caps.** Time per agent call, time per task, cost per task and the number of
   repairs are all capped.
 - **Read-only planning and review.** Plan and review calls run the agent with

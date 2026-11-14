@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.0rc1 (private beta release candidate)
+
+- Python repos without `uv.lock` now work: each task gets a `.venv` in its
+  worktree with the project's declared dependencies (extras, dependency groups,
+  requirements files) and runs tests with it. Before, verification used the
+  system Python and failed on almost every real project.
+- `jarvis run`/`serve` check the engine CLI, repos and `gh` login first and
+  start nothing if something is wrong; queued tasks stay queued.
+- Two tasks in a row failing on an engine error pause the queue.
+- PR warnings when tests or assertions disappear, or when your own checkout
+  changed during the agent run.
+- `jarvis cancel` and `jarvis retry`.
+- `jarvis serve` survives a failing poll step.
+- `jarvis approve ID --note "..."` answers a plan's questions; the note goes into
+  the plan the agent follows.
+- `jarvis run` now reports the tasks it actually processed.
+- Detection fixes: requirements-only projects are Python; `go.mod` and
+  `Cargo.toml` win over a stray `tests/` folder; ruff is only used when it can run.
+
 ## 0.1.0b2 (beta)
 
 - Baseline: before the agent works, JARVIS runs the verification commands on

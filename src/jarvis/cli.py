@@ -10,7 +10,17 @@ import time
 from pathlib import Path
 
 from . import __version__, config, notes, repo_profile, stop, worktree
-from .store import ACTIVE, AWAITING_APPROVAL, FAILED, QUEUED, STOPPED, Store, now
+from .store import (
+    ACTIVE,
+    AWAITING_APPROVAL,
+    CANCELLED,
+    FAILED,
+    QUEUED,
+    REJECTED,
+    STOPPED,
+    Store,
+    now,
+)
 
 
 def _ctx() -> tuple[config.Config, Store]:
@@ -182,6 +192,17 @@ def _install_signals(runner) -> None:
         signal.signal(signal.SIGBREAK, handler)
 
 
+def _preflight_ok(cfg, store, serving: bool = False) -> bool:
+    from .runner import preflight
+
+    problems = preflight(cfg, store, serving=serving)
+    for problem in problems:
+        print(f"error: {problem}", file=sys.stderr)
+    if problems:
+        print("Nothing was started; queued tasks stay queued.", file=sys.stderr)
+    return not problems
+
+
 def cmd_run(args) -> int:
     from .runner import Runner
 
@@ -189,11 +210,13 @@ def cmd_run(args) -> int:
     if stop.active(cfg.home):
         print("STOP is active; run `jarvis resume` first.", file=sys.stderr)
         return 1
+    if not _preflight_ok(cfg, store):
+        return 2
     runner = Runner(cfg, store)
     _install_signals(runner)
     count = runner.run_queue()
     print(f"Processed {count} task(s).")
-    for t in store.tasks(limit=count) if count else []:
+    for t in (store.task(task_id) for task_id in runner.processed):
         if t["status"] == AWAITING_APPROVAL:
             print(f"  #{t['id']} plan ready: read it with `jarvis show {t['id']}`, then "
                   f"`jarvis approve {t['id']}` (or --reject)")
@@ -201,6 +224,9 @@ def cmd_run(args) -> int:
             print(f"  #{t['id']} {t['status']}: {t['pr_url'] or t['reason'] or ''}")
     if stop.active(cfg.home):
         print("STOP is active; the queue is paused.")
+    if runner.paused:
+        print(runner.paused, file=sys.stderr)
+        return 1
     return 0
 
 
@@ -215,6 +241,8 @@ def cmd_serve(args) -> int:
     cfg, store = _ctx()
     if args.concurrency:
         cfg.concurrency = args.concurrency
+    if not _preflight_ok(cfg, store, serving=not args.no_intake):
+        return 2
     runner = Runner(cfg, store)
     runner.echo = True
     _install_signals(runner)
@@ -259,13 +287,53 @@ def cmd_approve(args) -> int:
     if t is None or t["status"] != AWAITING_APPROVAL:
         print(f"error: task {args.id} is not awaiting approval", file=sys.stderr)
         return 2
+    note = (args.note or "").strip()
     if args.reject:
-        store.update(args.id, status=FAILED, reason="plan rejected by owner", finished_at=now())
+        reason = "plan rejected by owner" + (f": {note}" if note else "")
+        store.update(args.id, status=FAILED, reason=reason, finished_at=now())
         print(f"Task {args.id} plan rejected.")
     else:
-        store.update(args.id, status=QUEUED, plan_approved=1)
-        print(f"Task {args.id} plan approved and queued.")
-    store.log(args.id, "plan rejected" if args.reject else "plan approved")
+        plan = t["plan"] + (f"\n\n## Owner's answers and instructions\n{note}" if note else "")
+        store.update(args.id, status=QUEUED, plan_approved=1, plan=plan)
+        print(f"Task {args.id} plan approved and queued" + (" with your note." if note else "."))
+    store.log(args.id, ("plan rejected" if args.reject else "plan approved")
+              + (f" with note: {note}" if note else ""))
+    return 0
+
+
+def cmd_cancel(args) -> int:
+    _, store = _ctx()
+    t = store.task(args.id)
+    if t is None:
+        print(f"error: no task {args.id}", file=sys.stderr)
+        return 2
+    if t["status"] not in (QUEUED, AWAITING_APPROVAL, STOPPED):
+        hint = " (it is running: `jarvis stop` first)" if t["status"] in ACTIVE else ""
+        print(f"error: task {args.id} is {t['status']} and cannot be cancelled{hint}",
+              file=sys.stderr)
+        return 2
+    store.update(args.id, status=CANCELLED, reason="cancelled by owner", finished_at=now())
+    store.log(args.id, "cancelled by owner")
+    print(f"Task {args.id} cancelled.")
+    return 0
+
+
+def cmd_retry(args) -> int:
+    _, store = _ctx()
+    t = store.task(args.id)
+    if t is None:
+        print(f"error: no task {args.id}", file=sys.stderr)
+        return 2
+    if t["status"] not in (FAILED, REJECTED, CANCELLED, STOPPED):
+        print(f"error: task {args.id} is {t['status']}; only FAILED, REJECTED, CANCELLED or "
+              "STOPPED tasks can be retried", file=sys.stderr)
+        return 2
+    store.update(args.id, status=QUEUED, reason=None, repairs=0, pr_url=None, pr_state=None,
+                 owner=None, worktree=None, started_at=None, finished_at=None)
+    store.log(args.id, f"retried by owner (was {t['status']}; earlier branch kept: "
+                       f"{t['branch'] or 'none'})")
+    print(f"Task {args.id} queued again" + (f"; its earlier branch {t['branch']} is kept"
+                                           if t["branch"] else "") + ".")
     return 0
 
 
@@ -359,7 +427,15 @@ def parser() -> argparse.ArgumentParser:
     ap = sub.add_parser("approve", help="approve (or --reject) a task's plan")
     ap.add_argument("id", type=int)
     ap.add_argument("--reject", action="store_true")
+    ap.add_argument("--note", help="answers to the plan's questions or extra instructions")
     ap.set_defaults(func=cmd_approve)
+
+    cancel = sub.add_parser("cancel", help="cancel a queued, waiting or stopped task")
+    cancel.add_argument("id", type=int)
+    cancel.set_defaults(func=cmd_cancel)
+    retry = sub.add_parser("retry", help="queue a failed, rejected, cancelled or stopped task")
+    retry.add_argument("id", type=int)
+    retry.set_defaults(func=cmd_retry)
 
     nt = sub.add_parser("notes", help="show repo notes and proposed lessons")
     nt.add_argument("repo")

@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "jarvis"
-version = "0.1.0b2"
+version = "0.1.0rc1"
 source = { editable = "." }
 
 [package.dev-dependencies]

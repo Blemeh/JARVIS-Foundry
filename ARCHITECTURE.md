@@ -59,6 +59,11 @@ DONE ──serve sees the PR merged or closed──> DONE/merged | DONE/closed
 - A missing test (`require_tests`) is a verification failure that gets repaired, unlike a scope breach.
 - PR outcomes are polled by `serve` only; review lessons come from a read-only agent call in an empty temp folder (never the user's checkout) and are only proposed.
 - The merge rate in `jarvis ls` counts GitHub PRs only; local-mode PR files have no outcome.
+- Python repos without uv.lock get a `.venv` inside the task worktree built from declared dependencies, so tests import the worktree's code, never an install pointing at the user's checkout.
+- Preflight blocks `run`/`serve` on problems that would fail every task; two engine errors in a row pause the queue rather than burning it.
+- Changes to the user's checkout during an agent run and tests or assertions lost in a passing diff are warnings, not failures: the user may be working in the checkout, and refactors may move tests.
+- `cancel` only applies to tasks that are not running (STOP first); `retry` requeues on a new branch and keeps the old one.
+- Every `serve` poll step is guarded: one failure is logged and retried on the next poll.
 
 ## Later (not in the beta)
 - A small web dashboard (queue, runs, PRs, cost).

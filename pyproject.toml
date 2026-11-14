@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jarvis"
-version = "0.1.0b2"
+version = "0.1.0rc1"
 description = "Turn a coding task for a git repo into a tested pull request."
 readme = "README.md"
 requires-python = ">=3.11"
