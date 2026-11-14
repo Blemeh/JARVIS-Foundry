@@ -71,7 +71,13 @@ jobs:
             --body "add() subtracts instead of adding; make the tests pass.")
           echo "ISSUE_NUMBER=${issue##*/}" >> "$GITHUB_ENV"
           jarvis add --repo e2e "Fix add() so the tests pass"
-          gh issue list --repo "$GITHUB_REPOSITORY" --label jarvis-e2e --state open --json number,title
+          # GitHub lists a new issue by label only after a short delay; a real
+          # `jarvis serve` simply picks it up on its next poll.
+          for i in $(seq 1 30); do
+            gh issue list --repo "$GITHUB_REPOSITORY" --label jarvis-e2e --state open \
+              --json number --jq '.[].number' | grep -qx "${issue##*/}" && break
+            sleep 3
+          done
           jarvis serve --once
           jarvis ls
           jarvis show 1
