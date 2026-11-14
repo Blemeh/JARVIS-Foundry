@@ -105,6 +105,17 @@ plan call produced a numbered plan ($0.14, 16 s) and left no branch and no
 change behind; `jarvis approve 1` and `jarvis run` then produced a DONE task
 (code $0.16, review $0.10).
 
+## Real GitHub smoke test
+
+`.github/workflows/github-e2e.yml`, run 43614354257 (attempt 2), 2026-11-14:
+JARVIS, installed from this repo, took a task against a throwaway orphan branch
+`jarvis-e2e-base` in this repository and opened **draft PR #3** from
+`jarvis-e2e/1` into `jarvis-e2e-base`. The job checked the PR was a draft with
+the expected base, head and body sections, and that `main` did not move. It then
+closed the PR and deleted both branches (0 `jarvis-e2e*` branches left). The
+coding engine in this test is the fake engine: it proves the GitHub path, not an
+LLM.
+
 ## Owner actions
 
 From the reset audit (section 7, Phase 0). Only you can do these, on your
