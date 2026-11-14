@@ -22,13 +22,15 @@ SRC = str(Path(__file__).resolve().parents[1] / "src")
 def test_success_opens_local_pr(run_task, repo):
     main_before = git(repo.parent / "origin.git", "rev-parse", "main")
     status, task, runner, _ = run_task({"code": [{"write": {"calc.py": FIXED}, "cost": 0.12,
-                                                  "output": "Fixed add()."}]})
+                                                  "output": "Fixed add().\nNOTE: use unittest"}]})
     assert status == DONE, task["reason"]
     body = Path(task["pr_url"]).read_text(encoding="utf-8")
     for expected in ("## Summary", "Fixed add().", "## Changed files", "`calc.py`",
                      "## Verification", "exit 0", "Engine: fake, model: fake-model",
                      "Cost: $0.12", "Duration:", "Repairs: 0"):
         assert expected in body
+    assert "NOTE:" not in body  # lessons become proposals, not PR text
+    assert [p["text"] for p in runner.store.proposals("calc")] == ["use unittest"]
     # the branch was pushed to the bare origin; its default branch did not move
     origin = repo.parent / "origin.git"
     assert git(origin, "rev-parse", "main") == main_before

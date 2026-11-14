@@ -334,8 +334,9 @@ class Runner:
         cost, complete = self.store.cost(job.id)
         minutes, seconds = divmod(int(time.monotonic() - job.started), 60)
         lines = ["## Summary", job.task["title"], ""]
-        if job.summary.strip():
-            lines += [proc.redact(proc.tail(job.summary.strip(), 3000)), ""]
+        summary = notes.NOTE_LINE.sub("", job.summary).strip()  # NOTE lines are proposals
+        if summary:
+            lines += [proc.redact(proc.tail(summary, 3000)), ""]
         if job.task["issue"] and job.repo.github:
             lines += [f"Closes #{job.task['issue']}", ""]
         lines += ["## Changed files"] + [f"- `{f}`" for f in verdict.files[:200]]
