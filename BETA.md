@@ -66,6 +66,27 @@ false success. Task 9 is contradictory by design and must fail.
 Result: **9/10 succeeded with verified green tests, 0 false successes**, the
 designed failure failed cleanly, and no fixture's `origin/main` moved.
 
+## Re-run after Phase 5 (no regression)
+
+The same 10 tasks on the final code (commit 538ebbb, all Phase 5 features on), run
+2026-11-14 on Linux with `claude_code` (`claude-opus-5-5`), local PR mode:
+
+| # | Repo | Task | Outcome | Hidden check | Repairs | Duration | Cost |
+|---|---|---|---|---|---|---|---|
+| 1 | pyshop | bug fix: Fix apply_discount: percentage discounts are applied wrong | DONE | pass | 0 | 0m18s | $0.21 |
+| 2 | pyshop | small feature: Add Cart.remove(sku, qty=None) to shop/cart.py | DONE | pass | 0 | 0m30s | $0.26 |
+| 3 | pyshop | refactor: Refactor shop/inventory.py to remove duplicated SKU validation | DONE | pass | 0 | 0m21s | $0.20 |
+| 4 | pyshop | add missing tests: Add tests for shop/money.py | DONE | pass (4/4 mutants killed) | 0 | 0m41s | $0.30 |
+| 5 | nodecart | multi-file change: Rename calcTotal to computeTotal everywhere | DONE | pass | 0 | 0m17s | $0.21 |
+| 6 | nodecart | bug fix: slugify leaves repeated and trailing dashes | DONE | pass | 0 | 0m22s | $0.24 |
+| 7 | nodecart | small feature: Add a --json flag to bin/cli.js | DONE | pass | 0 | 0m32s | $0.28 |
+| 8 | gotext | small feature: Add textutil.Truncate(s string, n int) string | DONE | pass | 0 | 0m20s | $0.22 |
+| 9 | gotext | should fail cleanly: Report API version 2 | FAILED (expected) | - | 0 | 0m12s | $0.10 |
+| 10 | gotext | bug fix: WordCount counts punctuation as part of words | DONE | pass | 0 | 0m32s | $0.28 |
+
+Result: **9/10 succeeded with verified green tests, 0 false successes**; task 9
+failed cleanly again; no fixture's `origin/main` moved. Total cost $2.30.
+
 ## STOP and RESUME with the real engine
 
 `python scripts/make_fixtures.py stop DIR --jarvis <installed jarvis>`, run
