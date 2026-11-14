@@ -1,0 +1,20 @@
+name: archive-tag
+# One-shot: tag the last Foundry main before the reset deletes it.
+# Removed again in the demolition commit.
+on:
+  push:
+    branches: [claude/hopeful-euler-lv46qf]
+    paths: [.github/workflows/archive-tag.yml]
+permissions:
+  contents: write
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag old main as archive/foundry-final
+        run: |
+          git tag archive/foundry-final 228139f587dd2d1c3ada0142aed4dafa93304557
+          git push origin refs/tags/archive/foundry-final
