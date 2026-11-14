@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
+import shutil
 import socket
 import sys
 import tempfile
@@ -45,6 +47,8 @@ class Job:
     model: str = ""
     cost_note_logged: bool = False
     baseline: list[verify.CommandResult] = field(default_factory=list)
+    engine_error: bool = False
+    checkout_changes: list[str] = field(default_factory=list)
 
     @property
     def id(self) -> int:
@@ -53,6 +57,38 @@ class Job:
 
 class CapReached(Exception):
     pass
+
+
+ENGINE = {"claude_code": "claude", "codex": "codex", "hermes": "hermes"}
+ENGINE_ERRORS_BEFORE_PAUSE = 2
+PAUSE_S = 300
+
+
+def preflight(cfg: Config, store: Store, *, serving: bool = False) -> list[str]:
+    """Problems that would make every queued task fail. Nothing is claimed if any exist."""
+    problems = []
+    if not shutil.which("git"):
+        problems.append("git is not on PATH")
+    if cfg.engine in ENGINE:
+        exe = shlex.split(cfg.command)[0] if cfg.command else ENGINE[cfg.engine]
+        if not shutil.which(exe):
+            problems.append(f"the {cfg.engine} engine needs `{exe}` on PATH (or set "
+                            f"[engine] command in {cfg.path})")
+    elif cfg.engine == "fake" and cfg.script and not Path(cfg.script).expanduser().exists():
+        problems.append(f"fake engine script not found: {cfg.script}")
+    queued = {t["repo"] for t in store.tasks([QUEUED])}
+    wanted = [r for r in cfg.repos.values() if r.name in queued or (serving and r.github)]
+    for repo in wanted:
+        try:
+            worktree.toplevel(repo.path)
+        except (worktree.GitError, OSError):
+            problems.append(f"repo {repo.name}: {repo.path} is not a git repository")
+    if any(r.github for r in wanted):
+        if not shutil.which("gh"):
+            problems.append("GitHub mode needs the GitHub CLI `gh` on PATH")
+        elif not github.logged_in():
+            problems.append("`gh` is not logged in; run `gh auth login`")
+    return problems
 
 
 def money(cost: float, complete: bool) -> str:
@@ -74,6 +110,8 @@ class Runner:
         self.owner = f"{socket.gethostname()}:{os.getpid()}"
         self.shutdown = threading.Event()
         self.echo = False  # `jarvis serve` prints intake and PR-sync activity
+        self.engine_errors = 0  # consecutive tasks that failed on an engine error
+        self.paused = ""  # why the queue was paused, if it was
 
     def say(self, message: str) -> None:
         if self.echo:
@@ -117,6 +155,12 @@ class Runner:
                 break
             self.process(task)
             count += 1
+            if self.engine_errors >= ENGINE_ERRORS_BEFORE_PAUSE:
+                self.paused = (f"{self.engine_errors} tasks in a row failed on an engine error; "
+                               "the queue is paused. Check the engine (login, quota), then "
+                               "`jarvis retry` the failed tasks.")
+                self.log(None, self.paused)
+                break
         return count
 
     def serve(self, *, intake: bool = True, once: bool = False) -> None:
@@ -124,8 +168,13 @@ class Runner:
         running. With `once`, do one poll, work the queue until it is empty, and return."""
         self.recover()
         workers: dict[int, threading.Thread] = {}
-        next_poll = 0.0
+        next_poll = paused_until = 0.0
         while not self.shutdown.is_set():
+            if self.engine_errors >= ENGINE_ERRORS_BEFORE_PAUSE:
+                self.engine_errors, paused_until = 0, time.monotonic() + PAUSE_S
+                self.log(None, f"engine errors in a row: pausing the queue for {PAUSE_S}s")
+                self.say(f"engine errors in a row: pausing the queue for {PAUSE_S}s; check "
+                         "the engine login or quota")
             workers = {tid: t for tid, t in workers.items() if t.is_alive()}
             if stop.active(self.cfg.home):
                 if once:
@@ -136,7 +185,8 @@ class Runner:
                         self.intake()
                     self.sync_prs()
                     next_poll = time.monotonic() + self.cfg.poll_interval_s
-                while len(workers) < max(1, self.cfg.concurrency):
+                while len(workers) < max(1, self.cfg.concurrency) \
+                        and time.monotonic() >= paused_until:
                     task = self.store.claim(self.owner)
                     if task is None:
                         break
@@ -231,6 +281,8 @@ class Runner:
         except Exception as exc:  # noqa: BLE001 - every task ends in an honest state
             self.log(job.id, "internal error:\n" + traceback.format_exc()[-2000:])
             return self.finish(job, FAILED, f"internal error: {exc}")
+        finally:
+            self.engine_errors = self.engine_errors + 1 if job.engine_error else 0
 
     def _process(self, job: Job) -> str:
         repo, task = job.repo, job.task
@@ -270,7 +322,14 @@ class Runner:
         request = AgentRequest(text, job.wt, timeout, kind, attempt, read_only,
                                (cap - spent) if cap else None,
                                lambda pid: self.store.set_run_pid(run_id, pid))
+        before = None if read_only else self._checkout_state(job.repo.path)
         result = self.agent.run(request, self.stopping)
+        if before is not None:
+            changed = sorted(set(self._checkout_state(job.repo.path)) ^ set(before))
+            if changed:
+                job.checkout_changes += [c for c in changed if c not in job.checkout_changes]
+                self.log(job.id, "warning: your checkout changed during the agent run: "
+                         + ", ".join(changed[:20]))
         if result.timed_out and timeout < self.cfg.agent_timeout_s:
             result.error = f"task time cap of {self.cfg.task_timeout_s}s reached"
         transcript = self.cfg.home / "runs" / str(job.id) / f"{run_id}-{kind}.log"
@@ -291,6 +350,13 @@ class Runner:
                          + (f": {result.error}" if result.error else ""))
         return result
 
+    @staticmethod
+    def _checkout_state(path: Path) -> list[str]:
+        """The user's checkout: HEAD plus every changed or untracked path, for comparison."""
+        status = worktree.git(path, "status", "--porcelain", "-z", check=False)
+        head = worktree.git(path, "rev-parse", "HEAD", check=False)
+        return [f"HEAD {head[:12]}"] + [e for e in status.split("\0") if e.strip()]
+
     def _agent_failure(self, job: Job, result: AgentResult) -> str:
         if result.stopped:
             return self.finish(job, STOPPED, "stopped by STOP")
@@ -298,6 +364,7 @@ class Runner:
             return self.finish(job, FAILED, result.error)
         if result.timed_out:
             return self.finish(job, FAILED, f"agent timed out after {result.duration_s:.0f}s")
+        job.engine_error = True
         return self.finish(job, FAILED, f"agent error: {result.error}")
 
     def plan(self, job: Job) -> str:
@@ -423,6 +490,11 @@ class Runner:
                       shown or "(no output)", "```", "</details>"]
         if review:
             lines += ["", "## Reviewer notes (informational)", proc.redact(review.strip())]
+        if job.checkout_changes:
+            lines += ["", "## Warning: your checkout changed during the agent run",
+                      f"`{job.repo.path}` changed while the agent worked. If you did not make "
+                      "these changes, the agent wrote outside its worktree; review them:"]
+            lines += [f"- `{c}`" for c in job.checkout_changes[:30]]
         lines += ["", "## Run",
                   f"- Engine: {self.agent.name}, model: {job.model or 'unknown'}",
                   f"- Repairs: {repairs}",
