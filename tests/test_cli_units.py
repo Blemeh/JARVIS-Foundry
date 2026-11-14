@@ -217,6 +217,7 @@ def test_store_migrates_old_schema(tmp_path):
 
 def test_claude_code_argv_and_parse():
     agent = ClaudeCode(model="sonnet", args=["--effort", "high"])
+    agent._help = "--strict-mcp-config --tools <tools...>"  # a CLI that has both flags
     write = agent.argv(AgentRequest("p", Path("."), 10, max_cost_usd=1.5))
     assert write[1:4] == ["-p", "--output-format", "json"]
     for pair in (["--model", "sonnet"], ["--max-budget-usd", "1.50"],
@@ -225,6 +226,13 @@ def test_claude_code_argv_and_parse():
     assert write[-2:] == ["--effort", "high"]
     read = agent.argv(AgentRequest("p", Path("."), 10, read_only=True))
     assert "Bash,Edit,Write,NotebookEdit" in read and "acceptEdits" not in read
+    assert read[read.index("--tools") + 1] == "Read,Glob,Grep"
+    assert "--strict-mcp-config" in write and "--strict-mcp-config" in read
+    assert "--tools" not in write  # write calls keep the default tool set
+    old_cli = ClaudeCode()
+    old_cli._help = "-p --print --model"  # an older CLI without these flags
+    old_read = old_cli.argv(AgentRequest("p", Path("."), 10, read_only=True))
+    assert "--tools" not in old_read and "--strict-mcp-config" not in old_read
     out = 'noise\n{"type":"result","subtype":"success","result":"ok","total_cost_usd":0.5}\n'
     assert parse(out)["total_cost_usd"] == 0.5
 
